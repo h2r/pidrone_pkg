@@ -36,6 +36,10 @@ def att_pub():
 
 def cmd_call(data):
     print(data)
+    if data.aux4 > 1500:
+        board.arm()
+    elif data.aux4 < 1500:
+        board.disarm()
     board.sendCMD(16, MultiWii.SET_RAW_RC, [data.roll, data.pitch, data.yaw,
     data.throttle, data.aux1, data.aux2, data.aux3, data.aux4])
 
@@ -43,6 +47,7 @@ def cmd_call(data):
 if __name__ == "__main__":
     rospy.init_node('multiwii', anonymous=True)
     try:
+        print("Board is armed")
         rospy.Subscriber("/pidrone/commands", RC, cmd_call)
         att_pub()
         rospy.spin()

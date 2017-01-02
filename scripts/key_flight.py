@@ -42,10 +42,13 @@ while not rospy.is_shutdown() and not stop:
         if msg.throttle <= 1900:
             msg.throttle += 100
     elif key == 'j':
-        if msg.throttle >= 1100:
-            msg.throttle -= 100
+        msg.throttle -= 100
     elif ord(key) == 3:
         print("Recieved ctrl-c... Exiting")
         stop = True
+    elif key == 'h':
+        msg.aux4 += 100
+    elif key == 'n':
+        msg.aux4 -= 100
     else:
         print("Could not read key")
