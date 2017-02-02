@@ -9,12 +9,14 @@ import tf
 
 board = MultiWii("/dev/ttyACM0")
 
+cmds = [1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500]
+
 def att_pub():
-    pub = rospy.Publisher('/pidrone/orientation', Quaternion, queue_size=10)
+    pub = rospy.Publisher('/pidrone/orientation', Quaternion, queue_size=1)
     rate = rospy.Rate(300)
     pose = Pose()
     while not rospy.is_shutdown():
-        board.getData(MultiWii.ATTITUDE)
+        board.sendCMDrecieveATT(16, MultiWii.SET_RAW_RC, cmds)
 
 
         # message = "angx = {:+.2f} \t angy = {:+.2f} \t heading = {:+.2f} \t elapsed = {:+.4f} \t".format(float(board.attitude['angx']),float(board.attitude['angy']),float(board.attitude['heading']),float(board.attitude['elapsed']))
@@ -35,19 +37,24 @@ def att_pub():
         rate.sleep()
 
 def cmd_call(data):
-    print(data)
+    print([data.roll, data.pitch, data.yaw, data.throttle, data.aux4])
     if data.aux4 > 1500:
         board.arm()
-    elif data.aux4 < 1500:
+    elif data.aux4 <= 1400:
         board.disarm()
-    board.sendCMD(16, MultiWii.SET_RAW_RC, [data.roll, data.pitch, data.yaw,
-    data.throttle, data.aux1, data.aux2, data.aux3, data.aux4])
+    cmds[0] = data.roll
+    cmds[1] = data.pitch
+    cmds[2] = data.yaw
+    cmds[3] = data.throttle
+    cmds[4] = data.aux1
+    cmds[5] = data.aux2
+    cmds[6] = data.aux3
+    cmds[7] = data.aux4
 
 
 if __name__ == "__main__":
     rospy.init_node('multiwii', anonymous=True)
     try:
-        print("Board is armed")
         rospy.Subscriber("/pidrone/commands", RC, cmd_call)
         att_pub()
         rospy.spin()
