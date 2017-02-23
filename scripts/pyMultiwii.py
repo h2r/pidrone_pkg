@@ -22,6 +22,7 @@ class MultiWii:
     IDENT = 100
     STATUS = 101
     RAW_IMU = 102
+    POS_EST = 123
     SERVO = 103
     MOTOR = 104
     RC = 105
@@ -61,6 +62,7 @@ class MultiWii:
         """Global variables of data"""
         self.rcChannels = {'roll':0,'pitch':0,'yaw':0,'throttle':0,'elapsed':0,'timestamp':0}
         self.rawIMU = {'ax':0,'ay':0,'az':0,'gx':0,'gy':0,'gz':0,'elapsed':0,'timestamp':0}
+        self.posest = {'x':0,'y':0,'z':0,'elapsed':0,'timestamp':0}
         self.motor = {'m1':0,'m2':0,'m3':0,'m4':0,'elapsed':0,'timestamp':0}
         self.attitude = {'angx':0,'angy':0,'heading':0,'elapsed':0,'timestamp':0}
         self.message = {'angx':0,'angy':0,'heading':0,'roll':0,'pitch':0,'yaw':0,'throttle':0,'elapsed':0,'timestamp':0}
@@ -227,6 +229,14 @@ class MultiWii:
                 self.rawIMU['elapsed']=round(elapsed,3)
                 self.rawIMU['timestamp']="%0.2f" % (time.time(),)
                 return self.rawIMU
+            elif cmd == MultiWii.POS_EST:
+                self.posest['x']=float(temp[0])
+                self.posest['y']=float(temp[1])
+                self.posest['z']=float(temp[2])
+                self.posest['elapsed']=round(elapsed,3)
+                self.posest['timestamp']="%0.2f" % (time.time(),)
+                return self.posest
+# Position Estimate
             elif cmd == MultiWii.MOTOR:
                 self.motor['m1']=float(temp[0])
                 self.motor['m2']=float(temp[1])

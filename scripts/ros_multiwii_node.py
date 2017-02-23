@@ -2,21 +2,28 @@
 import rospy
 from pyMultiwii import MultiWii
 from sys import stdout
-from geometry_msgs.msg import Quaternion, Pose
+from geometry_msgs.msg import Pose
+from sensor_msgs.msg import Imu
 from pidrone_pkg.msg import RC
 import sys
 import tf
 
 board = MultiWii("/dev/ttyACM0")
 
-cmds = [1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500]
+cmds = [1500, 1500, 1500, 1000, 1500, 1500, 1500, 1500]
 
 def att_pub():
-    pub = rospy.Publisher('/pidrone/orientation', Quaternion, queue_size=1)
+    imupub = rospy.Publisher('/pidrone/imu', Imu, queue_size=1)
     rate = rospy.Rate(300)
-    pose = Pose()
+    imu = Imu()
+    board.arm()
+    print("armed")
     while not rospy.is_shutdown():
-        board.sendCMDrecieveATT(16, MultiWii.SET_RAW_RC, cmds)
+        att_data = board.getData(MultiWii.ATTITUDE)
+        imu_data = board.getData(MultiWii.RAW_IMU)
+        board.sendCMD(16, MultiWii.SET_RAW_RC, cmds)
+        print("a")
+        cmds[3] = 1900
 
 
         # message = "angx = {:+.2f} \t angy = {:+.2f} \t heading = {:+.2f} \t elapsed = {:+.4f} \t".format(float(board.attitude['angx']),float(board.attitude['angy']),float(board.attitude['heading']),float(board.attitude['elapsed']))
@@ -27,17 +34,22 @@ def att_pub():
         roll = board.attitude['angx']
         pitch = board.attitude['angy']
         yaw = board.attitude['heading']
+        print((roll, pitch, yaw))
         quaternion = tf.transformations.quaternion_from_euler(roll, pitch, yaw)
 
-        pose.orientation.x = quaternion[0]
-        pose.orientation.y = quaternion[1]
-        pose.orientation.z = quaternion[2]
-        pose.orientation.w = quaternion[3]
-        pub.publish(pose.orientation)
-        rate.sleep()
+        imu.orientation.x = quaternion[0]
+        imu.orientation.y = quaternion[1]
+        imu.orientation.z = quaternion[2]
+        imu.orientation.w = quaternion[3]
+        imu.angular_velocity.x = board.rawIMU['ax']
+        imu.angular_velocity.y = board.rawIMU['ay']
+        imu.angular_velocity.z = board.rawIMU['az']
+        imupub.publish(imu)
+    board.disarm()
+    print("disarming")
 
 def cmd_call(data):
-    print([data.roll, data.pitch, data.yaw, data.throttle, data.aux4])
+    print(data)
     if data.aux4 > 1500:
         board.arm()
     elif data.aux4 <= 1400:
@@ -55,12 +67,9 @@ def cmd_call(data):
 if __name__ == "__main__":
     rospy.init_node('multiwii', anonymous=True)
     try:
-        rospy.Subscriber("/pidrone/commands", RC, cmd_call)
         att_pub()
+        rospy.Subscriber("/pidrone/commands", RC, cmd_call)
         rospy.spin()
 
     except rospy.ROSInterruptException:
         pass
-    except Exception,error:
-        print "Error on Main: "+str(error)
-
