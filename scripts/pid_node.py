@@ -61,46 +61,56 @@ Dterm = {'fb': 0.0, 'lr': 0.0, 'alt': 0.0, 'yaw': 0.0}
 time_prev = millis()
 
 def pid():
-  while not rospy.is_shutdown():
-    time_elapsed = millis() - time_prev
-    time_prev = millis()
+    cmdpub = rospy.Publisher('/pidrone/commands', RC, queue_size=1)
+    rc = RC()
+    while not rospy.is_shutdown():
+        time_elapsed = millis() - time_prev
+        time_prev = millis()
 
-    (sp_global_roll, sp_global_pitch, sp_global_yaw) =
-    tf.transformations.euler_from_quaternion([sp_global.orientation.x,
-      sp_global.orientation.y, sp_global.orientation.z,
-      sp_global.orientation.w])
+        (sp_global_roll, sp_global_pitch, sp_global_yaw) =
+        tf.transformations.euler_from_quaternion([sp_global.orientation.x,
+          sp_global.orientation.y, sp_global.orientation.z,
+          sp_global.orientation.w])
 
-    (pos_global_roll, pos_global_pitch, pos_global_yaw) =
-    tf.transformations.euler_from_quaternion([pos_global.orientation.x,
-      pos_global.orientation.y, pos_global.orientation.z,
-      pos_global.orientation.w])
+        (pos_global_roll, pos_global_pitch, pos_global_yaw) =
+        tf.transformations.euler_from_quaternion([pos_global.orientation.x,
+          pos_global.orientation.y, pos_global.orientation.z,
+          pos_global.orientation.w])
 
-    # convert to the quad's frame of reference from the global
-    sp['fb'] = math.cos(sp_global_yaw) * sp_global['z'] + math.sin(sp_global_yaw) * sp_global['x']
-    sp['lr'] = math.sin(sp_global_yaw) * sp_global['z'] + math.cos(sp_global_yaw) * sp_global['x']
+        # convert to the quad's frame of reference from the global
+        sp['fb'] = math.cos(sp_global_yaw) * sp_global['z'] + math.sin(sp_global_yaw) * sp_global['x']
+        sp['lr'] = math.sin(sp_global_yaw) * sp_global['z'] + math.cos(sp_global_yaw) * sp_global['x']
 
-    pos['fb'] = math.cos(pos_global_yaw) * pos_global['z'] +
-    math.sin(pos_global_yaw) * pos_global['x']
-    pos['lr'] = math.sin(pos_global_yaw) * pos_global['z'] +
-    math.cos(pos_global_yaw) * pos_global['x']
+        pos['fb'] = math.cos(pos_global_yaw) * pos_global['z'] +
+        math.sin(pos_global_yaw) * pos_global['x']
+        pos['lr'] = math.sin(pos_global_yaw) * pos_global['z'] +
+        math.cos(pos_global_yaw) * pos_global['x']
 
-    sp = sp_global['yaw'] - pos_global['yaw']
-    pos['yaw'] = 0.0
+        sp = sp_global_yaw - pos_global_yaw
+        pos['yaw'] = 0.0
 
-    sp = sp_global['alt'] - pos_global['alt']
-    pos['alt'] = 0.0
+        sp = sp_global.position.y - pos_global.position.y
+        pos['alt'] = 0.0
 
 
-    old_err = err
-    for key in sp.keys(): 
-      err[key] = sp[key] - pos[key] # update the error
+        old_err = err
+        for key in sp.keys(): 
+            err[key] = sp[key] - pos[key] # update the error
 
-      # calc the PID components of each axis
-      Pterm[key] = err[key]
-      Iterm[key] += err[key] * time_elapsed
-      Dterm[key] = (err[key] - old_err[key])/time_elapsed
+            # calc the PID components of each axis
+            Pterm[key] = err[key]
+            Iterm[key] += err[key] * time_elapsed
+            Dterm[key] = (err[key] - old_err[key])/time_elapsed
 
-      output[key] = Pterm[key] * kp[key] + Iterm[key] * kI[key] + Dterm[key] * kd[key]
+            output[key] = Pterm[key] * kp[key] + Iterm[key] * kI[key] + Dterm[key] * kd[key]
+        rc.roll = max(1000, min(1500 + output['lr'], 2000))
+        rc.pitch = max(1000, min(1500 + output['fb'], 2000))
+        rc.yaw = max(1000, min(1500 + output['yaw'], 2000))
+        rc.throttle = max(1000, min(1500 + output['alt'], 2000))
+        rc.aux1 = 1500
+        rc.aux2 = 1500
+        rc.aux3 = 1500
+        rc.aux4 = 1500
 
 if __name_- == '__main__':
     rospy.init_node('pid_node', anonymous=True)
