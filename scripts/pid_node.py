@@ -5,6 +5,8 @@ from geometry_msgs.msg import Pose, PoseStamped
 import time
 import tf
 
+millis = lambda: int(round(time.time() * 1000))
+
 kp = {
 	'roll': 	0.1,
 	'pitch': 	0.1,
@@ -67,24 +69,16 @@ def pid():
         time_elapsed = millis() - time_prev
         time_prev = millis()
 
-        (sp_global_roll, sp_global_pitch, sp_global_yaw) =
-        tf.transformations.euler_from_quaternion([sp_global.orientation.x,
-          sp_global.orientation.y, sp_global.orientation.z,
-          sp_global.orientation.w])
+        (sp_global_roll, sp_global_pitch, sp_global_yaw) = tf.transformations.euler_from_quaternion([sp_global.orientation.x, sp_global.orientation.y, sp_global.orientation.z, sp_global.orientation.w])
 
-        (pos_global_roll, pos_global_pitch, pos_global_yaw) =
-        tf.transformations.euler_from_quaternion([pos_global.orientation.x,
-          pos_global.orientation.y, pos_global.orientation.z,
-          pos_global.orientation.w])
+        (pos_global_roll, pos_global_pitch, pos_global_yaw) = tf.transformations.euler_from_quaternion([pos_global.orientation.x, pos_global.orientation.y, pos_global.orientation.z, pos_global.orientation.w])
 
         # convert to the quad's frame of reference from the global
         sp['fb'] = math.cos(sp_global_yaw) * sp_global['z'] + math.sin(sp_global_yaw) * sp_global['x']
         sp['lr'] = math.sin(sp_global_yaw) * sp_global['z'] + math.cos(sp_global_yaw) * sp_global['x']
 
-        pos['fb'] = math.cos(pos_global_yaw) * pos_global['z'] +
-        math.sin(pos_global_yaw) * pos_global['x']
-        pos['lr'] = math.sin(pos_global_yaw) * pos_global['z'] +
-        math.cos(pos_global_yaw) * pos_global['x']
+        pos['fb'] = math.cos(pos_global_yaw) * pos_global['z'] + math.sin(pos_global_yaw) * pos_global['x']
+        pos['lr'] = math.sin(pos_global_yaw) * pos_global['z'] + math.cos(pos_global_yaw) * pos_global['x']
 
         sp = sp_global_yaw - pos_global_yaw
         pos['yaw'] = 0.0
@@ -112,10 +106,17 @@ def pid():
         rc.aux3 = 1500
         rc.aux4 = 1500
 
-if __name_- == '__main__':
+def update_sp(data):
+    sp_global = data
+
+def update_pos(data):
+    pos_global = data.pose
+
+if __name__ == '__main__':
     rospy.init_node('pid_node', anonymous=True)
     try:
-        rospy.Subscriber("/pidrone/target_position", RC, cmd_call)
+        rospy.Subscriber("/pidrone/target_position", Pose, update_sp)
+        rospy.Subscriber("vrpn", Pose, update_pos)
         pid()
         rospy.spin()
 
