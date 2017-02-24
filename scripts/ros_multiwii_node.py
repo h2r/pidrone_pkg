@@ -13,6 +13,7 @@ board = MultiWii("/dev/ttyACM0")
 cmds = [1500, 1500, 1500, 1000, 1500, 1500, 1500, 1500]
 
 def att_pub():
+    global cmds
     imupub = rospy.Publisher('/pidrone/imu', Imu, queue_size=1)
     rate = rospy.Rate(300)
     imu = Imu()
@@ -21,9 +22,8 @@ def att_pub():
     while not rospy.is_shutdown():
         att_data = board.getData(MultiWii.ATTITUDE)
         imu_data = board.getData(MultiWii.RAW_IMU)
+        print(cmds)
         board.sendCMD(16, MultiWii.SET_RAW_RC, cmds)
-        print("a")
-        cmds[3] = 1900
 
 
         # message = "angx = {:+.2f} \t angy = {:+.2f} \t heading = {:+.2f} \t elapsed = {:+.4f} \t".format(float(board.attitude['angx']),float(board.attitude['angy']),float(board.attitude['heading']),float(board.attitude['elapsed']))
@@ -54,6 +54,7 @@ def cmd_call(data):
         board.arm()
     elif data.aux4 <= 1400:
         board.disarm()
+    global cmds
     cmds[0] = data.roll
     cmds[1] = data.pitch
     cmds[2] = data.yaw
@@ -62,13 +63,14 @@ def cmd_call(data):
     cmds[5] = data.aux2
     cmds[6] = data.aux3
     cmds[7] = data.aux4
+    print("a")
 
 
 if __name__ == "__main__":
     rospy.init_node('multiwii', anonymous=True)
     try:
-        att_pub()
         rospy.Subscriber("/pidrone/commands", RC, cmd_call)
+        att_pub()
         rospy.spin()
 
     except rospy.ROSInterruptException:
