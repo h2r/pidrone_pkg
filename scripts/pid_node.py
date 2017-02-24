@@ -4,26 +4,26 @@ from pidrone_pkg.msg import RC
 from geometry_msgs.msg import Pose, PoseStamped
 import time
 import tf
+import math
 
 millis = lambda: int(round(time.time() * 1000))
 
 kp = {
-	'roll': 	0.1,
-	'pitch': 	0.1,
-	'yaw': 		0.1,
-	'alt': 		0.1
+	'lr': 	0,
+	'fb': 	100,
+	'yaw': 		0,
+	'alt': 		000
 }
 
 ki = {
-	'roll': 	0.0,
-	'pitch':	0.0,
+	'lr': 	0.0,
+	'fb':	0.0,
 	'yaw': 		0.0,
 	'alt': 		0.0
-}
-
+} 
 kd = {
-	'roll': 	0.0,
-	'pitch': 	0.0,
+	'lr': 	0.0,
+	'fb': 	0.0,
 	'yaw': 		0.0,
 	'alt': 		0.0
 }
@@ -33,9 +33,9 @@ kd = {
 sp_global  = Pose() # set point
 pos_global = Pose() # set point
 
-sp_global.position.x = 0
-sp_global.position.y = 0
-sp_global.position.z = 0
+sp_global.position.x = -0.04
+sp_global.position.y = 0.6
+sp_global.position.z = 0.185
 sp_global.orientation.x = 0
 sp_global.orientation.y = 0
 sp_global.orientation.z = 0
@@ -60,30 +60,35 @@ Pterm = {'fb': 0.0, 'lr': 0.0, 'alt': 0.0, 'yaw': 0.0}
 Iterm = {'fb': 0.0, 'lr': 0.0, 'alt': 0.0, 'yaw': 0.0}
 Dterm = {'fb': 0.0, 'lr': 0.0, 'alt': 0.0, 'yaw': 0.0}
 
-time_prev = millis()
-
 def pid():
     cmdpub = rospy.Publisher('/pidrone/commands', RC, queue_size=1)
     rc = RC()
+    time_prev = millis()
     while not rospy.is_shutdown():
+        global sp_global
+        global pos_global
+        time.sleep(0.05)
         time_elapsed = millis() - time_prev
-        time_prev = millis()
-
+        time_prev = millis() 
         (sp_global_roll, sp_global_pitch, sp_global_yaw) = tf.transformations.euler_from_quaternion([sp_global.orientation.x, sp_global.orientation.y, sp_global.orientation.z, sp_global.orientation.w])
 
         (pos_global_roll, pos_global_pitch, pos_global_yaw) = tf.transformations.euler_from_quaternion([pos_global.orientation.x, pos_global.orientation.y, pos_global.orientation.z, pos_global.orientation.w])
 
+        print((pos_global_roll, pos_global_yaw, pos_global_pitch))
+
         # convert to the quad's frame of reference from the global
-        sp['fb'] = math.cos(sp_global_yaw) * sp_global['z'] + math.sin(sp_global_yaw) * sp_global['x']
-        sp['lr'] = math.sin(sp_global_yaw) * sp_global['z'] + math.cos(sp_global_yaw) * sp_global['x']
+        global sp
+        global pos
+        sp['fb'] = math.cos(sp_global_yaw) * sp_global.position.z + math.sin(sp_global_yaw) * sp_global.position.x
+        sp['lr'] = math.sin(sp_global_yaw) * sp_global.position.z + math.cos(sp_global_yaw) * sp_global.position.x
 
-        pos['fb'] = math.cos(pos_global_yaw) * pos_global['z'] + math.sin(pos_global_yaw) * pos_global['x']
-        pos['lr'] = math.sin(pos_global_yaw) * pos_global['z'] + math.cos(pos_global_yaw) * pos_global['x']
+        pos['fb'] = math.cos(pos_global_yaw) * pos_global.position.z + math.sin(pos_global_yaw) * pos_global.position.x
+        pos['lr'] = math.sin(pos_global_yaw) * pos_global.position.z + math.cos(pos_global_yaw) * pos_global.position.x
 
-        sp = sp_global_yaw - pos_global_yaw
+        sp['yaw'] = sp_global_yaw - pos_global_yaw
         pos['yaw'] = 0.0
 
-        sp = sp_global.position.y - pos_global.position.y
+        sp['alt'] = sp_global.position.y - pos_global.position.y
         pos['alt'] = 0.0
 
 
@@ -96,7 +101,7 @@ def pid():
             Iterm[key] += err[key] * time_elapsed
             Dterm[key] = (err[key] - old_err[key])/time_elapsed
 
-            output[key] = Pterm[key] * kp[key] + Iterm[key] * kI[key] + Dterm[key] * kd[key]
+            output[key] = Pterm[key] * kp[key] + Iterm[key] * ki[key] + Dterm[key] * kd[key]
         rc.roll = max(1000, min(1500 + output['lr'], 2000))
         rc.pitch = max(1000, min(1500 + output['fb'], 2000))
         rc.yaw = max(1000, min(1500 + output['yaw'], 2000))
@@ -105,23 +110,25 @@ def pid():
         rc.aux2 = 1500
         rc.aux3 = 1500
         rc.aux4 = 1500
+        cmdpub.publish(rc)
 
 def update_sp(data):
-    sp_global = data
+    global sp_global
+    sp_global = data.pose
+    sp_global.position.y -= 0.2
 
 def update_pos(data):
+    global pos_global
     pos_global = data.pose
 
 if __name__ == '__main__':
     rospy.init_node('pid_node', anonymous=True)
     try:
-        rospy.Subscriber("/pidrone/target_position", Pose, update_sp)
-        rospy.Subscriber("vrpn", Pose, update_pos)
+        rospy.Subscriber("/vrpn_client_node/wand/pose", PoseStamped, update_sp)
+        rospy.Subscriber("/vrpn_client_node/drone/pose", PoseStamped, update_pos)
         pid()
         rospy.spin()
 
     except rospy.ROSInterruptException:
         pass
-    except Exception,error:
-        print "Error on Main: "+str(error)
 
