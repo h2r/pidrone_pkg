@@ -79,6 +79,9 @@ def pid():
         # convert to the quad's frame of reference from the global
         global sp
         global pos
+	# XXX jgo: is this supposed to be multiplication of the vector ~_global
+	# (in the xz plane) by the rotation matrix induced by ~_global_yaw?  if
+	# so, could you be missing a minus sign in front of one of the sin functions?
         sp['fb'] = math.cos(sp_global_yaw) * sp_global.position.z + math.sin(sp_global_yaw) * sp_global.position.x
         sp['lr'] = math.sin(sp_global_yaw) * sp_global.position.z + math.cos(sp_global_yaw) * sp_global.position.x
 
@@ -90,6 +93,19 @@ def pid():
 
         sp['alt'] = sp_global.position.y - pos_global.position.y
         pos['alt'] = 0.0
+	# XXX jgo: also it seems like you are setting "sp" yaw and alt relative
+	# to the values held by "pos", and setting "pos" values to 0,
+	# indicating that both are in the reference frame of "pos". Yet, the fb
+	# and lr values of "sp" and "pos" are both set relative to their own
+	# yaw values. Do you perhaps mean to use pos_global_yaw rather than
+	# sp_global_yaw, and maybe -pos_global_yaw in both cases rather than
+	# pos_global_yaw? (this sign matter interacts with whether and where a minus sign
+	# should go in front of a sin term above). my suspicion is reinforced,
+	# figuring that the output feeds to the roll and pitch of the aircraft in its current
+	# position, it seems like you want the fb and lr of both "sp" and "pos"
+	# represented in the frame of "pos".  
+
+	# XXX jgo: my apologies if I'm misinterpreting this.
 
 
         old_err = err
@@ -98,8 +114,17 @@ def pid():
 
             # calc the PID components of each axis
             Pterm[key] = err[key]
+	    # XXX jgo: this is a very literal interpretation of the I term
+	    # which might be difficult to tune for reasons which we can
+	    # discuss.  it is more typical to take the integral over a finite
+	    # interval in the past. This can be implemented with a ring buffer,
+	    # or quickly approximated with an exponential moving average.
             Iterm[key] += err[key] * time_elapsed
+	    # XXX jgo: the sign of Dterm * kd should act as a viscosity or
+	    # resistance term.  if our error goes from 5 to 4, 
+	    # then Dterm ~ 4 - 5 = -1; so it looks like kd should be a positive number. 
             Dterm[key] = (err[key] - old_err[key])/time_elapsed
+	    # XXX jgo: definitely get something working with I and D terms equal to 0 before using these
 
             output[key] = Pterm[key] * kp[key] + Iterm[key] * ki[key] + Dterm[key] * kd[key]
         rc.roll = max(1000, min(1500 + output['lr'], 2000))
