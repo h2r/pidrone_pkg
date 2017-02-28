@@ -9,17 +9,17 @@ import math
 millis = lambda: int(round(time.time() * 1000))
 
 kp = {
-	'lr': 	0,
-	'fb': 	100,
+	'lr': 	200,
+	'fb': 	200,
 	'yaw': 		0,
-	'alt': 		000
+	'alt': 		450
 }
 
 ki = {
 	'lr': 	0.0,
 	'fb':	0.0,
 	'yaw': 		0.0,
-	'alt': 		0.0
+	'alt': 		0.3
 } 
 kd = {
 	'lr': 	0.0,
@@ -33,9 +33,9 @@ kd = {
 sp_global  = Pose() # set point
 pos_global = Pose() # set point
 
-sp_global.position.x = -0.04
-sp_global.position.y = 0.6
-sp_global.position.z = 0.185
+sp_global.position.x = -0.07
+sp_global.position.y = 0.5
+sp_global.position.z = 0.74
 sp_global.orientation.x = 0
 sp_global.orientation.y = 0
 sp_global.orientation.z = 0
@@ -93,17 +93,18 @@ def pid():
 
 
         old_err = err
+
         for key in sp.keys(): 
             err[key] = sp[key] - pos[key] # update the error
 
             # calc the PID components of each axis
             Pterm[key] = err[key]
-            Iterm[key] += err[key] * time_elapsed
+            Iterm[key] = min(2000, Iterm[key] + (err[key] * time_elapsed))
             Dterm[key] = (err[key] - old_err[key])/time_elapsed
 
             output[key] = Pterm[key] * kp[key] + Iterm[key] * ki[key] + Dterm[key] * kd[key]
-        rc.roll = max(1000, min(1500 + output['lr'], 2000))
-        rc.pitch = max(1000, min(1500 + output['fb'], 2000))
+        rc.roll = max(1000, min(1500 - output['lr'], 2000))
+        rc.pitch = max(1000, min(1500 - output['fb'], 2000))
         rc.yaw = max(1000, min(1500 + output['yaw'], 2000))
         rc.throttle = max(1000, min(1500 + output['alt'], 2000))
         rc.aux1 = 1500
@@ -124,7 +125,7 @@ def update_pos(data):
 if __name__ == '__main__':
     rospy.init_node('pid_node', anonymous=True)
     try:
-        rospy.Subscriber("/vrpn_client_node/wand/pose", PoseStamped, update_sp)
+        # rospy.Subscriber("/vrpn_client_node/wand/pose", PoseStamped, update_sp)
         rospy.Subscriber("/vrpn_client_node/drone/pose", PoseStamped, update_pos)
         pid()
         rospy.spin()
