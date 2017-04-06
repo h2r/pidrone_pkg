@@ -40,14 +40,14 @@ kp = {
 	'fb': 	800,
         
 	'yaw': 		0,
-	'alt': 	0.4
+	'alt': 	40
 }
 
 ki = {
 	'lr': 	0,
 	'fb':	0,
 	'yaw': 		0.0,
-	'alt': 		1
+	'alt': 		0.5
 } 
 kd = {
 	'lr': 	80000,
@@ -88,7 +88,7 @@ output = {'fb': 0.0, 'lr': 0.0, 'alt': 0.0, 'yaw': 0.0}
 old_err   = {'fb': 0.0, 'lr': 0.0, 'alt': 0.0, 'yaw': 0.0}
 err   = {'fb': 0.0, 'lr': 0.0, 'alt': 0.0, 'yaw': 0.0}
 Pterm = {'fb': 0.0, 'lr': 0.0, 'alt': 0.0, 'yaw': 0.0}
-Iterm = {'fb': 0.0, 'lr': 0.0, 'alt': 1.0, 'yaw': 0.0}
+Iterm = {'fb': 0.0, 'lr': 0.0, 'alt': 10.0, 'yaw': 0.0}
 Dterm = {'fb': 0.0, 'lr': 0.0, 'alt': 0.0, 'yaw': 0.0}
 
 def pid():
@@ -223,7 +223,7 @@ if __name__ == '__main__':
         global sp_global
         global pos_global
         sp_global = pos_global
-        sp_global.position.y += 0.25
+        sp_global.position.y += 0.5
         time.sleep(0.1)
         pid()
         rospy.spin()
