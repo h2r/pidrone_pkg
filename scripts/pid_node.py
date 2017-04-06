@@ -36,8 +36,8 @@ def calc_roll_pitch_from_theta(Fx, Fz, theta):
 millis = lambda: int(round(time.time() * 1000))
 
 kp = {
-	'lr': 	400,
-	'fb': 	400,
+	'lr': 	800,
+	'fb': 	800,
         
 	'yaw': 		0,
 	'alt': 	0.4
@@ -50,8 +50,8 @@ ki = {
 	'alt': 		1
 } 
 kd = {
-	'lr': 	40000,
-	'fb': 	40000,
+	'lr': 	80000,
+	'fb': 	80000,
 	'yaw': 		0.0,
 	'alt': 		64000
 }
