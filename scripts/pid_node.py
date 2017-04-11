@@ -40,7 +40,8 @@ kp = {
 	'fb': 	800,
         
 	'yaw': 		0,
-	'alt': 	40
+	'alt': 	800,
+        'alt_above': 0
 }
 
 ki = {
@@ -50,8 +51,8 @@ ki = {
 	'alt': 		0.5
 } 
 kd = {
-	'lr': 	80000,
-	'fb': 	80000,
+	'lr': 	160000,
+	'fb': 	160000,
 	'yaw': 		0.0,
 	'alt': 		64000
 }
@@ -166,7 +167,10 @@ def pid():
                 old_err[key] = err[key]
                 # XXX jgo: definitely get something working with I and D terms equal to 0 before using these
 
-                output[key] = Pterm[key] * kp[key] + Iterm[key] * ki[key] + Dterm[key] * kd[key]
+                if key == 'alt' and Pterm[key] < 0:
+                    output[key] = Pterm[key] * kp['alt_above'] + Iterm[key] * ki[key] + Dterm[key] * kd[key]
+                else:
+                    output[key] = Pterm[key] * kp[key] + Iterm[key] * ki[key] + Dterm[key] * kd[key]
             old_pos_global = deepcopy(pos_global)
     
         pwm_bandwidth = 1
