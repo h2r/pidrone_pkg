@@ -21,8 +21,9 @@ def att_pub():
     print("armed")
     while not rospy.is_shutdown():
         att_data = board.getData(MultiWii.ATTITUDE)
+        print(att_data)
         imu_data = board.getData(MultiWii.RAW_IMU)
-        print(cmds)
+#       print cmds[0], cmds[1], cmds[2], cmds[3]
         board.sendCMD(16, MultiWii.SET_RAW_RC, cmds)
 
 
@@ -34,7 +35,6 @@ def att_pub():
         roll = board.attitude['angx']
         pitch = board.attitude['angy']
         yaw = board.attitude['heading']
-        print((roll, pitch, yaw))
         quaternion = tf.transformations.quaternion_from_euler(roll, pitch, yaw)
 
         imu.orientation.x = quaternion[0]
@@ -49,7 +49,6 @@ def att_pub():
     print("disarming")
 
 def cmd_call(data):
-    print(data)
     if data.aux4 > 1500:
         board.arm()
     elif data.aux4 <= 1400:
@@ -63,7 +62,6 @@ def cmd_call(data):
     cmds[5] = data.aux2
     cmds[6] = data.aux3
     cmds[7] = data.aux4
-    print("a")
 
 
 if __name__ == "__main__":

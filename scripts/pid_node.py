@@ -67,7 +67,7 @@ def pid():
     while not rospy.is_shutdown():
         global sp_global
         global pos_global
-        time.sleep(0.05)
+        time.sleep(0.005)
         time_elapsed = millis() - time_prev
         time_prev = millis() 
         (sp_global_roll, sp_global_pitch, sp_global_yaw) = tf.transformations.euler_from_quaternion([sp_global.orientation.x, sp_global.orientation.y, sp_global.orientation.z, sp_global.orientation.w])
