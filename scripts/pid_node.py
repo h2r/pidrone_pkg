@@ -9,6 +9,8 @@ import math
 import numpy as np
 from copy import deepcopy
 
+cmdpub = rospy.Publisher('/pidrone/est_pos', Pose, queue_size=1)
+
 def calc_thrust_and_theta(Fx, Fy, Fz):
     theta = math.atan2(math.sqrt(Fx**2 + Fz**2), Fy)
     thrust = Fy/math.cos(theta)
@@ -36,11 +38,11 @@ def calc_roll_pitch_from_theta(Fx, Fz, theta):
 millis = lambda: int(round(time.time() * 1000))
 
 kp = {
-	'lr': 	800,
+	'lr': 	-800,
 	'fb': 	800,
         
 	'yaw': 		0,
-	'alt': 	800,
+	'alt': 	300,
         'alt_above': 0
 }
 
@@ -51,10 +53,10 @@ ki = {
 	'alt': 		0.5
 } 
 kd = {
-	'lr': 	160000,
-	'fb': 	160000,
+	'lr': 	120000,
+	'fb': 	120000,
 	'yaw': 		0.0,
-	'alt': 		64000
+	'alt': 		20000
 }
 
 
@@ -64,9 +66,9 @@ pos_global = Pose() # set point
 pos_global.position.x = 1
 old_pos_global = Pose() # set point
 
-sp_global.position.x = -1.0
-sp_global.position.y = 0.5
-sp_global.position.z = 1.23
+sp_global.position.x = 0
+sp_global.position.y = 0
+sp_global.position.z = 0
 sp_global.orientation.x = 0
 sp_global.orientation.y = 0
 sp_global.orientation.z = 0
@@ -174,17 +176,17 @@ def pid():
             old_pos_global = deepcopy(pos_global)
     
         pwm_bandwidth = 1
-        pwm_scale = 100 * pwm_bandwidth
+        pwm_scale = 0.0005 * pwm_bandwidth
         # calculate the thrust and desired angle
         (thrust, theta) = calc_thrust_and_theta(output['lr'], output['alt'], output['fb'])
         # and use that to calculate roll pitch yaw
-        (pitch, yaw, roll) = calc_roll_pitch_from_theta(output['lr'], output['fb'], theta)
-        rc.roll = max(1400, min(1500 + roll * pwm_scale, 1600))
-        rc.pitch = max(1400, min(1500 + pitch * pwm_scale, 1600))
+#       (pitch, yaw, roll) = calc_roll_pitch_from_theta(output['lr'], output['fb'], theta)
+        rc.roll = max(1465, min(1500 + output['lr'] * pwm_scale, 1535))
+        rc.pitch = max(1465, min(1500 + output['fb'] * pwm_scale, 1535))
         rc.yaw = max(1000, min(1500 + output['yaw'] * pwm_scale, 2000))
         rc.throttle = max(1150, min(1200 + output['alt'], 2000))
-        rc.aux1 = 2000
-        rc.aux2 = 2000
+        rc.aux1 = 1800
+        rc.aux2 = 1500
         rc.aux3 = 1500
         rc.aux4 = 1500
         # print Pterm['fb'], Pterm['lr'], Dterm['fb'], Dterm['lr']
@@ -212,22 +214,20 @@ def calc_yaw_from_quat(q):
 def update_sp(data):
     global sp_global
     sp_global = data.pose
-    sp_global.position.y -= 0.25
 
 def update_pos(data):
     global pos_global
-    pos_global = data.pose
+    pos_global = data
 
 if __name__ == '__main__':
     rospy.init_node('pid_node', anonymous=True)
     try:
-        # rospy.Subscriber("/vrpn_client_node/wand/pose", PoseStamped, update_sp)
-        rospy.Subscriber("/vrpn_client_node/drone/pose", PoseStamped, update_pos)
+        rospy.Subscriber("/pidrone/est_pos", Pose, update_pos)
         time.sleep(0.5)
         global sp_global
         global pos_global
         sp_global = pos_global
-        sp_global.position.y += 0.5
+        sp_global.position.y = 1.5
         time.sleep(0.1)
         pid()
         rospy.spin()

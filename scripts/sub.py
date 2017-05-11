@@ -1,8 +1,18 @@
+#!/usr/bin/env python
 import subprocess as sp
 import cv2
 import numpy as np
 import time
 import math
+from geometry_msgs.msg import Pose, PoseStamped
+import rospy
+import tf
+
+WIDTH = 640
+HEIGHT = 480
+
+est_pos = Pose()
+est_pos.position.y = 1
 
 summed_transform = [0, 1, 0, 0] # x, y, z, yaw
 
@@ -12,8 +22,8 @@ def affineToTransform(affine, summed_transform):
         scalex = np.linalg.norm(affine[:, 0])
         scalez = np.linalg.norm(affine[:, 1])
         # offset camera center -> translate affected by scale
-        t_offsetx = 640*(1-scalex)/2
-        t_offsetz = 480*(1-scalez)/2
+        t_offsetx = WIDTH*(1-scalex)/2
+        t_offsetz = HEIGHT*(1-scalez)/2
         # calc translation 
         transformation[1] = 1/((scalex + scalez) / 2)
         transformation[0] = int(affine[0, 2] - t_offsetx) #* summed_transform.translation.y
@@ -26,22 +36,41 @@ def affineToTransform(affine, summed_transform):
         summed_transform[1] *= transformation[1]
         summed_transform[2] += transformation[2]
         summed_transform[3] += transformation[3]
-
-raspividcmd = ['raspivid', '-fps', '30', '-t', '0', '-w', '640', '-h', '480',
-'--raw-format', 'rgb', '-r', '-', '-o', '/dev/null']
-stream = sp.Popen(raspividcmd, stdout = sp.PIPE, universal_newlines = True)
-i = 0
-time.sleep(1)
-curr = None
-prev = None
-while True:
-    test = stream.stdout.read(640 * 480)
-    stream.stdout.read(640 * 240)
-    curr = np.fromstring(test, dtype=np.uint8).reshape(480, 640)
-    if prev is not None and curr is not None:
-        affine = cv2.estimateRigidTransform(prev, curr, False)
-        affineToTransform(affine, summed_transform)
     else:
-        print(curr, prev)
-    prev = curr
-    print(summed_transform)
+        print("skipped")
+
+if __name__ == '__main__':
+    cmdpub = rospy.Publisher('/pidrone/est_pos', Pose, queue_size=1)
+    rospy.init_node('rigid_transform', anonymous=True)
+    raspividcmd = ['raspivid', '-fps', '60', '-t', '0', '-w', str(WIDTH), '-h',
+    str(HEIGHT), '-r', '-', '--raw-format', 'yuv', '-o', '/dev/null']
+    stream = sp.Popen(raspividcmd, stdout = sp.PIPE, universal_newlines = True)
+    i = 0
+    time.sleep(1)
+    curr = None
+    prev = None
+    while True:
+        test = stream.stdout.read(WIDTH * HEIGHT)
+        stream.stdout.read(WIDTH * HEIGHT / 2) # EATING
+        curr = np.fromstring(test, dtype=np.uint8).reshape(HEIGHT, WIDTH)
+        if prev is not None and curr is not None:
+#           cv2.imshow('curr', curr)
+#           cv2.waitKey(0)
+            affine = cv2.estimateRigidTransform(prev, curr, False)
+            affineToTransform(affine, summed_transform)
+        else:
+            print(curr, prev)
+        i += 1
+        prev = curr
+        est_pos.position.x = summed_transform[0]
+        est_pos.position.y = summed_transform[1]
+        est_pos.position.z = summed_transform[2]
+        rotation = tf.transformations.quaternion_from_euler(0, 0,
+        summed_transform[3])
+#       est_pos.orientation.x += rotation[0]
+#       est_pos.orientation.y += rotation[1]
+#       est_pos.orientation.z += rotation[2]
+        est_pos.orientation.w = 1
+        print(est_pos)
+        cmdpub.publish(est_pos)
+

@@ -35,7 +35,7 @@ def att_pub():
     intposepub = rospy.Publisher('/pidrone/int_pose', Pose, queue_size=1)
     rate = rospy.Rate(300)
     imu = Imu()
-#   board.arm()
+    board.arm()
     print("armed")
     prev_time = millis()
     while not rospy.is_shutdown():
@@ -60,9 +60,9 @@ def att_pub():
         imu.orientation.y = quaternion[1]
         imu.orientation.z = quaternion[2]
         imu.orientation.w = quaternion[3]
-        imu.linear_acceleration.x = board.rawIMU['gx']
-        imu.linear_acceleration.y = board.rawIMU['gy']
-        imu.linear_acceleration.z = board.rawIMU['gz']
+        imu.linear_acceleration.x = board.rawIMU['ax']
+        imu.linear_acceleration.y = board.rawIMU['ay']
+        imu.linear_acceleration.z = board.rawIMU['az']
 
 
 # Integrate the things
@@ -84,16 +84,11 @@ def att_pub():
     print("disarming")
 
 def cmd_call(data):
-    if data.aux4 > 1500:
-        board.arm()
-    elif data.aux4 <= 1400:
-        board.disarm()
-    global cmds
     cmds[0] = data.roll
     cmds[1] = data.pitch
     cmds[2] = data.yaw
     cmds[3] = data.throttle
-    cmds[4] = data.aux1
+    cmds[4] = 1900
     cmds[5] = data.aux2
     cmds[6] = data.aux3
     cmds[7] = data.aux4
