@@ -26,8 +26,8 @@ def affineToTransform(affine, summed_transform):
         t_offsetz = HEIGHT*(1-scalez)/2
         # calc translation 
         transformation[1] = 1/((scalex + scalez) / 2)
-        transformation[0] = int(affine[0, 2] - t_offsetx) #* summed_transform.translation.y
-        transformation[2] = int(affine[1, 2] - t_offsetz) #* summed_transform.translation.y
+        transformation[0] = int(affine[0, 2] - t_offsetx) * summed_transform[1]
+        transformation[2] = int(affine[1, 2] - t_offsetz) * summed_transform[1]
         # calc rotation
         affine[:, 0] /= scalex
         affine[:, 1] /= scalez
@@ -42,24 +42,32 @@ def affineToTransform(affine, summed_transform):
 if __name__ == '__main__':
     cmdpub = rospy.Publisher('/pidrone/est_pos', Pose, queue_size=1)
     rospy.init_node('rigid_transform', anonymous=True)
-    raspividcmd = ['raspivid', '-fps', '60', '-t', '0', '-w', str(WIDTH), '-h',
+    raspividcmd = ['raspivid', '-fps', '20', '-t', '0', '-w', str(WIDTH), '-h',
     str(HEIGHT), '-r', '-', '--raw-format', 'yuv', '-o', '/dev/null']
     stream = sp.Popen(raspividcmd, stdout = sp.PIPE, universal_newlines = True)
     i = 0
     time.sleep(1)
     curr = None
     prev = None
+    init = None
+    first = True
+    stream.stdout.read(WIDTH * HEIGHT * 3) # EATING
     while True:
         test = stream.stdout.read(WIDTH * HEIGHT)
         stream.stdout.read(WIDTH * HEIGHT / 2) # EATING
-        curr = np.fromstring(test, dtype=np.uint8).reshape(HEIGHT, WIDTH)
+        if first:
+            init = np.fromstring(test, dtype=np.uint8).reshape(HEIGHT, WIDTH)
+            first = False
+        else:
+            curr = np.fromstring(test, dtype=np.uint8).reshape(HEIGHT, WIDTH)
         if prev is not None and curr is not None:
+#           cv2.imshow('curr', curr)
+#           cv2.waitKey(0)
+#           cv2.imshow('init', init)
 #           cv2.imshow('curr', curr)
 #           cv2.waitKey(0)
             affine = cv2.estimateRigidTransform(prev, curr, False)
             affineToTransform(affine, summed_transform)
-        else:
-            print(curr, prev)
         i += 1
         prev = curr
         est_pos.position.x = summed_transform[0]

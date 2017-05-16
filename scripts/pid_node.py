@@ -50,13 +50,13 @@ ki = {
 	'lr': 	0,
 	'fb':	0,
 	'yaw': 		0.0,
-	'alt': 		0.5
+	'alt': 		1.0
 } 
 kd = {
-	'lr': 	120000,
-	'fb': 	120000,
+	'lr': 	-24000,
+	'fb': 	24000,
 	'yaw': 		0.0,
-	'alt': 		20000
+	'alt': 		20000/3
 }
 
 
@@ -181,8 +181,8 @@ def pid():
         (thrust, theta) = calc_thrust_and_theta(output['lr'], output['alt'], output['fb'])
         # and use that to calculate roll pitch yaw
 #       (pitch, yaw, roll) = calc_roll_pitch_from_theta(output['lr'], output['fb'], theta)
-        rc.roll = max(1465, min(1500 + output['lr'] * pwm_scale, 1535))
-        rc.pitch = max(1465, min(1500 + output['fb'] * pwm_scale, 1535))
+        rc.roll = max(1470, min(1500 + output['lr'] * pwm_scale, 1530))
+        rc.pitch = max(1470, min(1500 + output['fb'] * pwm_scale, 1530))
         rc.yaw = max(1000, min(1500 + output['yaw'] * pwm_scale, 2000))
         rc.throttle = max(1150, min(1200 + output['alt'], 2000))
         rc.aux1 = 1800
@@ -227,7 +227,7 @@ if __name__ == '__main__':
         global sp_global
         global pos_global
         sp_global = pos_global
-        sp_global.position.y = 1.5
+        sp_global.position.y = 1
         time.sleep(0.1)
         pid()
         rospy.spin()
