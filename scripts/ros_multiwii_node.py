@@ -9,6 +9,7 @@ import sys
 import tf
 import numpy as np
 import time
+import math
 
 board = MultiWii("/dev/ttyACM0")
 
@@ -40,9 +41,8 @@ def att_pub():
     prev_time = millis()
     while not rospy.is_shutdown():
         att_data = board.getData(MultiWii.ATTITUDE)
-#       print(att_data)
         imu_data = board.getData(MultiWii.RAW_IMU)
-        print cmds[0], cmds[1], cmds[2], cmds[3]
+        print cmds[0], cmds[1], cmds[2], cmds[3], att_data
         board.sendCMD(16, MultiWii.SET_RAW_RC, cmds)
 
 
@@ -54,7 +54,9 @@ def att_pub():
         roll = board.attitude['angx']
         pitch = board.attitude['angy']
         yaw = board.attitude['heading']
-        quaternion = tf.transformations.quaternion_from_euler(roll, pitch, yaw)
+        quaternion = tf.transformations.quaternion_from_euler(roll * 2 *
+        math.pi / 360, pitch * 2 * math.pi / 360, 0)
+        # print(roll, pitch, yaw, quaternion)
 
         imu.orientation.x = quaternion[0]
         imu.orientation.y = quaternion[1]

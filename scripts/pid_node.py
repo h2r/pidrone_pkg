@@ -9,7 +9,7 @@ import math
 import numpy as np
 from copy import deepcopy
 
-cmdpub = rospy.Publisher('/pidrone/est_pos', Pose, queue_size=1)
+cmdpub = rospy.Publisher('/pidrone/commands', RC, queue_size=1)
 
 def calc_thrust_and_theta(Fx, Fy, Fz):
     theta = math.atan2(math.sqrt(Fx**2 + Fz**2), Fy)
@@ -37,26 +37,47 @@ def calc_roll_pitch_from_theta(Fx, Fz, theta):
 
 millis = lambda: int(round(time.time() * 1000))
 
+# kp = {
+# 	'lr': 	-200,
+# 	'fb': 	200,
+#         
+# 	'yaw': 		0,
+# 	'alt': 	30,
+#         'alt_above': 0
+# }
+# 
+# ki = {
+# 	'lr': 	-0,
+# 	'fb':	-0,
+# 	'yaw': 		0.0,
+# 	'alt': 		0.4
+# } 
+# kd = {
+# 	'lr': 	-0,
+# 	'fb': 	-0,
+# 	'yaw': 		0.0,
+# 	'alt': 		200/3
+# }
 kp = {
 	'lr': 	-800,
 	'fb': 	800,
         
 	'yaw': 		0,
-	'alt': 	300,
+	'alt': 	700,
         'alt_above': 0
 }
 
 ki = {
-	'lr': 	0,
+	'lr': 	-0,
 	'fb':	0,
 	'yaw': 		0.0,
 	'alt': 		1.0
 } 
 kd = {
-	'lr': 	-24000,
-	'fb': 	24000,
+	'lr': 	-0,
+	'fb': 	0,
 	'yaw': 		0.0,
-	'alt': 		20000/3
+	'alt': 		20000
 }
 
 
@@ -91,11 +112,10 @@ output = {'fb': 0.0, 'lr': 0.0, 'alt': 0.0, 'yaw': 0.0}
 old_err   = {'fb': 0.0, 'lr': 0.0, 'alt': 0.0, 'yaw': 0.0}
 err   = {'fb': 0.0, 'lr': 0.0, 'alt': 0.0, 'yaw': 0.0}
 Pterm = {'fb': 0.0, 'lr': 0.0, 'alt': 0.0, 'yaw': 0.0}
-Iterm = {'fb': 0.0, 'lr': 0.0, 'alt': 10.0, 'yaw': 0.0}
+Iterm = {'fb': 0.0, 'lr': 0.0, 'alt': 50.0, 'yaw': 0.0}
 Dterm = {'fb': 0.0, 'lr': 0.0, 'alt': 0.0, 'yaw': 0.0}
 
 def pid():
-    cmdpub = rospy.Publisher('/pidrone/commands', RC, queue_size=1)
     rc = RC()
     time_prev = millis()
     while not rospy.is_shutdown():
@@ -185,13 +205,14 @@ def pid():
         rc.pitch = max(1470, min(1500 + output['fb'] * pwm_scale, 1530))
         rc.yaw = max(1000, min(1500 + output['yaw'] * pwm_scale, 2000))
         rc.throttle = max(1150, min(1200 + output['alt'], 2000))
-        rc.aux1 = 1800
+        rc.aux1 = 1500
         rc.aux2 = 1500
         rc.aux3 = 1500
         rc.aux4 = 1500
-        # print Pterm['fb'], Pterm['lr'], Dterm['fb'], Dterm['lr']
-        print rc.roll, rc.pitch, rc.yaw, rc.throttle
+        print Pterm['alt'] * kp['alt'], Dterm['alt'] * kd['alt'], Iterm['alt'] * ki['alt']
+        # print rc.roll, rc.pitch, rc.yaw, rc.throttle
         #print(str(roll) + "\t" + str(pitch) + "\t" + str(yaw))
+        # print pos_global
         cmdpub.publish(rc)
 
 # rotate vector v1 by quaternion q1 
@@ -217,12 +238,14 @@ def update_sp(data):
 
 def update_pos(data):
     global pos_global
-    pos_global = data
+    print("thing")
+    pos_global = data.pose
 
 if __name__ == '__main__':
     rospy.init_node('pid_node', anonymous=True)
     try:
-        rospy.Subscriber("/pidrone/est_pos", Pose, update_pos)
+        rospy.Subscriber("/pidrone/est_pos", PoseStamped, update_pos)
+        rospy.Subscriber("/pidrone/target_pos", PoseStamped, update_sp)
         time.sleep(0.5)
         global sp_global
         global pos_global
