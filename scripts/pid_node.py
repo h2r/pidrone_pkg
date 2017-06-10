@@ -184,7 +184,7 @@ def pid():
         rc.roll = max(1450, min(1500 + output['lr'] * pwm_scale, 1550))
         rc.pitch = max(1450, min(1500 + output['fb'] * pwm_scale, 1550))
         rc.yaw = max(1000, min(1500 + output['yaw'] * pwm_scale, 2000))
-        rc.throttle = max(1150, min(1200 + output['alt'], 2000))
+        rc.throttle = max(1150, min(1200 + output['alt'] * 2/3, 2000))
         rc.aux1 = 1800
         rc.aux2 = 1500
         rc.aux3 = 1500
