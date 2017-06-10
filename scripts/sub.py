@@ -62,8 +62,8 @@ if __name__ == '__main__':
 #       else:
         curr = np.fromstring(test, dtype=np.uint8).reshape(HEIGHT, WIDTH)
         if prev is not None and curr is not None:
-            cv2.imshow('curr', curr)
-            cv2.waitKey(1)
+#           cv2.imshow('curr', curr)
+#           cv2.waitKey(1)
             affine = cv2.estimateRigidTransform(prev, curr, False)
             affineToTransform(affine, summed_transform)
 #       i += 1
