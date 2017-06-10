@@ -43,7 +43,8 @@ if __name__ == '__main__':
     cmdpub = rospy.Publisher('/pidrone/est_pos', Pose, queue_size=1)
     rospy.init_node('rigid_transform', anonymous=True)
     raspividcmd = ['raspivid', '-fps', '20', '-t', '0', '-w', str(WIDTH), '-h',
-    str(HEIGHT), '-r', '-', '--raw-format', 'yuv', '-o', '/dev/null', '-n', '-pf', 'baseline']
+    str(HEIGHT), '-r', '-', '--raw-format', 'yuv', '-o', '/dev/null', '-n',
+    '-pf', 'baseline', '-drc', 'off', '-ex', 'fixedfps', '-fl']
     stream = sp.Popen(raspividcmd, stdout = sp.PIPE, universal_newlines = True)
 #   i = 0
     time.sleep(1)
