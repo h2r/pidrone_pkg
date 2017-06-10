@@ -8,8 +8,8 @@ from geometry_msgs.msg import Pose, PoseStamped
 import rospy
 import tf
 
-WIDTH = 640
-HEIGHT = 480
+WIDTH = 320
+HEIGHT = 240
 
 est_pos = Pose()
 est_pos.position.y = 1
@@ -43,42 +43,39 @@ if __name__ == '__main__':
     cmdpub = rospy.Publisher('/pidrone/est_pos', Pose, queue_size=1)
     rospy.init_node('rigid_transform', anonymous=True)
     raspividcmd = ['raspivid', '-fps', '20', '-t', '0', '-w', str(WIDTH), '-h',
-    str(HEIGHT), '-r', '-', '--raw-format', 'yuv', '-o', '/dev/null']
+    str(HEIGHT), '-r', '-', '--raw-format', 'yuv', '-o', '/dev/null', '-n', '-pf', 'baseline']
     stream = sp.Popen(raspividcmd, stdout = sp.PIPE, universal_newlines = True)
-    i = 0
+#   i = 0
     time.sleep(1)
     curr = None
     prev = None
-    init = None
-    first = True
-    stream.stdout.read(WIDTH * HEIGHT * 3) # EATING
+#   init = None
+#   first = True
+#   stream.stdout.read(WIDTH * HEIGHT * 3) # EATING
     while True:
-        test = stream.stdout.read(WIDTH * HEIGHT)
-        stream.stdout.read(WIDTH * HEIGHT / 2) # EATING
-        if first:
-            init = np.fromstring(test, dtype=np.uint8).reshape(HEIGHT, WIDTH)
-            first = False
-        else:
-            curr = np.fromstring(test, dtype=np.uint8).reshape(HEIGHT, WIDTH)
+        test = stream.stdout.read(WIDTH * HEIGHT + (WIDTH * HEIGHT / 2))[0:WIDTH * HEIGHT]
+        # test = stream.stdout.read(WIDTH * HEIGHT * 3)[WIDTH*HEIGHT * 3/2:WIDTH * HEIGHT * 5/2]
+#       if first:
+#           init = np.fromstring(test, dtype=np.uint8).reshape(HEIGHT, WIDTH)
+#           first = False
+#       else:
+        curr = np.fromstring(test, dtype=np.uint8).reshape(HEIGHT, WIDTH)
         if prev is not None and curr is not None:
-#           cv2.imshow('curr', curr)
-#           cv2.waitKey(0)
-#           cv2.imshow('init', init)
-#           cv2.imshow('curr', curr)
-#           cv2.waitKey(0)
+            cv2.imshow('curr', curr)
+            cv2.waitKey(1)
             affine = cv2.estimateRigidTransform(prev, curr, False)
             affineToTransform(affine, summed_transform)
-        i += 1
+#       i += 1
         prev = curr
         est_pos.position.x = summed_transform[0]
         est_pos.position.y = summed_transform[1]
         est_pos.position.z = summed_transform[2]
         rotation = tf.transformations.quaternion_from_euler(0, 0,
         summed_transform[3])
-#       est_pos.orientation.x += rotation[0]
-#       est_pos.orientation.y += rotation[1]
-#       est_pos.orientation.z += rotation[2]
+        est_pos.orientation.x += rotation[0]
+        est_pos.orientation.y += rotation[1]
+        est_pos.orientation.z += rotation[2]
         est_pos.orientation.w = 1
-        print(est_pos)
+#       print(est_pos)
         cmdpub.publish(est_pos)
 
