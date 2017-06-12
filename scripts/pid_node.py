@@ -59,11 +59,11 @@ millis = lambda: int(round(time.time() * 1000))
 # 	'alt': 		200/3
 # }
 kp = {
-	'lr': 	200,
-	'fb': 	-200,
+	'lr': 	450,
+	'fb': 	-450,
         
 	'yaw': 		0,
-	'alt': 	700,
+	'alt': 	300,
         'alt_above': 0
 }
 
@@ -77,7 +77,7 @@ kd = {
 	'lr': 	5000,
 	'fb': 	-5000,
 	'yaw': 		0.0,
-	'alt': 		20000
+	'alt': 		20000/3
 }
 
 
@@ -209,8 +209,8 @@ def pid():
         rc.aux2 = 1500
         rc.aux3 = 1500
         rc.aux4 = 1500
-        print Pterm['alt'] * kp['alt'], Dterm['alt'] * kd['alt'], Iterm['alt'] * ki['alt']
-        # print rc.roll, rc.pitch, rc.yaw, rc.throttle
+        # print Pterm['alt'] * kp['alt'], Dterm['alt'] * kd['alt'], Iterm['alt'] * ki['alt']
+        print rc.roll, rc.pitch, rc.yaw, rc.throttle
         #print(str(roll) + "\t" + str(pitch) + "\t" + str(yaw))
         # print pos_global
         cmdpub.publish(rc)
@@ -238,7 +238,7 @@ def update_sp(data):
 
 def update_pos(data):
     global pos_global
-    print("thing")
+    # print("thing")
     pos_global = data.pose
 
 if __name__ == '__main__':

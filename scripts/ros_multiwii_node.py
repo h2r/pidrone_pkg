@@ -42,7 +42,7 @@ def att_pub():
     while not rospy.is_shutdown():
         att_data = board.getData(MultiWii.ATTITUDE)
         imu_data = board.getData(MultiWii.RAW_IMU)
-        print cmds[0], cmds[1], cmds[2], cmds[3], att_data
+        print cmds[0], cmds[1], cmds[2], cmds[3] #, att_data
         board.sendCMD(16, MultiWii.SET_RAW_RC, cmds)
 
 
