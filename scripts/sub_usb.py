@@ -9,8 +9,8 @@ from sensor_msgs.msg import Imu
 import rospy
 import tf
 
-WIDTH = 480
-HEIGHT = 360
+WIDTH = 320
+HEIGHT = 240
 
 est_pos = PoseStamped()
 est_pos.pose.position.y = 1
@@ -47,8 +47,8 @@ def affineToTransform(affine, summed_transform):
         t_offsetz = HEIGHT*(1-scalez)/(2*scalez)
         # calc translation 
         transformation[1] = 1/((scalex + scalez) / 2)
-        transformation[0] = int(affine[0, 2] - t_offsetx) * summed_transform[1] / WIDTH
-        transformation[2] = int(affine[1, 2] - t_offsetz) * summed_transform[1] / HEIGHT
+        transformation[0] = int(affine[0, 2] - t_offsetx) * summed_transform[1]
+        transformation[2] = int(affine[1, 2] - t_offsetz) * summed_transform[1]
         # calc rotation
         affine[:, 0] /= scalex
         affine[:, 1] /= scalez
@@ -112,6 +112,5 @@ if '__name__ == r__main__':
 #       est_pos.orientation.y += rotation[1]
 #       est_pos.orientation.z += rotation[2]
             est_pos.pose.orientation.w = 1
-            print(est_pos)
             cmdpub.publish(est_pos)
 
