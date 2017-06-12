@@ -12,8 +12,8 @@ import tf
 WIDTH = 320
 HEIGHT = 240
 
-est_pos = Pose()
-est_pos.position.y = 1
+est_pos = PoseStamped()
+est_pos.pose.position.y = 1
 
 summed_transform = [0, 1, 0, 0] # x, y, z, yaw
 
@@ -72,7 +72,7 @@ def imucall(data):
 if '__name__ == r__main__':
     rospy.init_node('sub')
     imu = rospy.Subscriber('/pidrone/imu', Imu, imucall)
-    cmdpub = rospy.Publisher('/pidrone/est_pos', Pose, queue_size=1)
+    cmdpub = rospy.Publisher('/pidrone/est_pos', PoseStamped, queue_size=1)
     curr = None
     prev = None
     init = None
@@ -98,19 +98,19 @@ if '__name__ == r__main__':
                 t = time.time()
                 affineToTransform(affine, summed_transform)
                 # print 'affineToTransform', time.time() - t
-#               cv2.imshow('curr', curr)
-#               cv2.waitKey(1)
+#           cv2.imshow('prev', prev)
+#           cv2.imshow('curr', curr)
+#           cv2.waitKey(0)
             i += 1
             prev = curr
-            est_pos.position.x = summed_transform[0]
-            est_pos.position.y = summed_transform[1]
-            est_pos.position.z = summed_transform[2]
+            est_pos.pose.position.x = summed_transform[0]
+            est_pos.pose.position.y = summed_transform[1]
+            est_pos.pose.position.z = summed_transform[2]
             rotation = tf.transformations.quaternion_from_euler(0, 0,
             summed_transform[3])
 #       est_pos.orientation.x += rotation[0]
 #       est_pos.orientation.y += rotation[1]
 #       est_pos.orientation.z += rotation[2]
-            est_pos.orientation.w = 1
-            # print(est_pos)
+            est_pos.pose.orientation.w = 1
             cmdpub.publish(est_pos)
 
