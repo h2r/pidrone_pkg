@@ -68,11 +68,10 @@ class MultiWii:
         self.message = {'angx':0,'angy':0,'heading':0,'roll':0,'pitch':0,'yaw':0,'throttle':0,'elapsed':0,'timestamp':0}
 
         self.ident = {"version":"", "multitype":"", "msp_version":"", "capability":""}
+        self.status = {}
         self.analog = {}
         self.boxids = []
         self.box = []
-        self.temp = ();
-        self.temp2 = ();
         self.elapsed = 0
         self.PRINT = 1
 
@@ -81,7 +80,7 @@ class MultiWii:
                                  bytesize=serial.EIGHTBITS,
                                  parity=serial.PARITY_NONE,
                                  stopbits=serial.STOPBITS_ONE,
-                                 timeout=3,
+                                 timeout=0,
                                  xonxoff=False,
                                  rtscts=False,
                                  dsrdtr=False,
@@ -156,6 +155,10 @@ class MultiWii:
             if header == '$':
                 header = header+self.ser.read(2)
                 break
+            elif header != '':
+                print "IGNORING HEADER", header
+            else:
+                pass
             time.sleep(0.01)
         datalengthraw = self.ser.read()
         try:
@@ -209,6 +212,14 @@ class MultiWii:
             #print "temp", temp
             self.boxnames = temp
             return self.boxnames
+        elif code == MultiWii.STATUS:
+            temp = struct.unpack('<'+'HHHIb',data)
+            self.status["cycleTime"] = temp[0]
+            self.status["i2c_errors_count"] = temp[1]
+            self.status["sensor"] = temp[2]
+            self.status["flag"] = temp[3]
+            self.status["global_conf.currentSet"] = temp[4]
+            return self.status
         elif code == MultiWii.IDENT:
             temp = struct.unpack('<'+'BBBI',data)
             self.ident["cmd"] = code
@@ -259,11 +270,17 @@ class MultiWii:
             return self.posest
         # Position Estimate
         elif code == MultiWii.MOTOR:
+            print "data", len(data)
+            temp = struct.unpack('<'+'hhhhhhhh',data)
             self.motor['cmd'] = code
             self.motor['m1']=float(temp[0])
             self.motor['m2']=float(temp[1])
             self.motor['m3']=float(temp[2])
             self.motor['m4']=float(temp[3])
+            self.motor['m5']=float(temp[4])
+            self.motor['m6']=float(temp[5])
+            self.motor['m7']=float(temp[6])
+            self.motor['m8']=float(temp[7])
             self.motor['elapsed']="%0.3f" % (elapsed,)
             self.motor['timestamp']="%0.2f" % (time.time(),)
             return self.motor
