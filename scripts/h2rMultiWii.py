@@ -76,9 +76,9 @@ class MultiWii:
         self.elapsed = 0
         self.PRINT = 1
 
-        self.ser = serial.Serial()
+        self.ser = serial.Serial(baudrate=115200)
         self.ser.port = serPort
-        self.ser.baudrate = 115200
+        #self.ser.baudrate = 115200
         self.ser.bytesize = serial.EIGHTBITS
         self.ser.parity = serial.PARITY_NONE
         self.ser.stopbits = serial.STOPBITS_ONE

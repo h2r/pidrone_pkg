@@ -23,6 +23,7 @@ board = MultiWii("/dev/ttyACM0")
 
 #print "RC2"
 
+print board.getData(MultiWii.RC)
 
 #board.sendCMD(16,MultiWii.SET_RAW_RC, [1500,1500,2000,1000, 1500, 1500, 1500, 1500])    
 #time.sleep(0.1)
@@ -87,10 +88,18 @@ time.sleep(1)
 #print "receive."
 #print board.receiveDataPacket()
 
+board.sendCMD(0,MultiWii.IDENT,[])
+print board.getData(MultiWii.RC)
 
 #print "disarm"
 #board.disarm()
 board.ser.close()
 
 
+
+
+# while True:
+#     print "RC"
+#     print board.getData(MultiWii.RC)
+#     time.sleep(0.001)
 
