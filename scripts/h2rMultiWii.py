@@ -68,6 +68,9 @@ class MultiWii:
         self.message = {'angx':0,'angy':0,'heading':0,'roll':0,'pitch':0,'yaw':0,'throttle':0,'elapsed':0,'timestamp':0}
 
         self.ident = {"version":"", "multitype":"", "msp_version":"", "capability":""}
+        self.analog = {}
+        self.boxids = []
+        self.box = []
         self.temp = ();
         self.temp2 = ();
         self.elapsed = 0
@@ -136,8 +139,8 @@ class MultiWii:
         timer = 0
         start = time.time()
         while timer < 0.5:
-            data = [1500,1500,2000,1000]
-            self.sendCMD(8,MultiWii.SET_RAW_RC,data)
+            data = [1500,1500,2000,1000, 1500, 1500, 1500, 1500]
+            self.sendCMD(16,MultiWii.SET_RAW_RC,data)
             time.sleep(0.05)
             timer = timer + (time.time() - start)
             start =  time.time()
@@ -146,8 +149,8 @@ class MultiWii:
         timer = 0
         start = time.time()
         while timer < 0.5:
-            data = [1500,1500,1000,1000]
-            self.sendCMD(8,MultiWii.SET_RAW_RC,data)
+            data = [1500,1500,1000,1000, 1500, 1500, 1500, 1500]
+            self.sendCMD(16,MultiWii.SET_RAW_RC,data)
             time.sleep(0.05)
             timer = timer + (time.time() - start)
             start =  time.time()
@@ -171,18 +174,18 @@ class MultiWii:
                 break
             time.sleep(0.01)
         datalength = struct.unpack('<b', self.ser.read())[0]
-        print "datalength", datalength
+        #print "datalength", datalength
         code = struct.unpack('<b', self.ser.read())[0]
-        print "code", code
+        #print "code", code
         data = self.ser.read(datalength)
-        print "data", len(data)
+        #print "data", len(data)
 
         #self.ser.flushInput()
         #self.ser.flushOutput()
         elapsed = time.time() - start
         if code == MultiWii.ATTITUDE:
             temp = struct.unpack('<'+'hhh',data)
-            print "temp", temp
+            #print "temp", temp
             self.attitude["cmd"] = code
             self.attitude['angx']=float(temp[0]/10.0)
             self.attitude['angy']=float(temp[1]/10.0)
@@ -190,6 +193,33 @@ class MultiWii:
             self.attitude['elapsed']=round(elapsed,3)
             self.attitude['timestamp']="%0.2f" % (time.time(),) 
             return self.attitude
+        elif code == MultiWii.BOXIDS:
+            temp = struct.unpack('<'+'b'*datalength,data)
+            #print "temp", temp
+            self.boxids = temp
+            return self.boxids
+        elif code == MultiWii.BOX:
+            print "datalength", datalength
+            assert datalength % 2 == 0
+            temp = struct.unpack('<'+'H'*(datalength/2), data)
+            #print "temp", temp
+            self.box = temp
+            return self.box
+        elif code == MultiWii.ANALOG:
+            temp = struct.unpack('<'+'bHHH', data)
+            self.analog["vbat"] = temp[0]
+            self.analog["intPowerMEterSum"] = temp[1]
+            self.analog["rssi"] = temp[2]
+            self.analog["amperage"] = temp[3]
+            return self.analog
+        elif code == MultiWii.BOXNAMES:
+            print "datalength", datalength
+            assert datalength % 2 == 0
+            temp = struct.unpack('<'+'s' * datalength, data)
+            temp = "".join(temp)[:-1].split(";")
+            #print "temp", temp
+            self.boxnames = temp
+            return self.boxnames
         elif code == MultiWii.IDENT:
             temp = struct.unpack('<'+'BBBI',data)
             self.ident["cmd"] = code
