@@ -96,7 +96,7 @@ class MultiWii:
                     time.sleep(1)
                 else:
                     time.sleep(1)
-            self.sendCMD(0,MultiWii.IDENT,[])
+            #self.sendCMD(0,MultiWii.IDENT,[])
         except Exception, error:
             print "\n\nError opening "+self.ser.port+" port.\n"+str(error)+"\n\n"
             raise
@@ -110,7 +110,6 @@ class MultiWii:
         total_data.append(checksum)
         try:
             b = None
-            print "sending"
             data = struct.pack('<3c2B%dhB' % len(data), *total_data)
             b = self.ser.write(data)
             assert b == len(data)
@@ -121,50 +120,6 @@ class MultiWii:
             raise
             pass
 
-    """Function for sending a command to the board and receive attitude"""
-    """
-    Modification required on Multiwii firmware to Protocol.cpp in evaluateCommand:
-
-    case MSP_SET_RAW_RC:
-      s_struct_w((uint8_t*)&rcSerial,16);
-      rcSerialCount = 50; // 1s transition 
-      s_struct((uint8_t*)&att,6);
-      break;
-
-    """
-    def sendCMDreceiveATT(self, data_length, code, data):
-        checksum = 0
-        total_data = ['$', 'M', '<', data_length, code] + data
-        for i in struct.pack('<2B%dh' % len(data), *total_data[3:len(total_data)]):
-            checksum = checksum ^ ord(i)
-        total_data.append(checksum)
-        try:
-            start = time.time()
-            b = None
-            b = self.ser.write(struct.pack('<3c2B%dhB' % len(data), *total_data))
-            while True:
-                header = self.ser.read()
-                if header == '$':
-                    header = header+self.ser.read(2)
-                    break
-            datalength = struct.unpack('<b', self.ser.read())[0]
-            code = struct.unpack('<b', self.ser.read())
-            data = self.ser.read(datalength)
-            temp = struct.unpack('<'+'h'*(datalength/2),data)
-            self.ser.flushInput()
-            self.ser.flushOutput()
-            elapsed = time.time() - start
-            self.attitude['angx']=float(temp[0]/10.0)
-            self.attitude['angy']=float(temp[1]/10.0)
-            self.attitude['heading']=float(temp[2])
-            self.attitude['elapsed']=round(elapsed,3)
-            self.attitude['timestamp']="%0.2f" % (time.time(),) 
-            return self.attitude
-        except Exception, error:
-            print "\n\nError in sendCMDreceiveATT."
-            print "("+str(error)+")\n\n"
-            raise
-            pass
 
     """Function to arm / disarm """
     """
@@ -200,181 +155,99 @@ class MultiWii:
     """Function to receive a data packet from the board"""
     def getData(self, cmd):
         try:
-            start = time.time()
-            #self.sendCMD(0,cmd,[])
             self.sendCMD(0,cmd,[])
-
-            while True:
-                header = self.ser.read()
-                if header == '$':
-                    header = header+self.ser.read(2)
-                    break
-                time.sleep(0.01)
-            datalength = struct.unpack('<b', self.ser.read())[0]
-            print "datalength", datalength
-            code = struct.unpack('<b', self.ser.read())[0]
-            print "code", code
-            data = self.ser.read(datalength)
-            print "data", len(data)
-
-            #self.ser.flushInput()
-            #self.ser.flushOutput()
-            elapsed = time.time() - start
-            if code == MultiWii.ATTITUDE:
-                temp = struct.unpack('<'+'hhh',data)
-                print "temp", temp
-                self.attitude['angx']=float(temp[0]/10.0)
-                self.attitude['angy']=float(temp[1]/10.0)
-                self.attitude['heading']=float(temp[2])
-                self.attitude['elapsed']=round(elapsed,3)
-                self.attitude['timestamp']="%0.2f" % (time.time(),) 
-                return self.attitude
-            elif code == MultiWii.IDENT:
-                temp = struct.unpack('<'+'BBBI',data)
-                self.ident["version"] = temp[0]
-                self.ident["multitype"] = temp[1]
-                self.ident["msp_version"] = temp[2]
-                self.ident["capability"] = temp[3]
-                return self.ident
-            elif code == MultiWii.RC:
-                self.rcChannels['roll']=temp[0]
-                self.rcChannels['pitch']=temp[1]
-                self.rcChannels['yaw']=temp[2]
-                self.rcChannels['throttle']=temp[3]
-                self.rcChannels['elapsed']=round(elapsed,3)
-                self.rcChannels['timestamp']="%0.2f" % (time.time(),)
-                return self.rcChannels
-            elif code == MultiWii.RAW_IMU:
-                temp = struct.unpack('<'+'hhhhhhhhh',data)
-                self.rawIMU['ax']=float(temp[0])
-                self.rawIMU['ay']=float(temp[1])
-                self.rawIMU['az']=float(temp[2])
-                self.rawIMU['gx']=float(temp[3])
-                self.rawIMU['gy']=float(temp[4])
-                self.rawIMU['gz']=float(temp[5])
-                self.rawIMU['elapsed']=round(elapsed,3)
-                self.rawIMU['timestamp']="%0.2f" % (time.time(),)
-                return self.rawIMU
-            elif code == MultiWii.POS_EST:
-                temp = struct.unpack('<'+'hhh',data)
-                self.posest['x']=float(temp[0])
-                self.posest['y']=float(temp[1])
-                self.posest['z']=float(temp[2])
-                self.posest['elapsed']=round(elapsed,3)
-                self.posest['timestamp']="%0.2f" % (time.time(),)
-                return self.posest
-# Position Estimate
-            elif code == MultiWii.MOTOR:
-                self.motor['m1']=float(temp[0])
-                self.motor['m2']=float(temp[1])
-                self.motor['m3']=float(temp[2])
-                self.motor['m4']=float(temp[3])
-                self.motor['elapsed']="%0.3f" % (elapsed,)
-                self.motor['timestamp']="%0.2f" % (time.time(),)
-                return self.motor
-            else:
-                return "No return error!"
+            return self.receiveDataPacket()
         except Exception, error:
             print error
             raise
             pass
 
-    """Function to receive a data packet from the board. Note: easier to use on threads"""
-    def getDataInf(self, cmd):
+    def receiveDataPacket(self):
+        start = time.time()
         while True:
-            try:
-                start = time.clock()
-                self.sendCMD(0,cmd,[])
-                while True:
-                    header = self.ser.read()
-                    if header == '$':
-                        header = header+self.ser.read(2)
-                        break
-                datalength = struct.unpack('<b', self.ser.read())[0]
-                code = struct.unpack('<b', self.ser.read())
-                data = self.ser.read(datalength)
-                temp = struct.unpack('<'+'h'*(datalength/2),data)
-                elapsed = time.clock() - start
-                self.ser.flushInput()
-                self.ser.flushOutput()
-                if cmd == MultiWii.ATTITUDE:
-                    self.attitude['angx']=float(temp[0]/10.0)
-                    self.attitude['angy']=float(temp[1]/10.0)
-                    self.attitude['heading']=float(temp[2])
-                    self.attitude['elapsed']="%0.3f" % (elapsed,)
-                    self.attitude['timestamp']="%0.2f" % (time.time(),)
-                elif cmd == MultiWii.RC:
-                    self.rcChannels['roll']=temp[0]
-                    self.rcChannels['pitch']=temp[1]
-                    self.rcChannels['yaw']=temp[2]
-                    self.rcChannels['throttle']=temp[3]
-                    self.rcChannels['elapsed']="%0.3f" % (elapsed,)
-                    self.rcChannels['timestamp']="%0.2f" % (time.time(),)
-                elif cmd == MultiWii.RAW_IMU:
-                    self.rawIMU['ax']=float(temp[0])
-                    self.rawIMU['ay']=float(temp[1])
-                    self.rawIMU['az']=float(temp[2])
-                    self.rawIMU['gx']=float(temp[3])
-                    self.rawIMU['gy']=float(temp[4])
-                    self.rawIMU['gz']=float(temp[5])
-                    self.rawIMU['elapsed']="%0.3f" % (elapsed,)
-                    self.rawIMU['timestamp']="%0.2f" % (time.time(),)
-                elif cmd == MultiWii.MOTOR:
-                    self.motor['m1']=float(temp[0])
-                    self.motor['m2']=float(temp[1])
-                    self.motor['m3']=float(temp[2])
-                    self.motor['m4']=float(temp[3])
-                    self.motor['elapsed']="%0.3f" % (elapsed,)
-                    self.motor['timestamp']="%0.2f" % (time.time(),)
-            except Exception, error:
-                print "error", error
-                raise
-                pass
+            header = self.ser.read()
+            if header == '$':
+                header = header+self.ser.read(2)
+                break
+            time.sleep(0.01)
+        datalength = struct.unpack('<b', self.ser.read())[0]
+        print "datalength", datalength
+        code = struct.unpack('<b', self.ser.read())[0]
+        print "code", code
+        data = self.ser.read(datalength)
+        print "data", len(data)
 
-    """Function to ask for 2 fixed cmds, attitude and rc channels, and receive them. Note: is a bit slower than others"""
-    def getData2cmd(self, cmd):
-        try:
-            start = time.time()
-            self.sendCMD(0,self.ATTITUDE,[])
-            while True:
-                header = self.ser.read()
-                if header == '$':
-                    header = header+self.ser.read(2)
-                    break
-            datalength = struct.unpack('<b', self.ser.read())[0]
-            code = struct.unpack('<b', self.ser.read())
-            data = self.ser.read(datalength)
-            temp = struct.unpack('<'+'h'*(datalength/2),data)
-            self.ser.flushInput()
-            self.ser.flushOutput()
+        #self.ser.flushInput()
+        #self.ser.flushOutput()
+        elapsed = time.time() - start
+        if code == MultiWii.ATTITUDE:
+            temp = struct.unpack('<'+'hhh',data)
+            print "temp", temp
+            self.attitude["cmd"] = code
+            self.attitude['angx']=float(temp[0]/10.0)
+            self.attitude['angy']=float(temp[1]/10.0)
+            self.attitude['heading']=float(temp[2])
+            self.attitude['elapsed']=round(elapsed,3)
+            self.attitude['timestamp']="%0.2f" % (time.time(),) 
+            return self.attitude
+        elif code == MultiWii.IDENT:
+            temp = struct.unpack('<'+'BBBI',data)
+            self.ident["cmd"] = code
+            self.ident["version"] = temp[0]
+            self.ident["multitype"] = temp[1]
+            self.ident["msp_version"] = temp[2]
+            self.ident["capability"] = temp[3]
+            return self.ident
+        elif code == MultiWii.RC:
+            temp = struct.unpack('<'+'hhhhhhhhhhhh',data)
+            print "temp", temp
+            self.rcChannels['cmd'] = code
+            self.rcChannels['roll']=temp[0]
+            self.rcChannels['pitch']=temp[1]
+            self.rcChannels['yaw']=temp[2]
+            self.rcChannels['throttle']=temp[3]
+            self.rcChannels['aux1'] = temp[4]
+            self.rcChannels['aux2'] = temp[5]
+            self.rcChannels['aux3'] = temp[6]
+            self.rcChannels['aux4'] = temp[7]
+            self.rcChannels['aux5'] = temp[8]
+            self.rcChannels['aux6'] = temp[9]
+            self.rcChannels['aux7'] = temp[10]
+            self.rcChannels['aux8'] = temp[11]
+            self.rcChannels['elapsed']=round(elapsed,3)
+            self.rcChannels['timestamp']="%0.2f" % (time.time(),)
+            return self.rcChannels
+        elif code == MultiWii.RAW_IMU:
+            temp = struct.unpack('<'+'hhhhhhhhh',data)
+            self.rawIMU["cmd"] = code
+            self.rawIMU['ax']=float(temp[0])
+            self.rawIMU['ay']=float(temp[1])
+            self.rawIMU['az']=float(temp[2])
+            self.rawIMU['gx']=float(temp[3])
+            self.rawIMU['gy']=float(temp[4])
+            self.rawIMU['gz']=float(temp[5])
+            self.rawIMU['elapsed']=round(elapsed,3)
+            self.rawIMU['timestamp']="%0.2f" % (time.time(),)
+            return self.rawIMU
+        elif code == MultiWii.POS_EST:
+            temp = struct.unpack('<'+'hhh',data)
+            self.posest["cmd"] = code
+            self.posest['x']=float(temp[0])
+            self.posest['y']=float(temp[1])
+            self.posest['z']=float(temp[2])
+            self.posest['elapsed']=round(elapsed,3)
+            self.posest['timestamp']="%0.2f" % (time.time(),)
+            return self.posest
+        # Position Estimate
+        elif code == MultiWii.MOTOR:
+            self.motor['cmd'] = code
+            self.motor['m1']=float(temp[0])
+            self.motor['m2']=float(temp[1])
+            self.motor['m3']=float(temp[2])
+            self.motor['m4']=float(temp[3])
+            self.motor['elapsed']="%0.3f" % (elapsed,)
+            self.motor['timestamp']="%0.2f" % (time.time(),)
+            return self.motor
+        else:
+            return "No return error!: %d" % code
 
-            self.sendCMD(0,self.RC,[])
-            while True:
-                header = self.ser.read()
-                if header == '$':
-                    header = header+self.ser.read(2)
-                    break
-            datalength = struct.unpack('<b', self.ser.read())[0]
-            code = struct.unpack('<b', self.ser.read())
-            data = self.ser.read(datalength)
-            temp2 = struct.unpack('<'+'h'*(datalength/2),data)
-            elapsed = time.time() - start
-            self.ser.flushInput()
-            self.ser.flushOutput()
-
-            if cmd == MultiWii.ATTITUDE:
-                self.message['angx']=float(temp[0]/10.0)
-                self.message['angy']=float(temp[1]/10.0)
-                self.message['heading']=float(temp[2])
-                self.message['roll']=temp2[0]
-                self.message['pitch']=temp2[1]
-                self.message['yaw']=temp2[2]
-                self.message['throttle']=temp2[3]
-                self.message['elapsed']=round(elapsed,3)
-                self.message['timestamp']="%0.2f" % (time.time(),) 
-                return self.message
-            else:
-                return "No return error!"
-        except Exception, error:
-            print error
-            raise
