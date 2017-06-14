@@ -173,7 +173,12 @@ class MultiWii:
                 header = header+self.ser.read(2)
                 break
             time.sleep(0.01)
-        datalength = struct.unpack('<b', self.ser.read())[0]
+        datalengthraw = self.ser.read()
+        try:
+            datalength = struct.unpack('<b', datalengthraw)[0]
+        except:
+            print "data length raw", datalengthraw, len(datalengthraw)
+            raise
         #print "datalength", datalength
         code = struct.unpack('<b', self.ser.read())[0]
         #print "code", code

@@ -42,9 +42,11 @@ board = MultiWii("/dev/ttyACM0")
 #    time.sleep(0.1)
 
 #print board.getData(MultiWii.RC)
+# while True:
+#     print "RC"
+#     print board.getData(MultiWii.RC)
+#     time.sleep(0.001)
 
-#print "RC"
-#print board.getData(MultiWii.RC)
 
 
 #print "box ids"
@@ -60,17 +62,35 @@ board = MultiWii("/dev/ttyACM0")
 #print board.getData(MultiWii.ANALOG)
 
 
-#board.sendCMD(16,MultiWii.SET_RAW_RC, [1500,1500,2000,1000, 1500, 1500, 1500, 1500])
+for i in range(10):
+    board.sendCMD(16,MultiWii.SET_RAW_RC, [1500, 1500, 1500, 988, 
+                                           2000, 1500, 1500, 1500])
+    time.sleep(0.01)
 
-#time.sleep(1)
+time.sleep(1)
 
+# print "throttel"
+for i in range(10):
+    
+    board.sendCMD(16,MultiWii.SET_RAW_RC, [1500, 1500, 1500, 2000, 
+                                           2000, 1500, 1500, 1500])
+    time.sleep(0.01)
+
+time.sleep(2)
+print "power down hopefully!"
+for i in range(20):
+    board.sendCMD(16,MultiWii.SET_RAW_RC, [1500, 1500, 1500, 988, 
+                                           1500, 1500, 1500, 1500])
+    time.sleep(0.01)
+
+time.sleep(1)
 #print "receive."
 #print board.receiveDataPacket()
 
 
 #print "disarm"
 #board.disarm()
-#board.ser.close()
+board.ser.close()
 
 
 
