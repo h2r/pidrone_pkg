@@ -76,33 +76,17 @@ class MultiWii:
         self.elapsed = 0
         self.PRINT = 1
 
-        self.ser = serial.Serial(baudrate=115200)
-        self.ser.port = serPort
-        #self.ser.baudrate = 115200
-        self.ser.bytesize = serial.EIGHTBITS
-        self.ser.parity = serial.PARITY_NONE
-        self.ser.stopbits = serial.STOPBITS_ONE
-        self.ser.timeout = 0
-        self.ser.xonxoff = False
-        self.ser.rtscts = False
-        self.ser.dsrdtr = False
-        self.ser.writeTimeout = 2
-        """Time to wait until the board becomes operational"""
-        wakeup = 2
-        try:
-            self.ser.open()
-            if self.PRINT:
-                print "Waking up board on "+self.ser.port+"..."
-            for i in range(1,wakeup):
-                if self.PRINT:
-                    print wakeup-i
-                    time.sleep(1)
-                else:
-                    time.sleep(1)
-            #self.sendCMD(0,MultiWii.IDENT,[])
-        except Exception, error:
-            print "\n\nError opening "+self.ser.port+" port.\n"+str(error)+"\n\n"
-            raise
+        self.ser = serial.Serial(serPort, 
+                                 baudrate=115200,
+                                 bytesize=serial.EIGHTBITS,
+                                 parity=serial.PARITY_NONE,
+                                 stopbits=serial.STOPBITS_ONE,
+                                 timeout=3,
+                                 xonxoff=False,
+                                 rtscts=False,
+                                 dsrdtr=False,
+                                 writeTimeout=2,
+                             )
 
     """Function for sending a command to the board"""
     def sendCMD(self, data_length, code, data):
