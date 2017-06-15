@@ -1,5 +1,3 @@
-#!/bin/sh
-
 # This is an example from Stefanie's ethernet environment.  Copy to
 # your ws root directory and change the variables appropriately.  This
 # is supposed to be like ./baxter.sh.  It sets environment variables
@@ -10,3 +8,5 @@
 
 source devel/setup.bash
 export ROS_IP=10.42.0.24
+export PS1="\[\033[00;33m\][pidrone - ${ROS_MASTER_URI}]\[\033[00m\] $PS1"
+
