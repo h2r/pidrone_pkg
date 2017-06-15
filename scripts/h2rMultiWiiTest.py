@@ -67,33 +67,30 @@ time.sleep(0.1)
 
 def pulseMotor():
     print board.getData(MultiWii.MOTOR)
-
+    print "arm"
     for i in range(10):
         board.sendCMD(16,MultiWii.SET_RAW_RC, [1500, 1500, 1500, 988, 
                                                2000, 1500, 1500, 1500])
         time.sleep(0.01)
 
-    time.sleep(1)
+    time.sleep(0.5)
     print board.getData(MultiWii.MOTOR)
-    # print "throttel"
+    print "power up"
     for i in range(10):
 
         board.sendCMD(16,MultiWii.SET_RAW_RC, [1500, 1500, 1500, 2000, 
                                                2000, 1500, 1500, 1500])
         time.sleep(0.01)
 
-    time.sleep(2)
-    print "power down hopefully!"
+    time.sleep(1)
+    print board.getData(MultiWii.MOTOR)
+    print "power down"
     for i in range(20):
         board.sendCMD(16,MultiWii.SET_RAW_RC, [1500, 1500, 1500, 988, 
                                                1500, 1500, 1500, 1500])
         time.sleep(0.01)
 
-    time.sleep(1)
-    #print "receive."
-    #print board.receiveDataPacket()
-
-    board.sendCMD(0,MultiWii.IDENT,[])
+    time.sleep(0.5)
     print board.getData(MultiWii.MOTOR)
 
 print board.getData(MultiWii.IDENT)
@@ -101,10 +98,10 @@ print board.getData(MultiWii.MOTOR)
 print board.getData(MultiWii.RAW_IMU)
 
 #print board.receiveDataPacket()
-#pulseMotor()
+pulseMotor()
 #print "disarm"
 #board.disarm()
-board.ser.close()
+board.close()
 
 
 

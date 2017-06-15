@@ -2,8 +2,8 @@
 import rospy
 
 # swap these two lines to switch to the new multiwii.
-from pyMultiwii import MultiWii
-#from h2rMultiWii import MultiWii  
+#from pyMultiwii import MultiWii
+from h2rMultiWii import MultiWii  
 
 
 from sys import stdout
@@ -44,7 +44,16 @@ def att_pub():
     board.arm()
     print("armed")
     prev_time = millis()
+    br = tf.TransformBroadcaster()
+
     while not rospy.is_shutdown():
+
+        br.sendTransform((0, 0, 0),
+                         tf.transformations.quaternion_from_euler(0, 0, 1),
+                         rospy.Time.now(),
+                         "world",
+                         "base")
+
         att_data = board.getData(MultiWii.ATTITUDE)
         imu_data = board.getData(MultiWii.RAW_IMU)
         print cmds[0], cmds[1], cmds[2], cmds[3], att_data
@@ -62,7 +71,7 @@ def att_pub():
         quaternion = tf.transformations.quaternion_from_euler(roll * 2 *
         math.pi / 360, pitch * 2 * math.pi / 360, 0)
         # print(roll, pitch, yaw, quaternion)
-
+        imu.header.frame_id = "base"
         imu.orientation.x = quaternion[0]
         imu.orientation.y = quaternion[1]
         imu.orientation.z = quaternion[2]
@@ -87,6 +96,7 @@ def att_pub():
         int_pose.position.z = int_pos[2]
         imupub.publish(imu)
         intposepub.publish(int_pose)
+        rate.sleep()
     board.disarm()
     print("disarming")
 
@@ -103,11 +113,11 @@ def cmd_call(data):
 
 
 def main():
-    rospy.init_node('multiwii', anonymous=True)
+    rospy.init_node('multiwii')
     try:
         rospy.Subscriber("/pidrone/commands", RC, cmd_call)
         att_pub()
-        rospy.spin()
+
 
     except rospy.ROSInterruptException:
         pass

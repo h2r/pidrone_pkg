@@ -160,6 +160,7 @@ class MultiWii:
                 print "IGNORING HEADER: '%s'" % header
                 result = struct.unpack('<B', header), 
                 print "result", result
+                raise
             else:
                 pass
             time.sleep(0.01)
@@ -169,20 +170,13 @@ class MultiWii:
         except:
             print "data length raw", datalengthraw, len(datalengthraw)
             raise
-        #print "datalength", datalength
         code = struct.unpack('<b', self.ser.read())[0]
-        #print "code", code
         data = self.ser.read(datalength)
         checksum = self.ser.read()
-        print "checksum", checksum
-        #print "data", len(data)
-
-        #self.ser.flushInput()
-        #self.ser.flushOutput()
+        self.checkChecksum(data, checksum)  # noop now.
         elapsed = time.time() - start
         if code == MultiWii.ATTITUDE:
             temp = struct.unpack('<'+'hhh',data)
-            #print "temp", temp
             self.attitude["cmd"] = code
             self.attitude['angx']=float(temp[0]/10.0)
             self.attitude['angy']=float(temp[1]/10.0)
@@ -192,14 +186,11 @@ class MultiWii:
             return self.attitude
         elif code == MultiWii.BOXIDS:
             temp = struct.unpack('<'+'b'*datalength,data)
-            #print "temp", temp
             self.boxids = temp
             return self.boxids
         elif code == MultiWii.BOX:
-            print "datalength", datalength
             assert datalength % 2 == 0
             temp = struct.unpack('<'+'H'*(datalength/2), data)
-            #print "temp", temp
             self.box = temp
             return self.box
         elif code == MultiWii.ANALOG:
@@ -214,7 +205,6 @@ class MultiWii:
             assert datalength % 2 == 0
             temp = struct.unpack('<'+'s' * datalength, data)
             temp = "".join(temp)[:-1].split(";")
-            #print "temp", temp
             self.boxnames = temp
             return self.boxnames
         elif code == MultiWii.STATUS:
@@ -235,7 +225,6 @@ class MultiWii:
             return self.ident
         elif code == MultiWii.RC:
             temp = struct.unpack('<'+'hhhhhhhhhhhh',data)
-            print "temp", temp
             self.rcChannels['cmd'] = code
             self.rcChannels['roll']=temp[0]
             self.rcChannels['pitch']=temp[1]
@@ -262,7 +251,6 @@ class MultiWii:
             self.rawIMU['gx']=float(temp[3])
             self.rawIMU['gy']=float(temp[4])
             self.rawIMU['gz']=float(temp[5])
-
             self.rawIMU['elapsed']=round(elapsed,3)
             self.rawIMU['timestamp']="%0.2f" % (time.time(),)
             return self.rawIMU
@@ -275,9 +263,7 @@ class MultiWii:
             self.posest['elapsed']=round(elapsed,3)
             self.posest['timestamp']="%0.2f" % (time.time(),)
             return self.posest
-        # Position Estimate
         elif code == MultiWii.MOTOR:
-            print "data", len(data)
             temp = struct.unpack('<'+'hhhhhhhh',data)
             self.motor['cmd'] = code
             self.motor['m1']=float(temp[0])
@@ -295,3 +281,8 @@ class MultiWii:
             print "No return error!: %d" % code
             raise
 
+    """ Implement me to check the checksum. """
+    def checkChecksum(self, data, checksum):
+        pass
+    def close(self):
+        self.ser.close()
