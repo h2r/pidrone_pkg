@@ -7,7 +7,7 @@ from h2rMultiWii import MultiWii
 
 
 from sys import stdout
-from geometry_msgs.msg import Pose
+from geometry_msgs.msg import PoseStamped
 from sensor_msgs.msg import Imu
 from pidrone_pkg.msg import RC
 import sys
@@ -19,7 +19,7 @@ import math
 board = MultiWii("/dev/ttyACM0")
 
 cmds = [1500, 1500, 1500, 1000, 1500, 1500, 1500, 1500]
-int_pose = Pose()
+int_pose = PoseStamped()
 int_vel = [0, 0, 0]
 int_pos = [0, 0, 0]
 
@@ -38,14 +38,14 @@ def qv_mult(q1, v1):
 def att_pub():
     global cmds
     imupub = rospy.Publisher('/pidrone/imu', Imu, queue_size=1)
-    intposepub = rospy.Publisher('/pidrone/int_pose', Pose, queue_size=1)
+    intposepub = rospy.Publisher('/pidrone/int_pose', PoseStamped, queue_size=1)
     rate = rospy.Rate(300)
     imu = Imu()
     board.arm()
     print("armed")
     prev_time = millis()
     br = tf.TransformBroadcaster()
-
+    seq = 0
     while not rospy.is_shutdown():
 
         br.sendTransform((0, 0, 0),
@@ -90,10 +90,14 @@ def att_pub():
             int_vel[i] += rotated_accel[i] * (curr_time - prev_time)
             int_pos[i] += int_vel[i] * (curr_time - prev_time)
         prev_time = curr_time
-        int_pose.orientation = imu.orientation
-        int_pose.position.x = int_pos[0]
-        int_pose.position.y = int_pos[1]
-        int_pose.position.z = int_pos[2]
+        int_pose.header.seq = seq
+        seq+=1 
+        int_pose.header.stamp = rospy.Time.now()
+        int_pose.header.frame_id = "base"
+        int_pose.pose.orientation = imu.orientation
+        int_pose.pose.position.x = int_pos[0] / 52.65
+        int_pose.pose.position.y = int_pos[1] / 52.65
+        int_pose.pose.position.z = int_pos[2] / 52.65
         imupub.publish(imu)
         intposepub.publish(int_pose)
         rate.sleep()
