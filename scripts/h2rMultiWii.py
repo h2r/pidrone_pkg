@@ -284,3 +284,5 @@ class MultiWii:
     """ Implement me to check the checksum. """
     def checkChecksum(self, data, checksum):
         pass
+    def close(self):
+        self.ser.close()

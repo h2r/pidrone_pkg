@@ -101,7 +101,7 @@ print board.getData(MultiWii.RAW_IMU)
 pulseMotor()
 #print "disarm"
 #board.disarm()
-board.ser.close()
+board.close()
 
 
 
