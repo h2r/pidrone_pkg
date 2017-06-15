@@ -1,6 +1,11 @@
 #!/usr/bin/env python
 import rospy
+
+# swap these two lines to switch to the new multiwii.
 from pyMultiwii import MultiWii
+#from h2rMultiWii import MultiWii  
+
+
 from sys import stdout
 from geometry_msgs.msg import Pose
 from sensor_msgs.msg import Imu
@@ -96,7 +101,8 @@ def cmd_call(data):
     cmds[7] = data.aux4
 
 
-if __name__ == "__main__":
+
+def main():
     rospy.init_node('multiwii', anonymous=True)
     try:
         rospy.Subscriber("/pidrone/commands", RC, cmd_call)
@@ -105,3 +111,7 @@ if __name__ == "__main__":
 
     except rospy.ROSInterruptException:
         pass
+
+
+if __name__ == "__main__":
+    main()
