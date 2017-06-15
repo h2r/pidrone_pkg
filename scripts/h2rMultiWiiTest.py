@@ -73,7 +73,7 @@ def pulseMotor():
                                                2000, 1500, 1500, 1500])
         time.sleep(0.01)
 
-    time.sleep(1)
+    time.sleep(0.5)
     print board.getData(MultiWii.MOTOR)
     print "power up"
     for i in range(10):
@@ -82,7 +82,7 @@ def pulseMotor():
                                                2000, 1500, 1500, 1500])
         time.sleep(0.01)
 
-    time.sleep(2)
+    time.sleep(1)
     print board.getData(MultiWii.MOTOR)
     print "power down"
     for i in range(20):
@@ -90,7 +90,7 @@ def pulseMotor():
                                                1500, 1500, 1500, 1500])
         time.sleep(0.01)
 
-    time.sleep(1)
+    time.sleep(0.5)
     print board.getData(MultiWii.MOTOR)
 
 print board.getData(MultiWii.IDENT)
