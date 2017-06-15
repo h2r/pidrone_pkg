@@ -42,32 +42,32 @@ acladd stefie10
 #stuff "screen"
 
 screen -t " roscore"
-stuff "./setup.sh"
+stuff "source setup.sh"
 stuff "roscore"
 
 screen -t " multiwii"
-stuff "./setup.sh"
+stuff "source setup.sh"
 stuff "rosrun pidrone_pkg h2r_multiwii_node.py"
 
 screen -t " vim"
-stuff "./setup.sh"
+stuff "source setup.sh"
 stuff "cd $(rospack find pidrone_pkg)/"
 stuff "vim -p scripts/h2rMultiWii.py"
 
 screen -t " emacs"
-stuff "./setup.sh"
+stuff "source setup.sh"
 stuff "cd $(rospack find pidrone_pkg)"
 stuff "emacs -nw scripts/h2rMultiWii.py"
 
 
 screen -t " git"
-stuff "./setup.sh"
+stuff "source setup.sh"
 stuff "cd $(rospack find pidrone_pkg)/"
 
 screen -t " free"
-stuff "./setup.sh"
+stuff "source setup.sh"
 stuff "cd $(rospack find pidrone_pkg)/"
 
 screen -t " free"
-stuff "./setup.sh"
+stuff "source setup.sh"
 stuff "cd $(rospack find pidrone_pkg)/"
