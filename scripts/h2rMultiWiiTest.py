@@ -96,11 +96,12 @@ def pulseMotor():
     board.sendCMD(0,MultiWii.IDENT,[])
     print board.getData(MultiWii.MOTOR)
 
-
-
+print board.getData(MultiWii.IDENT)
 print board.getData(MultiWii.MOTOR)
+print board.getData(MultiWii.RAW_IMU)
+
 #print board.receiveDataPacket()
-pulseMotor()
+#pulseMotor()
 #print "disarm"
 #board.disarm()
 board.ser.close()

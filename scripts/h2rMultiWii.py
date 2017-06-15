@@ -98,6 +98,7 @@ class MultiWii:
             b = None
             data = struct.pack('<3c2B%dhB' % len(data), *total_data)
             b = self.ser.write(data)
+            self.ser.write("\n") # flush buffers all the way through.
             assert b == len(data)
             self.ser.flush()
         except Exception, error:
@@ -156,7 +157,9 @@ class MultiWii:
                 header = header+self.ser.read(2)
                 break
             elif header != '':
-                print "IGNORING HEADER", header
+                print "IGNORING HEADER: '%s'" % header
+                result = struct.unpack('<B', header), 
+                print "result", result
             else:
                 pass
             time.sleep(0.01)
@@ -170,6 +173,8 @@ class MultiWii:
         code = struct.unpack('<b', self.ser.read())[0]
         #print "code", code
         data = self.ser.read(datalength)
+        checksum = self.ser.read()
+        print "checksum", checksum
         #print "data", len(data)
 
         #self.ser.flushInput()
@@ -248,6 +253,7 @@ class MultiWii:
             self.rcChannels['timestamp']="%0.2f" % (time.time(),)
             return self.rcChannels
         elif code == MultiWii.RAW_IMU:
+
             temp = struct.unpack('<'+'hhhhhhhhh',data)
             self.rawIMU["cmd"] = code
             self.rawIMU['ax']=float(temp[0])
@@ -256,6 +262,7 @@ class MultiWii:
             self.rawIMU['gx']=float(temp[3])
             self.rawIMU['gy']=float(temp[4])
             self.rawIMU['gz']=float(temp[5])
+
             self.rawIMU['elapsed']=round(elapsed,3)
             self.rawIMU['timestamp']="%0.2f" % (time.time(),)
             return self.rawIMU
@@ -285,5 +292,6 @@ class MultiWii:
             self.motor['timestamp']="%0.2f" % (time.time(),)
             return self.motor
         else:
-            return "No return error!: %d" % code
+            print "No return error!: %d" % code
+            raise
 
