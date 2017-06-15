@@ -76,9 +76,9 @@ def att_pub():
         imu.orientation.y = quaternion[1]
         imu.orientation.z = quaternion[2]
         imu.orientation.w = quaternion[3]
-        imu.linear_acceleration.x = board.rawIMU['ax']
-        imu.linear_acceleration.y = board.rawIMU['ay']
-        imu.linear_acceleration.z = board.rawIMU['az']
+        imu.linear_acceleration.x = board.rawIMU['ax'] / 52.65
+        imu.linear_acceleration.y = board.rawIMU['ay'] / 52.65
+        imu.linear_acceleration.z = board.rawIMU['az'] / 52.65
 
 
 # Integrate the things
