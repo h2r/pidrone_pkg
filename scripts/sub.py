@@ -14,9 +14,10 @@ WIDTH = 320
 HEIGHT = 240
 
 est_pos = PoseStamped()
+est_pos.header.frame_id='world'
 est_pos.pose.position.y = 1
 
-summed_transform = [0, 1, 0, 0] # x, y, z, yaw
+summed_transform = [0, 0, 1, 0] # x, y, z, yaw
 
 orientation = [0, 0, 0, 1]
 
@@ -35,26 +36,26 @@ def affineToTransform(affine, summed_transform):
     if affine is not None:
         # print(affine)
         scalex = np.linalg.norm(affine[:, 0])
-        scalez = np.linalg.norm(affine[:, 1])
-        # print 'scalex {} \t scalez {} \t diff {}'.format(scalex,scalez, scalex
-        # - scalez)
+        scaley = np.linalg.norm(affine[:, 1])
+        # print 'scalex {} \t scaley {} \t diff {}'.format(scalex,scaley, scalex
+        # - scaley)
         # offset camera center -> translate affected by scale
         t_offsetx = WIDTH*(1-scalex)/(2*scalex)
-        t_offsetz = HEIGHT*(1-scalez)/(2*scalez)
+        t_offsety = HEIGHT*(1-scaley)/(2*scaley)
         # calc translation 
-        transformation[1] = 1/((scalex + scalez) / 2)
-        transformation[0] = int(affine[0, 2] - t_offsetx) * summed_transform[1]
-        transformation[2] = int(affine[1, 2] - t_offsetz) * summed_transform[1]
+        transformation[0] = int(affine[0, 2] - t_offsetx) * summed_transform[2]
+        transformation[1] = int(affine[1, 2] - t_offsety) * summed_transform[2]
+        transformation[2] = 1/((scalex + scaley) / 2)
         # calc rotation
         affine[:, 0] /= scalex
-        affine[:, 1] /= scalez
+        affine[:, 1] /= scaley
         transformation[3] = math.atan2(affine[1, 0], affine[0, 0])
         # account for camera tilt
-        thing = qv_mult(orientation, [0, 0, summed_transform[1]])
+        thing = qv_mult(orientation, [0, 0, summed_transform[2]])
         summed_transform[0] += transformation[0]
-        summed_transform[1] *= transformation[1]
+        summed_transform[1] += transformation[1]
         # print transformation[0]
-        summed_transform[2] += transformation[2]
+        summed_transform[2] *= transformation[2]
         summed_transform[3] += transformation[3]
         # print(thing[1], thing[0])
     else:
@@ -98,10 +99,8 @@ if __name__ == '__main__':
         est_pos.pose.position.x = summed_transform[0]
         est_pos.pose.position.y = summed_transform[1]
         est_pos.pose.position.z = summed_transform[2]
-        rotation = tf.transformations.quaternion_from_euler(0, 0,
-        summed_transform[3])
-        est_pos.pose.orientation.x += rotation[0]
-        est_pos.pose.orientation.y += rotation[1]
-        est_pos.pose.orientation.z += rotation[2]
-        est_pos.pose.orientation.w = 1
+        est_pos.pose.orientation.x = 0
+        est_pos.pose.orientation.y = 0
+        est_pos.pose.orientation.z = 0
+        est_pos.pose.orientation.w = summed_transform[3]
         cmdpub.publish(est_pos)

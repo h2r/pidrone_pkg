@@ -59,17 +59,17 @@ millis = lambda: int(round(time.time() * 1000))
 # 	'alt': 		200/3
 # }
 kp = {
-	'lr': 	450,
-	'fb': 	-450,
+	'lr': 	-450,
+	'fb': 	450,
         
-	'yaw': 		0,
+	'yaw': 		-30000,
 	'alt': 	300,
         'alt_above': 0
 }
 
 ki = {
-	'lr': 	0,
-	'fb':	-0,
+	'lr': 	-0,
+	'fb':	0,
 	'yaw': 		0.0,
 	'alt': 		1.0
 } 
@@ -122,16 +122,18 @@ def pid():
         global sp_global
         global pos_global
         # print pos_global.orientation
-        calced_yaw = -calc_yaw_from_quat((pos_global.orientation.x, pos_global.orientation.y,
-            pos_global.orientation.z, pos_global.orientation.w))
+        #calced_yaw = -calc_yaw_from_quat((pos_global.orientation.x, pos_global.orientation.y,
+        #    pos_global.orientation.z, pos_global.orientation.w))
         
         time.sleep(0.001)
         time_elapsed = millis() - time_prev
         time_prev = millis() 
 
          
-        (sp_global_pitch, sp_global_yaw, sp_global_roll) = tf.transformations.euler_from_quaternion([sp_global.orientation.x, sp_global.orientation.y, sp_global.orientation.z, sp_global.orientation.w])
-        (pos_global_pitch, pos_global_yaw, pos_global_roll) = (0, calced_yaw, 0)
+        (sp_global_pitch, sp_global_yaw, sp_global_roll) =
+        tf.transformations.euler_from_quaternion([sp_global.orientation.x, sp_global.orientation.z, sp_global.orientation.y, sp_global.orientation.w])
+#       (pos_global_pitch, pos_global_yaw, pos_global_roll) = (0, calced_yaw, 0)
+        pos_global_yaw = pos_global.orientation.w
 
         # convert to the quad's frame of reference from the global
         global sp
@@ -142,16 +144,16 @@ def pid():
 
 # The bottom left sin is negative so that we get the negative rotation, since
 # we are converting to relative coordinates later
-        sp['fb'] = math.cos(pos_global_yaw) * sp_global.position.z + math.sin(pos_global_yaw) * sp_global.position.x
-        sp['lr'] = -math.sin(pos_global_yaw) * sp_global.position.z + math.cos(pos_global_yaw) * sp_global.position.x
+        sp['fb'] = math.cos(pos_global_yaw) * sp_global.position.y + math.sin(pos_global_yaw) * sp_global.position.x
+        sp['lr'] = -math.sin(pos_global_yaw) * sp_global.position.y + math.cos(pos_global_yaw) * sp_global.position.x
 
-        pos['fb'] = math.cos(pos_global_yaw) * pos_global.position.z + math.sin(pos_global_yaw) * pos_global.position.x
-        pos['lr'] = -math.sin(pos_global_yaw) * pos_global.position.z + math.cos(pos_global_yaw) * pos_global.position.x
+        pos['fb'] = math.cos(pos_global_yaw) * pos_global.position.y + math.sin(pos_global_yaw) * pos_global.position.x
+        pos['lr'] = -math.sin(pos_global_yaw) * pos_global.position.y + math.cos(pos_global_yaw) * pos_global.position.x
 
         sp['yaw'] = sp_global_yaw - pos_global_yaw
         pos['yaw'] = 0.0
 
-        sp['alt'] = sp_global.position.y - pos_global.position.y
+        sp['alt'] = sp_global.position.z - pos_global.position.z
         pos['alt'] = 0.0
 	# XXX jgo: also it seems like you are setting "sp" yaw and alt relative
 	# to the values held by "pos", and setting "pos" values to 0,

@@ -82,8 +82,11 @@ def att_pub():
         int_pose.position.z = int_pos[2]
         imupub.publish(imu)
         intposepub.publish(int_pose)
-    board.disarm()
-    print("disarming")
+    start_disarm = time.time()
+    while time.time() - start_disarm < 1:
+        board.sendCMD(16, MultiWii.SET_RAW_RC, [1500, 1500, 1000, 1000, 1000,
+        1000, 1000, 1000])
+    time.sleep(2)
 
 def cmd_call(data):
     cmds[0] = data.roll
@@ -102,6 +105,9 @@ if __name__ == "__main__":
         rospy.Subscriber("/pidrone/commands", RC, cmd_call)
         att_pub()
         rospy.spin()
-
+    except KeyboardInterrupt:
+        print 'Disarming.'
+        board.disarm()
+        print 'EXIT'
     except rospy.ROSInterruptException:
         pass
