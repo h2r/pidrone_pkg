@@ -64,6 +64,12 @@ screen -t " git"
 stuff "source setup.sh"
 stuff "cd $(rospack find pidrone_pkg)/"
 
+screen -t " vision"
+stuff "source setup.sh"
+stuff "rosrun pidrone_pkg sub.py"
+
+
+
 screen -t " free"
 stuff "source setup.sh"
 stuff "cd $(rospack find pidrone_pkg)/"
