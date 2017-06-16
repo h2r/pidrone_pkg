@@ -178,7 +178,7 @@ class MultiWii:
             self.attitude['angy']=float(temp[1]/10.0)
             self.attitude['heading']=float(temp[2])
             self.attitude['elapsed']=round(elapsed,3)
-            self.attitude['timestamp']="%0.2f" % (time.time(),) 
+            self.attitude['timestamp']=time.time()
             return self.attitude
         elif code == MultiWii.BOXIDS:
             temp = struct.unpack('<'+'b'*datalength,data)
@@ -195,6 +195,7 @@ class MultiWii:
             self.analog["intPowerMEterSum"] = temp[1]
             self.analog["rssi"] = temp[2]
             self.analog["amperage"] = temp[3]
+            self.analog['timestamp']=time.time()
             return self.analog
         elif code == MultiWii.BOXNAMES:
             print "datalength", datalength
@@ -210,6 +211,7 @@ class MultiWii:
             self.status["sensor"] = temp[2]
             self.status["flag"] = temp[3]
             self.status["global_conf.currentSet"] = temp[4]
+            self.status['timestamp']=time.time()
             return self.status
         elif code == MultiWii.ACC_CALIBRATION:
             print "data", data
@@ -222,6 +224,8 @@ class MultiWii:
             self.ident["multitype"] = temp[1]
             self.ident["msp_version"] = temp[2]
             self.ident["capability"] = temp[3]
+            self.ident['timestamp']=time.time()
+
             return self.ident
         elif code == MultiWii.RC:
             temp = struct.unpack('<'+'hhhhhhhhhhhh',data)
@@ -239,7 +243,7 @@ class MultiWii:
             self.rcChannels['aux7'] = temp[10]
             self.rcChannels['aux8'] = temp[11]
             self.rcChannels['elapsed']=round(elapsed,3)
-            self.rcChannels['timestamp']="%0.2f" % (time.time(),)
+            self.rcChannels['timestamp']=time.time()
             return self.rcChannels
         elif code == MultiWii.RAW_IMU:
 
@@ -252,7 +256,7 @@ class MultiWii:
             self.rawIMU['gy']=float(temp[4])
             self.rawIMU['gz']=float(temp[5])
             self.rawIMU['elapsed']=round(elapsed,3)
-            self.rawIMU['timestamp']="%0.2f" % (time.time(),)
+            self.rawIMU['timestamp']=time.time()
             return self.rawIMU
         elif code == MultiWii.POS_EST:
             temp = struct.unpack('<'+'hhh',data)
@@ -261,7 +265,7 @@ class MultiWii:
             self.posest['y']=float(temp[1])
             self.posest['z']=float(temp[2])
             self.posest['elapsed']=round(elapsed,3)
-            self.posest['timestamp']="%0.2f" % (time.time(),)
+            self.posest['timestamp']=time.time()
             return self.posest
         elif code == MultiWii.MOTOR:
             temp = struct.unpack('<'+'hhhhhhhh',data)
@@ -275,7 +279,7 @@ class MultiWii:
             self.motor['m7']=float(temp[6])
             self.motor['m8']=float(temp[7])
             self.motor['elapsed']="%0.3f" % (elapsed,)
-            self.motor['timestamp']="%0.2f" % (time.time(),)
+            self.motor['timestamp']=time.time()
             return self.motor
         else:
             print "No return error!: %d" % code

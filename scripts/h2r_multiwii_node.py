@@ -17,6 +17,11 @@ import time
 import math
 
 board = MultiWii("/dev/ttyACM0")
+for i in range(200):
+    raw_imu = board.getData(MultiWii.RAW_IMU)
+    print "imu", raw_imu
+    time.sleep(0.01)
+        
 
 cmds = [1500, 1500, 1500, 1000, 1500, 1500, 1500, 1500]
 int_pose = PoseStamped()
@@ -46,6 +51,21 @@ def att_pub():
     prev_time = rospy.Time.now()
     br = tf.TransformBroadcaster()
     seq = 0
+
+    import rospkg
+    import yaml
+    rospack = rospkg.RosPack()
+    path = rospack.get_path('pidrone_pkg')
+    f = open("%s/params/multiwii.yaml" % path)
+    means = yaml.load(f)
+    f.close()
+    print "means", means
+    accRawToMss = 9.8 / means["az"]
+    accZeroX = means["ax"] * accRawToMss
+    accZeroY = means["ay"] * accRawToMss
+    accZeroZ = means["az"] * accRawToMss
+
+    
     while not rospy.is_shutdown():
 
         br.sendTransform((0, 0, 0),
@@ -57,7 +77,7 @@ def att_pub():
         att_data = board.getData(MultiWii.ATTITUDE)
         imu_data = board.getData(MultiWii.RAW_IMU)
         #print cmds[0], cmds[1], cmds[2], cmds[3], att_data
-        #print "imu", imu_data
+        print "imu", imu_data
         board.sendCMD(16, MultiWii.SET_RAW_RC, cmds)
 
 
@@ -77,15 +97,16 @@ def att_pub():
         imu.orientation.y = quaternion[1]
         imu.orientation.z = quaternion[2]
         imu.orientation.w = quaternion[3]
-        imu.linear_acceleration.x = board.rawIMU['ax'] / 52.65
-        imu.linear_acceleration.y = board.rawIMU['ay'] / 52.65
-        imu.linear_acceleration.z = board.rawIMU['az'] / 52.65 - 9.8
+        imu.linear_acceleration.x = board.rawIMU['ax'] * accRawToMss - accZeroX 
+        imu.linear_acceleration.y = board.rawIMU['ay'] * accRawToMss - accZeroY 
+        imu.linear_acceleration.z = board.rawIMU['az'] * accRawToMss - accZeroZ
 
         print "imu", imu.linear_acceleration
 
         # Integrate the things
-        rotated_accel = qv_mult(quaternion, np.array([imu.linear_acceleration.x,
-        imu.linear_acceleration.y, imu.linear_acceleration.z]))
+        #rotated_accel = qv_mult(quaternion, np.array([imu.linear_acceleration.x,
+        #imu.linear_acceleration.y, imu.linear_acceleration.z]))
+        rotated_accel = np.array([imu.linear_acceleration.x, imu.linear_acceleration.y, imu.linear_acceleration.z])
 
         curr_time = rospy.Time.now()
         duration = curr_time - prev_time
