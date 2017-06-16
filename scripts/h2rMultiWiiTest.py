@@ -111,6 +111,7 @@ def calibrate(fname):
     # ignore the first 200 because it takes a while to settle. 
     for i in range(200):
         raw_imu = board.getData(MultiWii.RAW_IMU)
+        time.sleep(0.01)
         print raw_imu
 
 
@@ -118,10 +119,14 @@ def calibrate(fname):
     samples = 0.0
     for i in range(1000):
         raw_imu = board.getData(MultiWii.RAW_IMU)
-        for key, value in raw_imu.iteritems():
-            raw_imu_totals.setdefault(key, 0.0)
-            raw_imu_totals[key] += value
-        samples += 1
+        print raw_imu
+        if raw_imu != None:
+            for key, value in raw_imu.iteritems():
+                raw_imu_totals.setdefault(key, 0.0)
+                raw_imu_totals[key] += value
+            samples += 1
+            time.sleep(0.01)
+
     for key, value in raw_imu_totals.iteritems():
         raw_imu_totals[key] = raw_imu_totals[key] / samples
 

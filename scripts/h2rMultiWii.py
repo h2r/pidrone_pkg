@@ -158,8 +158,11 @@ class MultiWii:
                 print "result", result
                 raise
             else:
-                pass
-            time.sleep(0.01)
+                time.sleep(0.01)
+                #print time.time() - start
+                if time.time() - start > 3:
+                    print "timeout on receiveDataPacket"
+                    return None
         datalengthraw = self.ser.read()
         try:
             datalength = struct.unpack('<b', datalengthraw)[0]
