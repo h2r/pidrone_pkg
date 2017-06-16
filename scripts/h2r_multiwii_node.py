@@ -43,7 +43,7 @@ def att_pub():
     imu = Imu()
     board.arm()
     print("armed")
-    prev_time = millis()
+    prev_time = rospy.Time.now()
     br = tf.TransformBroadcaster()
     seq = 0
     while not rospy.is_shutdown():
@@ -56,7 +56,8 @@ def att_pub():
 
         att_data = board.getData(MultiWii.ATTITUDE)
         imu_data = board.getData(MultiWii.RAW_IMU)
-        print cmds[0], cmds[1], cmds[2], cmds[3], att_data
+        #print cmds[0], cmds[1], cmds[2], cmds[3], att_data
+        #print "imu", imu_data
         board.sendCMD(16, MultiWii.SET_RAW_RC, cmds)
 
 
@@ -78,28 +79,33 @@ def att_pub():
         imu.orientation.w = quaternion[3]
         imu.linear_acceleration.x = board.rawIMU['ax'] / 52.65
         imu.linear_acceleration.y = board.rawIMU['ay'] / 52.65
-        imu.linear_acceleration.z = board.rawIMU['az'] / 52.65
+        imu.linear_acceleration.z = board.rawIMU['az'] / 52.65 - 9.8
 
+        print "imu", imu.linear_acceleration
 
-# Integrate the things
+        # Integrate the things
         rotated_accel = qv_mult(quaternion, np.array([imu.linear_acceleration.x,
         imu.linear_acceleration.y, imu.linear_acceleration.z]))
 
-        curr_time = millis()
+        curr_time = rospy.Time.now()
+        duration = curr_time - prev_time
+        duration_seconds = duration.to_sec()
+        print "duration", duration_seconds
         for i in range(len(int_vel)):
-            int_vel[i] += rotated_accel[i] * (curr_time - prev_time)
-            int_pos[i] += int_vel[i] * (curr_time - prev_time)
+            int_vel[i] += rotated_accel[i] * duration_seconds
+            int_pos[i] += int_vel[i] * duration_seconds
         prev_time = curr_time
         int_pose.header.seq = seq
         seq+=1 
         int_pose.header.stamp = rospy.Time.now()
         int_pose.header.frame_id = "base"
         int_pose.pose.orientation = imu.orientation
-        int_pose.pose.position.x = int_pos[0] / 52.65
-        int_pose.pose.position.y = int_pos[1] / 52.65
-        int_pose.pose.position.z = int_pos[2] / 52.65
+        int_pose.pose.position.x = int_pos[0]
+        int_pose.pose.position.y = int_pos[1]
+        int_pose.pose.position.z = int_pos[2]
         imupub.publish(imu)
         intposepub.publish(int_pose)
+        print "pose", int_pose.pose.position
         rate.sleep()
     board.disarm()
     print("disarming")
