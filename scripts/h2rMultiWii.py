@@ -166,7 +166,7 @@ class MultiWii:
         except:
             print "data length raw", datalengthraw, len(datalengthraw)
             raise
-        code = struct.unpack('<b', self.ser.read())[0]
+        code = struct.unpack('<B', self.ser.read())[0]
         data = self.ser.read(datalength)
         checksum = self.ser.read()
         self.checkChecksum(data, checksum)  # noop now.
@@ -211,6 +211,10 @@ class MultiWii:
             self.status["flag"] = temp[3]
             self.status["global_conf.currentSet"] = temp[4]
             return self.status
+        elif code == MultiWii.ACC_CALIBRATION:
+            print "data", data
+            print "len", len(data)
+
         elif code == MultiWii.IDENT:
             temp = struct.unpack('<'+'BBBI',data)
             self.ident["cmd"] = code

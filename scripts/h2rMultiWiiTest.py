@@ -99,8 +99,17 @@ print board.getData(MultiWii.IDENT)
 print board.getData(MultiWii.MOTOR)
 print board.getData(MultiWii.RAW_IMU)
 
+# Must receive after calibrate.
+#board.sendCMD(0, MultiWii.ACC_CALIBRATION, [])
 #print board.receiveDataPacket()
+
+
 pulseMotor()
+
+#time.sleep(1)
+
+#pulseMotor()
+
 #print "disarm"
 #board.disarm()
 board.close()
