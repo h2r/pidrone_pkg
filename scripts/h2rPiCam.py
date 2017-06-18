@@ -9,9 +9,58 @@ import time
 import time
 import picamera
 import numpy as np
+import io
 
+
+
+
+
+class SplitFrames(object):
+    def __init__(self, width, height):
+        self.stream = io.BytesIO()
+        self.count = 0
+        self.width = width
+        self.height = height
+    def write(self, buf):
+        self.stream.write(buf)
+
+        output = np.empty((self.width * self.height * 3,), dtype=np.uint8)
+        output = output.reshape((self.height, self.width, 3))
+        #print output[0,:,0]
+        cv2.imshow('curr', output)
+        cv2.waitKey(1)
+
+        
 
 def streamPi():
+    width = 320
+    height = 240
+    try:
+        output = SplitFrames(width, height)
+        with picamera.PiCamera(resolution=(width,height), framerate=10) as camera:
+            time.sleep(2)
+            start = time.time()
+            camera.iso = 100
+            time.sleep(2)
+
+            camera.shutter_speed = camera.exposure_speed
+            camera.exposure_mode = 'off'
+            g = camera.awb_gains
+            print "g", g
+            camera.awb_mode = 'off'
+            camera.awb_gains = g
+            
+
+            camera.start_recording(output, format='rgb')
+            camera.wait_recording(30)
+            camera.stop_recording()
+    finally:
+        finish = time.time()
+    print('Sent %d images in %d seconds at %.2ffps' % (
+        output.count, finish-start, output.count / (finish-start)))
+
+                                                                                                                                                                                                                
+def streamPiStill():
     print "making cameraa"
     with picamera.PiCamera() as camera:
         while True:
@@ -28,7 +77,7 @@ def streamPi():
 
 def stream():
     WIDTH = 320
-    HEIGHT = 240
+    HEIGHT = 256
 
     raspividcmd = ['raspivid', '-fps', '20', '-t', '0', '-w', str(WIDTH), '-h',
                    str(HEIGHT), '-r', '-', '--raw-format', 'gray', '-o', '/dev/null', '-n',
@@ -61,8 +110,9 @@ def stream():
 
 
 def main():
-    stream()
+    #stream()
     #streamPi()
+    streamPiStill()
 
 
 if __name__ == "__main__":
