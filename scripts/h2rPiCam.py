@@ -23,10 +23,13 @@ class SplitFrames(object):
         self.height = height
     def write(self, buf):
         self.stream.write(buf)
+        print "buf", len(buf)
 
-        output = np.empty((self.width * self.height * 3,), dtype=np.uint8)
+        #output = np.empty((self.width * self.height * 3,), dtype=np.uint8)
+        output = np.fromstring(buf, dtype=np.uint8)
         output = output.reshape((self.height, self.width, 3))
-        #print output[0,:,0]
+        print output[0,:,0]
+        
         cv2.imshow('curr', output)
         cv2.waitKey(1)
 
@@ -37,18 +40,21 @@ def streamPi():
     height = 240
     try:
         output = SplitFrames(width, height)
-        with picamera.PiCamera(resolution=(width,height), framerate=10) as camera:
+        with picamera.PiCamera(resolution=(width,height), framerate=24) as camera:
             time.sleep(2)
             start = time.time()
-            camera.iso = 100
-            time.sleep(2)
+            #camera.iso = 100
+            #time.sleep(2)
 
-            camera.shutter_speed = camera.exposure_speed
-            camera.exposure_mode = 'off'
+            #camera.shutter_speed = camera.exposure_speed
+            #camera.exposure_mode = 'off'
             g = camera.awb_gains
-            print "g", g
-            camera.awb_mode = 'off'
-            camera.awb_gains = g
+            print "gain", g
+            print "analog gain", camera.analog_gain
+            print "awb", camera.awb_mode
+
+            #camera.awb_mode = 'off'
+            #camera.awb_gains = g
             
 
             camera.start_recording(output, format='rgb')
@@ -111,8 +117,8 @@ def stream():
 
 def main():
     #stream()
-    #streamPi()
-    streamPiStill()
+    streamPi()
+    #streamPiStill()
 
 
 if __name__ == "__main__":
