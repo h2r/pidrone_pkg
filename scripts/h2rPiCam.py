@@ -23,15 +23,17 @@ class SplitFrames(object):
         self.height = height
     def write(self, buf):
         self.stream.write(buf)
-        print "buf", len(buf)
 
         #output = np.empty((self.width * self.height * 3,), dtype=np.uint8)
         output = np.fromstring(buf, dtype=np.uint8)
         output = output.reshape((self.height, self.width, 3))
-        print output[0,:,0]
+        bgr = output[...,::-1]
         
-        cv2.imshow('curr', output)
+        
+
+        cv2.imshow('curr', bgr)
         cv2.waitKey(1)
+        self.count += 1
 
         
 
@@ -58,7 +60,7 @@ def streamPi():
             
 
             camera.start_recording(output, format='rgb')
-            camera.wait_recording(30)
+            camera.wait_recording(10)
             camera.stop_recording()
     finally:
         finish = time.time()
