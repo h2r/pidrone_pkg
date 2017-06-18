@@ -28,10 +28,11 @@ class SplitFrames(object):
         output = np.fromstring(buf, dtype=np.uint8)
         output = output.reshape((self.height, self.width, 3))
         bgr = output[...,::-1]
-        
-        
 
-        cv2.imshow('curr', bgr)
+        
+        gray_image = cv2.cvtColor(bgr, cv2.COLOR_BGR2GRAY)
+        cv2.imshow('color', bgr)
+        cv2.imshow('gray', gray_image)
         cv2.waitKey(1)
         self.count += 1
 
@@ -42,7 +43,7 @@ def streamPi():
     height = 240
     try:
         output = SplitFrames(width, height)
-        with picamera.PiCamera(resolution=(width,height), framerate=24) as camera:
+        with picamera.PiCamera(resolution=(width,height), framerate=15) as camera:
             time.sleep(2)
             start = time.time()
             #camera.iso = 100
@@ -60,7 +61,7 @@ def streamPi():
             
 
             camera.start_recording(output, format='rgb')
-            camera.wait_recording(10)
+            camera.wait_recording(60)
             camera.stop_recording()
     finally:
         finish = time.time()
