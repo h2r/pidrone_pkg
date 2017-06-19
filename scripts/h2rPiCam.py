@@ -32,8 +32,8 @@ class SplitFrames(object):
         bgr = output[...,::-1]
 
         
-        gray_image = cv2.cvtColor(bgr, cv2.COLOR_BGR2GRAY)
-        cv2.imshow('color', bgr)
+        #gray_image = cv2.cvtColor(bgr, cv2.COLOR_BGR2GRAY)
+        #cv2.imshow('color', bgr)
         #cv2.imshow('gray', gray_image)
         #cv2.waitKey(1)
         self.count += 1
@@ -64,10 +64,18 @@ def streamPi():
             from cv_bridge import CvBridge, CvBridgeError
             import rospy
             rospy.init_node('h2rPiCam', anonymous=False)
-            from sensor_msgs.msg import Image
-               
-              
-            image_pub = rospy.Publisher("/pidrone/picamera/image",Image, queue_size=1, tcp_nodelay=False)
+            from sensor_msgs.msg import Image, CameraInfo
+            import camera_info_manager
+            
+            cim = camera_info_manager.CameraInfoManager("picamera", "package://pidrone_pkg/params/picamera.yaml")
+            cim.loadCameraInfo()
+            if not cim.isCalibrated():
+                rospy.logerr("warning, could not find calibration for the camera.")
+            
+            image_pub = rospy.Publisher("/pidrone/picamera/image_raw", Image, queue_size=1, tcp_nodelay=False)
+            #image_mono_pub = rospy.Publisher("/pidrone/picamera/image_mono",Image, queue_size=1, tcp_nodelay=False)
+            camera_info_pub = rospy.Publisher("/pidrone/picamera/camera_info", CameraInfo, queue_size=1, tcp_nodelay=False)
+            
             bridge = CvBridge()
             print "start recording"
             camera.start_recording(output, format='rgb')
@@ -83,8 +91,16 @@ def streamPi():
                     continue
                 #cv2.imshow('color', image)
                 #cv2.waitKey(1)
-                image_message = bridge.cv2_to_imgmsg(image, encoding="passthrough")
+                #image_message = bridge.cv2_to_imgmsg(image, encoding="passthrough")
+                image_message = bridge.cv2_to_imgmsg(image, encoding="bgr8")
                 image_pub.publish(image_message)
+
+                #gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+                #image_mono_message = bridge.cv2_to_imgmsg(gray_image, encoding="mono8")
+                #image_mono_pub.publish(image_mono_message)
+
+                camera_info_pub.publish(cim.getCameraInfo())
+                
                 rate.sleep()
 
             camera.stop_recording()
