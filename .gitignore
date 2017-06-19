@@ -1,0 +1,15 @@
+*.pyc
+*.pyc
+*.aux
+*.bbl
+*.blg
+*.log
+*~
+.*.swp
+*.sw*
+CMakeCache.txt
+CMakeFiles/
+*.out
+*.sv?
+*.sv?
+
