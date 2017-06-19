@@ -14,15 +14,17 @@ import io
 
 
 
-
+import collections
 class SplitFrames(object):
-    def __init__(self, width, height):
+    def __init__(self, width, height, buffersize=50):
         self.stream = io.BytesIO()
         self.count = 0
         self.width = width
         self.height = height
+        self.images = collections.deque(maxlen=buffersize)
+
     def write(self, buf):
-        self.stream.write(buf)
+        #self.stream.write(buf)
 
         #output = np.empty((self.width * self.height * 3,), dtype=np.uint8)
         output = np.fromstring(buf, dtype=np.uint8)
@@ -32,10 +34,10 @@ class SplitFrames(object):
         
         gray_image = cv2.cvtColor(bgr, cv2.COLOR_BGR2GRAY)
         cv2.imshow('color', bgr)
-        cv2.imshow('gray', gray_image)
-        cv2.waitKey(1)
+        #cv2.imshow('gray', gray_image)
+        #cv2.waitKey(1)
         self.count += 1
-
+        self.images.append((time.time(), bgr))
         
 
 def streamPi():
@@ -43,7 +45,7 @@ def streamPi():
     height = 240
     try:
         output = SplitFrames(width, height)
-        with picamera.PiCamera(resolution=(width,height), framerate=15) as camera:
+        with picamera.PiCamera(resolution=(width,height), framerate=120) as camera:
             time.sleep(2)
             start = time.time()
             #camera.iso = 100
@@ -58,15 +60,44 @@ def streamPi():
 
             #camera.awb_mode = 'off'
             #camera.awb_gains = g
-            
 
+            from cv_bridge import CvBridge, CvBridgeError
+            import rospy
+            rospy.init_node('h2rPiCam', anonymous=False)
+            from sensor_msgs.msg import Image
+               
+              
+            image_pub = rospy.Publisher("/pidrone/picamera/image",Image)
+            bridge = CvBridge()
+            print "start recording"
             camera.start_recording(output, format='rgb')
-            camera.wait_recording(60)
+            rate = rospy.Rate(30)
+            rate.sleep()
+            last_ts = None
+            while not rospy.is_shutdown():
+                camera.wait_recording(0)
+                if len(output.images) == 0:
+                    continue
+                ts, image = output.images[-1]
+                if ts == last_ts:
+                    continue
+                #cv2.imshow('color', image)
+                #cv2.waitKey(1)
+                image_message = bridge.cv2_to_imgmsg(image, encoding="passthrough")
+                image_pub.publish(image_message)
+                rate.sleep()
+
             camera.stop_recording()
+            print "stop recording"
+                
     finally:
         finish = time.time()
     print('Sent %d images in %d seconds at %.2ffps' % (
         output.count, finish-start, output.count / (finish-start)))
+    for ts, bgr in output.images:
+        cv2.imshow('color', bgr)
+        #cv2.imshow('gray', gray_image)
+        cv2.waitKey(1)
 
                                                                                                                                                                                                                 
 def streamPiStill():
