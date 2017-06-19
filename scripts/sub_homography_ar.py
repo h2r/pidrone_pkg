@@ -4,6 +4,7 @@ import cv2
 import numpy as np
 import time
 import math
+import copy
 from geometry_msgs.msg import Pose, PoseStamped
 from sensor_msgs.msg import Imu
 import rospy
@@ -15,7 +16,7 @@ from cv2 import aruco
 MIN_MATCH_COUNT = 10
 
 aruco_dict = aruco.Dictionary_get(aruco.DICT_5X5_50) # use the 5x5 dictionary of 50 markers
-markerEdgeLength = 7.391 # the length of the edge of a marker. this is in cm for now
+markerEdgeLength = 15.5 # the length of the edge of a marker. this is in cm for now
 
 # generate aruco markers and save them in the local dir
 #for i in range(5):
@@ -62,7 +63,7 @@ def detectArucoMarker(img):
         #inv_rot[1][1] *= -1
         
         #print t.shape, tvecs.shape
-        ret = np.identity(3),tvecs
+        ret = np.identity(3),np.array([[[0,0,50]]])
         
 
     return ret
@@ -120,7 +121,8 @@ def getRt(img1, img2, kp1, des1):
         retval, Rs, ts, norms = cv2.decomposeHomographyMat(H, cameraMatrix)
 
         R, t, norm = pickHomography(Rs, ts, norms)
-        #t[2] = -t[2]
+        #t[1] *= -1
+        t[0] *= -1
         R[2][0] *= -1
         R[0][2] *= -1
         return R, t, kp2, des2
@@ -130,7 +132,13 @@ def getRt(img1, img2, kp1, des1):
         return None, None, None, None
 
 def move(R0, t0, R, t):
-    t1 = t0 + np.dot(R0.T, t)*t0[2]
+    R_tmp = copy.deepcopy(R0)
+    R_tmp[0][2] *= -1
+    R_tmp[2][0] *= -1
+    R_tmp[1][0] *= -1
+    R_tmp[0][1] *= -1
+    t1 = t0 + np.dot(R_tmp.T, t)*t0[2]
+    
     R1 = np.dot(R ,R0)
 
     return (R1, t1)
@@ -172,9 +180,9 @@ if __name__ == '__main__':
                 big_mat = np.concatenate((big_mat,np.matrix([1,1,1,1])), 0)
                 quat_r = tf.transformations.quaternion_from_matrix(big_mat)
                 
-                est_pos.pose.position.x = 0#est_t[0][0]
-                est_pos.pose.position.y = 0#est_t[1][0]
-                est_pos.pose.position.z = 50#est_t[2][0]
+                est_pos.pose.position.x = est_t[0][0]
+                est_pos.pose.position.y = est_t[1][0]
+                est_pos.pose.position.z = est_t[2][0]
                 est_pos.pose.orientation.x = quat_r[0]
                 est_pos.pose.orientation.y = quat_r[1]
                 est_pos.pose.orientation.z = quat_r[2]
