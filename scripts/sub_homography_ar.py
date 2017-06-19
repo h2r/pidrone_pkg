@@ -55,7 +55,7 @@ def detectArucoMarker(img):
         #rvecs[0][0][2] = rvecs[0][0][2] + 0.5 * np.pi
         rot = cv2.Rodrigues(rvecs)[0]   # get the rotation matrix
         inv_rot = np.transpose(rot)             # invert it
-        #new_translation = np.dot(inv_rot, np.multiply(tvecs[0][0],-1.0))     # apply it to the translation matrix
+        new_translation = np.dot(inv_rot, np.multiply(tvecs[0][0],-1.0))     # apply it to the translation matrix
         #t = np.dot(inv_rot, tvecs)
         #t[0][0] = 0
         #t[0][1] = 0
@@ -63,7 +63,7 @@ def detectArucoMarker(img):
         #inv_rot[1][1] *= -1
         
         #print t.shape, tvecs.shape
-        ret = np.identity(3),np.array([[[0,0,50]]])
+        ret = np.identity(3),np.array([[new_translation]]) #np.array([[[0,0,50]]])
         
 
     return ret
@@ -133,9 +133,9 @@ def getRt(img1, img2, kp1, des1):
 
 def move(R0, t0, R, t):
     R_tmp = copy.deepcopy(R0)
-    R_tmp[0][2] *= -1
+    R_tmp[0][2] *= -1 # fix roll problem
     R_tmp[2][0] *= -1
-    R_tmp[1][0] *= -1
+    R_tmp[1][0] *= -1 # fix yaw problem
     R_tmp[0][1] *= -1
     t1 = t0 + np.dot(R_tmp.T, t)*t0[2]
     

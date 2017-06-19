@@ -59,11 +59,11 @@ millis = lambda: int(round(time.time() * 1000))
 # 	'alt': 		200/3
 # }
 kp = {
-	'lr': 	200,
-	'fb': 	-200,
+	'lr': 0,#	3000,
+	'fb': 0,#	3000,
         
 	'yaw': 		0,
-	'alt': 	700,
+	'alt': 	15,
         'alt_above': 0
 }
 
@@ -71,13 +71,13 @@ ki = {
 	'lr': 	0,
 	'fb':	-0,
 	'yaw': 		0.0,
-	'alt': 		1.0
+	'alt': 		0.01
 } 
 kd = {
-	'lr': 	5000,
-	'fb': 	-5000,
+	'lr': 	0,#5000,
+	'fb': 	0,#5000,
 	'yaw': 		0.0,
-	'alt': 		20000
+	'alt': 		50
 }
 
 
@@ -142,16 +142,16 @@ def pid():
 
 # The bottom left sin is negative so that we get the negative rotation, since
 # we are converting to relative coordinates later
-        sp['fb'] = math.cos(pos_global_yaw) * sp_global.position.z + math.sin(pos_global_yaw) * sp_global.position.x
-        sp['lr'] = -math.sin(pos_global_yaw) * sp_global.position.z + math.cos(pos_global_yaw) * sp_global.position.x
+        sp['fb'] = math.cos(pos_global_yaw) * sp_global.position.y + math.sin(pos_global_yaw) * sp_global.position.x
+        sp['lr'] = -math.sin(pos_global_yaw) * sp_global.position.y + math.cos(pos_global_yaw) * sp_global.position.x
 
-        pos['fb'] = math.cos(pos_global_yaw) * pos_global.position.z + math.sin(pos_global_yaw) * pos_global.position.x
-        pos['lr'] = -math.sin(pos_global_yaw) * pos_global.position.z + math.cos(pos_global_yaw) * pos_global.position.x
+        pos['fb'] = math.cos(pos_global_yaw) * pos_global.position.y + math.sin(pos_global_yaw) * pos_global.position.x
+        pos['lr'] = -math.sin(pos_global_yaw) * pos_global.position.y + math.cos(pos_global_yaw) * pos_global.position.x
 
         sp['yaw'] = sp_global_yaw - pos_global_yaw
         pos['yaw'] = 0.0
 
-        sp['alt'] = sp_global.position.y - pos_global.position.y
+        sp['alt'] = sp_global.position.z - pos_global.position.z
         pos['alt'] = 0.0
 	# XXX jgo: also it seems like you are setting "sp" yaw and alt relative
 	# to the values held by "pos", and setting "pos" values to 0,
@@ -209,8 +209,8 @@ def pid():
         rc.aux2 = 1500
         rc.aux3 = 1500
         rc.aux4 = 1500
-        print Pterm['alt'] * kp['alt'], Dterm['alt'] * kd['alt'], Iterm['alt'] * ki['alt']
-        # print rc.roll, rc.pitch, rc.yaw, rc.throttle
+        #print Pterm['alt'] * kp['alt'], Dterm['alt'] * kd['alt'], Iterm['alt'] * ki['alt']
+        print rc.roll, rc.pitch, rc.yaw, rc.throttle
         #print(str(roll) + "\t" + str(pitch) + "\t" + str(yaw))
         # print pos_global
         cmdpub.publish(rc)
@@ -250,7 +250,7 @@ if __name__ == '__main__':
         global sp_global
         global pos_global
         sp_global = pos_global
-        sp_global.position.y = 1
+        sp_global.position.z = 100
         time.sleep(0.1)
         pid()
         rospy.spin()
