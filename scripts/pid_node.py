@@ -63,7 +63,7 @@ kp = {
 	'fb': 0,#	3000,
         
 	'yaw': 		0,
-	'alt': 	15,
+	'alt': 	5,
         'alt_above': 0
 }
 
@@ -71,13 +71,13 @@ ki = {
 	'lr': 	0,
 	'fb':	-0,
 	'yaw': 		0.0,
-	'alt': 		0.01
+	'alt': 		0.05
 } 
 kd = {
 	'lr': 	0,#5000,
 	'fb': 	0,#5000,
-	'yaw': 		0.0,
-	'alt': 		50
+	'yaw':	0.0,
+	'alt': 	100
 }
 
 
@@ -182,6 +182,8 @@ def pid():
                 # interval in the past. This can be implemented with a ring buffer,
                 # or quickly approximated with an exponential moving average.
                 Iterm[key] += err[key] * time_elapsed
+                if key == 'alt' and Iterm[key] < 0:
+                    Iterm[key] = 0
                 # XXX jgo: the sign of Dterm * kd should act as a viscosity or
                 # resistance term.  if our error goes from 5 to 4, 
                 # then Dterm ~ 4 - 5 = -1; so it looks like kd should be a positive number. 
@@ -191,6 +193,12 @@ def pid():
 
                 if key == 'alt' and Pterm[key] < 0:
                     output[key] = Pterm[key] * kp['alt_above'] + Iterm[key] * ki[key] + Dterm[key] * kd[key]
+                elif key == 'alt':
+                    output[key] = Pterm[key] * kp[key] + Iterm[key] * ki[key] + Dterm[key] * kd[key]
+                    rc.p_alt = Pterm[key] * kp[key]
+                    rc.i_alt = Iterm[key] * ki[key]
+                    rc.d_alt = Dterm[key] * kd[key]
+                    rc.err_alt = err[key] * 10
                 else:
                     output[key] = Pterm[key] * kp[key] + Iterm[key] * ki[key] + Dterm[key] * kd[key]
             old_pos_global = deepcopy(pos_global)
@@ -204,7 +212,7 @@ def pid():
         rc.roll = max(1450, min(1500 + output['lr'] * pwm_scale, 1550))
         rc.pitch = max(1450, min(1500 + output['fb'] * pwm_scale, 1550))
         rc.yaw = max(1000, min(1500 + output['yaw'] * pwm_scale, 2000))
-        rc.throttle = max(1150, min(1200 + output['alt'] * 2/3, 2000))
+        rc.throttle = max(1150, min(1250 + output['alt'], 2000))
         rc.aux1 = 1800
         rc.aux2 = 1500
         rc.aux3 = 1500

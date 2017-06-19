@@ -147,7 +147,7 @@ if __name__ == '__main__':
     cmdpub = rospy.Publisher('/pidrone/est_pos', PoseStamped, queue_size=1)
     rospy.init_node('homography_transform', anonymous=False)
     
-    raspividcmd = ['raspivid', '-fps', '20', '-t', '0', '-w', str(WIDTH), '-h',
+    raspividcmd = ['raspivid', '-fps', '8', '-t', '0', '-w', str(WIDTH), '-h',
     str(HEIGHT), '-r', '-', '--raw-format', 'yuv', '-o', '/dev/null', '-n',
     '-pf', 'baseline', '-drc', 'off', '-ex', 'fixedfps', '-fl']
     stream = sp.Popen(raspividcmd, stdout = sp.PIPE, universal_newlines = True)
@@ -171,6 +171,8 @@ if __name__ == '__main__':
     while True:
         test = stream.stdout.read(WIDTH * HEIGHT + (WIDTH * HEIGHT / 2))[0:WIDTH * HEIGHT]
         curr = np.fromstring(test, dtype=np.uint8).reshape(HEIGHT, WIDTH)
+        cv2.imshow('curr', curr)
+        cv2.waitKey(2)
         if prev is not None and curr is not None:
             R, t, kp1, des1 = getRt(prev, curr, kp1, des1)
             if R is not None:

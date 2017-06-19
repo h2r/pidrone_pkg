@@ -43,37 +43,21 @@ acladd stefie10
 
 screen -t " roscore"
 stuff "source setup.sh"
-stuff "roscore"
+stuff "roscore""
 
 screen -t " multiwii"
 stuff "source setup.sh"
-stuff "rosrun pidrone_pkg h2r_multiwii_node.py"
+stuff "rosrun pidrone_pkg ros_multiwii_node.py"
 
-screen -t " vim"
-stuff "source setup.sh"
-stuff "cd $(rospack find pidrone_pkg)/"
-stuff "vim -p scripts/h2rMultiWii.py"
-
-screen -t " emacs"
+screen -t " PID"
 stuff "source setup.sh"
 stuff "cd $(rospack find pidrone_pkg)"
-stuff "emacs -nw scripts/h2rMultiWii.py"
-
-
-screen -t " git"
-stuff "source setup.sh"
-stuff "cd $(rospack find pidrone_pkg)/"
+stuff "rosrun pidrone_pkg pid_node.py"
 
 screen -t " vision"
 stuff "source setup.sh"
-stuff "rosrun pidrone_pkg sub.py"
-
-
+stuff "rosrun pidrone_pkg sub_homography_ar.py"
 
 screen -t " free"
 stuff "source setup.sh"
-stuff "cd $(rospack find pidrone_pkg)/"
-
-screen -t " free"
-stuff "source setup.sh"
-stuff "cd $(rospack find pidrone_pkg)/"
+stuff "cd $(rospack find pidrone_pkg)/scripts/"
