@@ -67,11 +67,11 @@ def streamPi():
             from sensor_msgs.msg import Image
                
               
-            image_pub = rospy.Publisher("/pidrone/picamera/image",Image)
+            image_pub = rospy.Publisher("/pidrone/picamera/image",Image, queue_size=1, tcp_nodelay=False)
             bridge = CvBridge()
             print "start recording"
             camera.start_recording(output, format='rgb')
-            rate = rospy.Rate(30)
+            rate = rospy.Rate(25)
             rate.sleep()
             last_ts = None
             while not rospy.is_shutdown():
@@ -92,12 +92,12 @@ def streamPi():
                 
     finally:
         finish = time.time()
-    print('Sent %d images in %d seconds at %.2ffps' % (
-        output.count, finish-start, output.count / (finish-start)))
-    for ts, bgr in output.images:
-        cv2.imshow('color', bgr)
-        #cv2.imshow('gray', gray_image)
-        cv2.waitKey(1)
+    #print('Sent %d images in %d seconds at %.2ffps' % (
+    #    output.count, finish-start, output.count / (finish-start)))
+    #for ts, bgr in output.images:
+    #    cv2.imshow('color', bgr)
+    #    #cv2.imshow('gray', gray_image)
+    #    cv2.waitKey(1)
 
                                                                                                                                                                                                                 
 def streamPiStill():
