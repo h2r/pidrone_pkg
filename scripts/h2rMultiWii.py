@@ -50,7 +50,7 @@ class MultiWii:
     SWITCH_RC_SERIAL = 210
     IS_SERIAL = 211
     DEBUG = 254
-
+    EEPROM_WRITE = 250
 
     """Class initialization"""
     def __init__(self, serPort):
@@ -338,3 +338,6 @@ class MultiWii:
 
     def setBoxValues(self, values=(0,7,0,0)):
         self.sendCMD(len(values) * 2, MultiWii.SET_BOX, values)
+
+    def eepromWrite(self):
+        self.sendCMD(0, MultiWii.EEPROM_WRITE, [])

@@ -122,7 +122,10 @@ print "box names"
 print board.getData(MultiWii.BOXNAMES)
 
 
-board.setBoxValues([0,7,0,0])
+#board.setBoxValues([0,7,0,0])
+#board.eepromWrite()
+
+
 #board.setBoxValues([4,7,0,0])
 
 #print "box values"
@@ -133,11 +136,11 @@ board.setBoxValues([0,7,0,0])
 #time.sleep(1)
 
 pulseMotor()
-print "sleeping"
-time.sleep(5)
-print "disarm"
+#print "sleeping"
+#time.sleep(5)
+#print "disarm"
 board.disarm()
-board.close()
+#board.close()
 
 
 
