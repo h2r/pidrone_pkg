@@ -70,7 +70,7 @@ stuff "rosrun pidrone_pkg sub.py"
 
 screen -t " image_proc"
 stuff "source setup.sh"
-stuff "ROS_NAMESPACE=picamera rosrun image_proc image_proc"
+stuff "ROS_NAMESPACE=/pidrone/picamera rosrun image_proc image_proc"
 
 
 screen -t " free"
