@@ -17,10 +17,6 @@ import time
 import math
 
 board = MultiWii("/dev/ttyACM0")
-for i in range(200):
-    raw_imu = board.getData(MultiWii.RAW_IMU)
-    print "imu", raw_imu
-    time.sleep(0.01)
         
 
 cmds = [1500, 1500, 1500, 1000, 1500, 1500, 1500, 1500]
@@ -65,71 +61,73 @@ def att_pub():
     accZeroY = means["ay"] * accRawToMss
     accZeroZ = means["az"] * accRawToMss
 
-    
-    while not rospy.is_shutdown():
+    try: 
+        while not rospy.is_shutdown():
 
-        br.sendTransform((0, 0, 0),
-                         tf.transformations.quaternion_from_euler(0, 0, 1),
-                         rospy.Time.now(),
-                         "world",
-                         "base")
+            br.sendTransform((0, 0, 0),
+                             tf.transformations.quaternion_from_euler(0, 0, 1),
+                             rospy.Time.now(),
+                             "world",
+                             "base")
 
-        att_data = board.getData(MultiWii.ATTITUDE)
-        imu_data = board.getData(MultiWii.RAW_IMU)
-        #print cmds[0], cmds[1], cmds[2], cmds[3], att_data
-        print "imu", imu_data
-        board.sendCMD(16, MultiWii.SET_RAW_RC, cmds)
+            att_data = board.getData(MultiWii.ATTITUDE)
+            imu_data = board.getData(MultiWii.RAW_IMU)
+            #print cmds[0], cmds[1], cmds[2], cmds[3], att_data
+            print "imu", imu_data
+            board.sendCMD(16, MultiWii.SET_RAW_RC, cmds)
 
 
-        # message = "angx = {:+.2f} \t angy = {:+.2f} \t heading = {:+.2f} \t elapsed = {:+.4f} \t".format(float(board.attitude['angx']),float(board.attitude['angy']),float(board.attitude['heading']),float(board.attitude['elapsed']))
-        # stdout.write("\r%s" % message )
-        # stdout.flush()
-        # End of fancy printing
+            # message = "angx = {:+.2f} \t angy = {:+.2f} \t heading = {:+.2f} \t elapsed = {:+.4f} \t".format(float(board.attitude['angx']),float(board.attitude['angy']),float(board.attitude['heading']),float(board.attitude['elapsed']))
+            # stdout.write("\r%s" % message )
+            # stdout.flush()
+            # End of fancy printing
 
-        roll = board.attitude['angx']
-        pitch = board.attitude['angy']
-        yaw = board.attitude['heading']
-        quaternion = tf.transformations.quaternion_from_euler(roll * 2 *
-        math.pi / 360, pitch * 2 * math.pi / 360, 0)
-        # print(roll, pitch, yaw, quaternion)
-        imu.header.frame_id = "base"
-        imu.orientation.x = quaternion[0]
-        imu.orientation.y = quaternion[1]
-        imu.orientation.z = quaternion[2]
-        imu.orientation.w = quaternion[3]
-        imu.linear_acceleration.x = board.rawIMU['ax'] * accRawToMss - accZeroX 
-        imu.linear_acceleration.y = board.rawIMU['ay'] * accRawToMss - accZeroY 
-        imu.linear_acceleration.z = board.rawIMU['az'] * accRawToMss - accZeroZ
+            roll = board.attitude['angx']
+            pitch = board.attitude['angy']
+            yaw = board.attitude['heading']
+            quaternion = tf.transformations.quaternion_from_euler(roll * 2 *
+            math.pi / 360, pitch * 2 * math.pi / 360, 0)
+            # print(roll, pitch, yaw, quaternion)
+            imu.header.frame_id = "base"
+            imu.orientation.x = quaternion[0]
+            imu.orientation.y = quaternion[1]
+            imu.orientation.z = quaternion[2]
+            imu.orientation.w = quaternion[3]
+            imu.linear_acceleration.x = board.rawIMU['ax'] * accRawToMss - accZeroX 
+            imu.linear_acceleration.y = board.rawIMU['ay'] * accRawToMss - accZeroY 
+            imu.linear_acceleration.z = board.rawIMU['az'] * accRawToMss - accZeroZ
 
-        print "imu", imu.linear_acceleration
+            print "imu", imu.linear_acceleration
 
-        # Integrate the things
-        #rotated_accel = qv_mult(quaternion, np.array([imu.linear_acceleration.x,
-        #imu.linear_acceleration.y, imu.linear_acceleration.z]))
-        rotated_accel = np.array([imu.linear_acceleration.x, imu.linear_acceleration.y, imu.linear_acceleration.z])
+            # Integrate the things
+            #rotated_accel = qv_mult(quaternion, np.array([imu.linear_acceleration.x,
+            #imu.linear_acceleration.y, imu.linear_acceleration.z]))
+            rotated_accel = np.array([imu.linear_acceleration.x, imu.linear_acceleration.y, imu.linear_acceleration.z])
 
-        curr_time = rospy.Time.now()
-        duration = curr_time - prev_time
-        duration_seconds = duration.to_sec()
-        print "duration", duration_seconds
-        for i in range(len(int_vel)):
-            int_vel[i] += rotated_accel[i] * duration_seconds
-            int_pos[i] += int_vel[i] * duration_seconds
-        prev_time = curr_time
-        int_pose.header.seq = seq
-        seq+=1 
-        int_pose.header.stamp = rospy.Time.now()
-        int_pose.header.frame_id = "base"
-        int_pose.pose.orientation = imu.orientation
-        int_pose.pose.position.x = int_pos[0]
-        int_pose.pose.position.y = int_pos[1]
-        int_pose.pose.position.z = int_pos[2]
-        imupub.publish(imu)
-        intposepub.publish(int_pose)
-        print "pose", int_pose.pose.position
-        rate.sleep()
-    board.disarm()
-    print("disarming")
+            curr_time = rospy.Time.now()
+            duration = curr_time - prev_time
+            duration_seconds = duration.to_sec()
+            print "duration", duration_seconds
+            for i in range(len(int_vel)):
+                int_vel[i] += rotated_accel[i] * duration_seconds
+                int_pos[i] += int_vel[i] * duration_seconds
+            prev_time = curr_time
+            int_pose.header.seq = seq
+            seq+=1 
+            int_pose.header.stamp = rospy.Time.now()
+            int_pose.header.frame_id = "base"
+            int_pose.pose.orientation = imu.orientation
+            int_pose.pose.position.x = int_pos[0]
+            int_pose.pose.position.y = int_pos[1]
+            int_pose.pose.position.z = int_pos[2]
+            imupub.publish(imu)
+            intposepub.publish(int_pose)
+            print "pose", int_pose.pose.position
+            rate.sleep()
+    finally:
+        print "disarming"
+        board.disarm()
+
 
 def cmd_call(data):
     cmds[0] = data.roll

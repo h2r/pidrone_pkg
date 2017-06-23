@@ -70,12 +70,13 @@ time.sleep(0.1)
 def pulseMotor():
     print board.getData(MultiWii.MOTOR)
     print "arm"
-    for i in range(10):
-        board.sendCMD(16,MultiWii.SET_RAW_RC, [1500, 1500, 1500, 988, 
-                                               2000, 1500, 1500, 1500])
-        time.sleep(0.01)
+    board.arm()
+    # for i in range(10):
+    #     board.sendCMD(16,MultiWii.SET_RAW_RC, [1500, 1500, 1500, 988, 
+    #                                            2000, 1500, 1500, 1500])
+    #     time.sleep(0.01)
 
-    time.sleep(0.5)
+    # time.sleep(0.5)
     print board.getData(MultiWii.MOTOR)
     print "power up"
     for i in range(10):
@@ -86,13 +87,14 @@ def pulseMotor():
 
     time.sleep(1)
     print board.getData(MultiWii.MOTOR)
-    print "power down"
-    for i in range(20):
-        board.sendCMD(16,MultiWii.SET_RAW_RC, [1500, 1500, 1500, 988, 
-                                               1500, 1500, 1500, 1500])
-        time.sleep(0.01)
+    board.disarm()
+    # print "power down"
+    # for i in range(20):
+    #     board.sendCMD(16,MultiWii.SET_RAW_RC, [1500, 1500, 1500, 988, 
+    #                                            1500, 1500, 1500, 1500])
+    #     time.sleep(0.01)
 
-    time.sleep(0.5)
+    # time.sleep(0.5)
     print board.getData(MultiWii.MOTOR)
 
 print board.getData(MultiWii.IDENT)
@@ -120,7 +122,7 @@ print "box names"
 print board.getData(MultiWii.BOXNAMES)
 
 
-#board.setBoxValues([4,7,7,0])
+board.setBoxValues([0,7,0,0])
 #board.setBoxValues([4,7,0,0])
 
 #print "box values"
@@ -130,10 +132,11 @@ print board.getData(MultiWii.BOXNAMES)
 
 #time.sleep(1)
 
-#pulseMotor()
-
-#print "disarm"
-#board.disarm()
+pulseMotor()
+print "sleeping"
+time.sleep(5)
+print "disarm"
+board.disarm()
 board.close()
 
 

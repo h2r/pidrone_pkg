@@ -336,5 +336,5 @@ class MultiWii:
         yaml.dump(raw_imu_totals, f)
         f.close()
 
-    def setBoxValues(self, values):
+    def setBoxValues(self, values=(0,7,0,0)):
         self.sendCMD(len(values) * 2, MultiWii.SET_BOX, values)
