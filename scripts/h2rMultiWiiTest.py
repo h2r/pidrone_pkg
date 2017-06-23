@@ -121,12 +121,12 @@ print board.getData(MultiWii.BOXNAMES)
 
 
 #board.setBoxValues([4,7,7,0])
-board.setBoxValues([4,7,0,0])
+#board.setBoxValues([4,7,0,0])
 
-print "box values"
-print board.getData(MultiWii.BOX)
+#print "box values"
+#print board.getData(MultiWii.BOX)
 
-pulseMotor()
+#pulseMotor()
 
 #time.sleep(1)
 
