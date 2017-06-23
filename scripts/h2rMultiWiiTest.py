@@ -101,50 +101,32 @@ print board.getData(MultiWii.RAW_IMU)
 
 
 # Must receive after calibrate.
-"""
-Calibrate the IMU and write outputs to a config file. 
-"""
-def calibrate(fname):
-    board.sendCMD(0, MultiWii.ACC_CALIBRATION, [])
-    print board.receiveDataPacket()
-
-    # ignore the first 200 because it takes a while to settle. 
-    for i in range(200):
-        raw_imu = board.getData(MultiWii.RAW_IMU)
-        time.sleep(0.01)
-        print raw_imu
-
-
-    raw_imu_totals = {}
-    samples = 0.0
-    for i in range(1000):
-        raw_imu = board.getData(MultiWii.RAW_IMU)
-        print raw_imu
-        if raw_imu != None:
-            for key, value in raw_imu.iteritems():
-                raw_imu_totals.setdefault(key, 0.0)
-                raw_imu_totals[key] += value
-            samples += 1
-            time.sleep(0.01)
-
-    for key, value in raw_imu_totals.iteritems():
-        raw_imu_totals[key] = raw_imu_totals[key] / samples
-
-    print raw_imu_totals
-
-    import yaml
-    f = open(fname, "w")
-    yaml.dump(raw_imu_totals, f)
-    f.close()
-
 
 import rospkg
 rospack = rospkg.RosPack()
 path = rospack.get_path('pidrone_pkg')
   
-calibrate("%s/params/multiwii.yaml" % path)
+#board.calibrate("%s/params/multiwii.yaml" % path)
+board.arm()
 
-#pulseMotor()
+
+print "box ids"
+print board.getData(MultiWii.BOXIDS)
+
+print "box values"
+print board.getData(MultiWii.BOX)
+
+print "box names"
+print board.getData(MultiWii.BOXNAMES)
+
+
+#board.setBoxValues([4,7,7,0])
+board.setBoxValues([4,7,0,0])
+
+print "box values"
+print board.getData(MultiWii.BOX)
+
+pulseMotor()
 
 #time.sleep(1)
 
