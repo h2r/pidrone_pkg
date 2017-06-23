@@ -48,6 +48,7 @@ def streamPi():
         with picamera.PiCamera(resolution=(width,height), framerate=120) as camera:
             time.sleep(2)
             start = time.time()
+            print "zoom", camera.zoom
             #camera.iso = 100
             #time.sleep(2)
 
