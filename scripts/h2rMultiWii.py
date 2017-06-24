@@ -55,13 +55,12 @@ class MultiWii:
     EEPROM_WRITE = 250
 
     SEND_ZERO_STRUCT1 = struct.Struct('<2B%dh' % 0)
-    SEND_ZERO_STRUCT2 = struct.Struct('<3c2B%dhB' % 0)
 
     SEND_EIGHT_STRUCT1 = struct.Struct('<2B%dh' % 8)
-    SEND_EIGHT_STRUCT2 = struct.Struct('<3c2B%dhB' % 8)
+
     footerS = struct.Struct('B')
     emptyString = ""
-
+    headerString = "$M<"
 
     """Class initialization"""
     def __init__(self, serPort):
@@ -97,45 +96,22 @@ class MultiWii:
     """Function for sending a command to the board"""
     def sendCMD(self, data_length, code, data):
 
-        #total_data = ['$', 'M', '<', data_length, code]
-        #total_data.extend(data)
         dl = len(data)
         if dl == 0:
             s1 = MultiWii.SEND_ZERO_STRUCT1
-            s2 = MultiWii.SEND_ZERO_STRUCT2
         elif dl == 8:
             s1 = MultiWii.SEND_EIGHT_STRUCT1
-            s2 = MultiWii.SEND_EIGHT_STRUCT2
         else:
             s1 = struct.Struct('<2B%dh' % len(data))
-            s2 = struct.Struct('<3c2B%dhB' % len(data))
 
-        packed = [data_length, code]
-        packed.extend(data)
-        dataString = s1.pack(*packed)
+        dataString = s1.pack(data_length, code, *data)
 
 
         b = np.fromstring(dataString, dtype=np.uint8)
         checksum = np.bitwise_xor.accumulate(b)[-1]
         footerString = MultiWii.footerS.pack(checksum)
         
-        try:
-            b = 0
-            #headerString = headerS.pack(total_data[0:3])
-            headerString = "$M<"
-
-            #data = s2.pack(*total_data)
-            #assert data == "".join([headerString, dataString, footerString])
-            b += self.ser.write(MultiWii.emptyString.join((headerString, dataString, footerString, "\n")))
-            #b += self.ser.write(headerString +  dataString + footerString + "\n")
-            #b += self.ser.write(dataString)
-            #b += self.ser.write(footerString)
-            #self.ser.write("\n") # flush buffers all the way through.
-        except Exception, error:
-            print "\n\nError in sendCMD."
-            print "("+str(error)+")\n\n"
-            raise
-            pass
+        self.ser.write(MultiWii.emptyString.join((MultiWii.headerString, dataString, footerString, "\n")))
 
 
 
