@@ -54,6 +54,15 @@ class MultiWii:
     DEBUG = 254
     EEPROM_WRITE = 250
 
+    SEND_ZERO_STRUCT1 = struct.Struct('<2B%dh' % 0)
+    SEND_ZERO_STRUCT2 = struct.Struct('<3c2B%dhB' % 0)
+
+    SEND_EIGHT_STRUCT1 = struct.Struct('<2B%dh' % 8)
+    SEND_EIGHT_STRUCT2 = struct.Struct('<3c2B%dhB' % 8)
+    footerS = struct.Struct('B')
+    emptyString = ""
+
+
     """Class initialization"""
     def __init__(self, serPort):
 
@@ -87,6 +96,51 @@ class MultiWii:
 
     """Function for sending a command to the board"""
     def sendCMD(self, data_length, code, data):
+
+        #total_data = ['$', 'M', '<', data_length, code]
+        #total_data.extend(data)
+        dl = len(data)
+        if dl == 0:
+            s1 = MultiWii.SEND_ZERO_STRUCT1
+            s2 = MultiWii.SEND_ZERO_STRUCT2
+        elif dl == 8:
+            s1 = MultiWii.SEND_EIGHT_STRUCT1
+            s2 = MultiWii.SEND_EIGHT_STRUCT2
+        else:
+            s1 = struct.Struct('<2B%dh' % len(data))
+            s2 = struct.Struct('<3c2B%dhB' % len(data))
+
+        packed = [data_length, code]
+        packed.extend(data)
+        dataString = s1.pack(*packed)
+
+        checksum = 0
+        for i in dataString:
+            checksum = checksum ^ ord(i)
+        footerString = MultiWii.footerS.pack(checksum)
+        
+        try:
+            b = 0
+            #headerString = headerS.pack(total_data[0:3])
+            headerString = "$M<"
+
+            #data = s2.pack(*total_data)
+            #assert data == "".join([headerString, dataString, footerString])
+            #b += self.ser.write(MultiWii.emptyString.join((headerString, dataString, footerString, "\n")))
+            b += self.ser.write(headerString +  dataString + footerString + "\n")
+            #b += self.ser.write(dataString)
+            #b += self.ser.write(footerString)
+            #self.ser.write("\n") # flush buffers all the way through.
+        except Exception, error:
+            print "\n\nError in sendCMD."
+            print "("+str(error)+")\n\n"
+            raise
+            pass
+
+
+
+    """Function for sending a command to the board"""
+    def sendCMDOld(self, data_length, code, data):
         checksum = 0
         total_data = ['$', 'M', '<', data_length, code] + data
         for i in struct.pack('<2B%dh' % len(data), *total_data[3:len(total_data)]):
@@ -104,6 +158,7 @@ class MultiWii:
             print "("+str(error)+")\n\n"
             raise
             pass
+
 
 
     """Function to arm / disarm """
