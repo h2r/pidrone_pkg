@@ -40,7 +40,7 @@ def att_pub():
     global cmds
     imupub = rospy.Publisher('/pidrone/imu', Imu, queue_size=1, tcp_nodelay=False)
     intposepub = rospy.Publisher('/pidrone/int_pose', PoseStamped, queue_size=1, tcp_nodelay=False)
-    rate = rospy.Rate(300)
+    rate = rospy.Rate(100)
     imu = Imu()
     board.arm()
     print("armed")
@@ -64,14 +64,27 @@ def att_pub():
     try:
         att_data = board.getData(MultiWii.ATTITUDE)
         imu_data = board.getData(MultiWii.RAW_IMU)
+        #board.sendCMD(0, MultiWii.ATTITUDE, [])
+        #board.sendCMD(0, MultiWii.RAW_IMU, [])
 
         while not rospy.is_shutdown():
 
+            att_data, imu_data = board.getDataBulk([
+                (MultiWii.ATTITUDE, []),
+                (MultiWii.RAW_IMU, []),
+            ])
+
+            #att_data = board.receiveDataPacket()
+            #imu_data = board.receiveDataPacket()
+            #board.sendCMD(0, MultiWii.ATTITUDE, [])
+            #board.sendCMD(0, MultiWii.RAW_IMU, [])
+
+            
             #att_data = board.getData(MultiWii.ATTITUDE)
-            imu_data = board.getData(MultiWii.RAW_IMU)
+            #imu_data = board.getData(MultiWii.RAW_IMU, fast=True)
             #print cmds[0], cmds[1], cmds[2], cmds[3], att_data
             #print "imu", imu_data
-            #board.sendCMD(16, MultiWii.SET_RAW_RC, cmds)
+            board.sendCMD(16, MultiWii.SET_RAW_RC, cmds)
 
 
             # message = "angx = {:+.2f} \t angy = {:+.2f} \t heading = {:+.2f} \t elapsed = {:+.4f} \t".format(float(board.attitude['angx']),float(board.attitude['angy']),float(board.attitude['heading']),float(board.attitude['elapsed']))

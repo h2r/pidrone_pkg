@@ -148,49 +148,45 @@ class MultiWii:
 
     """Function to receive a data packet from the board"""
     def getData(self, cmd):
-        try:
-            self.sendCMD(0,cmd,[])
-            return self.receiveDataPacket()
-        except Exception, error:
-            print error
-            raise
-            pass
+        self.sendCMD(0,cmd,[])
+        return self.receiveDataPacket()
+
+    """ Sends a request for N commands from the board. """
+    def getDataBulk(self, cmds):
+        for c, args in cmds:
+            self.sendCMD(0, c, args)
+        result = []
+        for c, args in cmds:
+            result.append(self.receiveDataPacket())
+        return result
+            
 
     def receiveDataPacket(self):
         start = time.time()
-        while True:
-            header = self.ser.read()
-            if header == '$':
-                header = header+self.ser.read(2)
-                break
-            elif header != '':
-                print "IGNORING HEADER: '%s'" % header
-                result = struct.unpack('<B', header), 
-                print "result", result
-                raise
-            else:
-                print "timeout on receiveDataPacket"
-                return None
-        datalengthraw = self.ser.read()
-        try:
-            datalength = MultiWii.codeS.unpack(datalengthraw)[0]
-        except:
-            print "data length raw", datalengthraw, len(datalengthraw)
+
+        header = self.ser.read(5)
+        if len(header) == 0:
+            print "timeout on receiveDataPacket"
+            return None
+        elif header[0] != '$':
+            print "Didn't get valid header: ", header
             raise
-        code = MultiWii.codeS.unpack(self.ser.read())[0]
+
+        datalength = MultiWii.codeS.unpack(header[-2])[0]
+        code = MultiWii.codeS.unpack(header[-1])[0]
         data = self.ser.read(datalength)
         checksum = self.ser.read()
         self.checkChecksum(data, checksum)  # noop now.
         readTime = time.time()
         elapsed = readTime - start
         if code == MultiWii.ATTITUDE:
-            temp = MultiWii.ATTITUDE_STRUCT.unpack(data)
-            self.attitude['cmd'] = code
-            self.attitude['angx']= temp[0]/10.0
-            self.attitude['angy']= temp[1]/10.0
-            self.attitude['heading']= temp[2]
-            self.attitude['elapsed']= elapsed
-            self.attitude['timestamp']= readTime
+            # temp = MultiWii.ATTITUDE_STRUCT.unpack(data)
+            # self.attitude['cmd'] = code
+            # self.attitude['angx']= temp[0]/10.0
+            # self.attitude['angy']= temp[1]/10.0
+            # self.attitude['heading']= temp[2]
+            # self.attitude['elapsed']= elapsed
+            # self.attitude['timestamp']= readTime
             return self.attitude
         elif code == MultiWii.BOXIDS:
             temp = struct.unpack('<'+'b'*datalength,data)
