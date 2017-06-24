@@ -93,7 +93,7 @@ class MultiWii:
                                  writeTimeout=2,
                              )
 
-    """Function for sending a command to the board"""
+    """Function for sending a command to the board."""
     def sendCMD(self, data_length, code, data):
 
         dl = len(data)
@@ -107,7 +107,7 @@ class MultiWii:
         dataString = s1.pack(data_length, code, *data)
 
 
-        b = np.fromstring(dataString, dtype=np.uint8)
+        b = np.frombuffer(dataString, dtype=np.uint8)
         checksum = np.bitwise_xor.accumulate(b)[-1]
         footerString = MultiWii.footerS.pack(checksum)
         
