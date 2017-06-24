@@ -108,7 +108,7 @@ import rospkg
 rospack = rospkg.RosPack()
 path = rospack.get_path('pidrone_pkg')
   
-#board.calibrate("%s/params/multiwii.yaml" % path)
+board.calibrate("%s/params/multiwii.yaml" % path)
 board.arm()
 
 

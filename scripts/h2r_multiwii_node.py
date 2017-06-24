@@ -67,11 +67,11 @@ def att_pub():
 
         while not rospy.is_shutdown():
 
-            att_data = board.getData(MultiWii.ATTITUDE, fast=True)
+            #att_data = board.getData(MultiWii.ATTITUDE)
             imu_data = board.getData(MultiWii.RAW_IMU)
             #print cmds[0], cmds[1], cmds[2], cmds[3], att_data
             #print "imu", imu_data
-            board.sendCMD(16, MultiWii.SET_RAW_RC, cmds)
+            #board.sendCMD(16, MultiWii.SET_RAW_RC, cmds)
 
 
             # message = "angx = {:+.2f} \t angy = {:+.2f} \t heading = {:+.2f} \t elapsed = {:+.4f} \t".format(float(board.attitude['angx']),float(board.attitude['angy']),float(board.attitude['heading']),float(board.attitude['elapsed']))
