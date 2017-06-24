@@ -9,7 +9,7 @@ __license__ = "GPL"
 __version__ = "1.5"
 
 import serial, time, struct
-
+import numpy as np
 
 class MultiWii:
 
@@ -114,9 +114,9 @@ class MultiWii:
         packed.extend(data)
         dataString = s1.pack(*packed)
 
-        checksum = 0
-        for i in dataString:
-            checksum = checksum ^ ord(i)
+
+        b = np.fromstring(dataString, dtype=np.uint8)
+        checksum = np.bitwise_xor.accumulate(b)[-1]
         footerString = MultiWii.footerS.pack(checksum)
         
         try:
@@ -126,8 +126,8 @@ class MultiWii:
 
             #data = s2.pack(*total_data)
             #assert data == "".join([headerString, dataString, footerString])
-            #b += self.ser.write(MultiWii.emptyString.join((headerString, dataString, footerString, "\n")))
-            b += self.ser.write(headerString +  dataString + footerString + "\n")
+            b += self.ser.write(MultiWii.emptyString.join((headerString, dataString, footerString, "\n")))
+            #b += self.ser.write(headerString +  dataString + footerString + "\n")
             #b += self.ser.write(dataString)
             #b += self.ser.write(footerString)
             #self.ser.write("\n") # flush buffers all the way through.
