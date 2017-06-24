@@ -38,8 +38,8 @@ def qv_mult(q1, v1):
 
 def att_pub():
     global cmds
-    imupub = rospy.Publisher('/pidrone/imu', Imu, queue_size=1)
-    intposepub = rospy.Publisher('/pidrone/int_pose', PoseStamped, queue_size=1)
+    imupub = rospy.Publisher('/pidrone/imu', Imu, queue_size=1, tcp_nodelay=False)
+    intposepub = rospy.Publisher('/pidrone/int_pose', PoseStamped, queue_size=1, tcp_nodelay=False)
     rate = rospy.Rate(300)
     imu = Imu()
     board.arm()
@@ -61,19 +61,16 @@ def att_pub():
     accZeroY = means["ay"] * accRawToMss
     accZeroZ = means["az"] * accRawToMss
 
-    try: 
+    try:
+        att_data = board.getData(MultiWii.ATTITUDE)
+        imu_data = board.getData(MultiWii.RAW_IMU)
+
         while not rospy.is_shutdown():
 
-            br.sendTransform((0, 0, 0),
-                             tf.transformations.quaternion_from_euler(0, 0, 1),
-                             rospy.Time.now(),
-                             "world",
-                             "base")
-
-            att_data = board.getData(MultiWii.ATTITUDE)
+            att_data = board.getData(MultiWii.ATTITUDE, fast=True)
             imu_data = board.getData(MultiWii.RAW_IMU)
             #print cmds[0], cmds[1], cmds[2], cmds[3], att_data
-            print "imu", imu_data
+            #print "imu", imu_data
             board.sendCMD(16, MultiWii.SET_RAW_RC, cmds)
 
 
@@ -85,8 +82,7 @@ def att_pub():
             roll = board.attitude['angx']
             pitch = board.attitude['angy']
             yaw = board.attitude['heading']
-            quaternion = tf.transformations.quaternion_from_euler(roll * 2 *
-            math.pi / 360, pitch * 2 * math.pi / 360, 0)
+            quaternion = tf.transformations.quaternion_from_euler(roll * 2 * math.pi / 360, pitch * 2 * math.pi / 360, 0)
             # print(roll, pitch, yaw, quaternion)
             imu.header.frame_id = "base"
             imu.orientation.x = quaternion[0]
@@ -96,8 +92,9 @@ def att_pub():
             imu.linear_acceleration.x = board.rawIMU['ax'] * accRawToMss - accZeroX 
             imu.linear_acceleration.y = board.rawIMU['ay'] * accRawToMss - accZeroY 
             imu.linear_acceleration.z = board.rawIMU['az'] * accRawToMss - accZeroZ
-
-            print "imu", imu.linear_acceleration
+            imupub.publish(imu)
+            
+            #print "imu", imu.linear_acceleration
 
             # Integrate the things
             #rotated_accel = qv_mult(quaternion, np.array([imu.linear_acceleration.x,
@@ -107,22 +104,22 @@ def att_pub():
             curr_time = rospy.Time.now()
             duration = curr_time - prev_time
             duration_seconds = duration.to_sec()
-            print "duration", duration_seconds
+            #print "duration", duration_seconds
             for i in range(len(int_vel)):
                 int_vel[i] += rotated_accel[i] * duration_seconds
                 int_pos[i] += int_vel[i] * duration_seconds
             prev_time = curr_time
             int_pose.header.seq = seq
             seq+=1 
-            int_pose.header.stamp = rospy.Time.now()
+            int_pose.header.stamp = curr_time
             int_pose.header.frame_id = "base"
             int_pose.pose.orientation = imu.orientation
             int_pose.pose.position.x = int_pos[0]
             int_pose.pose.position.y = int_pos[1]
             int_pose.pose.position.z = int_pos[2]
-            imupub.publish(imu)
+            
             intposepub.publish(int_pose)
-            print "pose", int_pose.pose.position
+            #print "pose", int_pose.pose.position
             rate.sleep()
     finally:
         print "disarming"

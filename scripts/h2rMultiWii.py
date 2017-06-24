@@ -18,6 +18,7 @@ class MultiWii:
     IDENT = 100
     STATUS = 101
     RAW_IMU = 102
+    RAW_IMU_STRUCT = struct.Struct('<hhhhhhhhh')
     POS_EST = 123
     SERVO = 103
     MOTOR = 104
@@ -25,6 +26,7 @@ class MultiWii:
     RAW_GPS = 106
     COMP_GPS = 107
     ATTITUDE = 108
+    ATTITUDE_STRUCT = struct.Struct('<hhh')
     ALTITUDE = 109
     ANALOG = 110
     RC_TUNING = 111
@@ -76,7 +78,7 @@ class MultiWii:
                                  bytesize=serial.EIGHTBITS,
                                  parity=serial.PARITY_NONE,
                                  stopbits=serial.STOPBITS_ONE,
-                                 timeout=0,
+                                 timeout=1,
                                  xonxoff=False,
                                  rtscts=False,
                                  dsrdtr=False,
@@ -96,7 +98,7 @@ class MultiWii:
             b = self.ser.write(data)
             self.ser.write("\n") # flush buffers all the way through.
             assert b == len(data)
-            self.ser.flush()
+            #self.ser.flush()
         except Exception, error:
             print "\n\nError in sendCMD."
             print "("+str(error)+")\n\n"
@@ -136,16 +138,16 @@ class MultiWii:
             start =  time.time()
 
     """Function to receive a data packet from the board"""
-    def getData(self, cmd):
+    def getData(self, cmd, fast=False):
         try:
             self.sendCMD(0,cmd,[])
-            return self.receiveDataPacket()
+            return self.receiveDataPacket(fast=fast)
         except Exception, error:
             print error
             raise
             pass
 
-    def receiveDataPacket(self):
+    def receiveDataPacket(self, fast=False):
         start = time.time()
         while True:
             header = self.ser.read()
@@ -158,11 +160,8 @@ class MultiWii:
                 print "result", result
                 raise
             else:
-                time.sleep(0.01)
-                #print time.time() - start
-                if time.time() - start > 3:
-                    print "timeout on receiveDataPacket"
-                    return None
+                print "timeout on receiveDataPacket"
+                return None
         datalengthraw = self.ser.read()
         try:
             datalength = struct.unpack('<b', datalengthraw)[0]
@@ -175,7 +174,7 @@ class MultiWii:
         self.checkChecksum(data, checksum)  # noop now.
         elapsed = time.time() - start
         if code == MultiWii.ATTITUDE:
-            temp = struct.unpack('<'+'hhh',data)
+            temp = MultiWii.ATTITUDE_STRUCT.unpack(data)
             self.attitude["cmd"] = code
             self.attitude['angx']=float(temp[0]/10.0)
             self.attitude['angy']=float(temp[1]/10.0)
@@ -252,8 +251,7 @@ class MultiWii:
             self.rcChannels['timestamp']=time.time()
             return self.rcChannels
         elif code == MultiWii.RAW_IMU:
-
-            temp = struct.unpack('<'+'hhhhhhhhh',data)
+            temp = MultiWii.RAW_IMU_STRUCT.unpack(data)
             self.rawIMU["cmd"] = code
             self.rawIMU['ax']=float(temp[0])
             self.rawIMU['ay']=float(temp[1])

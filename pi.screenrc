@@ -73,6 +73,11 @@ stuff "source setup.sh"
 stuff "ROS_NAMESPACE=/pidrone/picamera rosrun image_proc image_proc"
 
 
+screen -t " rosbridge"
+stuff "source setup.sh"
+stuff "roslaunch rosbridge_server rosbridge_websocket.launch"
+
+
 screen -t " free"
 stuff "source setup.sh"
 stuff "cd $(rospack find pidrone_pkg)/"
