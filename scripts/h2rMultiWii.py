@@ -180,13 +180,13 @@ class MultiWii:
         readTime = time.time()
         elapsed = readTime - start
         if code == MultiWii.ATTITUDE:
-            # temp = MultiWii.ATTITUDE_STRUCT.unpack(data)
-            # self.attitude['cmd'] = code
-            # self.attitude['angx']= temp[0]/10.0
-            # self.attitude['angy']= temp[1]/10.0
-            # self.attitude['heading']= temp[2]
-            # self.attitude['elapsed']= elapsed
-            # self.attitude['timestamp']= readTime
+            temp = MultiWii.ATTITUDE_STRUCT.unpack(data)
+            self.attitude['cmd'] = code
+            self.attitude['angx']= temp[0]/10.0
+            self.attitude['angy']= temp[1]/10.0
+            self.attitude['heading']= temp[2]
+            self.attitude['elapsed']= elapsed
+            self.attitude['timestamp']= readTime
             return self.attitude
         elif code == MultiWii.BOXIDS:
             temp = struct.unpack('<'+'b'*datalength,data)
