@@ -7,7 +7,7 @@ from h2rMultiWii import MultiWii
 
 
 from sys import stdout
-from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import PoseStamped, Point
 from sensor_msgs.msg import Imu
 from pidrone_pkg.msg import RC
 import sys
@@ -15,6 +15,7 @@ import tf
 import numpy as np
 import time
 import math
+from visualization_msgs.msg import Marker
 
 board = MultiWii("/dev/ttyACM0")
         
@@ -40,8 +41,11 @@ def att_pub():
     global cmds
     imupub = rospy.Publisher('/pidrone/imu', Imu, queue_size=1, tcp_nodelay=False)
     intposepub = rospy.Publisher('/pidrone/int_pose', PoseStamped, queue_size=1, tcp_nodelay=False)
+    markerpub = rospy.Publisher('/pidrone/imu_visualization_marker', Marker, queue_size=1, tcp_nodelay=False)
+
     rate = rospy.Rate(100)
     imu = Imu()
+    marker = Marker()
     board.arm()
     print("armed")
     prev_time = rospy.Time.now()
@@ -106,6 +110,31 @@ def att_pub():
             imu.linear_acceleration.y = board.rawIMU['ay'] * accRawToMss - accZeroY 
             imu.linear_acceleration.z = board.rawIMU['az'] * accRawToMss - accZeroZ
             imupub.publish(imu)
+
+            marker.header.stamp = rospy.Time.now()
+            marker.header.frame_id = "/base"
+            marker.type = Marker.CUBE
+            marker.action = 0
+            marker.pose.orientation = imu.orientation
+            marker.pose.position.x = imu.linear_acceleration.x * 0.1
+            marker.pose.position.y = imu.linear_acceleration.y * 0.1
+            marker.pose.position.z = imu.linear_acceleration.z * 0.1
+            #marker.points.append(Point(0, 0, 0))
+            #marker.points.append(Point(imu.linear_acceleration.x * 1,
+            #                           imu.linear_acceleration.y * 1,
+            #                           imu.linear_acceleration.z * 1))
+
+
+            marker.id = 0
+            marker.lifetime = rospy.Duration(10)
+            marker.scale.x = 0.1
+            marker.scale.y = 0.1
+            marker.scale.z = 0.1
+            marker.color.r = 1
+            marker.color.g = 1
+            marker.color.b = 1
+            marker.color.a = 1
+            markerpub.publish(marker)
             
             #print "imu", imu.linear_acceleration
 
