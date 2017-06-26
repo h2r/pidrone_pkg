@@ -37,47 +37,26 @@ def calc_roll_pitch_from_theta(Fx, Fz, theta):
 
 millis = lambda: int(round(time.time() * 1000))
 
-# kp = {
-# 	'lr': 	-200,
-# 	'fb': 	200,
-#         
-# 	'yaw': 		0,
-# 	'alt': 	30,
-#         'alt_above': 0
-# }
-# 
-# ki = {
-# 	'lr': 	-0,
-# 	'fb':	-0,
-# 	'yaw': 		0.0,
-# 	'alt': 		0.4
-# } 
-# kd = {
-# 	'lr': 	-0,
-# 	'fb': 	-0,
-# 	'yaw': 		0.0,
-# 	'alt': 		200/3
-# }
 kp = {
-	'lr': 0,#	3000,
-	'fb': 0,#	3000,
+	'lr': -2200,
+	'fb': -2200,
         
-	'yaw': 		0,
-	'alt': 	5,
+	'yaw': 		-1000000.0,
+	'alt': 	10,
         'alt_above': 0
 }
 
 ki = {
-	'lr': 	0,
-	'fb':	-0,
+	'lr': 	-1,
+	'fb':	-1,
 	'yaw': 		0.0,
-	'alt': 		0.05
+	'alt': 		0.04
 } 
 kd = {
-	'lr': 	0,#5000,
-	'fb': 	0,#5000,
+	'lr': 	-500000,
+	'fb': 	-500000,
 	'yaw':	0.0,
-	'alt': 	100
+	'alt':  700
 }
 
 
@@ -114,6 +93,9 @@ err   = {'fb': 0.0, 'lr': 0.0, 'alt': 0.0, 'yaw': 0.0}
 Pterm = {'fb': 0.0, 'lr': 0.0, 'alt': 0.0, 'yaw': 0.0}
 Iterm = {'fb': 0.0, 'lr': 0.0, 'alt': 50.0, 'yaw': 0.0}
 Dterm = {'fb': 0.0, 'lr': 0.0, 'alt': 0.0, 'yaw': 0.0}
+old_old_Dterm = {'fb': 0.0, 'lr': 0.0, 'alt': 0.0, 'yaw': 0.0}
+old_Dterm = {'fb': 0.0, 'lr': 0.0, 'alt': 0.0, 'yaw': 0.0}
+new_Dterm = {'fb': 0.0, 'lr': 0.0, 'alt': 0.0, 'yaw': 0.0}
 
 def pid():
     rc = RC()
@@ -121,7 +103,6 @@ def pid():
     while not rospy.is_shutdown():
         global sp_global
         global pos_global
-        # print pos_global.orientation
         calced_yaw = -calc_yaw_from_quat((pos_global.orientation.x, pos_global.orientation.y,
             pos_global.orientation.z, pos_global.orientation.w))
         
@@ -130,8 +111,11 @@ def pid():
         time_prev = millis() 
 
          
-        (sp_global_pitch, sp_global_yaw, sp_global_roll) = tf.transformations.euler_from_quaternion([sp_global.orientation.x, sp_global.orientation.y, sp_global.orientation.z, sp_global.orientation.w])
-        (pos_global_pitch, pos_global_yaw, pos_global_roll) = (0, calced_yaw, 0)
+# Throwaway variables
+        sp_global_yaw = sp_global.orientation.w
+        #(ahh, pls, sp_global_yaw) = tf.transformations.euler_from_quaternion([sp_global.orientation.x, sp_global.orientation.y, sp_global.orientation.z, sp_global.orientation.w])
+        (work, now, pos_global_yaw) = tf.transformations.euler_from_quaternion([pos_global.orientation.x, pos_global.orientation.y, pos_global.orientation.z, pos_global.orientation.w])
+#       (pos_global_pitch, pos_global_yaw, pos_global_roll) = (0, calced_yaw, 0)
 
         # convert to the quad's frame of reference from the global
         global sp
@@ -142,18 +126,35 @@ def pid():
 
 # The bottom left sin is negative so that we get the negative rotation, since
 # we are converting to relative coordinates later
-        sp['fb'] = math.cos(pos_global_yaw) * sp_global.position.y + math.sin(pos_global_yaw) * sp_global.position.x
-        sp['lr'] = -math.sin(pos_global_yaw) * sp_global.position.y + math.cos(pos_global_yaw) * sp_global.position.x
+#       sp['fb'] = math.cos(pos_global_yaw) * sp_global.position.y + math.sin(pos_global_yaw) * sp_global.position.x
+#       sp['lr'] = -math.sin(pos_global_yaw) * sp_global.position.y + math.cos(pos_global_yaw) * sp_global.position.x
 
-        pos['fb'] = math.cos(pos_global_yaw) * pos_global.position.y + math.sin(pos_global_yaw) * pos_global.position.x
-        pos['lr'] = -math.sin(pos_global_yaw) * pos_global.position.y + math.cos(pos_global_yaw) * pos_global.position.x
+#       pos['fb'] = math.cos(pos_global_yaw) * pos_global.position.y + math.sin(pos_global_yaw) * pos_global.position.x
+#       pos['lr'] = -math.sin(pos_global_yaw) * pos_global.position.y + math.cos(pos_global_yaw) * pos_global.position.x
 
-        sp['yaw'] = sp_global_yaw - pos_global_yaw
+        error = {'x': sp_global.position.x - pos_global.position.x, 'y':
+        sp_global.position.y - pos_global.position.y}
+
+        #sp['fb'] = math.cos(pos_global_yaw) * err['y'] + math.sin(pos_global_yaw) * err['x']
+        #sp['lr'] = - math.cos(pos_global_yaw) * err['x'] + math.sin(pos_global_yaw) * err['y']
+        #print sp['fb'], sp['lr']
+        pos['fb'] = 0
+        pos['lr'] = 0
+
+        #sp['yaw'] = sp_global_yaw - pos_global_yaw
         pos['yaw'] = 0.0
 
         sp['alt'] = sp_global.position.z - pos_global.position.z
         pos['alt'] = 0.0
-	# XXX jgo: also it seems like you are setting "sp" yaw and alt relative
+	
+        # DIFFERENCE OF ANGLES
+        err_norm = np.sqrt(error['x']**2 + error['y']**2)
+        err_angle = -math.atan2(error['x'], error['y'])
+        diff_angle = pos_global_yaw - err_angle
+        sp['fb'] = np.cos(diff_angle) * err_norm
+        sp['lr'] = np.sin(diff_angle) * err_norm
+
+        # XXX jgo: also it seems like you are setting "sp" yaw and alt relative
 	# to the values held by "pos", and setting "pos" values to 0,
 	# indicating that both are in the reference frame of "pos". Yet, the fb
 	# and lr values of "sp" and "pos" are both set relative to their own
@@ -173,6 +174,8 @@ def pid():
         if pos_global != old_pos_global:
             for key in sp.keys(): 
                 err[key] = sp[key] - pos[key] # update the error
+                #if key == 'yaw':
+                    # print(sp[key], pos[key])
 
                 # calc the PID components of each axis
                 Pterm[key] = err[key]
@@ -186,18 +189,22 @@ def pid():
                     Iterm[key] = 0
                 # XXX jgo: the sign of Dterm * kd should act as a viscosity or
                 # resistance term.  if our error goes from 5 to 4, 
-                # then Dterm ~ 4 - 5 = -1; so it looks like kd should be a positive number. 
-                Dterm[key] = (err[key] - old_err[key])/time_elapsed
-                old_err[key] = err[key]
+                # then Dterm ~ 4 - 5 = -1; so it looks like kd should be a positive number.
+                old_old_Dterm[key] = old_Dterm[key]
+                old_Dterm[key] = new_Dterm[key]
+                new_Dterm[key] = (err[key] - old_err[key])/time_elapsed
+                Dterm[key] = (new_Dterm[key] * 8.0 + old_Dterm[key] * 5.0 +
+                old_old_Dterm[key] * 2.0)/15.0
                 # XXX jgo: definitely get something working with I and D terms equal to 0 before using these
 
+                old_err[key] = err[key]
                 if key == 'alt' and Pterm[key] < 0:
                     output[key] = Pterm[key] * kp['alt_above'] + Iterm[key] * ki[key] + Dterm[key] * kd[key]
                 elif key == 'alt':
                     output[key] = Pterm[key] * kp[key] + Iterm[key] * ki[key] + Dterm[key] * kd[key]
                     rc.p_alt = Pterm[key] * kp[key]
                     rc.i_alt = Iterm[key] * ki[key]
-                    rc.d_alt = Dterm[key] * kd[key]
+                    rc.d_alt = min(Dterm[key] * kd[key], 400)
                     rc.err_alt = err[key] * 10
                 else:
                     output[key] = Pterm[key] * kp[key] + Iterm[key] * ki[key] + Dterm[key] * kd[key]
@@ -209,16 +216,17 @@ def pid():
         (thrust, theta) = calc_thrust_and_theta(output['lr'], output['alt'], output['fb'])
         # and use that to calculate roll pitch yaw
 #       (pitch, yaw, roll) = calc_roll_pitch_from_theta(output['lr'], output['fb'], theta)
-        rc.roll = max(1450, min(1500 + output['lr'] * pwm_scale, 1550))
-        rc.pitch = max(1450, min(1500 + output['fb'] * pwm_scale, 1550))
+        rc.roll = max(1000, min(1500 + output['lr'] * pwm_scale, 2000))
+        rc.pitch = max(1000, min(1500 + output['fb'] * pwm_scale, 2000))
         rc.yaw = max(1000, min(1500 + output['yaw'] * pwm_scale, 2000))
-        rc.throttle = max(1150, min(1250 + output['alt'], 2000))
+        rc.throttle = max(1150, min(1200 + output['alt'], 2000))
         rc.aux1 = 1800
         rc.aux2 = 1500
         rc.aux3 = 1500
         rc.aux4 = 1500
         #print Pterm['alt'] * kp['alt'], Dterm['alt'] * kd['alt'], Iterm['alt'] * ki['alt']
         print rc.roll, rc.pitch, rc.yaw, rc.throttle
+        #print rc.roll > 1500, rc.pitch > 1500
         #print(str(roll) + "\t" + str(pitch) + "\t" + str(yaw))
         # print pos_global
         cmdpub.publish(rc)
@@ -242,11 +250,12 @@ def calc_yaw_from_quat(q):
 
 def update_sp(data):
     global sp_global
+    print 'UPDATING SET POINT'
     sp_global = data.pose
+    sp_global.orientation.w = data.pose.orientation.w
 
 def update_pos(data):
     global pos_global
-    print("thing")
     pos_global = data.pose
 
 if __name__ == '__main__':
@@ -258,7 +267,7 @@ if __name__ == '__main__':
         global sp_global
         global pos_global
         sp_global = pos_global
-        sp_global.position.z = 100
+        #sp_global.position.z = 80
         time.sleep(0.1)
         pid()
         rospy.spin()

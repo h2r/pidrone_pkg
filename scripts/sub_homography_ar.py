@@ -85,17 +85,18 @@ def pickHomography(Hs, ts, norms):
 def getRt(img1, img2, kp1, des1):
 
     # Initiate SURF detector
-    surf = cv2.xfeatures2d.SURF_create(upright=True, nOctaves=4,
-    hessianThreshold=500)
-
+    orb = cv2.ORB_create()
     # find the keypoints and descriptors with SIFT
     if kp1 is None:
-        kp1, des1 = surf.detectAndCompute(img1,None)
+        kp1, des1 = orb.detectAndCompute(img1,None)
         print("redoing frame 1")
-    kp2, des2 = surf.detectAndCompute(img2,None)
+    kp2, des2 = orb.detectAndCompute(img2,None)
 
     FLANN_INDEX_KDTREE = 0
-    index_params = dict(algorithm = FLANN_INDEX_KDTREE, trees = 5)
+    index_params = dict(algorithm = 6,
+                   table_number = 6, # 12
+                   key_size = 12,     # 20
+                   multi_probe_level = 1) #2 
     search_params = dict(checks = 50)
     good = []
     flann = cv2.FlannBasedMatcher(index_params, search_params)
@@ -104,9 +105,11 @@ def getRt(img1, img2, kp1, des1):
 
         # store all the good matches as per Lowe's ratio test.
     
-        for m,n in matches:
-            if m.distance < 0.7*n.distance:
-                good.append(m)
+        for test in matches:
+            if len(test) > 1:
+                m, n = test
+                if m.distance < 0.7*n.distance:
+                    good.append(m)
 
     if len(good)>MIN_MATCH_COUNT:
         src_pts = np.float32([ kp1[m.queryIdx].pt for m in good ]).reshape(-1,1,2)
@@ -147,7 +150,7 @@ if __name__ == '__main__':
     cmdpub = rospy.Publisher('/pidrone/est_pos', PoseStamped, queue_size=1)
     rospy.init_node('homography_transform', anonymous=False)
     
-    raspividcmd = ['raspivid', '-fps', '8', '-t', '0', '-w', str(WIDTH), '-h',
+    raspividcmd = ['raspivid', '-fps', '20', '-t', '0', '-w', str(WIDTH), '-h',
     str(HEIGHT), '-r', '-', '--raw-format', 'yuv', '-o', '/dev/null', '-n',
     '-pf', 'baseline', '-drc', 'off', '-ex', 'fixedfps', '-fl']
     stream = sp.Popen(raspividcmd, stdout = sp.PIPE, universal_newlines = True)
@@ -171,8 +174,6 @@ if __name__ == '__main__':
     while True:
         test = stream.stdout.read(WIDTH * HEIGHT + (WIDTH * HEIGHT / 2))[0:WIDTH * HEIGHT]
         curr = np.fromstring(test, dtype=np.uint8).reshape(HEIGHT, WIDTH)
-        cv2.imshow('curr', curr)
-        cv2.waitKey(2)
         if prev is not None and curr is not None:
             R, t, kp1, des1 = getRt(prev, curr, kp1, des1)
             if R is not None:

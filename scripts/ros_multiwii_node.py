@@ -45,9 +45,9 @@ def att_pub():
     print("armed")
     prev_time = millis()
     while not rospy.is_shutdown():
-        att_data = board.getData(MultiWii.ATTITUDE)
-        imu_data = board.getData(MultiWii.RAW_IMU)
-        print cmds[0], cmds[1], cmds[2], cmds[3], att_data
+        # att_data = board.getData(MultiWii.ATTITUDE)
+        # imu_data = board.getData(MultiWii.RAW_IMU)
+        print cmds[0], cmds[1], cmds[2], cmds[3]#, att_data
         board.sendCMD(16, MultiWii.SET_RAW_RC, cmds)
 
 
@@ -55,7 +55,8 @@ def att_pub():
         # stdout.write("\r%s" % message )
         # stdout.flush()
         # End of fancy printing
-
+        if False:
+            """
         roll = board.attitude['angx']
         pitch = board.attitude['angy']
         yaw = board.attitude['heading']
@@ -87,6 +88,7 @@ def att_pub():
         int_pose.position.z = int_pos[2]
         imupub.publish(imu)
         intposepub.publish(int_pose)
+        """
     board.disarm()
     print("disarming")
 
