@@ -22,6 +22,11 @@ def joy_callback(data):
         mode.x_velocity = -data.axes[2] * scalar
         mode.y_velocity = data.axes[3] * scalar
         mode.z_velocity = data.axes[1]
+    
+    if data.buttons[7] == 0:
+        mode.x_velocity = 0
+        mode.y_velocity = 0
+        mode.z_velocity = 0
     print mode
     modepub.publish(mode)
 

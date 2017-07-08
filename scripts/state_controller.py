@@ -24,6 +24,7 @@ set_vel_x = 0
 set_vel_y = 0
 errpub = rospy.Publisher('/pidrone/err', axes_err, queue_size=1)
 flow_height_z = 0.000001
+reset_pid = True
 
 mw_angle_comp_x = 0
 mw_angle_comp_y = 0
@@ -80,6 +81,7 @@ def fly(velocity_cmd):
     global set_vel_x, set_vel_y, set_z
     if current_mode == 1 or current_mode == 5:
         current_mode = 5
+        set_z = 20
         if velocity_cmd is not None:
             set_vel_x = velocity_cmd.x_velocity
             set_vel_y = velocity_cmd.y_velocity
@@ -90,9 +92,9 @@ def kill_throttle():
     pass
 
 def mode_callback(data):
-    global pid
+    global pid, reset_pid
     if data.mode == 0:
-        pid = PID()
+        reset_pid = True
         arm()
     elif data.mode == 1:
         idle()
@@ -103,6 +105,9 @@ def mode_callback(data):
     elif data.mode == 4:
         disarm()
     elif data.mode == 5:
+        if reset_pid: 
+            pid.throttle.zero_i()
+            reset_pid = False
         fly(data)
 
 def ultra_callback(data):
@@ -111,11 +116,10 @@ def ultra_callback(data):
     global first
     global init_z
     global cmds
+    global current_mode
     if data.range != -1:
         # scale ultrasonic reading to get z accounting for tilt of the drone
         ultra_z = data.range * mw_angle_alt_scale
-        if ultra_z > 50:
-            land()
         # print 'ultra_z', ultra_z
         try:
             if current_mode == 5:
@@ -126,6 +130,7 @@ def ultra_callback(data):
                     error.z.err = init_z - ultra_z + set_z
                     # print "setting cmds"
                     cmds = pid.step(error)
+                    print cmds
         except Exception as e:
             land()
             raise
@@ -136,6 +141,7 @@ def vrpn_callback(data):
     global first
     global init_z
     global cmds
+    global current_mode
     # scale ultrasonic reading to get z accounting for tilt of the drone
     ultra_z = data.pose.position.z
     # print 'ultra_z', ultra_z
@@ -169,6 +175,7 @@ def ctrl_c_handler(signal, frame):
 
 if __name__ == '__main__':
     global mw_angle_comp_x, mw_angle_comp_y, mw_angle_coeff, mw_angle_alt_scale
+    global current_mode
     rospy.init_node('state_controller')
     rospy.Subscriber("/pidrone/plane_err", axes_err, plane_callback)
     board = MultiWii("/dev/ttyUSB0")
@@ -182,7 +189,7 @@ if __name__ == '__main__':
     prev_angt = time.time()
 
     while not rospy.is_shutdown():
-        print current_mode, cmds
+        # print current_mode, cmds
         errpub.publish(error)
         
         if current_mode != 4:
@@ -220,8 +227,8 @@ if __name__ == '__main__':
                 board = MultiWii("/dev/ttyUSB0")
 
         board.sendCMD(8, MultiWii.SET_RAW_RC, cmds)
-        print board.receiveDataPacket()
-
+        board.receiveDataPacket()
+        time.sleep(0.01)
 
     print "Shutdown Recieved"
     land()

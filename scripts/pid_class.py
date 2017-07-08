@@ -35,6 +35,10 @@ class PIDaxis():
         self._dd = 0
         self._ddd = 0
 
+    def zero_i(self):
+        self._i = 0
+        self.time_elapsed = 1
+        self._t = rospy.get_time()
 
     def step(self, err, time_elapsed, error = None):
         if self._old_err is None: self._old_err = err # first time around prevent d term spike	
@@ -72,8 +76,8 @@ class PIDaxis():
 
 class PID:
     def __init__(self, 
-        roll = PIDaxis(1.8181, 0.6060, 0.2424, control_range=(1400, 1600)),
-        pitch = PIDaxis(1.8181, 0.6060, 0.2424, control_range=(1400,
+        roll = PIDaxis(5.0, 0.0, 0.3, control_range=(1400, 1600)),
+        pitch = PIDaxis(5.0, 0.0, 0.3, control_range=(1400,
         1600)),
         yaw = PIDaxis(0.0, 0.0, 0.0),
         throttle = PIDaxis(2.0, 2.0, 2.0, kp_upper = 0, i_range=(0, 400),\
@@ -91,7 +95,7 @@ class PID:
         self.throttle = throttle
         self.sp = None
         self._t = None
-    
+   
     def update_setpoint(self, data):
         self.sp = data
 
