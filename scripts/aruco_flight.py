@@ -102,18 +102,44 @@ if __name__ == '__main__':
                     for i in range(4):
                         homo_RTn = homography.get_pose_alt(prev_RT, i)
                         if homo_RTn is not None:
+
+
+#                             homo_R, homo_T, homo_norm = homo_RTn
+#                             homo_T_trans = np.dot(np.dot(homo_R,
+#                                 prev_RT[0:3, 0:3]), homo_T)
+#                             homo_RT = np.identity(4)
+#                             homo_RT[0, 3] = homo_T_trans[0]
+#                             homo_RT[1, 3] = homo_T_trans[1]
+#                             homo_RT[2, 3] = homo_T_trans[2] + prev_RT[2, 3]
+#                             homo_RT[0:3, 0:3] = np.dot(homo_R, prev_RT[0:3, 0:3])
+#                             homo_pos = compose_pose(homo_RT)
+#                             key = raw_input("press a key")
+#                             if key == 'n':
+#                                 break
+#                             elif key == 'p':
+#                                 print "new prev"
+#                                 prev_img = deepcopy(curr_img)
+#                                 break
+#                             print key
+#                             homopospub.publish(homo_pos)
+
+
+
+
                             homo_R, homo_T, homo_norm = homo_RTn
                             homo_T_trans = np.dot(np.dot(homo_R,
-                                init_R), homo_T)
+                                prev_RT[0:3, 0:3]), homo_T)
                             homo_RT = np.identity(4)
                             homo_RT[0, 3] = homo_T_trans[0]
                             homo_RT[1, 3] = homo_T_trans[1]
                             homo_RT[2, 3] = homo_T_trans[2] + prev_RT[2, 3]
                             homo_RT[0:3, 0:3] = homo_R[0:3, 0:3]
-                            homo_pos_pre = compose_pose(homo_RT)
+                            homo_pos_pre = compose_pose(deepcopy(homo_RT))
+                            print homo_pos_pre.pose.orientation
                             r, p, y = tf.transformations.euler_from_quaternion(np.array([homo_pos_pre.pose.orientation.x,
                                 homo_pos_pre.pose.orientation.y, homo_pos_pre.pose.orientation.z,
                                 homo_pos_pre.pose.orientation.w]))
+                            print r, p, y
                             q = tf.transformations.quaternion_from_euler(-r, p,
                                     y)
                             homo_pos_pre.pose.orientation.x = q[0]
@@ -125,12 +151,11 @@ if __name__ == '__main__':
                                 homo_pos_pre.pose.orientation.x, homo_pos_pre.pose.orientation.y,
                                 homo_pos_pre.pose.orientation.z]).rotation_matrix
 
-                            # homo_RT[0:3, 0:3] = np.dot(homo_R_flipped, prev_RT[0:3, 0:3])
-                            homo_RT[0:3, 0:3] = homo_R_flipped
-
                             # homo_RT[0:3, 0:3] = np.dot(homo_R, prev_RT[0:3, 0:3])
+                            homo_RT[0:3, 0:3] = np.dot(homo_R_flipped, prev_RT[0:3, 0:3])
+                            # homo_RT[0:3, 0:3] = homo_R_flipped
+
                             homo_pos = compose_pose(homo_RT)
-                            homopospub.publish(homo_pos)
                             key = raw_input("press a key")
                             if key == 'n':
                                 break
@@ -139,6 +164,7 @@ if __name__ == '__main__':
                                 prev_img = deepcopy(curr_img)
                                 break
                             print key
+                            homopospub.publish(homo_pos)
                             print "##############################"
                             print i
                             print homo_T
