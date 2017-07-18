@@ -93,23 +93,44 @@ if __name__ == '__main__':
             # cv2.imshow("prev", prev_img)
             # cv2.waitKey(1)
             if prev_RT is not None and curr_RT is not None:
-                print prev_RT - curr_RT
                 prev_pos = compose_pose(prev_RT)
                 curr_pos = compose_pose(curr_RT)
                 homography.updateHNew(curr_img, prev_img=prev_img)
                 key = ''
+                init_R = np.array([[1, 0, 0], [0, -1, 0], [0, 0, -1]])
                 while key != 'n':
                     for i in range(4):
                         homo_RTn = homography.get_pose_alt(prev_RT, i)
                         if homo_RTn is not None:
                             homo_R, homo_T, homo_norm = homo_RTn
                             homo_T_trans = np.dot(np.dot(homo_R,
-                                prev_RT[0:3, 0:3]), homo_T)
+                                init_R), homo_T)
                             homo_RT = np.identity(4)
-                            for j in range(3):
-                                homo_RT[j, 3] = homo_T_trans[j] + prev_RT[j, 3]
-                            homo_RT[0:3, 0:3] = np.dot(homo_R, prev_RT[0:3, 0:3])
+                            homo_RT[0, 3] = homo_T_trans[0]
+                            homo_RT[1, 3] = homo_T_trans[1]
+                            homo_RT[2, 3] = homo_T_trans[2] + prev_RT[2, 3]
+                            homo_RT[0:3, 0:3] = homo_R[0:3, 0:3]
+                            homo_pos_pre = compose_pose(homo_RT)
+                            r, p, y = tf.transformations.euler_from_quaternion(np.array([homo_pos_pre.pose.orientation.x,
+                                homo_pos_pre.pose.orientation.y, homo_pos_pre.pose.orientation.z,
+                                homo_pos_pre.pose.orientation.w]))
+                            q = tf.transformations.quaternion_from_euler(-r, p,
+                                    y)
+                            homo_pos_pre.pose.orientation.x = q[0]
+                            homo_pos_pre.pose.orientation.y = q[1]
+                            homo_pos_pre.pose.orientation.z = q[2]
+                            homo_pos_pre.pose.orientation.w = q[3]
+                            print homo_pos_pre
+                            homo_R_flipped = Quaternion([homo_pos_pre.pose.orientation.w,
+                                homo_pos_pre.pose.orientation.x, homo_pos_pre.pose.orientation.y,
+                                homo_pos_pre.pose.orientation.z]).rotation_matrix
+
+                            # homo_RT[0:3, 0:3] = np.dot(homo_R_flipped, prev_RT[0:3, 0:3])
+                            homo_RT[0:3, 0:3] = homo_R_flipped
+
+                            # homo_RT[0:3, 0:3] = np.dot(homo_R, prev_RT[0:3, 0:3])
                             homo_pos = compose_pose(homo_RT)
+                            homopospub.publish(homo_pos)
                             key = raw_input("press a key")
                             if key == 'n':
                                 break
@@ -118,7 +139,6 @@ if __name__ == '__main__':
                                 prev_img = deepcopy(curr_img)
                                 break
                             print key
-                            homopospub.publish(homo_pos)
                             print "##############################"
                             print i
                             print homo_T
@@ -128,14 +148,6 @@ if __name__ == '__main__':
                             print i
                             print "could not find"
 
-                # r, p, y = tf.transformations.euler_from_quaternion(np.array([pos.pose.orientation.x,
-                #     pos.pose.orientation.y, pos.pose.orientation.z,
-                #     pos.pose.orientation.w]))
-                # q = tf.transformations.quaternion_from_euler(r, -p, -y)
-                # pos.pose.orientation.x = q[0]
-                # pos.pose.orientation.y = q[1]
-                # pos.pose.orientation.z = q[2]
-                # pos.pose.orientation.w = q[3]
                 prepospub.publish(prev_pos)
                 postpospub.publish(curr_pos)
             else:
