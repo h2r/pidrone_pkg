@@ -128,7 +128,7 @@ if __name__ == '__main__':
 
                             homo_R, homo_T, homo_norm = homo_RTn
                             homo_T_trans = np.dot(np.dot(homo_R,
-                                prev_RT[0:3, 0:3]), homo_T)
+                                init_R), homo_T)
                             homo_RT = np.identity(4)
                             homo_RT[0, 3] = homo_T_trans[0]
                             homo_RT[1, 3] = homo_T_trans[1]
@@ -152,8 +152,8 @@ if __name__ == '__main__':
                                 homo_pos_pre.pose.orientation.z]).rotation_matrix
 
                             # homo_RT[0:3, 0:3] = np.dot(homo_R, prev_RT[0:3, 0:3])
-                            homo_RT[0:3, 0:3] = np.dot(homo_R_flipped, prev_RT[0:3, 0:3])
-                            # homo_RT[0:3, 0:3] = homo_R_flipped
+                            # homo_RT[0:3, 0:3] = np.dot(homo_R_flipped, prev_RT[0:3, 0:3])
+                            homo_RT[0:3, 0:3] = homo_R_flipped
 
                             homo_pos = compose_pose(homo_RT)
                             key = raw_input("press a key")
