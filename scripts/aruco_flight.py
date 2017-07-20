@@ -118,7 +118,7 @@ if __name__ == '__main__':
             if vrpn_pos is not None:
                 prev_pos = compose_pose(prev_RT)
                 curr_pos = compose_pose(curr_RT)
-                homography.updateHNew(curr_img, prev_img=prev_img)
+                homography.updateH(curr_img, prev_img=prev_img)
                 key = ''
                 init_R = np.array([[1, 0, 0], [0, -1, 0], [0, 0, -1]])
                 init_R_4 = np.array([[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1,
@@ -151,40 +151,64 @@ if __name__ == '__main__':
 #                             homopospub.publish(homo_pos)
 
 
-
-
                     homo_R, homo_T, homo_norm = homo_RTn
-                    homo_T_trans = np.dot(np.dot(homo_R,
-                        init_R), homo_T)
                     homo_RT = np.identity(4)
+                    homo_RT[0:3,0:3] = np.dot(np.dot(init_R, homo_R.T), init_R)
+                    homo_RT_3 = homo_RT[0:3,0:3]
+                    print init_R
+
+
+                    homo_T_trans = np.dot(np.dot(homo_R, init_R), homo_T) # ini
+
+                    #homo_T_trans = np.dot(np.dot(np.dot(init_R, homo_R.T), init_R), homo_T)
+                    #homo_T_trans = np.dot(init_R, homo_T)
+                    #homo_T_trans = homo_T
+
+
+                    #test_1 = np.dot(homo_RT_3.T, homo_T)
+                    #test_1[0] = test_1[0]
+                    #test_1[1] = -test_1[1]
+                    #test_1[2] = -test_1[2]
+                    #homo_T_trans = np.dot(homo_RT_3, test_1)
+                    
+
+                    print homo_RT_3
+
+                    #homo_T_trans = np.dot(homo_RT_3.T, homo_T)
+                    #homo_T_trans = np.dot(init_R, np.dot(homo_RT_3, homo_T))
+
+
+                    print 'prev_T', prev_RT[0:3, 3]
                     homo_RT[0:3,3] = (homo_T_trans.T + prev_RT[0:3,3])
                     # homo_RT[0, 3] = homo_T_trans[0]
                     # homo_RT[1, 3] = homo_T_trans[1]
                     # homo_RT[2, 3] = homo_T_trans[2] + prev_RT[2, 3]
-                    homo_RT[0:3, 0:3] = homo_R[0:3, 0:3]
-                    homo_pos_pre = compose_pose(deepcopy(homo_RT))
+                    # homo_RT[0:3, 0:3] = homo_R[0:3, 0:3]
+                    # homo_pos_pre = compose_pose(deepcopy(homo_RT))
 
                     #homo_pos_pre = compose_pose(homo_RT.T)
                     #homo_pos_pre = compose_pose(np.dot(homo_RT.T, init_R_4))
                     #homo_pos_pre = compose_pose(np.dot(init_R_4, homo_RT))
+                    # homo_R_flipped = np.dot(np.dot(init_R_4,
+                    #     homo_RT.T), init_R_4)
 
-                    r, p, y = tf.transformations.euler_from_quaternion(np.array([homo_pos_pre.pose.orientation.x,
-                        homo_pos_pre.pose.orientation.y, homo_pos_pre.pose.orientation.z,
-                        homo_pos_pre.pose.orientation.w]))
+#                     r, p, y = tf.transformations.euler_from_quaternion(np.array([homo_pos_pre.pose.orientation.x,
+#                         homo_pos_pre.pose.orientation.y, homo_pos_pre.pose.orientation.z,
+#                         homo_pos_pre.pose.orientation.w]))
 
-                    q = tf.transformations.quaternion_from_euler(-r, p, y)
-                    #q = tf.transformations.quaternion_from_euler(r, p, y)
-                    homo_pos_pre.pose.orientation.x = q[0]
-                    homo_pos_pre.pose.orientation.y = q[1]
-                    homo_pos_pre.pose.orientation.z = q[2]
-                    homo_pos_pre.pose.orientation.w = q[3]
-                    homo_R_flipped = Quaternion([homo_pos_pre.pose.orientation.w,
-                        homo_pos_pre.pose.orientation.x, homo_pos_pre.pose.orientation.y,
-                        homo_pos_pre.pose.orientation.z]).rotation_matrix
+#                     #q = tf.transformations.quaternion_from_euler(-r, p, y)
+#                     q = tf.transformations.quaternion_from_euler(r, p, y)
+#                     homo_pos_pre.pose.orientation.x = q[0]
+#                     homo_pos_pre.pose.orientation.y = q[1]
+#                     homo_pos_pre.pose.orientation.z = q[2]
+#                     homo_pos_pre.pose.orientation.w = q[3]
+#                     homo_R_flipped = Quaternion([homo_pos_pre.pose.orientation.w,
+#                         homo_pos_pre.pose.orientation.x, homo_pos_pre.pose.orientation.y,
+#                         homo_pos_pre.pose.orientation.z]).rotation_matrix
 
-                    # homo_RT[0:3, 0:3] = np.dot(homo_R, prev_RT[0:3, 0:3])
-                    # homo_RT[0:3, 0:3] = np.dot(homo_R_flipped, prev_RT[0:3, 0:3])
-                    homo_RT[0:3, 0:3] = homo_R_flipped
+#                     # homo_RT[0:3, 0:3] = np.dot(homo_R, prev_RT[0:3, 0:3])
+#                     # homo_RT[0:3, 0:3] = np.dot(homo_R_flipped, prev_RT[0:3, 0:3])
+                    # homo_RT[0:3, 0:3] = homo_R_flipped
 
                     homo_pos = compose_pose(homo_RT)
                     # key = raw_input("press a key")
