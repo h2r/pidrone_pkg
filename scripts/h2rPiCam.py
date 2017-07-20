@@ -33,7 +33,7 @@ class SplitFrames(object):
 
         
         gray_image = cv2.cvtColor(bgr, cv2.COLOR_BGR2GRAY)
-        cv2.imshow('color', bgr)
+        # cv2.imshow('color', bgr)
         #cv2.imshow('gray', gray_image)
         #cv2.waitKey(1)
         self.count += 1
@@ -45,7 +45,8 @@ def streamPi():
     height = 240
     try:
         output = SplitFrames(width, height)
-        with picamera.PiCamera(resolution=(width,height), framerate=120) as camera:
+        with picamera.PiCamera(resolution=(width,height), framerate=40,
+                sensor_mode=4) as camera:
             time.sleep(2)
             start = time.time()
             #camera.iso = 100
@@ -63,15 +64,15 @@ def streamPi():
 
             from cv_bridge import CvBridge, CvBridgeError
             import rospy
-            rospy.init_node('h2rPiCam', anonymous=False)
+            # rospy.init_node('h2rPiCam', anonymous=False)
             from sensor_msgs.msg import Image
                
               
-            image_pub = rospy.Publisher("/pidrone/picamera/image",Image, queue_size=1, tcp_nodelay=False)
-            bridge = CvBridge()
+            # image_pub = rospy.Publisher("/pidrone/picamera/image",Image, queue_size=1, tcp_nodelay=False)
+            # bridge = CvBridge()
             print "start recording"
             camera.start_recording(output, format='rgb')
-            rate = rospy.Rate(25)
+            rate = rospy.Rate(40)
             rate.sleep()
             last_ts = None
             while not rospy.is_shutdown():
@@ -81,10 +82,10 @@ def streamPi():
                 ts, image = output.images[-1]
                 if ts == last_ts:
                     continue
-                #cv2.imshow('color', image)
-                #cv2.waitKey(1)
-                image_message = bridge.cv2_to_imgmsg(image, encoding="passthrough")
-                image_pub.publish(image_message)
+                # cv2.imshow('color', image)
+                # cv2.waitKey(1)
+                from h2rPiCam import streamPi
+                yield image
                 rate.sleep()
 
             camera.stop_recording()
