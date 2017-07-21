@@ -42,6 +42,9 @@ class Homography:
         self.est_H = np.identity(3)
         self.est_H_raw = np.identity(3)
         self.z_average = 1
+        self.est_t = np.array([[0, 0, 0]]).T
+        self.est_R = np.identity(3)
+        self.est_RT = np.identity(4)
 
 
 # Helper for findAruco
@@ -92,12 +95,12 @@ class Homography:
                 dst_pts = np.float32([kp2[m.trainIdx].pt for m in good]).reshape(-1,1,2)
 
                 H, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC,5.0)
-                # self.est_H = H
-                self.est_H /= np.dot(self.est_H, np.array([0,0,1]))[2]
+                self.est_H = H
+                # self.est_H /= np.dot(self.est_H, np.array([0,0,1]))[2]
                 self.est_H_raw = np.dot(H, self.est_H_raw) # initial  
-                print np.dot(self.est_H_raw, np.array([0,0,1])),
-                print np.dot(self.est_H, np.array([0, 0, 1]))
-                self.est_H = np.dot(H, self.est_H) # test reversed
+                # print np.dot(self.est_H_raw, np.array([0,0,1])),
+                # print np.dot(self.est_H, np.array([0, 0, 1]))
+                # self.est_H = np.dot(H, self.est_H) # test reversed
                 self.kp1 = kp2
                 self.des1 = des2
 
@@ -135,8 +138,8 @@ class Homography:
 
 
     def get_pose_alt(self, start_RT):
-        retval, Rs, ts, norms = cv2.decomposeHomographyMat(self.est_H \
-                /self.z_average, self.camera_matrix)
+        retval, Rs, ts, norms = cv2.decomposeHomographyMat(self.est_H,
+                self.camera_matrix)
         # print 'Weve got {} options'.format(len(Rs))
         # if s < len(Rs):
         min_index = 0
@@ -147,30 +150,41 @@ class Homography:
                 min_index = i
 
         T = np.zeros(3)
+        print ts[min_index], np.round(ts[min_index])
         T = ts[min_index] * start_RT[2,3]
-       
-        return Rs[min_index], T, norms[min_index]
-        
-        print 'ROTATION MAGNITUDE', np.linalg.norm(R[0:3,0:3]-np.identity(3))
-        twiddle = np.array([[1,0,0],[0,-1,0],[0,0, -1]])
-        start_T = start_RT[0:3,3]
-        start_R = start_RT[0:3,0:3]
-        start_R_inv = start_R.T
-        final_T = start_T + np.dot(start_R_inv, -1 * T)
-        R_twiddled = np.dot(start_R_inv, twiddle)
-        
-        # final_R = np.dot(np.dot(start_R, twiddle), R[0:3,0:3])
-        final_R = R_twiddled
+
         RT = np.identity(4)
-        RT[0:3,3] = final_T
-        RT[0:3,0:3] = final_R
+        RT[0:3, 0:3] = np.identity(3)
+        RT[0:3, 3] = T.T
 
-        print s
-        print 'RT\n', RT
-        print 'norm\n', norm
+        self.est_RT = np.dot(RT, self.est_RT)
+        print RT
+        print self.est_RT
+       
+        return self.est_RT[0:3, 0:3], self.est_RT[0:3, 3], norms[min_index]
 
-        pos = self.compose_pose(RT)
-        return pos
+        # return Rs[min_index], T, norms[min_index]
+        
+        # print 'ROTATION MAGNITUDE', np.linalg.norm(R[0:3,0:3]-np.identity(3))
+        # twiddle = np.array([[1,0,0],[0,-1,0],[0,0, -1]])
+        # start_T = start_RT[0:3,3]
+        # start_R = start_RT[0:3,0:3]
+        # start_R_inv = start_R.T
+        # final_T = start_T + np.dot(start_R_inv, -1 * T)
+        # R_twiddled = np.dot(start_R_inv, twiddle)
+        
+        # # final_R = np.dot(np.dot(start_R, twiddle), R[0:3,0:3])
+        # final_R = R_twiddled
+        # RT = np.identity(4)
+        # RT[0:3,3] = final_T
+        # RT[0:3,0:3] = final_R
+
+        # print s
+        # print 'RT\n', RT
+        # print 'norm\n', norm
+
+        # pos = self.compose_pose(RT)
+        # return pos
 
 first_pos = None
 

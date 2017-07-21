@@ -43,16 +43,18 @@ acladd stefie10
 
 screen -t " roscore"
 stuff "source setup.sh"
-stuff "roscore""
+stuff "roscore"
+stuff ""
 
 screen -t " multiwii"
 stuff "source setup.sh"
-stuff "rosrun pidrone_pkg ros_multiwii_node.py"
+stuff "cd $(rospack find pidrone_pkg)/scripts"
+stuff "python glob_homography.py"
 
 screen -t " PID"
 stuff "source setup.sh"
-stuff "cd $(rospack find pidrone_pkg)"
-stuff "rosrun pidrone_pkg pid_node.py"
+stuff "cd $(rospack find pidrone_pkg)/scripts"
+stuff "python pid_test.py"
 
 screen -t " vision"
 stuff "source setup.sh"
@@ -61,3 +63,4 @@ stuff "rosrun pidrone_pkg sub_homography_ar.py"
 screen -t " free"
 stuff "source setup.sh"
 stuff "cd $(rospack find pidrone_pkg)/scripts/"
+stuff "python vrpn_translation.py"

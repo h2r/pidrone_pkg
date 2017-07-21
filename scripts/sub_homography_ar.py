@@ -146,6 +146,7 @@ def move(R0, t0, R, t):
 
     return (R1, t1)
 
+
 if __name__ == '__main__':
     cmdpub = rospy.Publisher('/pidrone/est_pos', PoseStamped, queue_size=1)
     rospy.init_node('homography_transform', anonymous=False)
@@ -172,6 +173,7 @@ if __name__ == '__main__':
     kp1 = None
     des1 = None
     while True:
+        pipeline_start_time = rospy.Time.now()
         test = stream.stdout.read(WIDTH * HEIGHT + (WIDTH * HEIGHT / 2))[0:WIDTH * HEIGHT]
         curr = np.fromstring(test, dtype=np.uint8).reshape(HEIGHT, WIDTH)
         if prev is not None and curr is not None:
@@ -193,6 +195,9 @@ if __name__ == '__main__':
             else:
                 print("none")
         prev = curr
-        print(est_pos)
+        print 'TIME ELAPSED:', (rospy.Time.now().to_sec() -
+        pipeline_start_time.to_sec())
+        est_pos.header.stamp = pipeline_start_time
+        #print(est_pos)
         cmdpub.publish(est_pos)
 

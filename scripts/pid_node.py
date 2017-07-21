@@ -9,7 +9,7 @@ import math
 import numpy as np
 from copy import deepcopy
 
-cmdpub = rospy.Publisher('/pidrone/commands', RC, queue_size=1)
+cmdpub = rospy.Publisher('/pidrone/commands_old', RC, queue_size=1)
 
 def calc_thrust_and_theta(Fx, Fy, Fz):
     theta = math.atan2(math.sqrt(Fx**2 + Fz**2), Fy)
@@ -38,27 +38,28 @@ def calc_roll_pitch_from_theta(Fx, Fz, theta):
 millis = lambda: int(round(time.time() * 1000))
 
 kp = {
-	'lr': -2200,
-	'fb': -2200,
+	'lr': -1.1,
+	'fb': -1.1,
         
-	'yaw': 		-1000000.0,
+	'yaw': 		500.0,
 	'alt': 	10,
         'alt_above': 0
 }
 
 ki = {
-	'lr': 	-1,
-	'fb':	-1,
+	'lr': 	-0.00025,
+	'fb':	-0.00025,
 	'yaw': 		0.0,
 	'alt': 		0.04
 } 
 kd = {
-	'lr': 	-500000,
-	'fb': 	-500000,
+	'lr': 	-300,
+	'fb': 	-300,
 	'yaw':	0.0,
 	'alt':  700
 }
 
+pos_time = rospy.Time()
 
 # these positions are global (ie what comes out of the motion tracker)
 sp_global  = Pose() # set point
@@ -190,11 +191,14 @@ def pid():
                 # XXX jgo: the sign of Dterm * kd should act as a viscosity or
                 # resistance term.  if our error goes from 5 to 4, 
                 # then Dterm ~ 4 - 5 = -1; so it looks like kd should be a positive number.
-                old_old_Dterm[key] = old_Dterm[key]
-                old_Dterm[key] = new_Dterm[key]
-                new_Dterm[key] = (err[key] - old_err[key])/time_elapsed
-                Dterm[key] = (new_Dterm[key] * 8.0 + old_Dterm[key] * 5.0 +
-                old_old_Dterm[key] * 2.0)/15.0
+                if key != 'alt':
+                    old_old_Dterm[key] = old_Dterm[key]
+                    old_Dterm[key] = new_Dterm[key]
+                    new_Dterm[key] = (err[key] - old_err[key])/time_elapsed
+                    Dterm[key] = (new_Dterm[key] * 8.0 + old_Dterm[key] * 5.0 +
+                    old_old_Dterm[key] * 2.0)/15.0
+                else:
+                    Dterm[key] = (err[key] - old_err[key])/time_elapsed
                 # XXX jgo: definitely get something working with I and D terms equal to 0 before using these
 
                 old_err[key] = err[key]
@@ -202,23 +206,17 @@ def pid():
                     output[key] = Pterm[key] * kp['alt_above'] + Iterm[key] * ki[key] + Dterm[key] * kd[key]
                 elif key == 'alt':
                     output[key] = Pterm[key] * kp[key] + Iterm[key] * ki[key] + Dterm[key] * kd[key]
-                    rc.p_alt = Pterm[key] * kp[key]
-                    rc.i_alt = Iterm[key] * ki[key]
-                    rc.d_alt = min(Dterm[key] * kd[key], 400)
-                    rc.err_alt = err[key] * 10
                 else:
                     output[key] = Pterm[key] * kp[key] + Iterm[key] * ki[key] + Dterm[key] * kd[key]
             old_pos_global = deepcopy(pos_global)
     
-        pwm_bandwidth = 1
-        pwm_scale = 0.0005 * pwm_bandwidth
         # calculate the thrust and desired angle
-        (thrust, theta) = calc_thrust_and_theta(output['lr'], output['alt'], output['fb'])
+        # (thrust, theta) = calc_thrust_and_theta(output['lr'], output['alt'], output['fb'])
         # and use that to calculate roll pitch yaw
 #       (pitch, yaw, roll) = calc_roll_pitch_from_theta(output['lr'], output['fb'], theta)
-        rc.roll = max(1000, min(1500 + output['lr'] * pwm_scale, 2000))
-        rc.pitch = max(1000, min(1500 + output['fb'] * pwm_scale, 2000))
-        rc.yaw = max(1000, min(1500 + output['yaw'] * pwm_scale, 2000))
+        rc.roll = max(1000, min(1500 + output['lr'], 2000))
+        rc.pitch = max(1000, min(1500 + output['fb'], 2000))
+        rc.yaw = max(1000, min(1500 + output['yaw'], 2000))
         rc.throttle = max(1150, min(1200 + output['alt'], 2000))
         rc.aux1 = 1800
         rc.aux2 = 1500
@@ -229,6 +227,7 @@ def pid():
         #print rc.roll > 1500, rc.pitch > 1500
         #print(str(roll) + "\t" + str(pitch) + "\t" + str(yaw))
         # print pos_global
+        # print 'TIME ELAPSED:', rospy.Time.now().to_sec() - pos_time.to_sec()
         cmdpub.publish(rc)
 
 # rotate vector v1 by quaternion q1 
@@ -256,7 +255,9 @@ def update_sp(data):
 
 def update_pos(data):
     global pos_global
+    global pos_time
     pos_global = data.pose
+    pos_time = data.header.stamp
 
 if __name__ == '__main__':
     rospy.init_node('pid_node', anonymous=True)
@@ -266,8 +267,10 @@ if __name__ == '__main__':
         time.sleep(0.5)
         global sp_global
         global pos_global
-        sp_global = pos_global
-        #sp_global.position.z = 80
+        sp_global.position.x = 0
+        sp_global.position.y = 0
+        sp_global.position.z = 80
+        sp_global.orientation.w = 1
         time.sleep(0.1)
         pid()
         rospy.spin()

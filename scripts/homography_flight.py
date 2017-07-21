@@ -25,11 +25,15 @@ des1=None
 flann_index_kdtree = 0
 start_RT= None
 
+vrpn_pos = None
+
 
 def vrpn_callback(data):
     global start_RT
     if start_RT is None:
         start_RT = homography.decompose_pose(data)
+    global vrpn_pos
+    vrpn_pos = data
     
 
 if __name__ == '__main__':
@@ -67,6 +71,8 @@ if __name__ == '__main__':
 
 
                     homo_pos = homography.compose_pose(np.dot(start_RT,homo_RT))
+                    print (np.array([homo_pos.pose.position.x, homo_pos.pose.position.y, homo_pos.pose.position.z]) - 
+                            np.array([vrpn_pos.pose.position.x, vrpn_pos.pose.position.y, vrpn_pos.pose.position.z]))
                     homopospub.publish(homo_pos)
                 else:
                     print "No homography matrix :(" 

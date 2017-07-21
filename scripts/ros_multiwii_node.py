@@ -2,8 +2,8 @@
 import rospy
 
 # swap these two lines to switch to the new multiwii.
-from pyMultiwii import MultiWii
-#from h2rMultiWii import MultiWii  
+# from pyMultiwii import MultiWii
+from h2rMultiWii import MultiWii  
 
 
 from sys import stdout
@@ -89,8 +89,8 @@ def att_pub():
         imupub.publish(imu)
         intposepub.publish(int_pose)
         """
+    print 'NORMAL DISARM'
     board.disarm()
-    print("disarming")
 
 def cmd_call(data):
     cmds[0] = data.roll
@@ -113,6 +113,11 @@ def main():
 
     except rospy.ROSInterruptException:
         pass
+        print 'ROS INTERUPT DISARM'
+        board.disarm()
+    except:
+        print 'GENERAL EXCEPT DISARM'
+        board.disarm()
 
 
 if __name__ == "__main__":
