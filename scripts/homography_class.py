@@ -137,7 +137,7 @@ class Homography:
         return np.dot(R, T)
 
 
-    def get_pose_alt(self, start_RT):
+    def get_pose_alt(self, start_RT, imu_R):
         retval, Rs, ts, norms = cv2.decomposeHomographyMat(self.est_H,
                 self.camera_matrix)
         # print 'Weve got {} options'.format(len(Rs))
