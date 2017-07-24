@@ -137,7 +137,7 @@ class Homography:
         return np.dot(R, T)
 
 
-    def get_pose_alt(self, start_RT, imu_R):
+    def get_pose_alt(self, start_RT):
         retval, Rs, ts, norms = cv2.decomposeHomographyMat(self.est_H,
                 self.camera_matrix)
         # print 'Weve got {} options'.format(len(Rs))
@@ -150,7 +150,6 @@ class Homography:
                 min_index = i
 
         T = np.zeros(3)
-        print ts[min_index], np.round(ts[min_index])
         T = ts[min_index] * start_RT[2,3]
 
         RT = np.identity(4)
@@ -158,8 +157,6 @@ class Homography:
         RT[0:3, 3] = T.T
 
         self.est_RT = np.dot(RT, self.est_RT)
-        print RT
-        print self.est_RT
        
         return self.est_RT[0:3, 0:3], self.est_RT[0:3, 3], norms[min_index]
 

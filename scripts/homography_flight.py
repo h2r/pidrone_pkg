@@ -70,7 +70,10 @@ if __name__ == '__main__':
 
 
 
-                    homo_pos = homography.compose_pose(np.dot(start_RT,homo_RT))
+                    homo_pos = homography.compose_pose(homo_RT)
+                    homo_pos.pose.position.x += vrpn_pos.pose.position.x
+                    homo_pos.pose.position.y += vrpn_pos.pose.position.y
+                    homo_pos.pose.position.z += vrpn_pos.pose.position.z
                     print (np.array([homo_pos.pose.position.x, homo_pos.pose.position.y, homo_pos.pose.position.z]) - 
                             np.array([vrpn_pos.pose.position.x, vrpn_pos.pose.position.y, vrpn_pos.pose.position.z]))
                     homopospub.publish(homo_pos)
