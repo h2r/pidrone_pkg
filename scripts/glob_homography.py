@@ -1,5 +1,5 @@
 # from camera_class import Camera
-from pidrone_pkg.msg import RC, ERR, axes_err
+from pidrone_pkg.msg import RC, axes_err
 # from homography_class import Homography
 from pid_class import PID
 import rospy
@@ -10,7 +10,7 @@ import time
 # camera = Camera()
 # homography = Homography()
 pid = PID()
-board = MultiWii("/dev/ttyACM0")
+board = MultiWii("/dev/ttyUSB0")
 ready_to_fly = False
 pos = None
 errpub = rospy.Publisher('/pidrone/error', axes_err, queue_size=1)
@@ -24,7 +24,6 @@ def vrpn_update_pos(data):
     try:
         pos = data
         error = axes_err()
-        print error
         if ready_to_fly:
             cmds = pid.step(pos, error)
             errpub.publish(error)
@@ -83,7 +82,6 @@ if __name__ == '__main__':
         # sp.pose.position.z = 10
         # sp.pose.orientation.w = 1
         sp = deepcopy(pos)
-        sp.pose.position.z += 5
         # sp.pose.position.y += 20
         # sp.pose.orientation.x = 0
         # sp.pose.orientation.y = 0

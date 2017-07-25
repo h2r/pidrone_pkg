@@ -111,6 +111,14 @@ class PID:
             cmd_t = self.throttle.step(err[3], time_elapsed, error.z)
 
             return [cmd_r, cmd_p, cmd_y, cmd_t]
+    
+    def get_roll_matrix(self, data):
+        y = data['heading']/180.0*np.pi
+        r = data['angx']/180.0*np.pi
+        p = data['angy']/180.0*np.pi
+        q = np.array(tf.transformations.quaternion_from_euler(-p, r, -y))
+        return Quaternion(q).rotation_matrix
+
 
     def quat_to_rpy(self, q):
         """ takes in a quaternion (like from a pose message) and returns (roll, pitch, yaw) """

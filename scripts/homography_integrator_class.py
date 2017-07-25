@@ -17,8 +17,7 @@ class HomographyIntegrator():
     def __init__(self, start_RT = np.identity(4)):
         self.homography = Homography()
         self.start_RT = start_RT
-        self.R = start_RT[0:3,0:3]
-        self.t = start_RT[0:3,3]
+        self.imu_R = start_RT[0:3,0:3]
         self.prev_img = None
 
     def step(self, curr_img):
@@ -27,7 +26,7 @@ class HomographyIntegrator():
             return None
         else:
             self.homography.updateH(curr_img, prev_img=self.prev_img)
-            homo_RTn = self.homography.get_pose_alt(start_RT)
+            homo_RTn = self.homography.get_pose_alt(start_RT,self.imu_R)
             homo_RT = np.identity(4)
             homo_pos = None
 
@@ -50,6 +49,6 @@ class HomographyIntegrator():
             return homo_pos
 
     def fix_rotation(self, R):
-        self.R = R
+        self.imu_R = R
 
 

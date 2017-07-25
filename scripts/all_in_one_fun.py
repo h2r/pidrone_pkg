@@ -11,30 +11,31 @@ homo = HomographyIntegrator()
 pid = PID()
 board = MultiWii("/dev/ttyACM0")
 ready_to_fly = False
-pos = None
+start_pos = None
 
+def vrpn_callback(data):
+    global start_pos
+    if start_pos is None:
+        start_pos = data
+ 
 if __name__ == '__main__':
     try:
         rospy.init_node("glob_homography")
         rospy.Subscriber("/pidrone/target_pos", PoseStamped, pid.update_setpoint)
-        rospy.Subscriber("/pidrone/est_pos", PoseStamped, vrpn_update_pos)
+        rospy.Subscriber("/pidrone/est_pos", PoseStamped, vrpn_callback)
         curr_img = None
         position = None
         for curr_img in streamPi():
-            if position is None:
-                position = homography.updatePos(curr_img, prev_img)
+            if position is None or start_pos is None:
+                position = homo.step(curr_img)
                 pid.update_setpoint(deepcopy(position))
                 board.arm()
                 flying = True
             else:
+                data = board.getData(MultiWii.ATTITUDE)
+                imu_R = pid.get_roll_matrix(data)
+                homo.fix_position(imu_R)
 
-        	    data = board.getData(MultiWii.ATTITUDE)
-			    y = data['heading']/180.0*np.pi
-			    r = data['angx']/180.0*np.pi
-			    p = data['angy']/180.0*np.pi
-			    q = np.array(tf.transformations.quaternion_from_euler(-p, r, -y))
-
-			    homo.fix_position(tf.transformations.matrix_from_quaternion)
                 position = homo.step(curr_img)
 
                 cmds = pid.step(position)
