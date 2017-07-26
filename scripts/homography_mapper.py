@@ -13,10 +13,12 @@ from copy import deepcopy
 from find_visible_subset import *
 
 global_pixel_list = []
-global_map_max = np.array([10,10])
-global_map_min = np.array([-10,-10])
-map_size = np.array([1080,1080]) # height,width cuz numpy
-
+global_map_max = np.array([1,1])
+global_map_min = np.array([-1,-1])
+map_size = np.array([540,540]) # height,width cuz numpy
+start_RT = np.identity(4)
+start_RT[2,3] = 100
+vrpn_pos = PoseStamped()
 
 
 def vrpn_callback(data):
@@ -28,8 +30,9 @@ def vrpn_callback(data):
 
 
 if __name__ == '__main__':
-	global start_RT
-    rospy.Subscriber("/pidrone/est_pos", PoseStamped, vrpn_callback)
+    homography = Homography()
+    rospy.init_node('homography_mapper')
+  #  rospy.Subscriber("/pidrone/est_pos", PoseStamped, vrpn_callback)
     prev_img = None
     init_R = np.array([[1, 0, 0], [0, -1, 0], [0, 0, -1]])
 
@@ -37,7 +40,8 @@ if __name__ == '__main__':
     for curr_img in streamPi():
         curr_img = np.array(curr_img)
         curr_img = cv2.cvtColor(np.array(curr_img), cv2.COLOR_RGB2GRAY)
-        
+        # cv2.imshow('preview', curr_img)
+        # cv2.waitKey(1)
         if prev_img is None:
             print "first prev"
             prev_img = deepcopy(curr_img)
@@ -71,18 +75,25 @@ if __name__ == '__main__':
                     #			Reproject to generate map			 #
                     ##################################################
                     if len(homography.good) > homography.min_match_count:
+                        print 'Got {} new keypoints'.format(len(homography.kp1))
                     	for i in range(len(homography.kp1)):
-                    		not_a_match = True
-		                    for match in homography.good:
-		                    	not_a_match and (i !=  match.trainIdx)
+                            print i
+                            not_a_match = True
+                            for match in homography.good:
+                                not_a_match and (i !=  match.trainIdx)
 
-                    		if not_a_match:
-                    			kp = homography.kp1[i]
-                    			des = homography.des1[i]
-                    			new_kp = pixel_to_global(pt, homo_RT, vrpn_pos.pose.posititon.z)[0:2]
-                    			global_map_max = np.maximum(new_kp, global_map_max)
-                    			global_map_min = np.minumum(new_kp, global_map_min)
-                    			global_pixel_list.append((new_kp, des))
+                    	if not_a_match:
+                    	    kp = homography.kp1[i]
+                    	    des = homography.des1[i]
+                    	    new_kp = pixel_to_global(kp.pt,
+                            homo_RT,
+                            vrpn_pos.pose.position.z)[0:2].T[0]
+                            global_map_max = np.ceil(np.maximum(new_kp,
+                            global_map_max))
+                    	    global_map_min = np.floor(np.minimum(new_kp,
+                            global_map_min))
+                            # print 'Appending', new_kp
+                            global_pixel_list.append((new_kp, des))
 
 
 
@@ -91,11 +102,16 @@ if __name__ == '__main__':
                 # generate the map image of keypoints    
                 pt_map = np.ones(map_size)
                 global_map_range = global_map_max - global_map_min
+                print 'RANGE {}\t MIN{}\t MAX{}\t'.format(global_map_range,
+                global_map_min, global_map_max)
                 for pt, des in global_pixel_list:
-                	pt_map[(pt + global_map_min)/global_map_range * map_size] = 0 # rescale the coordinates and mark as black
+                    pt_coords = ((pt - global_map_min)/global_map_range
+                    * map_size).astype(int)
+                    print pt, pt_coords
+                    pt_map[pt_coords[0]][pt_coords[1]] = 0 # rescale the coordinates and mark as black
 
                 cv2.imshow('map_preview',pt_map) # display the map
-                cv2.waitkey(1)
+                cv2.waitKey(1)
                 prev_img = deepcopy(curr_img) # Updates prev img
             else:
                 print "No VRRN :("

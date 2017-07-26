@@ -45,7 +45,7 @@ class Homography:
         self.est_t = np.array([[0, 0, 0]]).T
         self.est_R = np.identity(3)
         self.est_RT = np.identity(4)
-
+        self.good = []
 
 # Helper for findAruco
     def detectArucoMarker(self, img):
@@ -91,8 +91,9 @@ class Homography:
                         self.good.append(m)
 
             if len(self.good) > self.min_match_count:
-                src_pts = np.float32([self.kp1[m.queryIdx].pt for m in good]).reshape(-1,1,2)
-                dst_pts = np.float32([kp2[m.trainIdx].pt for m in good]).reshape(-1,1,2)
+                src_pts = np.float32([self.kp1[m.queryIdx].pt for m in
+                self.good]).reshape(-1,1,2)
+                dst_pts = np.float32([kp2[m.trainIdx].pt for m in self.good]).reshape(-1,1,2)
 
                 H, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC,5.0)
                 self.est_H = H
@@ -107,7 +108,7 @@ class Homography:
             return True
 
         else:
-            print "Not enough matches are found - %d/%d" % (len(good),self.min_match_count)
+            print "Not enough matches are found - %d/%d" % (len(self.good),self.min_match_count)
             return False
    
     def compose_pose(self, RT):
