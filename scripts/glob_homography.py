@@ -7,6 +7,9 @@ from geometry_msgs.msg import PoseStamped
 from copy import deepcopy
 from h2rMultiWii import MultiWii  
 import time
+import numpy as np
+import tf
+
 # camera = Camera()
 # homography = Homography()
 pid = PID()
@@ -15,6 +18,21 @@ ready_to_fly = False
 pos = None
 errpub = rospy.Publisher('/pidrone/error', axes_err, queue_size=1)
 cmdpub = rospy.Publisher('/pidrone/commands_new', RC, queue_size=1)
+
+
+def publish_att(attpub, att_pos):
+    data = board.getData(MultiWii.ATTITUDE)
+    y = data['heading']/180.0*np.pi
+    r = data['angx']/180.0*np.pi
+    p = data['angy']/180.0*np.pi
+    # print -p, r, -y
+    q = np.array(tf.transformations.quaternion_from_euler(-p, r, -y))
+    att_pos.pose.orientation.x = q[0]
+    att_pos.pose.orientation.y = q[1]
+    att_pos.pose.orientation.z = q[2]
+    att_pos.pose.orientation.w = q[3]
+    attpub.publish(att_pos)
+
 
 def vrpn_update_pos(data):
     global ready_to_fly
@@ -27,6 +45,7 @@ def vrpn_update_pos(data):
         if ready_to_fly:
             cmds = pid.step(pos, error)
             errpub.publish(error)
+            print error
             rc = RC()
             rc.roll = cmds[0]
             rc.pitch = cmds[1]
@@ -44,7 +63,10 @@ if __name__ == '__main__':
     try:
         rospy.init_node("glob_homography")
         rospy.Subscriber("/pidrone/target_pos", PoseStamped, pid.update_setpoint)
-        rospy.Subscriber("/pidrone/est_pos", PoseStamped, vrpn_update_pos)
+        rospy.Subscriber("/pidrone/homo_pos", PoseStamped, vrpn_update_pos)
+        attpub = rospy.Publisher('/pidrone/multiwii_attitude', PoseStamped, queue_size=1)
+        att_pos = PoseStamped()
+        att_pos.header.frame_id = 'world'
         # curr_img = None
         # prev_img = camera.getImage().next()
         # aruco_found = False
@@ -82,6 +104,7 @@ if __name__ == '__main__':
         # sp.pose.position.z = 10
         # sp.pose.orientation.w = 1
         sp = deepcopy(pos)
+        sp.pose.position.z += 10
         # sp.pose.position.y += 20
         # sp.pose.orientation.x = 0
         # sp.pose.orientation.y = 0
@@ -90,7 +113,8 @@ if __name__ == '__main__':
         pid.update_setpoint(sp)
         # while not rospy.is_shutdown():
         ready_to_fly = True
-        rospy.spin()
+        while not rospy.is_shutdown():
+            publish_att(attpub, att_pos)
         ready_to_fly = False
         # while ready_to_fly:
             
