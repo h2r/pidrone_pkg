@@ -95,13 +95,13 @@ class Homography:
                 if len(test) > 1:
                     m, n = test
                     # if m.distance < 0.7*n.distance:
-                    #     good.append(m)
+                    #     self.good.append(m)
                     if True:
-                        good.append(m)
+                        self.good.append(m)
 
             if len(self.good) > self.min_match_count:
-                src_pts = np.float32([self.kp1[m.queryIdx].pt for m in good]).reshape(-1,1,2)
-                dst_pts = np.float32([kp2[m.trainIdx].pt for m in good]).reshape(-1,1,2)
+                src_pts = np.float32([self.kp1[m.queryIdx].pt for m in self.good]).reshape(-1,1,2)
+                dst_pts = np.float32([kp2[m.trainIdx].pt for m in self.good]).reshape(-1,1,2)
 
                 H, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC,5.0)
                 self.est_H = H
@@ -117,7 +117,7 @@ class Homography:
             return True
 
         else:
-            print "Not enough matches are found - %d/%d" % (len(good),self.min_match_count)
+            print "Not enough matches are found - %d/%d" % (len(self.good),self.min_match_count)
             return False
    
     def compose_pose(self, RT):
@@ -171,18 +171,11 @@ class Homography:
         if np.linalg.norm(T) < 10:
             RT[0:3, 3] = T.T
 
-<<<<<<< HEAD
-        # self.est_RT = np.dot(RT, self.est_RT)
-        # return self.est_RT[0:3, 0:3], self.est_RT[0:3, 3], norms[min_index]
-
-        return Rs[min_index], T, norms[min_index]
-=======
         self.est_RT = np.dot(RT, self.est_RT) # comment out for first frame
        
         return self.est_RT[0:3, 0:3], self.est_RT[0:3, 3], norms[min_index] # comment out for first frame
 
         # return Rs[min_index], T, norms[min_index] # comment out for integration
->>>>>>> 434dff8a8073f925fcbdeb21ce0f283c205b83ae
         
         # print 'ROTATION MAGNITUDE', np.linalg.norm(R[0:3,0:3]-np.identity(3))
         # twiddle = np.array([[1,0,0],[0,-1,0],[0,0, -1]])

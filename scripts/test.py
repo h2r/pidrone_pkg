@@ -1,6 +1,6 @@
 from h2rMultiWii import MultiWii
 
-board = MultiWii("/dev/ttyUSB0")
+board = MultiWii("/dev/ttyACM0")
 
 board.arm()
 board.disarm()
