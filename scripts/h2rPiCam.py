@@ -49,7 +49,10 @@ def streamPi():
                 sensor_mode=4) as camera:
             time.sleep(2)
             start = time.time()
-            #camera.iso = 100
+            # camera.contrast = 100
+            # camera.exposure_mode = 'off'
+            # camera.iso = 100
+            # camera.saturation = 100
             #time.sleep(2)
 
             #camera.shutter_speed = camera.exposure_speed

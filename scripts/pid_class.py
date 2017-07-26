@@ -104,7 +104,7 @@ class PID:
             err = self.calc_err(pos)
             error.x.err = err[0]
             error.y.err = err[1]
-            error.z.err = err[2]
+            error.z.err = err[3]
             cmd_r = self.roll.step(err[0], time_elapsed, error.x)
             cmd_p = self.pitch.step(err[1], time_elapsed, error.y)
             cmd_y = self.yaw.step(err[2], time_elapsed, None)

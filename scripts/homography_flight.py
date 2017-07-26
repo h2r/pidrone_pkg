@@ -11,21 +11,27 @@ import time
 from homography_class import Homography
 from copy import deepcopy
 
+imu_R = None
+
 homography = Homography()
 
-camera_matrix = np.array([[ 253.70549591,    0.,          162.39457585], 
-                        [ 0.,          251.25243215,  126.5400089], 
-                        [   0.,            0., 1.        ]])
-dist_coeffs = np.array([ 0.20462996, -0.41924085,  0.00484044,  0.00776978,
-                        0.27998478])
 aruco_dict = cv2.aruco.Dictionary_get(cv2.aruco.DICT_5X5_50)
 marker_edge_length = 15.5
 kp1=None
 des1=None
 flann_index_kdtree = 0
 start_RT= None
-
 vrpn_pos = None
+
+def reset_callback(data):
+    global homography
+    vrpn_RT = homography.decompose_pose(vrpn_pos)
+    homography.est_RT = vrpn_RT
+
+def imu_callback(data):
+    global imu_R
+    imu_R = Quaternion(data.pose.orientation.w, data.pose.orientation.x,
+            data.pose.orientation.y, data.pose.orientation.z).rotation_matrix
 
 
 def vrpn_callback(data):
@@ -38,15 +44,23 @@ def vrpn_callback(data):
 
 if __name__ == '__main__':
     global start_RT
+    global imu_R
     rospy.init_node("homography_flight")
     homopospub = rospy.Publisher('/pidrone/homo_pos', PoseStamped, queue_size=1)
     rospy.Subscriber("/pidrone/est_pos", PoseStamped, vrpn_callback)
+    rospy.Subscriber("/pidrone/multiwii_attitude", PoseStamped, imu_callback)
+    rospy.Subscriber("/pidrone/reset_pos", Empty, reset_callback)
     prev_img = None
     init_R = np.array([[1, 0, 0], [0, -1, 0], [0, 0, -1]])
+    homo_pos = None
+    plane_smooth = 1.0
+    z_smooth = 1.0
 
     for curr_img in streamPi():
         curr_img = np.array(curr_img)
         curr_img = cv2.cvtColor(np.array(curr_img), cv2.COLOR_RGB2GRAY)
+        # cv2.imshow("curr", curr_img)
+        # cv2.waitKey(1)
         
         if prev_img is None:
             print "first prev"
@@ -56,7 +70,7 @@ if __name__ == '__main__':
                 # run homography on a new image and integrate H
                 homography.updateH(curr_img, prev_img=prev_img)
 
-                homo_RTn = homography.get_pose_alt(start_RT)
+                homo_RTn = homography.get_pose_alt(start_RT, imu_R)
                 homo_RT = np.identity(4)
                 if homo_RTn is not None:
                     homo_R, homo_T, homo_norm = homo_RTn 
@@ -70,7 +84,14 @@ if __name__ == '__main__':
 
 
 
-                    homo_pos = homography.compose_pose(np.dot(start_RT,homo_RT))
+                    if homo_pos is None:
+                        homo_pos = homography.compose_pose(np.dot(start_RT, homo_RT))
+                    else:
+                        homo_pos_new = homography.compose_pose(np.dot(start_RT, homo_RT))
+                        homo_pos.pose.position.x = homo_pos_new.pose.position.x * plane_smooth + homo_pos.pose.position.x * (1 - plane_smooth)
+                        homo_pos.pose.position.y = homo_pos_new.pose.position.y * plane_smooth + homo_pos.pose.position.y * (1 - plane_smooth)
+                        homo_pos.pose.position.z = homo_pos_new.pose.position.z * z_smooth + homo_pos.pose.position.z * (1 - z_smooth)
+                    # homo_pos = homography.compose_pose(np.dot(start_RT,homo_RT))
                     print (np.array([homo_pos.pose.position.x, homo_pos.pose.position.y, homo_pos.pose.position.z]) - 
                             np.array([vrpn_pos.pose.position.x, vrpn_pos.pose.position.y, vrpn_pos.pose.position.z]))
                     homopospub.publish(homo_pos)

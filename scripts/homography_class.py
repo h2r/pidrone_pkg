@@ -13,8 +13,11 @@ class Homography:
     """ Runs Homography AR"""
     
     def __init__(self, min_match_count = 10, width = 320, height = 240,
-    camera_matrix = np.array([[ 253.70549591,    0.,          162.39457585], 
-                            [ 0.,          251.25243215,  126.5400089 ], 
+    # camera_matrix = np.array([[ 253.70549591,    0.,          162.39457585], 
+    #                         [ 0.,          251.25243215,  126.5400089 ], 
+    #                         [   0.,            0., 1.        ]]), 
+    camera_matrix = np.array([[ 250.0,    0.,          160.0], 
+                            [ 0.,          250.0,  120.0], 
                             [   0.,            0., 1.        ]]), 
     dist_coeffs = np.array([ 0.20462996, -0.41924085,  0.00484044,  0.00776978,
                             0.27998478]), 
@@ -45,6 +48,9 @@ class Homography:
         self.est_t = np.array([[0, 0, 0]]).T
         self.est_R = np.identity(3)
         self.est_RT = np.identity(4)
+        self.kp_lst = []
+        self.des_lst = []
+        self.est_RT_lst = []
 
 
 # Helper for findAruco
@@ -73,10 +79,11 @@ class Homography:
             return True
 
     def updateH(self, curr_img, prev_img):
-        orb = cv2.ORB_create(nfeatures=500, nlevels=8, scaleFactor=2)
+        orb = cv2.ORB_create(nfeatures=1000, nlevels=12, scaleFactor=1.1)
         if self.kp1 is None or self.des1 is None:
             self.kp1, self.des1 = orb.detectAndCompute(prev_img,None)
         kp2, des2 = orb.detectAndCompute(curr_img,None)
+        print 'Found {} features!'.format(len(kp2))
 
         good = []
         flann = cv2.FlannBasedMatcher(self.index_params, self.search_params)
@@ -87,7 +94,9 @@ class Homography:
             for test in matches:
                 if len(test) > 1:
                     m, n = test
-                    if m.distance < 0.7*n.distance:
+                    # if m.distance < 0.7*n.distance:
+                    #     good.append(m)
+                    if True:
                         good.append(m)
 
             if len(good) > self.min_match_count:
@@ -101,8 +110,9 @@ class Homography:
                 # print np.dot(self.est_H_raw, np.array([0,0,1])),
                 # print np.dot(self.est_H, np.array([0, 0, 1]))
                 # self.est_H = np.dot(H, self.est_H) # test reversed
-                self.kp1 = kp2
-                self.des1 = des2
+
+                # self.kp1 = kp2
+                # self.des1 = des2
 
             return True
 
@@ -133,8 +143,11 @@ class Homography:
         T[0, 3] = p.pose.position.x
         T[1, 3] = p.pose.position.y
         T[2, 3] = p.pose.position.z
-        R = q.transformation_matrix
-        return np.dot(R, T)
+        R = q.rotation_matrix
+        RT = np.identity(4)
+        RT[0:3, 0:3] = R
+        RT[0:3, 3] = T[0:3, 3]
+        return RT
 
 
     def get_pose_alt(self, start_RT, imu_R):
@@ -150,20 +163,18 @@ class Homography:
                 min_index = i
 
         T = np.zeros(3)
-        print ts[min_index], np.round(ts[min_index])
         T = ts[min_index] * start_RT[2,3]
+        
 
         RT = np.identity(4)
         RT[0:3, 0:3] = np.identity(3)
-        RT[0:3, 3] = T.T
+        if np.linalg.norm(T) < 10:
+            RT[0:3, 3] = T.T
 
-        self.est_RT = np.dot(RT, self.est_RT)
-        print RT
-        print self.est_RT
-       
-        return self.est_RT[0:3, 0:3], self.est_RT[0:3, 3], norms[min_index]
+        # self.est_RT = np.dot(RT, self.est_RT)
+        # return self.est_RT[0:3, 0:3], self.est_RT[0:3, 3], norms[min_index]
 
-        # return Rs[min_index], T, norms[min_index]
+        return Rs[min_index], T, norms[min_index]
         
         # print 'ROTATION MAGNITUDE', np.linalg.norm(R[0:3,0:3]-np.identity(3))
         # twiddle = np.array([[1,0,0],[0,-1,0],[0,0, -1]])
