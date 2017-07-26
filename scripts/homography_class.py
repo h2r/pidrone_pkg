@@ -85,7 +85,7 @@ class Homography:
         kp2, des2 = orb.detectAndCompute(curr_img,None)
         print 'Found {} features!'.format(len(kp2))
 
-        good = []
+        self.good = []
         flann = cv2.FlannBasedMatcher(self.index_params, self.search_params)
 
         if self.des1 is not None and des2 is not None and len(self.des1) > 3 and len(des2) > 3:
@@ -99,7 +99,7 @@ class Homography:
                     if True:
                         good.append(m)
 
-            if len(good) > self.min_match_count:
+            if len(self.good) > self.min_match_count:
                 src_pts = np.float32([self.kp1[m.queryIdx].pt for m in good]).reshape(-1,1,2)
                 dst_pts = np.float32([kp2[m.trainIdx].pt for m in good]).reshape(-1,1,2)
 
@@ -150,7 +150,7 @@ class Homography:
         return RT
 
 
-    def get_pose_alt(self, start_RT, imu_R):
+    def get_pose_alt(self, start_RT):
         retval, Rs, ts, norms = cv2.decomposeHomographyMat(self.est_H,
                 self.camera_matrix)
         # print 'Weve got {} options'.format(len(Rs))
@@ -171,10 +171,18 @@ class Homography:
         if np.linalg.norm(T) < 10:
             RT[0:3, 3] = T.T
 
+<<<<<<< HEAD
         # self.est_RT = np.dot(RT, self.est_RT)
         # return self.est_RT[0:3, 0:3], self.est_RT[0:3, 3], norms[min_index]
 
         return Rs[min_index], T, norms[min_index]
+=======
+        self.est_RT = np.dot(RT, self.est_RT) # comment out for first frame
+       
+        return self.est_RT[0:3, 0:3], self.est_RT[0:3, 3], norms[min_index] # comment out for first frame
+
+        # return Rs[min_index], T, norms[min_index] # comment out for integration
+>>>>>>> 434dff8a8073f925fcbdeb21ce0f283c205b83ae
         
         # print 'ROTATION MAGNITUDE', np.linalg.norm(R[0:3,0:3]-np.identity(3))
         # twiddle = np.array([[1,0,0],[0,-1,0],[0,0, -1]])

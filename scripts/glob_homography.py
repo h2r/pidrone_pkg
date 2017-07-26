@@ -1,5 +1,5 @@
 # from camera_class import Camera
-from pidrone_pkg.msg import RC, ERR, axes_err
+from pidrone_pkg.msg import RC, axes_err
 # from homography_class import Homography
 from pid_class import PID
 import rospy
@@ -13,7 +13,7 @@ import tf
 # camera = Camera()
 # homography = Homography()
 pid = PID()
-board = MultiWii("/dev/ttyACM0")
+board = MultiWii("/dev/ttyUSB0")
 ready_to_fly = False
 pos = None
 errpub = rospy.Publisher('/pidrone/error', axes_err, queue_size=1)
