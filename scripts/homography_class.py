@@ -78,7 +78,7 @@ class Homography:
             self.kp1, self.des1 = orb.detectAndCompute(prev_img,None)
         kp2, des2 = orb.detectAndCompute(curr_img,None)
 
-        good = []
+        self.good = []
         flann = cv2.FlannBasedMatcher(self.index_params, self.search_params)
 
         if self.des1 is not None and des2 is not None and len(self.des1) > 3 and len(des2) > 3:
@@ -88,9 +88,9 @@ class Homography:
                 if len(test) > 1:
                     m, n = test
                     if m.distance < 0.7*n.distance:
-                        good.append(m)
+                        self.good.append(m)
 
-            if len(good) > self.min_match_count:
+            if len(self.good) > self.min_match_count:
                 src_pts = np.float32([self.kp1[m.queryIdx].pt for m in good]).reshape(-1,1,2)
                 dst_pts = np.float32([kp2[m.trainIdx].pt for m in good]).reshape(-1,1,2)
 
@@ -156,11 +156,11 @@ class Homography:
         RT[0:3, 0:3] = np.identity(3)
         RT[0:3, 3] = T.T
 
-        self.est_RT = np.dot(RT, self.est_RT)
+        self.est_RT = np.dot(RT, self.est_RT) # comment out for first frame
        
-        return self.est_RT[0:3, 0:3], self.est_RT[0:3, 3], norms[min_index]
+        return self.est_RT[0:3, 0:3], self.est_RT[0:3, 3], norms[min_index] # comment out for first frame
 
-        # return Rs[min_index], T, norms[min_index]
+        # return Rs[min_index], T, norms[min_index] # comment out for integration
         
         # print 'ROTATION MAGNITUDE', np.linalg.norm(R[0:3,0:3]-np.identity(3))
         # twiddle = np.array([[1,0,0],[0,-1,0],[0,0, -1]])
