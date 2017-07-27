@@ -7,9 +7,26 @@ A = np.array([[ux, 0, 0, 0], [0, uy, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]])
 RT_intrinsic = np.array([[-1,0,0,0],[0,1,0,0],[0,0,-1,0],[0,0,0,1]])
 camera_corners = [(0,0), (320,0), (320,240),(0,240)]
 
+def pixel_to_global_smart(xy, RT, d, A=A, RT_intrinsic=RT_intrinsic, wh=(320,240)):
+    # z_vec = np.array([0,0,1]).T
+    # angle_away_from_upright = np.arccos(np.dot(RT[0:3,0:3], z_vec)[2]
+    
+    # normalize the pixel coordinates so they are centered around the middle of the image
+    npx = xy[0] - 0.5*wh[0]
+    npy = xy[1] - 0.5*wh[1]
+    # place the pixel in 3D space in the camera's coordinate frame
+    Q = np.dot(RT, RT_intrinsic)
+    # r = inv(k)*p
+    r = np.dot(A, np.array([[npx * d, npy * d, d, 1]]).T)
+    # 
+    np.dot(Q, r) - np.dot(Q, np.array([0,0,0,1]))
+    # take the pixel back to 3D in the global coordinate frame
+    return  np.dot(RT, np.dot(RT_intrinsic, Ax))
+
 
 def pixel_to_global(xy, RT, d, A=A, RT_intrinsic=RT_intrinsic, wh=(320,240)):
-	# normalize the pixel coordinates so they are centered around the middle of the image
+
+    # normalize the pixel coordinates so they are centered around the middle of the image
     npx = xy[0] - 0.5*wh[0]
     npy = xy[1] - 0.5*wh[1]
     # place the pixel in 3D space in the camera's coordinate frame
@@ -26,7 +43,7 @@ def find_bounding_box_global(RT, d, box_scale = 1.0, w=320, h=240):
 					  np.array([0,h])]
 
 	for corner in camera_corners:
-		corner = (corner - center) * scale + center # rescale the camera corners to grow the box
+		corner = (corner - center) * box_scale + center # rescale the camera corners to grow the box
 		global_corners.append(pixel_to_global(corner, RT, d)) # find the corner in global coords
 
 	return global_corners

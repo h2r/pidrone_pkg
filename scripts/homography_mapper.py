@@ -27,7 +27,11 @@ def vrpn_callback(data):
     global vrpn_pos
     vrpn_pos = data
 
-
+def world_to_pixel_map(pt, global_map_min, global_map_max, map_size):
+    global_map_range = global_map_max - global_map_min
+    pt_pixel_coord = ((pt - global_map_min)/global_map_range * map_size).astype(int)
+    return pt_pixel_coord
+ 
 if __name__ == '__main__':
     global start_RT
     rospy.init_node('homography_mapper')
@@ -66,8 +70,8 @@ if __name__ == '__main__':
                     homo_pos.pose.position.x += vrpn_pos.pose.position.x
                     homo_pos.pose.position.y += vrpn_pos.pose.position.y
                     homo_pos.pose.position.z += vrpn_pos.pose.position.z
-                    print (np.array([homo_pos.pose.position.x, homo_pos.pose.position.y, homo_pos.pose.position.z]) - 
-                            np.array([vrpn_pos.pose.position.x, vrpn_pos.pose.position.y, vrpn_pos.pose.position.z]))
+                    # print (np.array([homo_pos.pose.position.x, homo_pos.pose.position.y, homo_pos.pose.position.z]) - 
+                    #         np.array([vrpn_pos.pose.position.x, vrpn_pos.pose.position.y, vrpn_pos.pose.position.z]))
 
                     ##################################################
                     #           Reproject to generate map            #
@@ -94,14 +98,25 @@ if __name__ == '__main__':
                 else:
                     print "No homography matrix :(" 
                 # generate the map image of keypoints    
-                pt_map = np.ones(map_size)
-                global_map_range = global_map_max - global_map_min
+                pt_map = np.zeros(map_size)
                 for pt, des in global_pixel_list:
-                    pt_pixel_coord = ((pt - global_map_min)/global_map_range *
-                            map_size).astype(int)
+                    pt_pixel_coord = world_to_pixel_map(pt, global_map_min, global_map_max, map_size)
                     # print 'Displaying', pt, pt_pixel_coord
-                    pt_map[pt_pixel_coord[0]][pt_pixel_coord[1]] = 0 # rescale the coordinates and mark as black
-
+                    pt_map[pt_pixel_coord[0]][pt_pixel_coord[1]] = 1 # rescale the coordinates and mark as black
+               
+                map_camera_corners = []
+                for corner in find_bounding_box_global(vrpn_RT,
+                        vrpn_pos.pose.position.z):
+                    corner = corner[0:2].T
+                    # print corner, world_to_pixel_map(corner,
+                    # global_map_min, global_map_max, map_size)
+                    map_camera_corners.append(world_to_pixel_map(corner,
+                    global_map_min, global_map_max, map_size))
+                
+                pt_map = cv2.polylines(pt_map,
+                        [np.array(map_camera_corners, dtype='int32')], True, 1)
+                # cv2.polylines(pt_map, [np.array([[100,
+                #     100],[300,100],[300,300],[100,300]], dtype='int32')], True, 1) 
                 cv2.imshow('map_preview',pt_map) # display the map
                 cv2.waitKey(1)
                 prev_img = deepcopy(curr_img) # Updates prev img
