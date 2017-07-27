@@ -30,8 +30,9 @@ def vrpn_callback(data):
 
 
 if __name__ == '__main__':
-    homography = Homography()
     rospy.init_node('homography_mapper')
+    homopospub = rospy.Publisher('/pidrone/homo_pos', PoseStamped, queue_size=1)
+    homography = Homography()
   #  rospy.Subscriber("/pidrone/est_pos", PoseStamped, vrpn_callback)
     prev_img = None
     init_R = np.array([[1, 0, 0], [0, -1, 0], [0, 0, -1]])
@@ -68,6 +69,7 @@ if __name__ == '__main__':
                     homo_pos.pose.position.x += vrpn_pos.pose.position.x
                     homo_pos.pose.position.y += vrpn_pos.pose.position.y
                     homo_pos.pose.position.z += vrpn_pos.pose.position.z
+                    homopospub.publish(homo_pos)
                     print (np.array([homo_pos.pose.position.x, homo_pos.pose.position.y, homo_pos.pose.position.z]) - 
                             np.array([vrpn_pos.pose.position.x, vrpn_pos.pose.position.y, vrpn_pos.pose.position.z]))
 
@@ -77,7 +79,6 @@ if __name__ == '__main__':
                     if len(homography.good) > homography.min_match_count:
                         print 'Got {} new keypoints'.format(len(homography.kp1))
                     	for i in range(len(homography.kp1)):
-                            print i
                             not_a_match = True
                             for match in homography.good:
                                 not_a_match and (i !=  match.trainIdx)
@@ -92,7 +93,6 @@ if __name__ == '__main__':
                             global_map_max))
                     	    global_map_min = np.floor(np.minimum(new_kp,
                             global_map_min))
-                            # print 'Appending', new_kp
                             global_pixel_list.append((new_kp, des))
 
 
@@ -102,12 +102,9 @@ if __name__ == '__main__':
                 # generate the map image of keypoints    
                 pt_map = np.ones(map_size)
                 global_map_range = global_map_max - global_map_min
-                print 'RANGE {}\t MIN{}\t MAX{}\t'.format(global_map_range,
-                global_map_min, global_map_max)
                 for pt, des in global_pixel_list:
                     pt_coords = ((pt - global_map_min)/global_map_range
                     * map_size).astype(int)
-                    print pt, pt_coords
                     pt_map[pt_coords[0]][pt_coords[1]] = 0 # rescale the coordinates and mark as black
 
                 cv2.imshow('map_preview',pt_map) # display the map
