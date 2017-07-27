@@ -108,8 +108,8 @@ class Homography:
                 # print np.dot(self.est_H, np.array([0, 0, 1]))
                 # self.est_H = np.dot(H, self.est_H) # test reversed
 
-                # self.kp1 = kp2
-                # self.des1 = des2
+                self.kp1 = kp2
+                self.des1 = des2
 
             return True
 
@@ -146,6 +146,24 @@ class Homography:
         RT[0:3, 3] = T[0:3, 3]
         return RT
 
+    def get_vel(self, start_RT, timestep):
+        retval, Rs, ts, norms = cv2.decomposeHomographyMat(self.est_H,
+                self.camera_matrix)
+        # print 'Weve got {} options'.format(len(Rs))
+        # if s < len(Rs):
+        min_index = 0
+        min_z_norm = 0
+        for i in range(len(Rs)):
+            if norms[i][2] < min_z_norm:
+                min_z_norm = norms[i][2]
+                min_index = i
+
+        T = np.zeros(3)
+        T = ts[min_index] * start_RT[2,3]
+
+        return T / timestep
+
+
 
     def get_pose_alt(self, start_RT):
         retval, Rs, ts, norms = cv2.decomposeHomographyMat(self.est_H,
@@ -165,8 +183,8 @@ class Homography:
 
         RT = np.identity(4)
         RT[0:3, 0:3] = np.identity(3)
-        if np.linalg.norm(T) < 10:
-            RT[0:3, 3] = T.T
+        # if np.linalg.norm(T) < 10:
+        RT[0:3, 3] = T.T
 
         self.est_RT = np.dot(RT, self.est_RT) # comment out for first frame
        

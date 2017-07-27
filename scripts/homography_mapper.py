@@ -15,8 +15,9 @@ from find_visible_subset import *
 global_pixel_list = []
 global_map_max = np.array([10,10])
 global_map_min = np.array([-10,-10])
-map_size = np.array([1080,1080]) # height,width cuz numpy
-
+map_size = np.array([400,400]) # height,width cuz numpy
+start_RT = np.identity(4)
+vrpn_pos = PoseStamped()
 
 
 def vrpn_callback(data):
@@ -29,10 +30,11 @@ def vrpn_callback(data):
 
 if __name__ == '__main__':
     global start_RT
+    rospy.init_node('homography_mapper')
     rospy.Subscriber("/pidrone/est_pos", PoseStamped, vrpn_callback)
     prev_img = None
     init_R = np.array([[1, 0, 0], [0, -1, 0], [0, 0, -1]])
-
+    homography = Homography()
 
     for curr_img in streamPi():
         curr_img = np.array(curr_img)
@@ -70,20 +72,22 @@ if __name__ == '__main__':
                     ##################################################
                     #           Reproject to generate map            #
                     ##################################################
-                    if len(homography.good) > homography.min_match_count:
-                        vrpn_RT = homography.decompose_pose(vrpn_pos)
-                        for i in range(len(homography.kp1)):
-                            not_a_match = True
-                            for match in homography.good:
-                                not_a_match and (i !=  match.trainIdx)
+                    vrpn_RT = homography.decompose_pose(vrpn_pos)
+                    for i in range(len(homography.kp1)):
+                        not_a_match = True
+                        for match in homography.good:
+                            not_a_match and (i !=  match.trainIdx)
 
-                            if not_a_match:
-                                kp = homography.kp1[i]
-                                des = homography.des1[i]
-                                new_kp = pixel_to_global(pt, vrpn_RT, vrpn_pos.pose.posititon.z)[0:2]
-                                global_map_max = np.maximum(new_kp, global_map_max)
-                                global_map_min = np.minumum(new_kp, global_map_min)
-                                global_pixel_list.append((new_kp, des))
+                        if not_a_match:
+                            kp = homography.kp1[i]
+                            des = homography.des1[i]
+                            new_kp = pixel_to_global(kp.pt, vrpn_RT,
+                                    vrpn_pos.pose.position.z)[0:2].T[0]
+                            global_map_max = np.ceil(np.maximum(new_kp,
+                                global_map_max))
+                            global_map_min = np.floor(np.minimum(new_kp,
+                                global_map_min))
+                            global_pixel_list.append((new_kp, des))
 
 
 
@@ -93,10 +97,13 @@ if __name__ == '__main__':
                 pt_map = np.ones(map_size)
                 global_map_range = global_map_max - global_map_min
                 for pt, des in global_pixel_list:
-                    pt_map[(pt + global_map_min)/global_map_range * map_size] = 0 # rescale the coordinates and mark as black
+                    pt_pixel_coord = ((pt - global_map_min)/global_map_range *
+                            map_size).astype(int)
+                    # print 'Displaying', pt, pt_pixel_coord
+                    pt_map[pt_pixel_coord[0]][pt_pixel_coord[1]] = 0 # rescale the coordinates and mark as black
 
                 cv2.imshow('map_preview',pt_map) # display the map
-                cv2.waitkey(1)
+                cv2.waitKey(1)
                 prev_img = deepcopy(curr_img) # Updates prev img
             else:
                 print "No VRRN :("

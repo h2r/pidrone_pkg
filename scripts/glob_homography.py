@@ -9,16 +9,29 @@ from h2rMultiWii import MultiWii
 import time
 import numpy as np
 import tf
+from std_msgs.msg import Empty
 
 # camera = Camera()
 # homography = Homography()
 pid = PID()
-board = MultiWii("/dev/ttyUSB0")
+board = MultiWii("/dev/ttyACM0")
 ready_to_fly = False
 pos = None
 errpub = rospy.Publisher('/pidrone/error', axes_err, queue_size=1)
 cmdpub = rospy.Publisher('/pidrone/commands_new', RC, queue_size=1)
+sp = None
 
+def reset_callback(data):
+    print "RESETTING"
+    global sp
+    global pos
+    global pid
+    # pid.throttle._i = 0
+    # pid.roll._i = 0
+    # pid.pitch._i = 0
+    # pid.yaw._i = 0
+    sp = deepcopy(pos)
+    pid.update_setpoint(sp)
 
 def publish_att(attpub, att_pos):
     data = board.getData(MultiWii.ATTITUDE)
@@ -45,7 +58,7 @@ def vrpn_update_pos(data):
         if ready_to_fly:
             cmds = pid.step(pos, error)
             errpub.publish(error)
-            print error
+            # print error
             rc = RC()
             rc.roll = cmds[0]
             rc.pitch = cmds[1]
@@ -63,6 +76,7 @@ if __name__ == '__main__':
     try:
         rospy.init_node("glob_homography")
         rospy.Subscriber("/pidrone/target_pos", PoseStamped, pid.update_setpoint)
+        # rospy.Subscriber("/pidrone/reset_pos", Empty, reset_callback)
         rospy.Subscriber("/pidrone/homo_pos", PoseStamped, vrpn_update_pos)
         attpub = rospy.Publisher('/pidrone/multiwii_attitude', PoseStamped, queue_size=1)
         att_pos = PoseStamped()
@@ -103,6 +117,7 @@ if __name__ == '__main__':
         # sp.pose.position.y = 0
         # sp.pose.position.z = 10
         # sp.pose.orientation.w = 1
+        global sp
         sp = deepcopy(pos)
         sp.pose.position.z += 10
         # sp.pose.position.y += 20
@@ -126,4 +141,4 @@ if __name__ == '__main__':
         print("ERROR DISARM")
         board.disarm()
         # camera.stream.terminate()
-        raise
+       

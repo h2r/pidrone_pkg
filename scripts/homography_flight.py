@@ -1,6 +1,8 @@
 import cv2
 import numpy as np
-from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import PoseStamped, Point
+from visualization_msgs.msg import Marker
+from std_msgs.msg import Empty
 import rospy
 import tf
 import copy
@@ -26,7 +28,7 @@ vrpn_pos = None
 def reset_callback(data):
     global homography
     vrpn_RT = homography.decompose_pose(vrpn_pos)
-    homography.est_RT = vrpn_RT
+    homography.est_RT[0:3, 3] = vrpn_RT[0:3, 3] - start_RT[0:3, 3]
 
 def imu_callback(data):
     global imu_R
@@ -47,6 +49,7 @@ if __name__ == '__main__':
     global imu_R
     rospy.init_node("homography_flight")
     homopospub = rospy.Publisher('/pidrone/homo_pos', PoseStamped, queue_size=1)
+    homovelpub = rospy.Publisher('/pidrone/homo_vel', Marker, queue_size=1)
     rospy.Subscriber("/pidrone/est_pos", PoseStamped, vrpn_callback)
     rospy.Subscriber("/pidrone/multiwii_attitude", PoseStamped, imu_callback)
     rospy.Subscriber("/pidrone/reset_pos", Empty, reset_callback)
@@ -55,6 +58,7 @@ if __name__ == '__main__':
     homo_pos = None
     plane_smooth = 1.0
     z_smooth = 1.0
+    prev_time = None
 
     for curr_img in streamPi():
         curr_img = np.array(curr_img)
@@ -65,12 +69,24 @@ if __name__ == '__main__':
         if prev_img is None:
             print "first prev"
             prev_img = deepcopy(curr_img)
+            prev_time = time.time()
         else:
             if start_RT is not None:
+                now = time.time()
                 # run homography on a new image and integrate H
                 homography.updateH(curr_img, prev_img=prev_img)
 
-                homo_RTn = homography.get_pose_alt(start_RT, imu_R)
+                homo_RTn = homography.get_pose_alt(start_RT)
+                vel = homography.get_vel(start_RT, now - prev_time)
+                vel_twist = Marker()
+                pt1 = Point()
+                pt2 = Point()
+                pt2.x = vel[0][0]
+                pt2.y = vel[1][0]
+                pt2.z = vel[2][0]
+                vel_twist.points.append(pt1)
+                vel_twist.points.append(pt2)
+                homovelpub.publish(vel_twist)
                 homo_RT = np.identity(4)
                 if homo_RTn is not None:
                     homo_R, homo_T, homo_norm = homo_RTn 
@@ -84,17 +100,19 @@ if __name__ == '__main__':
 
 
 
-                    if homo_pos is None:
-                        homo_pos = homography.compose_pose(np.dot(start_RT, homo_RT))
-                    else:
-                        homo_pos_new = homography.compose_pose(np.dot(start_RT, homo_RT))
-                        homo_pos.pose.position.x = homo_pos_new.pose.position.x * plane_smooth + homo_pos.pose.position.x * (1 - plane_smooth)
-                        homo_pos.pose.position.y = homo_pos_new.pose.position.y * plane_smooth + homo_pos.pose.position.y * (1 - plane_smooth)
-                        homo_pos.pose.position.z = homo_pos_new.pose.position.z * z_smooth + homo_pos.pose.position.z * (1 - z_smooth)
-                    # homo_pos = homography.compose_pose(np.dot(start_RT,homo_RT))
-                    print (np.array([homo_pos.pose.position.x, homo_pos.pose.position.y, homo_pos.pose.position.z]) - 
-                            np.array([vrpn_pos.pose.position.x, vrpn_pos.pose.position.y, vrpn_pos.pose.position.z]))
+                    # if homo_pos is None:
+                    #     homo_pos = homography.compose_pose(np.dot(start_RT, homo_RT))
+                    # else:
+                    #     homo_pos_new = homography.compose_pose(np.dot(start_RT, homo_RT))
+                    #     homo_pos.pose.position.x = homo_pos_new.pose.position.x * plane_smooth + homo_pos.pose.position.x * (1 - plane_smooth)
+                    #     homo_pos.pose.position.y = homo_pos_new.pose.position.y * plane_smooth + homo_pos.pose.position.y * (1 - plane_smooth)
+                    #     homo_pos.pose.position.z = homo_pos_new.pose.position.z * z_smooth + homo_pos.pose.position.z * (1 - z_smooth)
+                    homo_pos = homography.compose_pose(np.dot(start_RT,homo_RT))
+                    # print (np.array([homo_pos.pose.position.x, homo_pos.pose.position.y, homo_pos.pose.position.z]) - 
+                    #         np.array([vrpn_pos.pose.position.x, vrpn_pos.pose.position.y, vrpn_pos.pose.position.z]))
                     homopospub.publish(homo_pos)
+                    print homo_pos
+                    prev_time = now
                 else:
                     print "No homography matrix :(" 
 
