@@ -164,8 +164,8 @@ if __name__ == '__main__':
                 else:
                     print "Couldn't update H"
                 error.z.err = init_z - z + 10
-                print error
                 cmds = pid.step(error)
+                print error
                 print cmds
                 board.sendCMD(8, MultiWii.SET_RAW_RC, cmds)
         print "Shutdown Recieved"
