@@ -72,16 +72,16 @@ class PIDaxis():
 
 class PID:
     def __init__(self, 
-        roll = PIDaxis(1.2, 0.5, 1.2),
-        pitch = PIDaxis(1.2, 0.5, 1.2),
-        yaw = PIDaxis(-1000.0, 0,0),
+        roll = PIDaxis(1.0, 0, 0.0),
+        pitch = PIDaxis(1.0, 0, 0.0),
+        yaw = PIDaxis(0.0, 0.0, 0.0),
         throttle = PIDaxis(7.5, 4.0, 2.0, kp_upper = 0, i_range=(0, 400),\
             control_range=(1150,2000), d_range=(-400, 400), midpoint =
             1200), smoothing=False):
-        # roll = PIDaxis(1.2, 0, 0),
-        # pitch = PIDaxis(1.2, 0, 0),
-        # yaw = PIDaxis(0.0, 0,0),
-        # throttle = PIDaxis(7.5, 4.0, 0 * 2.0, kp_upper = 0, i_range=(0, 400),\
+        # roll = PIDaxis(1.2, 05, 1.2),
+        # pitch = PIDaxis(1.2, 0.5, 1.2),
+        # yaw = PIDaxis(-1000.0, 0,0),
+        # throttle = PIDaxis(7.5, 4.0, 2.0, kp_upper = 0, i_range=(0, 400),\
         #     control_range=(1150,2000), d_range=(-400, 400), midpoint =
         #     1200), smoothing=False):
         self.roll = roll
@@ -94,23 +94,39 @@ class PID:
     def update_setpoint(self, data):
         self.sp = data
 
-    def step(self, pos, error):
+    def step(self, error):
         if self._t is None: time_elapsed = 1 # first time around prevent time spike
-        else: time_elapsed = time.time() - self._t
-        self._t = time.time()
-        if self.sp is None:
-            return [1500, 1500, 1500, 1000]
-        else:
-            err = self.calc_err(pos)
-            error.x.err = err[0]
-            error.y.err = err[1]
-            error.z.err = err[3]
-            cmd_r = self.roll.step(err[0], time_elapsed, error.x)
-            cmd_p = self.pitch.step(err[1], time_elapsed, error.y)
-            cmd_y = self.yaw.step(err[2], time_elapsed, None)
-            cmd_t = self.throttle.step(err[3], time_elapsed, error.z)
+        else: time_elapsed = rospy.get_time() - self._t
+        self._t = rospy.get_time()
+        cmd_r = self.roll.step(error.x.err, time_elapsed, error.x)
+        cmd_p = self.pitch.step(error.y.err, time_elapsed, error.y)
+        cmd_y = 0
+        cmd_t = self.throttle.step(error.z.err, time_elapsed, error.z)
 
-            return [cmd_r, cmd_p, cmd_y, cmd_t]
+        return [cmd_r, cmd_p, cmd_y, cmd_t]
+
+    # def step(self, pos, error):
+    #     if self._t is None: time_elapsed = 1 # first time around prevent time spike
+    #     else: time_elapsed = time.time() - self._t
+    #     self._t = time.time()
+    #     if self.sp is None:
+    #         return [1500, 1500, 1500, 1000]
+    #     else:
+    #         cmd_r = self.roll.step(error[0], time_elapsed, error.x)
+    #         cmd_p = self.pitch.step(error[1], time_elapsed, error.y)
+    #         # cmd_y = self.yaw.step(err[2], time_elapsed, None)
+    #         cmd_y = 0
+    #         cmd_t = self.throttle.step(error[3], time_elapsed, error.z)
+    #         # err = self.calc_err(pos)
+    #         # error.x.err = err[0]
+    #         # error.y.err = err[1]
+    #         # error.z.err = err[3]
+    #         # cmd_r = self.roll.step(err[0], time_elapsed, error.x)
+    #         # cmd_p = self.pitch.step(err[1], time_elapsed, error.y)
+    #         # cmd_y = self.yaw.step(err[2], time_elapsed, None)
+    #         # cmd_t = self.throttle.step(err[3], time_elapsed, error.z)
+
+    #         return [cmd_r, cmd_p, cmd_y, cmd_t]
     
     def get_roll_matrix(self, data):
         y = data['heading']/180.0*np.pi

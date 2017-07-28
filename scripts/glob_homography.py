@@ -21,6 +21,8 @@ errpub = rospy.Publisher('/pidrone/error', axes_err, queue_size=1)
 cmdpub = rospy.Publisher('/pidrone/commands_new', RC, queue_size=1)
 sp = None
 
+disarm_angle = 30.0
+
 def reset_callback(data):
     print "RESETTING"
     global sp
@@ -35,6 +37,9 @@ def reset_callback(data):
 
 def publish_att(attpub, att_pos):
     data = board.getData(MultiWii.ATTITUDE)
+    print data['heading']
+    # if np.abs(data['angx']) > disarm_angle or np.abs(data['angy']) > disarm_angle:
+    #     raise ValueError("Autodisarm. Drone tilted more than 50 degrees")
     y = data['heading']/180.0*np.pi
     r = data['angx']/180.0*np.pi
     p = data['angy']/180.0*np.pi
@@ -45,6 +50,7 @@ def publish_att(attpub, att_pos):
     att_pos.pose.orientation.z = q[2]
     att_pos.pose.orientation.w = q[3]
     attpub.publish(att_pos)
+    time.sleep(0.1)
 
 
 def vrpn_update_pos(data):
@@ -65,7 +71,7 @@ def vrpn_update_pos(data):
             rc.yaw = cmds[2]
             rc.throttle = cmds[3]
             cmdpub.publish(rc)
-            print cmds
+            # print cmds
             board.sendCMD(8, MultiWii.SET_RAW_RC, cmds)
     except Exception as e:
         print("Caught exception in callback", e)
@@ -120,6 +126,7 @@ if __name__ == '__main__':
         global sp
         sp = deepcopy(pos)
         sp.pose.position.z += 10
+        sp.pose.position.x -= 10
         # sp.pose.position.y += 20
         # sp.pose.orientation.x = 0
         # sp.pose.orientation.y = 0
