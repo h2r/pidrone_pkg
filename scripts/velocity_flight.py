@@ -124,14 +124,14 @@ def vrpn_update_pos(data):
 
 def ultra_callback(data):
     global ultra_z
-    if data.range != -1:
-        ultra_z = data.range
+    if data.pose.position.z != -1:
+        ultra_z = data.pose.position.z
 
 if __name__ == '__main__':
     rospy.init_node('velocity_flight')
     cmdpub = rospy.Publisher('/pidrone/plane_cmds', RC, queue_size=1)
     rospy.Subscriber("/pidrone/est_pos", PoseStamped, vrpn_update_pos)
-    rospy.Subscriber("/pidrone/ultrasonic", Range, ultra_callback)
+    rospy.Subscriber("/pidrone/height_pos", PoseStamped, ultra_callback)
     homography = Homography()
     pid = PID()
     first = True
@@ -151,9 +151,10 @@ if __name__ == '__main__':
                 first = False
                 homography.set_z(vrpn_pos.pose.position.z)
             else:
-                homography.set_z(ultra_z)
                 error = axes_err()
                 if homography.update_H(curr_img):
+                    homography.set_z(ultra_z)
+                    print 'ultra_z', homography.curr_z
                     vel, z = homography.get_vel_and_z()
                     if np.abs(np.linalg.norm(vel)) < 2500:
                         print "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%"

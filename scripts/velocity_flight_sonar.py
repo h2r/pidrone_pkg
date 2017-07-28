@@ -17,6 +17,9 @@ smoothed_vel = np.array([0, 0, 0])
 alpha = 1.0
 ultra_z = 0
 cmds_plane = [1500, 1500]
+heightpub = rospy.Publisher('/pidrone/height_pos', PoseStamped, queue_size=1)
+pid = PID()
+first = True
 
 def vrpn_update_pos(data):
     global vrpn_pos
@@ -27,32 +30,12 @@ def vrpn_update_pos(data):
 
 def ultra_callback(data):
     global ultra_z
+    global heightpub
+    global pid
+    global first
     if data.range != -1:
         ultra_z = data.range
-
-def plane_callback(data):
-    global cmds_plane
-    cmds_plane = [data.roll, data.pitch]
-
-if __name__ == '__main__':
-    rospy.init_node('velocity_flight_sonar')
-    rospy.Subscriber("/pidrone/est_pos", PoseStamped, vrpn_update_pos)
-    rospy.Subscriber("/pidrone/ultrasonic", Range, ultra_callback)
-    rospy.Subscriber("/pidrone/plane_cmds", RC, plane_callback)
-    emptypub = rospy.Publisher('/pidrone/empty', Empty, queue_size=1)
-    pid = PID()
-    first = True
-    board = MultiWii("/dev/ttyACM0")
-    while vrpn_pos is None:
-        if not rospy.is_shutdown():
-            print "No VRPN :("
-            time.sleep(0.01)
-        else:
-            print "Shutdown Recieved"
-            sys.exit()
-    stream = streamPi()
-    try:
-        while not rospy.is_shutdown():
+        try:
             if first:
                 # board.arm()
                 first = False
@@ -65,10 +48,31 @@ if __name__ == '__main__':
                 print error
                 print cmds
                 #board.sendCMD(8, MultiWii.SET_RAW_RC, cmds)
-                emptypub.publish(Empty())
+                height_pos = PoseStamped()
+                height_pos.pose.position.z = ultra_z
+                heightpub.publish(height_pos)
+        except Exception as e:
+            board.disarm()
+            raise
+
+def plane_callback(data):
+    global cmds_plane
+    cmds_plane = [data.roll, data.pitch]
+
+if __name__ == '__main__':
+    rospy.init_node('velocity_flight_sonar')
+    rospy.Subscriber("/pidrone/est_pos", PoseStamped, vrpn_update_pos)
+    rospy.Subscriber("/pidrone/ultrasonic", Range, ultra_callback)
+    rospy.Subscriber("/pidrone/plane_cmds", RC, plane_callback)
+    board = MultiWii("/dev/ttyACM0")
+    while vrpn_pos is None:
+        if not rospy.is_shutdown():
+            print "No VRPN :("
+            time.sleep(0.01)
+        else:
+            print "Shutdown Recieved"
+            sys.exit()
+        rospy.spin()
         print "Shutdown Recieved"
         board.disarm()
         sys.exit()
-    except Exception as e:
-        board.disarm()
-        raise
