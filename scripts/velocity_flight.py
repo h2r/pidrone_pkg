@@ -1,5 +1,6 @@
 from pid_class import PID
 from geometry_msgs.msg import PoseStamped
+from sensor_msgs.msg import Range
 from h2rPiCam import streamPi
 import cv2
 import rospy
@@ -76,7 +77,8 @@ class Homography:
             return False
 
     def update_z(self, t):
-        self.curr_z += t[2] * self.curr_z
+        if np.abs(t[2] * self.curr_z) < 10:
+            self.curr_z += t[2] * self.curr_z
 
     def set_z(self, z):
         self.curr_z = z
@@ -94,7 +96,7 @@ class Homography:
                 if norms[i][2] < min_z_norm:
                     min_z_norm = norms[i][2]
                     min_index = i
-            self.update_z(ts[min_index].T[0])
+#           self.update_z(ts[min_index].T[0]) # uncomment for z estimation from camera
 
             T = ts[min_index] * self.curr_z
 
@@ -111,6 +113,7 @@ vrpn_pos = None
 init_z = None
 smoothed_vel = np.array([0, 0, 0])
 alpha = 0.3
+ultra_z = 0
 
 def vrpn_update_pos(data):
     global vrpn_pos
@@ -119,9 +122,15 @@ def vrpn_update_pos(data):
     if init_z is None:
         init_z = vrpn_pos.pose.position.z
 
+def ultra_callback(data):
+    global ultra_z
+    if data.range != -1:
+        ultra_z = data.range
+
 if __name__ == '__main__':
     rospy.init_node('velocity_flight')
     rospy.Subscriber("/pidrone/est_pos", PoseStamped, vrpn_update_pos)
+    rospy.Subscriber("/pidrone/ultrasonic", Range, ultra_callback)
     homography = Homography()
     pid = PID()
     first = True
@@ -143,21 +152,22 @@ if __name__ == '__main__':
                 homography.set_z(vrpn_pos.pose.position.z)
                 # board.arm()
             else:
+                homography.set_z(ultra_z)
+                error = axes_err()
                 if homography.update_H(curr_img):
                     vel, z = homography.get_vel_and_z()
                     smoothed_vel = (1 - alpha) * smoothed_vel + alpha * vel
-                    error = axes_err()
                     if vel[0] < 100:
                         error.x.err = smoothed_vel[0]
                     if vel[1] < 100:
                         error.y.err = smoothed_vel[1]
-                    error.z.err = init_z - z + 10
-                    print error
-                    cmds = pid.step(error)
-                    print cmds
-                    board.sendCMD(8, MultiWii.SET_RAW_RC, cmds)
                 else:
                     print "Couldn't update H"
+                error.z.err = init_z - z + 10
+                print error
+                cmds = pid.step(error)
+                print cmds
+                board.sendCMD(8, MultiWii.SET_RAW_RC, cmds)
         print "Shutdown Recieved"
         board.disarm()
         sys.exit()
