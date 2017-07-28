@@ -112,7 +112,7 @@ class Homography:
 vrpn_pos = None
 init_z = None
 smoothed_vel = np.array([0, 0, 0])
-alpha = 0.3
+alpha = 1.0
 ultra_z = 0
 
 def vrpn_update_pos(data):
@@ -150,21 +150,26 @@ if __name__ == '__main__':
                 homography.update_H(curr_img, curr_img)
                 first = False
                 homography.set_z(vrpn_pos.pose.position.z)
-                # board.arm()
+                board.arm()
             else:
                 homography.set_z(ultra_z)
                 error = axes_err()
                 if homography.update_H(curr_img):
                     vel, z = homography.get_vel_and_z()
-                    smoothed_vel = (1 - alpha) * smoothed_vel + alpha * vel
-                    if vel[0] < 100:
+                    if np.abs(np.linalg.norm(vel)) < 2500:
+                        print "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%"
+                        smoothed_vel = (1 - alpha) * smoothed_vel + alpha * vel
                         error.x.err = smoothed_vel[0]
-                    if vel[1] < 100:
                         error.y.err = smoothed_vel[1]
+                    else:
+                        print "&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&"
+                        print np.abs(np.linalg.norm(vel))
                 else:
+                    print "###################################################################################################"
                     print "Couldn't update H"
-                error.z.err = init_z - z + 10
+                error.z.err = init_z - homography.curr_z + 40
                 cmds = pid.step(error)
+                print 'vrpn-ultra-error', homography.curr_z - vrpn_pos.pose.position.z
                 print error
                 print cmds
                 board.sendCMD(8, MultiWii.SET_RAW_RC, cmds)
