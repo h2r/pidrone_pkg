@@ -13,7 +13,12 @@ print "Distance measurement in progress"
 GPIO.setup(TRIG,GPIO.OUT)                  #Set pin as GPIO out
 GPIO.setup(ECHO,GPIO.IN)                   #Set pin as GPIO in
 
+smoothed_distance = 0
+alpha = 0.1
+
 def get_range():
+  global smoothed_distance
+  global alpha
   missed_pulse = False
   GPIO.output(TRIG, False)                 #Set TRIG as LOW
   time.sleep(0.005)
@@ -41,7 +46,8 @@ def get_range():
   distance = round(distance, 2)            #Round to two decimal points
 
   if distance > 2 and distance < 400:      #Check whether the distance is within range
-      return distance
+      smoothed_distance = (1 - alpha) * smoothed_distance + alpha * distance
+      return smoothed_distance
   else:
       return -1
 

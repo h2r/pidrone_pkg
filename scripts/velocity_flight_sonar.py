@@ -12,7 +12,7 @@ import time
 import sys
 
 vrpn_pos = None
-init_z = None
+init_z = 0
 smoothed_vel = np.array([0, 0, 0])
 alpha = 1.0
 ultra_z = 0
@@ -37,17 +37,18 @@ def ultra_callback(data):
         ultra_z = data.range
         try:
             if first:
-                # board.arm()
+                board.arm()
                 first = False
             else:
                 error = axes_err()
-                error.z.err = init_z - ultra_z + 40
+                print init_z, ultra_z
+                error.z.err = init_z - ultra_z + 20
                 cmds_height = pid.step(error)
-                print 'vrpn-ultra-error', ultra_z - vrpn_pos.pose.position.z
+                print 'range', ultra_z
                 cmds = [cmds_plane[0], cmds_plane[1], 0, cmds_height[3]]
                 print error
                 print cmds
-                #board.sendCMD(8, MultiWii.SET_RAW_RC, cmds)
+                board.sendCMD(8, MultiWii.SET_RAW_RC, cmds)
                 height_pos = PoseStamped()
                 height_pos.pose.position.z = ultra_z
                 heightpub.publish(height_pos)
@@ -62,17 +63,10 @@ def plane_callback(data):
 if __name__ == '__main__':
     rospy.init_node('velocity_flight_sonar')
     rospy.Subscriber("/pidrone/est_pos", PoseStamped, vrpn_update_pos)
-    rospy.Subscriber("/pidrone/ultrasonic", Range, ultra_callback)
     rospy.Subscriber("/pidrone/plane_cmds", RC, plane_callback)
     board = MultiWii("/dev/ttyACM0")
-    while vrpn_pos is None:
-        if not rospy.is_shutdown():
-            print "No VRPN :("
-            time.sleep(0.01)
-        else:
-            print "Shutdown Recieved"
-            sys.exit()
-        rospy.spin()
-        print "Shutdown Recieved"
-        board.disarm()
-        sys.exit()
+    rospy.Subscriber("/pidrone/infrared", Range, ultra_callback)
+    rospy.spin()
+    print "Shutdown Recieved"
+    board.disarm()
+    sys.exit()

@@ -40,7 +40,7 @@ class Homography:
         self.curr_z = None
 
     def update_H(self, curr_img, prev_img = None):
-        orb = cv2.ORB_create(nfeatures=500, nlevels=8, scaleFactor=2.0)
+        orb = cv2.ORB_create(nfeatures=1000, nlevels=12, scaleFactor=1.1)
         if self.curr_kp is None or self.curr_des is None:
             self.curr_kp, self.curr_des = orb.detectAndCompute(prev_img,None)
         prev_kp, prev_des = orb.detectAndCompute(curr_img,None)
@@ -102,10 +102,8 @@ class Homography:
 
             curr_time = rospy.get_time()
             timestep = curr_time - self.prev_time
-            print timestep, self.curr_z
             ret_val = T.T[0] / timestep, self.curr_z
             self.prev_time = curr_time
-            print ret_val
             return ret_val
 
 
@@ -124,17 +122,17 @@ def vrpn_update_pos(data):
 
 def ultra_callback(data):
     global ultra_z
-    if data.range != -1:
-        ultra_z = data.range
+    if data.pose.position.z != -1:
+        ultra_z = data.pose.position.z
 
 if __name__ == '__main__':
     rospy.init_node('velocity_flight')
+    cmdpub = rospy.Publisher('/pidrone/plane_cmds', RC, queue_size=1)
     rospy.Subscriber("/pidrone/est_pos", PoseStamped, vrpn_update_pos)
-    rospy.Subscriber("/pidrone/ultrasonic", Range, ultra_callback)
+    rospy.Subscriber("/pidrone/height_pos", PoseStamped, ultra_callback)
     homography = Homography()
     pid = PID()
     first = True
-    board = MultiWii("/dev/ttyACM0")
     while vrpn_pos is None:
         if not rospy.is_shutdown():
             print "No VRPN :("
@@ -150,32 +148,32 @@ if __name__ == '__main__':
                 homography.update_H(curr_img, curr_img)
                 first = False
                 homography.set_z(vrpn_pos.pose.position.z)
-                board.arm()
             else:
-                homography.set_z(ultra_z)
                 error = axes_err()
                 if homography.update_H(curr_img):
+                    #homography.set_z(ultra_z)
+                    homography.set_z(ultra_z)
+                    print 'ultra_z', homography.curr_z
                     vel, z = homography.get_vel_and_z()
                     if np.abs(np.linalg.norm(vel)) < 2500:
                         print "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%"
+                        print vel
                         smoothed_vel = (1 - alpha) * smoothed_vel + alpha * vel
                         error.x.err = smoothed_vel[0]
                         error.y.err = smoothed_vel[1]
                     else:
                         print "&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&"
-                        print np.abs(np.linalg.norm(vel))
+                        print np.linalg.norm(vel)
+                    cmds = pid.step(error)
+                    print cmds[0], cmds[1]
+                    rc = RC()
+                    rc.roll = cmds[0]
+                    rc.pitch = cmds[1]
+                    cmdpub.publish(rc)
                 else:
                     print "###################################################################################################"
                     print "Couldn't update H"
-                error.z.err = init_z - homography.curr_z + 40
-                cmds = pid.step(error)
-                print 'ultra', homography.curr_z, 'vrpn', vrpn_pos.pose.position.z
-                print error
-                print cmds
-                board.sendCMD(8, MultiWii.SET_RAW_RC, cmds)
         print "Shutdown Recieved"
-        board.disarm()
         sys.exit()
     except Exception as e:
-        board.disarm()
-raise
+        raise
