@@ -75,7 +75,7 @@ class PID:
         roll = PIDaxis(-0.0, 0, 0.0),
         pitch = PIDaxis(-0.0, 0, 0.0),
         yaw = PIDaxis(0.0, 0.0, 0.0),
-        throttle = PIDaxis(7.5, 1.0, 2.0, kp_upper = 0, i_range=(0, 400),\
+        throttle = PIDaxis(5.0, 3.0, 2.0, kp_upper = 0, i_range=(0, 400),\
             control_range=(1150,2000), d_range=(-400, 400), midpoint =
             1200), smoothing=False):
         # roll = PIDaxis(1.2, 05, 1.2),

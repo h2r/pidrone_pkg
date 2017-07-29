@@ -8,7 +8,7 @@ GAIN = 1
 m = 181818.18181818182
 b = -8.3
 smoothed_distance = 0
-alpha = 0.6
+alpha = 0.4
 
 def get_range():
     global smoothed_distance
