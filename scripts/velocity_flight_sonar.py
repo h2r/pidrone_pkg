@@ -12,6 +12,7 @@ import time
 import sys
 
 vrpn_pos = None
+set_z = 35
 init_z = 0
 smoothed_vel = np.array([0, 0, 0])
 alpha = 1.0
@@ -42,7 +43,7 @@ def ultra_callback(data):
             else:
                 error = axes_err()
                 print init_z, ultra_z
-                error.z.err = init_z - ultra_z + 20
+                error.z.err = init_z - ultra_z + set_z
                 cmds_height = pid.step(error)
                 print 'range', ultra_z
                 cmds = [cmds_plane[0], cmds_plane[1], 0, cmds_height[3]]
