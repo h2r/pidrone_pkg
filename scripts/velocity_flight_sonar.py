@@ -12,7 +12,7 @@ import time
 import sys
 
 vrpn_pos = None
-set_z = 35
+set_z = 20
 init_z = 0
 smoothed_vel = np.array([0, 0, 0])
 alpha = 1.0

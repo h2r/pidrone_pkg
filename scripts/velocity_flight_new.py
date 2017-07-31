@@ -20,8 +20,9 @@ class Homography:
     dist_coeffs = np.array([ 0.20462996, -0.41924085,  0.00484044,  0.00776978,
                             0.27998478]), 
     flann_index_kdtree = 0, 
-    index_params = dict(algorithm = 6, table_number = 6,
-                        key_size = 12, multi_probe_level = 1), 
+    index_params = dict(algorithm = 6, trees = 5), 
+    #index_params = dict(algorithm = 6, table_number = 6,
+    #                    key_size = 12, multi_probe_level = 1), 
     search_params = dict(checks = 50)):
 
         self.min_match_count = min_match_count
@@ -29,8 +30,8 @@ class Homography:
         self.height = height
         self.camera_matrix = camera_matrix
         self.dist_coeffs = dist_coeffs
-        self.curr_kp = None
-        self.curr_des = None
+        self.prev_kp = None
+        self.prev_des = None
         self.flann_index_kdtree = flann_index_kdtree
         self.index_params = index_params
         self.search_params = search_params
@@ -39,18 +40,20 @@ class Homography:
         self.prev_time = None
         self.curr_z = None
         self.orb = cv2.ORB_create(nfeatures=500, nlevels=8, scaleFactor=1.2)
+        self.sift = cv2.xfeatures2d.SIFT_create(nOctaveLayers=8)
 
     def update_H(self, curr_img, prev_img = None):
-        if self.curr_kp is None or self.curr_des is None:
-            self.curr_kp, self.curr_des = self.orb.detectAndCompute(prev_img,None)
-        prev_kp, prev_des = self.orb.detectAndCompute(curr_img,None)
-        print 'Found {} features!'.format(len(prev_kp))
+        if self.prev_kp is None or self.prev_des is None:
+            self.prev_kp, self.prev_des = self.orb.detectAndCompute(prev_img,None)
+            #self.prev_kp, self.prev_des = self.sift.detectAndCompute(prev_img,None)
+        curr_kp, curr_des = self.orb.detectAndCompute(curr_img,None)
+        #curr_kp, curr_des = self.sift.detectAndCompute(curr_img,None)
 
         self.good = []
         flann = cv2.FlannBasedMatcher(self.index_params, self.search_params)
 
-        if self.curr_des is not None and prev_des is not None and len(self.curr_des) > 3 and len(prev_des) > 3:
-            matches = flann.knnMatch(self.curr_des,prev_des,k=2)
+        if self.prev_des is not None and curr_des is not None and len(self.prev_des) > 3 and len(curr_des) > 3:
+            matches = flann.knnMatch(self.prev_des,curr_des,k=2)
             # store all the good matches as per Lowe's ratio test.
             for test in matches:
                 if len(test) > 1:
@@ -61,14 +64,14 @@ class Homography:
                         self.good.append(m)
 
             if len(self.good) > self.min_match_count:
-                src_pts = np.float32([self.curr_kp[m.queryIdx].pt for m in self.good]).reshape(-1,1,2)
-                dst_pts = np.float32([prev_kp[m.trainIdx].pt for m in self.good]).reshape(-1,1,2)
+                src_pts = np.float32([self.prev_kp[m.queryIdx].pt for m in self.good]).reshape(-1,1,2)
+                dst_pts = np.float32([curr_kp[m.trainIdx].pt for m in self.good]).reshape(-1,1,2)
 
                 H, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC,5.0)
                 self.est_H = H
 
-            self.curr_kp = prev_kp
-            self.curr_des = prev_des
+            self.prev_kp = curr_kp
+            self.prev_des = curr_des
 
             return True
 
@@ -115,7 +118,7 @@ class Homography:
 vrpn_pos = None
 init_z = None
 smoothed_vel = np.array([0, 0, 0])
-alpha = 0.95
+alpha = 0.6
 ultra_z = 0
 
 def vrpn_update_pos(data):
@@ -151,12 +154,11 @@ if __name__ == '__main__':
             if first:
                 homography.update_H(curr_img, curr_img)
                 first = False
-                homography.set_z(ultra_z)
+                homography.set_z(300.0 - ultra_z)
             else:
                 error = axes_err()
                 if homography.update_H(curr_img):
-                    homography.set_z(ultra_z)
-                    ##print 'ultra_z', homography.curr_z
+                    homography.set_z(300.0 - ultra_z)
                     vel, z = homography.get_vel_and_z()
                     if np.abs(np.linalg.norm(vel)) < 2500:
                         ##print "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%"
@@ -167,13 +169,12 @@ if __name__ == '__main__':
                         print vel, smoothed_vel
                     else:
                         print "&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&"
-                        print np.linalg.norm(vel)
-                        smoothed_vel = (1 - alpha) * smoothed_vel + alpha * vel
-                        error.x.err = smoothed_vel[0]
-                        error.y.err = smoothed_vel[1]
-                        print vel, smoothed_vel
+                        #print np.linalg.norm(vel)
+                        #smoothed_vel = (1 - alpha) * smoothed_vel + alpha * vel
+                        error.x.err = 0
+                        error.y.err = 0
+                        #print vel, smoothed_vel
                     cmds = pid.step(error)
-                    ##print cmds[0], cmds[1]
                     rc = RC()
                     rc.roll = cmds[0]
                     rc.pitch = cmds[1]
