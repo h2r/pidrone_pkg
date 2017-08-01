@@ -1,4 +1,4 @@
-from pyMultiwii import MultiWii
+from h2rMultiWii import MultiWii
 
 board = MultiWii("/dev/ttyACM0")
 

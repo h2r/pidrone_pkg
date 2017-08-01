@@ -43,29 +43,21 @@ acladd stefie10
 
 screen -t " roscore"
 stuff "source setup.sh"
-stuff "roscore"
+stuff "roscore"
+stuff ""
 
 screen -t " multiwii"
 stuff "source setup.sh"
-stuff "rosrun pidrone_pkg h2r_multiwii_node.py"
+stuff "cd $(rospack find pidrone_pkg)/scripts"
 
-screen -t " vim"
+screen -t " PID"
 stuff "source setup.sh"
-stuff "cd $(rospack find pidrone_pkg)/"
-stuff "vim -p scripts/h2rMultiWii.py"
-
-screen -t " emacs"
-stuff "source setup.sh"
-stuff "cd $(rospack find pidrone_pkg)"
-stuff "emacs -nw scripts/h2rMultiWii.py"
-
-
-screen -t " git"
-stuff "source setup.sh"
-stuff "cd $(rospack find pidrone_pkg)/"
+stuff "cd $(rospack find pidrone_pkg)/scripts"
+stuff "python pid_test.py"
 
 screen -t " vision"
 stuff "source setup.sh"
+<<<<<<< HEAD
 stuff "rosrun pidrone_pkg sub.py"
 
 screen -t " image_proc"
@@ -86,7 +78,11 @@ stuff " rosrun web_video_server web_video_server"
 screen -t " free"
 stuff "source setup.sh"
 stuff "cd $(rospack find pidrone_pkg)/"
+=======
+stuff "rosrun pidrone_pkg sub_homography_ar.py"
+>>>>>>> feature/findHomography
 
 screen -t " free"
 stuff "source setup.sh"
-stuff "cd $(rospack find pidrone_pkg)/"
+stuff "cd $(rospack find pidrone_pkg)/scripts/"
+stuff "python vrpn_translation.py"

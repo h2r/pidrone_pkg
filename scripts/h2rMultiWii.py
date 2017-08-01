@@ -140,7 +140,7 @@ class MultiWii:
         timer = 0
         start = time.time()
         while timer < 0.5:
-            data = [1500, 1500, 1000, 998, 1500, 1500, 1500, 1500]
+            data = [1500,1500,1000,990, 1500, 1500, 1500, 1500]
             self.sendCMD(16,MultiWii.SET_RAW_RC,data)
             time.sleep(0.05)
             timer = timer + (time.time() - start)
