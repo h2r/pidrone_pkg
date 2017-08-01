@@ -31,10 +31,11 @@ def ultra_callback(data):
         ultra_z = data.range
         try:
             if first:
-                #board.arm()
-                first = False
+                board.arm()
                 init_z = ultra_z
+                first = False
             else:
+                # att_data = board.getData(MultiWii.ATTITUDE)
                 error.z.err = init_z - ultra_z + set_z
                 cmds = pid.step(error)
                 print error
