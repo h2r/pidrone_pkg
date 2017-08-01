@@ -21,6 +21,7 @@ pid = PID()
 first = True
 error = axes_err()
 about_to_land = False
+cmds = [1500, 1500, 1500, 900]
 # ceiling_height = 300
 
 def idle():
@@ -60,6 +61,7 @@ def ultra_callback(data):
     global pid
     global first
     global init_z
+    global cmds
     if data.range != -1:
         ultra_z = data.range
         print 'ultra_z', ultra_z
@@ -93,7 +95,7 @@ def ctrl_c_handler(signal, frame):
 if __name__ == '__main__':
     rospy.init_node('velocity_flight_sonar')
     rospy.Subscriber("/pidrone/plane_err", axes_err, plane_callback)
-    board = MultiWii("/dev/ttyACM0")
+    board = MultiWii("/dev/ttyUSB0")
     rospy.Subscriber("/pidrone/infrared", Range, ultra_callback)
     signal.signal(signal.SIGINT, ctrl_c_handler)
     rospy.spin()
