@@ -5,7 +5,7 @@ from h2rPiCam import streamPi
 import cv2
 import rospy
 import numpy as np
-from pidrone_pkg.msg import axes_err
+from pidrone_pkg.msg import axes_err, Mode
 from h2rMultiWii import MultiWii
 import time
 import sys
@@ -20,40 +20,74 @@ ultra_z = 0
 pid = PID()
 first = True
 error = axes_err()
-about_to_land = False
 cmds = [1500, 1500, 1500, 900]
-# ceiling_height = 300
+current_mode = 4
+
+def arm():
+    global cmds
+    global current_mode
+    if current_mode == 4:
+        current_mode = 0
+        cmds = [1500, 1500, 2000, 900]
+        time.sleep(1)
+        idle()
 
 def idle():
-    pass
+    global cmds
+    global current_mode
+    if current_mode == 0:
+        current_mode = 1
+        cmds = [1500, 1500, 1500, 1000]
 
 def takeoff():
     pass
 
 def land():
     global set_z
-    global about_to_land
-    try:
-        for i in range(set_z, 0, -1):
-            set_z -= 1
-            time.sleep(0.1)
-        about_to_land = True
-        board.disarm()
-    except Exception as e:
-        board.disarm()
-        raise
+    global current_mode
+    if current_mode == 5:
+        try:
+            for i in range(set_z, 0, -1):
+                set_z -= 1
+                time.sleep(0.1)
+            board.disarm()
+        except Exception as e:
+            board.disarm()
+            raise
 
 def hover():
     pass
 
 def disarm():
-    pass
+    global cmds
+    global current_mode
+    current_mode = 4
+    cmds = [1500, 1500, 1000, 900]
+    armed = False
 
-def set_velocity():
-    pass
+def fly(velocity_cmd):
+    global cmds
+    global current_mode
+    if current_mode == 1:
+        current_mode = 5
 
 def kill_throttle():
     pass
+
+def mode_callback(data):
+    print "mode_input", data.mode
+    if data.mode == 0:
+        arm()
+    elif data.mode == 1:
+        idle()
+    elif data.mode == 2:
+        takeoff()
+    elif data.mode == 3:
+        land()
+    elif data.mode == 4:
+        disarm()
+    elif data.mode == 5:
+        fly()
 
 def ultra_callback(data):
     global ultra_z
@@ -66,9 +100,8 @@ def ultra_callback(data):
         ultra_z = data.range
         print 'ultra_z', ultra_z
         try:
-            if not about_to_land:
+            if current_mode == 5:
                 if first:
-                    board.arm()
                     init_z = ultra_z
                     first = False
                 else:
@@ -76,16 +109,15 @@ def ultra_callback(data):
                     error.z.err = init_z - ultra_z + set_z
                     cmds = pid.step(error)
                     print error
-                    print cmds
-                    board.sendCMD(8, MultiWii.SET_RAW_RC, cmds)
         except Exception as e:
-            board.disarm()
+            land()
             raise
 
 def plane_callback(data):
     global error
     error.x.err = data.x.err * ultra_z
     error.y.err = data.y.err * ultra_z
+
 
 def ctrl_c_handler(signal, frame):
     print "Land Recieved"
@@ -97,8 +129,11 @@ if __name__ == '__main__':
     rospy.Subscriber("/pidrone/plane_err", axes_err, plane_callback)
     board = MultiWii("/dev/ttyUSB0")
     rospy.Subscriber("/pidrone/infrared", Range, ultra_callback)
+    rospy.Subscriber("/pidrone/set_mode", Mode, mode_callback)
     signal.signal(signal.SIGINT, ctrl_c_handler)
-    rospy.spin()
+    while not rospy.is_shutdown():
+        print current_mode, cmds
+        board.sendCMD(8, MultiWii.SET_RAW_RC, cmds)
     print "Shutdown Recieved"
     land()
     # board.disarm()
