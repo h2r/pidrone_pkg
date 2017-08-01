@@ -23,6 +23,12 @@ error = axes_err()
 about_to_land = False
 # ceiling_height = 300
 
+def idle():
+    pass
+
+def takeoff():
+    pass
+
 def land():
     global set_z
     global about_to_land
@@ -35,6 +41,18 @@ def land():
     except Exception as e:
         board.disarm()
         raise
+
+def hover():
+    pass
+
+def disarm():
+    pass
+
+def set_velocity():
+    pass
+
+def kill_throttle():
+    pass
 
 def ultra_callback(data):
     global ultra_z
