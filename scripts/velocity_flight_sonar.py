@@ -19,7 +19,7 @@ ultra_z = 0
 pid = PID()
 first = True
 error = axes_err()
-ceiling_height = 300
+# ceiling_height = 300
 
 def ultra_callback(data):
     global ultra_z
@@ -29,6 +29,7 @@ def ultra_callback(data):
     global init_z
     if data.range != -1:
         ultra_z = data.range
+        print 'ultra_z', ultra_z
         try:
             if first:
                 board.arm()
@@ -47,8 +48,8 @@ def ultra_callback(data):
 
 def plane_callback(data):
     global error
-    error.x.err = data.x.err * (ceiling_height - ultra_z)
-    error.y.err = data.y.err * (ceiling_height - ultra_z)
+    error.x.err = data.x.err * ultra_z
+    error.y.err = data.y.err * ultra_z
 
 if __name__ == '__main__':
     rospy.init_node('velocity_flight_sonar')

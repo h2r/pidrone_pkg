@@ -12,7 +12,6 @@ import sys
 
 vrpn_pos = None
 smoothed_vel = np.array([0, 0, 0])
-alpha = 0.6
 ultra_z = 0
 
 def ultra_callback(data):
@@ -27,6 +26,8 @@ if __name__ == '__main__':
     first = True
     stream = streamPi()
     prev_img = None
+    camera_width = 320.0
+    camera_height = 240.0
     alpha = 0.8
     try:
         error = axes_err()
@@ -37,8 +38,9 @@ if __name__ == '__main__':
                 first = False
             else:
                 correlation = cv2.phaseCorrelate(prev_img, curr_img)
-                error.x.err = (1 - alpha) * error.x.err + alpha * correlation[0][0]
-                error.y.err = (1 - alpha) * error.y.err + alpha * correlation[0][1]
+                print correlation
+                error.x.err = (1 - alpha) * error.x.err + alpha * (correlation[0][0] / camera_width)
+                error.y.err = (1 - alpha) * error.y.err + alpha * (correlation[0][1] / camera_height)
                 errpub.publish(error)
                 prev_img = curr_img
         print "Shutdown Recieved"
