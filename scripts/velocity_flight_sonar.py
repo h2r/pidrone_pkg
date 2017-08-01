@@ -9,6 +9,7 @@ from pidrone_pkg.msg import axes_err
 from h2rMultiWii import MultiWii
 import time
 import sys
+import signal
 
 vrpn_pos = None
 set_z = 20
@@ -19,7 +20,21 @@ ultra_z = 0
 pid = PID()
 first = True
 error = axes_err()
+about_to_land = False
 # ceiling_height = 300
+
+def land():
+    global set_z
+    global about_to_land
+    try:
+        for i in range(set_z, 0, -1):
+            set_z -= 1
+            time.sleep(0.1)
+        about_to_land = True
+        board.disarm()
+    except Exception as e:
+        board.disarm()
+        raise
 
 def ultra_callback(data):
     global ultra_z
@@ -31,17 +46,18 @@ def ultra_callback(data):
         ultra_z = data.range
         print 'ultra_z', ultra_z
         try:
-            if first:
-                board.arm()
-                init_z = ultra_z
-                first = False
-            else:
-                # att_data = board.getData(MultiWii.ATTITUDE)
-                error.z.err = init_z - ultra_z + set_z
-                cmds = pid.step(error)
-                print error
-                print cmds
-                board.sendCMD(8, MultiWii.SET_RAW_RC, cmds)
+            if not about_to_land:
+                if first:
+                    board.arm()
+                    init_z = ultra_z
+                    first = False
+                else:
+                    # att_data = board.getData(MultiWii.ATTITUDE)
+                    error.z.err = init_z - ultra_z + set_z
+                    cmds = pid.step(error)
+                    print error
+                    print cmds
+                    board.sendCMD(8, MultiWii.SET_RAW_RC, cmds)
         except Exception as e:
             board.disarm()
             raise
@@ -51,12 +67,19 @@ def plane_callback(data):
     error.x.err = data.x.err * ultra_z
     error.y.err = data.y.err * ultra_z
 
+def ctrl_c_handler(signal, frame):
+    print "Land Recieved"
+    land()
+    sys.exit()
+
 if __name__ == '__main__':
     rospy.init_node('velocity_flight_sonar')
     rospy.Subscriber("/pidrone/plane_err", axes_err, plane_callback)
     board = MultiWii("/dev/ttyACM0")
     rospy.Subscriber("/pidrone/infrared", Range, ultra_callback)
+    signal.signal(signal.SIGINT, ctrl_c_handler)
     rospy.spin()
     print "Shutdown Recieved"
-    board.disarm()
+    land()
+    # board.disarm()
     sys.exit()
