@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 from __future__ import division
-import rospy
+import rospy 
 from pidrone_pkg.msg import RC, ERR, axes_err
 from geometry_msgs.msg import Pose, PoseStamped
 import time
@@ -72,8 +72,8 @@ class PIDaxis():
 
 class PID:
     def __init__(self, 
-        roll = PIDaxis(-50.000, -0.000, -0.0, control_range=(1450, 1550)),
-        pitch = PIDaxis(50.00,  0.000, 0.0, control_range=(1450, 1550)),
+        roll = PIDaxis(0.1, 0.0, 0.02, control_range=(1450, 1550)),
+        pitch = PIDaxis(-0.1,  0.000, -0.02, control_range=(1450, 1550)),
         yaw = PIDaxis(0.0, 0.0, 0.0),
         throttle = PIDaxis(2.0, 6.0, 2.0, kp_upper = 0, i_range=(0, 400),\
             control_range=(1150,2000), d_range=(-400, 400), midpoint =
