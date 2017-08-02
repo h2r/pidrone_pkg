@@ -101,7 +101,7 @@ class PID:
         self._t = rospy.get_time()
         cmd_r = self.roll.step(error.x.err, time_elapsed, error.x)
         cmd_p = self.pitch.step(error.y.err, time_elapsed, error.y)
-        cmd_y = 0
+        cmd_y = 1500
         cmd_t = self.throttle.step(error.z.err, time_elapsed, error.z)
 
         return [cmd_r, cmd_p, cmd_y, cmd_t]
