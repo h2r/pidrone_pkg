@@ -73,10 +73,10 @@ class PIDaxis():
 class PID:
     def __init__(self, 
         #               P       I     D
-        roll = PIDaxis(5.0, 5.0, 0.0, control_range=(1480, 1520)),
-        pitch = PIDaxis(-5.0,  -5.0, 0.0, control_range=(1480, 1520)),
+        roll = PIDaxis(30.0, 10.0, 0.0, control_range=(1450, 1550)),
+        pitch = PIDaxis(-30.0,  -10.0, 0.0, control_range=(1450, 1550)),
         yaw = PIDaxis(0.0, 0.0, 0.0),
-        throttle = PIDaxis(2.0, 6.0, 2.0, kp_upper = 0, i_range=(0, 400),\
+        throttle = PIDaxis(2.0, 2.0, 2.0, kp_upper = 0, i_range=(0, 400),\
             control_range=(1150,2000), d_range=(-400, 400), midpoint =
             1200), smoothing=False):
         # roll = PIDaxis(1.2, 05, 1.2),
@@ -101,7 +101,7 @@ class PID:
         self._t = rospy.get_time()
         cmd_r = self.roll.step(error.x.err, time_elapsed, error.x)
         cmd_p = self.pitch.step(error.y.err, time_elapsed, error.y)
-        cmd_y = 1500
+        cmd_y = 0
         cmd_t = self.throttle.step(error.z.err, time_elapsed, error.z)
 
         return [cmd_r, cmd_p, cmd_y, cmd_t]
