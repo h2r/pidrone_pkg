@@ -87,7 +87,7 @@ def mode_callback(data):
     elif data.mode == 4:
         disarm()
     elif data.mode == 5:
-        fly()
+        fly(None)
 
 def ultra_callback(data):
     global ultra_z

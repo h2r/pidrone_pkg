@@ -25,9 +25,9 @@ if __name__ == '__main__':
                     velocity.x.err = flow_analyzer.x_motion 
                     velocity.y.err = flow_analyzer.y_motion
                     velocity.z.err = flow_analyzer.z_motion
+                    camera.wait_recording(1/90.)
                     velpub.publish(velocity)
 
-                # camera.wait_recording(30)
                 camera.stop_recording()
         print "Shutdown Recieved"
         sys.exit()
