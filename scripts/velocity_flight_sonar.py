@@ -12,7 +12,7 @@ import sys
 import signal
 
 vrpn_pos = None
-set_z = 20
+set_z = 40
 init_z = 0
 smoothed_vel = np.array([0, 0, 0])
 alpha = 1.0
@@ -22,6 +22,8 @@ first = True
 error = axes_err()
 cmds = [1500, 1500, 1500, 900]
 current_mode = 4
+set_vel_x = 0
+set_vel_y = 0
 
 def arm():
     global cmds
@@ -40,7 +42,7 @@ def idle():
         cmds = [1500, 1500, 1500, 1000]
 
 def takeoff():
-    pass
+    fly(None)
 
 def land():
     global set_z
@@ -62,8 +64,7 @@ def disarm():
     global cmds
     global current_mode
     current_mode = 4
-    cmds = [1500, 1500, 1000, 900]
-    armed = False
+    board.disarm()
 
 def fly(velocity_cmd):
     global cmds
@@ -107,21 +108,21 @@ def ultra_callback(data):
                 else:
                     # att_data = board.getData(MultiWii.ATTITUDE)
                     error.z.err = init_z - ultra_z + set_z
+                    print "setting cmds"
                     cmds = pid.step(error)
-                    print error
         except Exception as e:
             land()
             raise
 
 def plane_callback(data):
     global error
-    error.x.err = data.x.err * ultra_z
-    error.y.err = data.y.err * ultra_z
+    error.x.err = data.x.err * ultra_z + set_vel_x
+    error.y.err = data.y.err * ultra_z + set_vel_y
 
 
 def ctrl_c_handler(signal, frame):
     print "Land Recieved"
-    land()
+    disarm()
     sys.exit()
 
 if __name__ == '__main__':
@@ -133,7 +134,10 @@ if __name__ == '__main__':
     signal.signal(signal.SIGINT, ctrl_c_handler)
     while not rospy.is_shutdown():
         print current_mode, cmds
-        board.sendCMD(8, MultiWii.SET_RAW_RC, cmds)
+        print error
+        if current_mode != 4:
+            board.sendCMD(8, MultiWii.SET_RAW_RC, cmds)
+#           pass
     print "Shutdown Recieved"
     land()
     # board.disarm()
