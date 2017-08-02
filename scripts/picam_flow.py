@@ -4,6 +4,7 @@ import picamera.array
 import cv2
 from h2rMultiWii import MultiWii
 import time
+from pidrone_pkg.msg import axes_err
   
 # RASPBERRY PI?
 camera_matrix = np.array([[ 253.70549591,    0.,          162.39457585], 
@@ -21,20 +22,19 @@ class AnalyzeFlow(picamera.array.PiMotionAnalysis):
         y = a['y']
         sad = a['sad']
 
-        ang_coefficient = 45000.0
         curr_time = time.time()
         diff_time = curr_time - self.prev_time
         self.prev_time = curr_time
         
-        x_motion = np.sum(x) + np.arctan(self.ang_vx * diff_time) * ang_coefficient
-        y_motion = np.sum(y) + np.arctan(self.ang_vy * diff_time) * ang_coefficient
-        z_motion = np.sum(np.multiply(x, self.z_filter_x)) + \
+        self.x_motion = np.sum(x) + np.arctan(self.ang_vx * diff_time) * self.ang_coefficient
+        self.y_motion = np.sum(y) + np.arctan(self.ang_vy * diff_time) * self.ang_coefficient
+        self.z_motion = np.sum(np.multiply(x, self.z_filter_x)) + \
                 np.sum(np.multiply(y, self.z_filter_y))
-        yaw_motion = np.sum(np.multiply(x, self.yaw_filter_x)) + \
+        self.yaw_motion = np.sum(np.multiply(x, self.yaw_filter_x)) + \
                 np.sum(np.multiply(y, self.yaw_filter_y))
        
         print 'XYZyaw:\t{},\t{},\t{}\t{}\t\t\t{}'.format( \
-                x_motion,y_motion,z_motion,yaw_motion,time.time() - start)
+                self.x_motion,self.y_motion,self.z_motion,self.yaw_motion,time.time() - start)
     
     def set_angular_velocity(self, ang_vx, ang_vy):
         self.ang_vx = ang_vx
@@ -74,8 +74,11 @@ class AnalyzeFlow(picamera.array.PiMotionAnalysis):
         self.ang_vx = 0
         self.ang_vy = 0
         self.prev_time = time.time()
-
-
+        self.ang_coefficient = 45000.0
+        self.x_motion = 0
+        self.y_motion = 0
+        self.z_motion = 0
+        self.yaw_motion = 0
 
 if __name__ == '__main__':
     board = MultiWii("/dev/ttyACM0")
