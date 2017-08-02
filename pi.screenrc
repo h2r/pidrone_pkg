@@ -65,6 +65,6 @@ stuff "source setup.sh"
 stuff "cd $(rospack find pidrone_pkg)/scripts/"
 stuff "python infrared_pub.py"
 
-screen -t " infrared"
+screen -t " free"
 stuff "source setup.sh"
 stuff "cd $(rospack find pidrone_pkg)/scripts/"

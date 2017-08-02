@@ -49,6 +49,7 @@ add_message_files(
   RC.msg
   ERR.msg
   axes_err.msg
+  Mode.msg
 )
 
 ## Generate services in the 'srv' folder
