@@ -5,7 +5,7 @@ from sensor_msgs.msg import Range
 
 GPIO.setmode(GPIO.BCM)                     #Set GPIO pin numbering 
 
-TRIG = 18                                  #Associate pin 23 to TRIG
+TRIG = 23                                  #Associate pin 23 to TRIG
 ECHO = 24                                  #Associate pin 24 to ECHO
 
 print "Distance measurement in progress"
@@ -14,7 +14,7 @@ GPIO.setup(TRIG,GPIO.OUT)                  #Set pin as GPIO out
 GPIO.setup(ECHO,GPIO.IN)                   #Set pin as GPIO in
 
 smoothed_distance = 0
-alpha = 0.1
+alpha = 1.0
 
 def get_range():
   global smoothed_distance
@@ -46,7 +46,8 @@ def get_range():
   distance = round(distance, 2)            #Round to two decimal points
 
   if distance > 2 and distance < 400:      #Check whether the distance is within range
-      smoothed_distance = (1 - alpha) * smoothed_distance + alpha * distance
+      smoothed_distance = (1.0 - alpha) * smoothed_distance + alpha * distance
+      print smoothed_distance, distance, smoothed_distance - distance
       return smoothed_distance
   else:
       return -1
@@ -57,5 +58,6 @@ if __name__ == "__main__":
     rnge = Range()
     rnge.header.frame_id = "world"
     while not rospy.is_shutdown():
+        rnge.header.stamp = rospy.get_rostime()
         rnge.range = get_range()
         pub.publish(rnge)

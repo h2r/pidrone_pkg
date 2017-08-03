@@ -25,6 +25,7 @@ current_mode = 4
 set_vel_x = 0
 set_vel_y = 0
 errpub = rospy.Publisher('/pidrone/err', axes_err, queue_size=1)
+flow_height_z = 0.000001
 
 mw_angle_comp_x = 0
 mw_angle_comp_y = 0
@@ -77,8 +78,13 @@ def disarm():
 def fly(velocity_cmd):
     global cmds
     global current_mode
-    if current_mode == 1:
+    global set_vel_x, set_vel_y, set_z
+    if current_mode == 1 or current_mode == 5:
         current_mode = 5
+        if velocity_cmd is not None:
+            set_vel_x = velocity_cmd.x_velocity
+            set_vel_y = velocity_cmd.y_velocity
+            set_z += velocity_cmd.z_velocity
 
 def kill_throttle():
     pass
@@ -96,10 +102,10 @@ def mode_callback(data):
     elif data.mode == 4:
         disarm()
     elif data.mode == 5:
-        fly(None)
+        fly(data)
 
 def ultra_callback(data):
-    global ultra_z
+    global ultra_z, flow_height_z
     global heightpub
     global pid
     global first
@@ -126,9 +132,13 @@ def ultra_callback(data):
 def plane_callback(data):
     global error
     global mw_angle_comp_x, mw_angle_comp_y
-    
+    global flow_height_z
+    global set_vel_x, set_vel_y
+
+    print set_vel_x, set_vel_y
     error.x.err = (data.x.err - mw_angle_comp_x) * ultra_z + set_vel_x
     error.y.err = (data.y.err + mw_angle_comp_y) * ultra_z + set_vel_y
+    # error.z.err = data.z.err
 
 
 def ctrl_c_handler(signal, frame):
@@ -152,19 +162,21 @@ if __name__ == '__main__':
         print current_mode, cmds
         errpub.publish(error)
         
-#       if current_mode != 4:
+        if current_mode != 4:
             # angle compensation calculations
-#           new_angt = time.time()
-#           mw_data = board.getData(MultiWii.ATTITUDE)
-#           new_angx = mw_data['angx']/180.0*np.pi
-#           new_angy = mw_data['angy']/180.0*np.pi
-#           mw_angle_comp_x = np.tan((new_angx - prev_angx) * (new_angt - prev_angt)) * mw_angle_coeff
-#           mw_angle_comp_y = np.tan((new_angy - prev_angy) * (new_angt - prev_angt)) * mw_angle_coeff
-#           prev_angx = new_angx
-#           prev_angy = new_angy
-#           prev_angt = new_angt
+            new_angt = time.time()
+            mw_data = board.getData(MultiWii.ATTITUDE)
+            new_angx = mw_data['angx']/180.0*np.pi
+            new_angy = mw_data['angy']/180.0*np.pi
+            mw_angle_comp_x = np.tan((new_angx - prev_angx) * (new_angt - prev_angt)) * mw_angle_coeff
+            mw_angle_comp_y = np.tan((new_angy - prev_angy) * (new_angt - prev_angt)) * mw_angle_coeff
+            prev_angx = new_angx
+            prev_angy = new_angy
+            prev_angt = new_angt
 
         board.sendCMD(8, MultiWii.SET_RAW_RC, cmds)
+        board.receiveDataPacket()
+
 
     print "Shutdown Recieved"
     land()
