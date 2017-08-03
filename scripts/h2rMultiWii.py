@@ -112,6 +112,7 @@ class MultiWii:
         footerString = MultiWii.footerS.pack(checksum)
         
         self.ser.write(MultiWii.emptyString.join((MultiWii.headerString, dataString, footerString, "\n")))
+        return self.receiveDataPacket()
 
 
 
@@ -148,8 +149,7 @@ class MultiWii:
 
     """Function to receive a data packet from the board"""
     def getData(self, cmd):
-        self.sendCMD(0,cmd,[])
-        return self.receiveDataPacket()
+        return self.sendCMD(0,cmd,[])
 
     """ Sends a request for N commands from the board. """
     def getDataBulk(self, cmds):
@@ -290,6 +290,8 @@ class MultiWii:
             self.motor['elapsed']= elapsed
             self.motor['timestamp']= readTime
             return self.motor
+        elif code == MultiWii.SET_RAW_RC:
+            return "Set Raw RC"
         else:
             print "No return error!: %d" % code
             raise

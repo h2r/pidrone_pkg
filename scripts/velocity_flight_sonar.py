@@ -57,9 +57,9 @@ def land():
             for i in range(set_z, 0, -1):
                 set_z -= 1
                 time.sleep(0.1)
-            board.disarm()
+            disarm()
         except Exception as e:
-            board.disarm()
+            disarm()
             raise
 
 def hover():
@@ -68,8 +68,11 @@ def hover():
 def disarm():
     global cmds
     global current_mode
+    print "disarming"
     current_mode = 4
-    board.disarm()
+    cmds = [1500, 1500, 1000, 900]
+    time.sleep(1)
+    sys.exit()
 
 def fly(velocity_cmd):
     global cmds
@@ -131,7 +134,6 @@ def plane_callback(data):
 def ctrl_c_handler(signal, frame):
     print "Land Recieved"
     disarm()
-    sys.exit()
 
 if __name__ == '__main__':
     global mw_angle_comp_x, mw_angle_comp_y, mw_angle_coeff
@@ -150,7 +152,7 @@ if __name__ == '__main__':
         print current_mode, cmds
         errpub.publish(error)
         
-        if current_mode != 4:
+#       if current_mode != 4:
             # angle compensation calculations
 #           new_angt = time.time()
 #           mw_data = board.getData(MultiWii.ATTITUDE)
@@ -162,7 +164,7 @@ if __name__ == '__main__':
 #           prev_angy = new_angy
 #           prev_angt = new_angt
 
-            board.sendCMD(8, MultiWii.SET_RAW_RC, cmds)
+        board.sendCMD(8, MultiWii.SET_RAW_RC, cmds)
 
     print "Shutdown Recieved"
     land()
