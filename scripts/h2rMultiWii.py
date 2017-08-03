@@ -112,7 +112,7 @@ class MultiWii:
         footerString = MultiWii.footerS.pack(checksum)
         
         self.ser.write(MultiWii.emptyString.join((MultiWii.headerString, dataString, footerString, "\n")))
-        return self.receiveDataPacket()
+        # return self.receiveDataPacket()
 
 
 
@@ -149,7 +149,8 @@ class MultiWii:
 
     """Function to receive a data packet from the board"""
     def getData(self, cmd):
-        return self.sendCMD(0,cmd,[])
+        self.sendCMD(0,cmd,[])
+        return self.receiveDataPacket()
 
     """ Sends a request for N commands from the board. """
     def getDataBulk(self, cmds):
