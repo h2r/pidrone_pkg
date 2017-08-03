@@ -12,7 +12,7 @@ import sys
 import signal
 
 vrpn_pos = None
-set_z = 40
+set_z = 20
 init_z = 0
 smoothed_vel = np.array([0, 0, 0])
 alpha = 1.0
@@ -24,6 +24,11 @@ cmds = [1500, 1500, 1500, 900]
 current_mode = 4
 set_vel_x = 0
 set_vel_y = 0
+errpub = rospy.Publisher('/pidrone/err', axes_err, queue_size=1)
+
+mw_angle_comp_x = 0
+mw_angle_comp_y = 0
+mw_angle_coeff = 10.0
 
 def arm():
     global cmds
@@ -97,18 +102,19 @@ def ultra_callback(data):
     global first
     global init_z
     global cmds
+    global board
     if data.range != -1:
         ultra_z = data.range
-        print 'ultra_z', ultra_z
+        # print 'ultra_z', ultra_z
         try:
             if current_mode == 5:
                 if first:
-                    init_z = ultra_z
+                    #init_z = ultra_z
                     first = False
                 else:
                     # att_data = board.getData(MultiWii.ATTITUDE)
                     error.z.err = init_z - ultra_z + set_z
-                    print "setting cmds"
+                    # print "setting cmds"
                     cmds = pid.step(error)
         except Exception as e:
             land()
@@ -116,8 +122,10 @@ def ultra_callback(data):
 
 def plane_callback(data):
     global error
-    error.x.err = data.x.err * ultra_z + set_vel_x
-    error.y.err = data.y.err * ultra_z + set_vel_y
+    global mw_angle_comp_x, mw_angle_comp_y
+    
+    error.x.err = (data.x.err - mw_angle_comp_x) * ultra_z + set_vel_x
+    error.y.err = (data.y.err + mw_angle_comp_y) * ultra_z + set_vel_y
 
 
 def ctrl_c_handler(signal, frame):
@@ -126,18 +134,36 @@ def ctrl_c_handler(signal, frame):
     sys.exit()
 
 if __name__ == '__main__':
+    global mw_angle_comp_x, mw_angle_comp_y, mw_angle_coeff
     rospy.init_node('velocity_flight_sonar')
     rospy.Subscriber("/pidrone/plane_err", axes_err, plane_callback)
     board = MultiWii("/dev/ttyUSB0")
     rospy.Subscriber("/pidrone/infrared", Range, ultra_callback)
     rospy.Subscriber("/pidrone/set_mode", Mode, mode_callback)
     signal.signal(signal.SIGINT, ctrl_c_handler)
+
+    prev_angx = 0
+    prev_angy = 0
+    prev_angt = time.time()
+
     while not rospy.is_shutdown():
         print current_mode, cmds
-        print error
+        errpub.publish(error)
+        
         if current_mode != 4:
+            # angle compensation calculations
+#           new_angt = time.time()
+#           mw_data = board.getData(MultiWii.ATTITUDE)
+#           new_angx = mw_data['angx']/180.0*np.pi
+#           new_angy = mw_data['angy']/180.0*np.pi
+#           mw_angle_comp_x = np.tan((new_angx - prev_angx) * (new_angt - prev_angt)) * mw_angle_coeff
+#           mw_angle_comp_y = np.tan((new_angy - prev_angy) * (new_angt - prev_angt)) * mw_angle_coeff
+#           prev_angx = new_angx
+#           prev_angy = new_angy
+#           prev_angt = new_angt
+
             board.sendCMD(8, MultiWii.SET_RAW_RC, cmds)
-#           pass
+
     print "Shutdown Recieved"
     land()
     # board.disarm()

@@ -72,12 +72,13 @@ class PIDaxis():
 
 class PID:
     def __init__(self, 
-        roll = PIDaxis(-1.0, 0.0, -0.0002, control_range=(1450, 1550)),
-        pitch = PIDaxis(-1.0,  0.000, -0.0002, control_range=(1450, 1550)),
+        roll = PIDaxis(15.0, 7.0, 0.0, control_range=(1400, 1600)),
+        pitch = PIDaxis(-15.0,  -7.000, 0.0, control_range=(1400,
+        1600)),
         yaw = PIDaxis(0.0, 0.0, 0.0),
-        throttle = PIDaxis(2.0, 0.3, 1.0, kp_upper = 0, i_range=(0, 400),\
+        throttle = PIDaxis(2.0, 2.0, 2.0, kp_upper = 0, i_range=(0, 400),\
             control_range=(1150,2000), d_range=(-400, 400), midpoint =
-            1200), smoothing=False):
+            1300), smoothing=False):
         # roll = PIDaxis(1.2, 05, 1.2),
         # pitch = PIDaxis(1.2, 0.5, 1.2),
         # yaw = PIDaxis(-1000.0, 0,0),

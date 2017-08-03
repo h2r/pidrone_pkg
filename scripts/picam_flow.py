@@ -26,8 +26,8 @@ class AnalyzeFlow(picamera.array.PiMotionAnalysis):
         diff_time = curr_time - self.prev_time
         self.prev_time = curr_time
         
-        self.x_motion = np.sum(x) + np.arctan(self.ang_vx * diff_time) * self.ang_coefficient
-        self.y_motion = np.sum(y) + np.arctan(self.ang_vy * diff_time) * self.ang_coefficient
+        self.x_motion = 0 - np.sum(x) / self.max_flow + np.arctan(self.ang_vx * diff_time) * self.ang_coefficient
+        self.y_motion = np.sum(y) / self.max_flow + np.arctan(self.ang_vy * diff_time) * self.ang_coefficient
         self.z_motion = np.sum(np.multiply(x, self.z_filter_x)) + \
                 np.sum(np.multiply(y, self.z_filter_y))
         self.yaw_motion = np.sum(np.multiply(x, self.yaw_filter_x)) + \
@@ -74,11 +74,12 @@ class AnalyzeFlow(picamera.array.PiMotionAnalysis):
         self.ang_vx = 0
         self.ang_vy = 0
         self.prev_time = time.time()
-        self.ang_coefficient = 45000.0
+        self.ang_coefficient = 1.0 # the amount that roll rate factors in
         self.x_motion = 0
         self.y_motion = 0
         self.z_motion = 0
         self.yaw_motion = 0
+        self.max_flow = camera_wh[0] / 16.0 * camera_wh[1] / 16.0 * 2**7
 
 if __name__ == '__main__':
     board = MultiWii("/dev/ttyACM0")
