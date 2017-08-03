@@ -159,7 +159,7 @@ if __name__ == '__main__':
     prev_angt = time.time()
 
     while not rospy.is_shutdown():
-        print current_mode, cmds
+        # print current_mode, cmds
         errpub.publish(error)
         
         if current_mode != 4:
