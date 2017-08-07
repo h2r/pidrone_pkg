@@ -29,6 +29,7 @@ flow_height_z = 0.000001
 
 mw_angle_comp_x = 0
 mw_angle_comp_y = 0
+mw_angle_alt_scale = 1.0
 mw_angle_coeff = 10.0
 
 def arm():
@@ -112,8 +113,10 @@ def ultra_callback(data):
     global init_z
     global cmds
     global board
+    global mw_angle_alt_scale
     if data.range != -1:
-        ultra_z = data.range
+        # scale ultrasonic reading to get z accounting for tilt of the drone
+        ultra_z = data.range * mw_angle_alt_scale
         # print 'ultra_z', ultra_z
         try:
             if current_mode == 5:
@@ -121,7 +124,6 @@ def ultra_callback(data):
                     #init_z = ultra_z
                     first = False
                 else:
-                    # att_data = board.getData(MultiWii.ATTITUDE)
                     error.z.err = init_z - ultra_z + set_z
                     # print "setting cmds"
                     cmds = pid.step(error)
@@ -135,7 +137,6 @@ def plane_callback(data):
     global flow_height_z
     global set_vel_x, set_vel_y
 
-    print set_vel_x, set_vel_y
     error.x.err = (data.x.err - mw_angle_comp_x) * ultra_z + set_vel_x
     error.y.err = (data.y.err + mw_angle_comp_y) * ultra_z + set_vel_y
     # error.z.err = data.z.err
@@ -146,7 +147,7 @@ def ctrl_c_handler(signal, frame):
     disarm()
 
 if __name__ == '__main__':
-    global mw_angle_comp_x, mw_angle_comp_y, mw_angle_coeff
+    global mw_angle_comp_x, mw_angle_comp_y, mw_angle_coeff, mw_angle_alt_scale
     rospy.init_node('velocity_flight_sonar')
     rospy.Subscriber("/pidrone/plane_err", axes_err, plane_callback)
     board = MultiWii("/dev/ttyUSB0")
@@ -170,6 +171,8 @@ if __name__ == '__main__':
             new_angy = mw_data['angy']/180.0*np.pi
             mw_angle_comp_x = np.tan((new_angx - prev_angx) * (new_angt - prev_angt)) * mw_angle_coeff
             mw_angle_comp_y = np.tan((new_angy - prev_angy) * (new_angt - prev_angt)) * mw_angle_coeff
+            # the ultrasonic reading is scaled by cos(roll) * cos(pitch)
+            mw_angle_alt_scale = np.cos(new_angx) * np.cos(new_angy)
             prev_angx = new_angx
             prev_angy = new_angy
             prev_angt = new_angt
