@@ -2,7 +2,7 @@ import rospy
 from pidrone_pkg.msg import Mode
 from sensor_msgs.msg import Joy
 
-scalar = 5.0
+scalar = 50.0
 mode = Mode()
 mode.mode = 4
 modepub = rospy.Publisher('/pidrone/set_mode', Mode, queue_size=1)

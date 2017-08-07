@@ -58,13 +58,14 @@ stuff "python velocity_flight_sonar.py"
 screen -t " vision"
 stuff "source setup.sh"
 stuff "cd $(rospack find pidrone_pkg)/scripts"
-stuff "python velocity_flight_phase.py"
+stuff "python velocity_flight_flow.py"
 
 screen -t " infrared"
 stuff "source setup.sh"
 stuff "cd $(rospack find pidrone_pkg)/scripts/"
 stuff "python infrared_pub.py"
 
-screen -t " infrared"
+screen -t " joy_node"
 stuff "source setup.sh"
 stuff "cd $(rospack find pidrone_pkg)/scripts/"
+stuff "python joy_node.py"

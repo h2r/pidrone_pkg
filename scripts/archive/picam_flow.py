@@ -26,8 +26,8 @@ class AnalyzeFlow(picamera.array.PiMotionAnalysis):
         diff_time = curr_time - self.prev_time
         self.prev_time = curr_time
         
-        self.x_motion = 0 - np.sum(x) / self.max_flow + np.arctan(self.ang_vx * diff_time) * self.ang_coefficient
-        self.y_motion = np.sum(y) / self.max_flow + np.arctan(self.ang_vy * diff_time) * self.ang_coefficient
+        self.x_motion = 0 - np.sum(x) * self.flow_coeff + np.arctan(self.ang_vx * diff_time) * self.ang_coefficient
+        self.y_motion = np.sum(y) * self.flow_coeff  + np.arctan(self.ang_vy * diff_time) * self.ang_coefficient
         self.z_motion = np.sum(np.multiply(x, self.z_filter_x)) + \
                 np.sum(np.multiply(y, self.z_filter_y))
         self.yaw_motion = np.sum(np.multiply(x, self.yaw_filter_x)) + \
@@ -68,7 +68,7 @@ class AnalyzeFlow(picamera.array.PiMotionAnalysis):
         self.yaw_filter_x = self.z_filter_y
         self.yaw_filter_y = -1 * self.z_filter_x
 
-    def setup(self, camera_wh = (320,240)):
+    def setup(self, camera_wh = (320,240), flow_scale = 16.5):
         self.get_z_filter(camera_wh)
         self.get_yaw_filter(camera_wh)
         self.ang_vx = 0
@@ -80,6 +80,8 @@ class AnalyzeFlow(picamera.array.PiMotionAnalysis):
         self.z_motion = 0
         self.yaw_motion = 0
         self.max_flow = camera_wh[0] / 16.0 * camera_wh[1] / 16.0 * 2**7
+        self.norm_flow_to_cm = flow_scale # the conversion from flow units to cm
+        self.flow_coeff = self.norm_flow_to_cm/self.max_flow
 
 if __name__ == '__main__':
     board = MultiWii("/dev/ttyACM0")

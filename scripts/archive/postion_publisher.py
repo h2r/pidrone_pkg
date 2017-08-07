@@ -8,6 +8,6 @@ if __name__ == "__main__":
     rospy.sleep(1)
     pos = PoseStamped()
     pos.header.stamp = rospy.get_rostime()
-    pos.pose.position.y = -2
+    pos.pose.position.x = 5
     print pos
     pub.publish(pos)

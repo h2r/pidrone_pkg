@@ -7,7 +7,7 @@ from copy import deepcopy
 mode = Mode()
 mode.mode = 5
 modepub = rospy.Publisher('/pidrone/set_mode', Mode, queue_size=1)
-max_accel = np.array([1., 1., 1, 1]) # cm/s/s
+max_accel = np.array([25., 25., 1, 1]) # cm/s/s
 movements = []
 pub_frequency = 10.
 

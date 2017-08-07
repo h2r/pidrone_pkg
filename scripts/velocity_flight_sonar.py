@@ -11,7 +11,6 @@ import time
 import sys
 import signal
 
-vrpn_pos = None
 set_z = 20
 init_z = 0
 smoothed_vel = np.array([0, 0, 0])
@@ -85,14 +84,17 @@ def fly(velocity_cmd):
         if velocity_cmd is not None:
             set_vel_x = velocity_cmd.x_velocity
             set_vel_y = velocity_cmd.y_velocity
-            set_z += velocity_cmd.z_velocity
+            if set_z + velocity_cmd.z_velocity > 20 and set_z + velocity_cmd.z_velocity < 50:
+                set_z += velocity_cmd.z_velocity
 
 def kill_throttle():
     pass
 
 def mode_callback(data):
+    global pid
     print "mode_input", data.mode
     if data.mode == 0:
+        pid = PID()
         arm()
     elif data.mode == 1:
         idle()
@@ -107,13 +109,10 @@ def mode_callback(data):
 
 def ultra_callback(data):
     global ultra_z, flow_height_z
-    global heightpub
     global pid
     global first
     global init_z
     global cmds
-    global board
-    global mw_angle_alt_scale
     if data.range != -1:
         # scale ultrasonic reading to get z accounting for tilt of the drone
         ultra_z = data.range * mw_angle_alt_scale
@@ -130,6 +129,28 @@ def ultra_callback(data):
         except Exception as e:
             land()
             raise
+
+def vrpn_callback(data):
+    global ultra_z, flow_height_z
+    global pid
+    global first
+    global init_z
+    global cmds
+    # scale ultrasonic reading to get z accounting for tilt of the drone
+    ultra_z = data.pose.position.z
+    # print 'ultra_z', ultra_z
+    try:
+        if current_mode == 5:
+            if first:
+                #init_z = ultra_z
+                first = False
+            else:
+                error.z.err = init_z - ultra_z + set_z
+                # print "setting cmds"
+                cmds = pid.step(error)
+    except Exception as e:
+        land()
+        raise
 
 def plane_callback(data):
     global error
@@ -152,6 +173,7 @@ if __name__ == '__main__':
     rospy.Subscriber("/pidrone/plane_err", axes_err, plane_callback)
     board = MultiWii("/dev/ttyUSB0")
     rospy.Subscriber("/pidrone/infrared", Range, ultra_callback)
+#   rospy.Subscriber("/pidrone/vrpn_pos", PoseStamped, vrpn_callback)
     rospy.Subscriber("/pidrone/set_mode", Mode, mode_callback)
     signal.signal(signal.SIGINT, ctrl_c_handler)
 

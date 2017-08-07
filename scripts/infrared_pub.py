@@ -6,7 +6,7 @@ import Adafruit_ADS1x15
 adc = Adafruit_ADS1x15.ADS1115()
 GAIN = 1
 m = 181818.18181818182
-b = -8.3 + 3.0
+b = -8.3 + 7.5
 smoothed_distance = 0
 alpha = 1.0
 
