@@ -10,8 +10,8 @@ For Stefanie Tellex's class
 
 ## How to Fly
 
-`roscd pidrone_pkg`
-`screen -c pi.screenrc`
+- `roscd pidrone_pkg`
+- `screen -c pi.screenrc`
 
 ### Programs Needed to Fly
 
