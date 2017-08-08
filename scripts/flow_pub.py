@@ -6,11 +6,11 @@ import rospy
 import time
 import sys
 from h2rMultiWii import MultiWii
-from picam_flow import AnalyzeFlow
+from picam_flow_class import AnalyzeFlow
 from pidrone_pkg.msg import axes_err
 
 if __name__ == '__main__':
-    rospy.init_node('velocity_flight_flow')
+    rospy.init_node('flow_pub')
     velpub= rospy.Publisher('/pidrone/plane_err', axes_err, queue_size=1)
     try:
         velocity = axes_err()

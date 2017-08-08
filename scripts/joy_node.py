@@ -25,6 +25,6 @@ def joy_callback(data):
 
 
 if __name__ == "__main__":
-    rospy.init_node("velocity_joy_node")
+    rospy.init_node("joy_node")
     rospy.Subscriber("/joy", Joy, joy_callback)
     rospy.spin()

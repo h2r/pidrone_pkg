@@ -168,7 +168,7 @@ def ctrl_c_handler(signal, frame):
 
 if __name__ == '__main__':
     global mw_angle_comp_x, mw_angle_comp_y, mw_angle_coeff, mw_angle_alt_scale
-    rospy.init_node('velocity_flight_sonar')
+    rospy.init_node('state_controller')
     rospy.Subscriber("/pidrone/plane_err", axes_err, plane_callback)
     board = MultiWii("/dev/ttyUSB0")
     rospy.Subscriber("/pidrone/infrared", Range, ultra_callback)

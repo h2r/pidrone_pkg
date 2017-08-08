@@ -44,7 +44,7 @@ the left.
    supply will not be able to keep up and the drone will shut off and crash
    into the ground fairly dramatically. It should only fall, since it is no
    longer recieving power, and this does not happen on battery power. Nobody
-   has been hit by this
+   has been hit by this!?
 
 ## Misc
 

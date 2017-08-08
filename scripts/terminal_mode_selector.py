@@ -2,7 +2,7 @@ import rospy
 from pidrone_pkg.msg import Mode
 
 if __name__ == '__main__':
-    rospy.init_node('mode_selector')
+    rospy.init_node('terminal_mode_selector')
     modepub = rospy.Publisher('/pidrone/set_mode', Mode, queue_size=1)
     valid_modes = [0,1,4,5]
     mode_msg = Mode()
