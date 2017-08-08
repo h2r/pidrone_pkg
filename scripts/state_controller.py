@@ -91,7 +91,6 @@ def kill_throttle():
 
 def mode_callback(data):
     global pid
-    print "mode_input", data.mode
     if data.mode == 0:
         pid = PID()
         arm()
@@ -172,7 +171,7 @@ if __name__ == '__main__':
     rospy.Subscriber("/pidrone/plane_err", axes_err, plane_callback)
     board = MultiWii("/dev/ttyUSB0")
     rospy.Subscriber("/pidrone/infrared", Range, ultra_callback)
-#   rospy.Subscriber("/pidrone/vrpn_pos", PoseStamped, vrpn_callback)
+    rospy.Subscriber("/pidrone/vrpn_pos", PoseStamped, vrpn_callback)
     rospy.Subscriber("/pidrone/set_mode", Mode, mode_callback)
     signal.signal(signal.SIGINT, ctrl_c_handler)
 
@@ -190,8 +189,16 @@ if __name__ == '__main__':
             mw_data = board.getData(MultiWii.ATTITUDE)
             new_angx = mw_data['angx']/180.0*np.pi
             new_angy = mw_data['angy']/180.0*np.pi
-            mw_angle_comp_x = np.tan((new_angx - prev_angx) * (new_angt - prev_angt)) * mw_angle_coeff
-            mw_angle_comp_y = np.tan((new_angy - prev_angy) * (new_angt - prev_angt)) * mw_angle_coeff
+            mw_angle_comp_x_tan = np.tan((new_angx - prev_angx) * (new_angt - prev_angt)) * mw_angle_coeff
+            mw_angle_comp_y_tan = np.tan((new_angy - prev_angy) * (new_angt - prev_angt)) * mw_angle_coeff
+            d_theta_x = new_angx - prev_angx
+            d_theta_y = new_angy - prev_angy
+            dt = new_angt - prev_angt
+
+            angle_mag = np.arccos(np.cos(d_theta_x * dt) * np.cos(d_theta_y * dt))
+            mw_angle_comp_x = np.sin(d_theta_x * dt) * angle_mag * mw_angle_coeff
+            mw_angle_comp_y = (-np.sin(d_theta_y * dt) * np.cos(d_theta_x * dt)) * angle_mag * mw_angle_coeff
+            print mw_angle_comp_x, mw_angle_comp_x_tan
             # the ultrasonic reading is scaled by cos(roll) * cos(pitch)
             mw_angle_alt_scale = np.cos(new_angx) * np.cos(new_angy)
             prev_angx = new_angx
