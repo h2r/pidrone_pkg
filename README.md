@@ -19,8 +19,8 @@ In the screen session:
 
 - Window 0: Used for roscore. Should launch automatically with `roscore`
 - Window 1: Used for vim/editing. Will not launch automatically
-- Window 2: Used for multiwii/skyline32 control algorithm. `python velocity_flight_sonar.py`
-- Window 3: Used for optical flow from the raspberry pi camera. `python velocity_flight_flow.py`
+- Window 2: Used for multiwii/skyline32 control algorithm. `python state_controller.py`
+- Window 3: Used for optical flow from the raspberry pi camera. `python flow_pub.py`
 - Window 4: Used for ir sensor reading. `python infrared_pub.py`
 - Window 5: Used joystick control. `python joy_node.py`
 
