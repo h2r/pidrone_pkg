@@ -17,12 +17,12 @@ For Stefanie Tellex's class
 
 In the screen session:
 
-Window 0: Used for roscore. Should launch automatically with `roscore`
-Window 1: Used for vim/editing. Will not launch automatically
-Window 2: Used for multiwii/skyline32 control algorithm. `python velocity_flight_sonar.py`
-Window 3: Used for optical flow from the raspberry pi camera. `python velocity_flight_flow.py`
-Window 4: Used for ir sensor reading. `python infrared_pub.py`
-Window 5: Used joystick control. `python joy_node.py`
+- Window 0: Used for roscore. Should launch automatically with `roscore`
+- Window 1: Used for vim/editing. Will not launch automatically
+- Window 2: Used for multiwii/skyline32 control algorithm. `python velocity_flight_sonar.py`
+- Window 3: Used for optical flow from the raspberry pi camera. `python velocity_flight_flow.py`
+- Window 4: Used for ir sensor reading. `python infrared_pub.py`
+- Window 5: Used joystick control. `python joy_node.py`
 
 On your commputer running ros:
 
@@ -30,9 +30,9 @@ Download the [joystick interface library](http://wiki.ros.org/joy) and run `rosr
 
 ### Controls
 
-Button 6: Arm the drone
-Button 5: Disarm the drone
-Button 8: Fly
+- Button 6: Arm the drone
+- Button 5: Disarm the drone
+- Button 8: Fly
 
 If you tap button 8, the drone will hover in the air. If you hold it down, you
 can send velocity commands using the right joystick and altitude commands using
