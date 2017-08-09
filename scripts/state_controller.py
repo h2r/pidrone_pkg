@@ -114,6 +114,8 @@ def ultra_callback(data):
     if data.range != -1:
         # scale ultrasonic reading to get z accounting for tilt of the drone
         ultra_z = data.range * mw_angle_alt_scale
+        if ultra_z > 50:
+            land()
         # print 'ultra_z', ultra_z
         try:
             if current_mode == 5:
@@ -180,33 +182,45 @@ if __name__ == '__main__':
     prev_angt = time.time()
 
     while not rospy.is_shutdown():
-        # print current_mode, cmds
+        print current_mode, cmds
         errpub.publish(error)
         
         if current_mode != 4:
             # angle compensation calculations
-            new_angt = time.time()
-            mw_data = board.getData(MultiWii.ATTITUDE)
-            new_angx = mw_data['angx']/180.0*np.pi
-            new_angy = mw_data['angy']/180.0*np.pi
-            mw_angle_comp_x_tan = np.tan((new_angx - prev_angx) * (new_angt - prev_angt)) * mw_angle_coeff
-            mw_angle_comp_y_tan = np.tan((new_angy - prev_angy) * (new_angt - prev_angt)) * mw_angle_coeff
-            d_theta_x = new_angx - prev_angx
-            d_theta_y = new_angy - prev_angy
-            dt = new_angt - prev_angt
+            try:
+                mw_data = board.getData(MultiWii.ATTITUDE)
+                print mw_data
+                new_angt = time.time()
+                new_angx = mw_data['angx']/180.0*np.pi
+                new_angy = mw_data['angy']/180.0*np.pi
+                mw_angle_comp_x_tan = np.tan((new_angx - prev_angx) * (new_angt - prev_angt)) * mw_angle_coeff
+                mw_angle_comp_y_tan = np.tan((new_angy - prev_angy) * (new_angt - prev_angt)) * mw_angle_coeff
+                d_theta_x = new_angx - prev_angx
+                d_theta_y = new_angy - prev_angy
+                dt = new_angt - prev_angt
 
-            angle_mag = np.arccos(np.cos(d_theta_x * dt) * np.cos(d_theta_y * dt))
-            mw_angle_comp_x = np.sin(d_theta_x * dt) * angle_mag * mw_angle_coeff
-            mw_angle_comp_y = (-np.sin(d_theta_y * dt) * np.cos(d_theta_x * dt)) * angle_mag * mw_angle_coeff
-            print mw_angle_comp_x, mw_angle_comp_x_tan
-            # the ultrasonic reading is scaled by cos(roll) * cos(pitch)
-            mw_angle_alt_scale = np.cos(new_angx) * np.cos(new_angy)
-            prev_angx = new_angx
-            prev_angy = new_angy
-            prev_angt = new_angt
+                angle_mag = np.arccos(np.cos(d_theta_x * dt) * np.cos(d_theta_y * dt))
+                mw_angle_comp_x = np.sin(d_theta_x * dt) * angle_mag * mw_angle_coeff
+                mw_angle_comp_y = (-np.sin(d_theta_y * dt) * np.cos(d_theta_x * dt)) * angle_mag * mw_angle_coeff
+                # print mw_angle_comp_x, mw_angle_comp_x_tan
+                # the ultrasonic reading is scaled by cos(roll) * cos(pitch)
+                mw_angle_alt_scale = np.cos(new_angx) * np.cos(new_angy)
+                prev_angx = new_angx
+                prev_angy = new_angy
+                prev_angt = new_angt
+            except:
+                print "BOARD ERRORS!!!!!!!!!!!!!!"
+                print "BOARD ERRORS!!!!!!!!!!!!!!"
+                print "BOARD ERRORS!!!!!!!!!!!!!!"
+                print "BOARD ERRORS!!!!!!!!!!!!!!"
+                print "BOARD ERRORS!!!!!!!!!!!!!!"
+                print "BOARD ERRORS!!!!!!!!!!!!!!"
+                sys.exit()
+                board.close()
+                board = MultiWii("/dev/ttyUSB0")
 
         board.sendCMD(8, MultiWii.SET_RAW_RC, cmds)
-        board.receiveDataPacket()
+        print board.receiveDataPacket()
 
 
     print "Shutdown Recieved"
