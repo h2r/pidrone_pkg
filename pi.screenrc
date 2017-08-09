@@ -49,6 +49,12 @@ stuff ""
 screen -t " vim"
 stuff "source setup.sh"
 stuff "cd $(rospack find pidrone_pkg)/scripts"
+stuff "vim"
+
+screen -t " emacs"
+stuff "source setup.sh"
+stuff "cd $(rospack find pidrone_pkg)/scripts"
+stuff "emacs"
 
 screen -t " flight"
 stuff "source setup.sh"
@@ -69,3 +75,14 @@ screen -t " joy_node"
 stuff "source setup.sh"
 stuff "cd $(rospack find pidrone_pkg)/scripts/"
 stuff "python joy_translation.py"
+
+
+screen -t " key_node"
+stuff "source setup.sh"
+stuff "cd $(rospack find pidrone_pkg)/scripts/"
+stuff "python key_translation.py"
+
+
+screen -t " free"
+stuff "source setup.sh"
+stuff "cd $(rospack find pidrone_pkg)/scripts/"
