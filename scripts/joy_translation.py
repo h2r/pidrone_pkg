@@ -13,6 +13,8 @@ def joy_callback(data):
     global mode
     if data.buttons[4] == 1:
         mode.mode = 4
+    elif data.buttons[6] == 1:
+        mode.mode = 3
     elif data.buttons[5] == 1:
         mode.mode = 0
     elif data.buttons[7] == 1:
