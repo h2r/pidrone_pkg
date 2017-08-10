@@ -10,7 +10,7 @@ import time
 import sys
 import signal
 
-set_z = 20
+set_z = 30
 init_z = 0
 smoothed_vel = np.array([0, 0, 0])
 alpha = 1.0
@@ -81,7 +81,7 @@ def fly(velocity_cmd):
     global set_vel_x, set_vel_y, set_z
     if current_mode == 1 or current_mode == 5:
         current_mode = 5
-        set_z = 20
+        set_z = 30
         if velocity_cmd is not None:
             set_vel_x = velocity_cmd.x_velocity
             set_vel_y = velocity_cmd.y_velocity
@@ -92,6 +92,7 @@ def kill_throttle():
     pass
 
 def mode_callback(data):
+    print data
     global pid, reset_pid
     if data.mode == 0:
         reset_pid = True
@@ -130,7 +131,6 @@ def ultra_callback(data):
                     error.z.err = init_z - ultra_z + set_z
                     # print "setting cmds"
                     cmds = pid.step(error)
-                    print cmds
         except Exception as e:
             land()
             raise
@@ -196,7 +196,6 @@ if __name__ == '__main__':
             # angle compensation calculations
             try:
                 mw_data = board.getData(MultiWii.ATTITUDE)
-                print mw_data
                 new_angt = time.time()
                 new_angx = mw_data['angx']/180.0*np.pi
                 new_angy = mw_data['angy']/180.0*np.pi

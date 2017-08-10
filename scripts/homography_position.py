@@ -1,6 +1,6 @@
 import cv2
 import numpy as np
-from pidrone_pkg.msg import Mode
+from pidrone_pkg.msg import Mode, ERR
 from geometry_msgs.msg import PoseStamped, Point
 from sensor_msgs.msg import Image, Range
 from std_msgs.msg import Empty
@@ -12,6 +12,7 @@ import time
 from copy import deepcopy
 from cv_bridge import CvBridge, CvBridgeError
 import sys
+from pid_class import PIDaxis
 
 # Needed Variables
 bridge = CvBridge()
@@ -20,6 +21,11 @@ first_kp = None
 first_des = None
 orb = cv2.ORB_create(nfeatures=500, nlevels=8, scaleFactor=1.01)
 pospub = rospy.Publisher('/pidrone/set_mode', Mode, queue_size=1)
+lr_pid = PIDaxis(0., 0., 0., midpoint=0, control_range=(-10., 10.))
+fb_pid = PIDaxis(10., 0., 0., midpoint=0, control_range=(-10., 10.))
+lr_err = ERR()
+fb_err = ERR()
+prev_time = None
 
 # Configuration Params
 index_params = dict(algorithm = 6, table_number = 6,
@@ -109,12 +115,14 @@ def get_RT(H):
     return Rs[min_index], T, norms[min_index]
 
 def img_callback(data):
+    curr_time = rospy.get_time()
     img = bridge.imgmsg_to_cv2(data, 'bgr8')
     img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     global first_img
     global first_kp
     global first_des
-    constant = 3.0
+    global prev_time
+    global lr_err, fb_err, lr_pid, fb_pid
     if first_img is None:
         first_img = deepcopy(img)
         first_kp, first_des = orb.detectAndCompute(first_img, None)
@@ -130,8 +138,12 @@ def img_callback(data):
             pos = compose_pose(RT)
             mode = Mode()
             mode.mode = 5
-            mode.x_velocity = pos.pose.position.x * constant
-            mode.y_velocity = pos.pose.position.z * constant
+            lr_err.err = pos.pose.position.x
+            fb_err.err = pos.pose.position.y
+            mode.x_velocity = lr_pid.step(lr_err.err, prev_time - curr_time)
+            mode.y_velocity = fb_pid.step(fb_err.err, prev_time - curr_time)
+            print mode.x_velocity, mode.y_velocity
+            prev_time = curr_time
             pospub.publish(mode)
         else:
             print "NONE"
@@ -139,6 +151,7 @@ def img_callback(data):
 
 if __name__ == "__main__":
     rospy.init_node("homography_position")
+    prev_time = rospy.get_time()
     rospy.Subscriber("/pidrone/camera", Image, img_callback)
     rospy.Subscriber("/pidrone/infrared", Range, height_callback)
     rospy.spin()
