@@ -40,8 +40,8 @@ class AnalyzeFlow(picamera.array.PiMotionAnalysis):
             self.velocity.z.err = self.z_motion
             self.pub.publish(self.velocity)
       
-        print 'XYZyaw:\t{},\t{},\t{}\t{}\t\t\t{}'.format( \
-                self.x_motion,self.y_motion,self.z_motion,self.yaw_motion,time.time() - start)
+#       print 'XYZyaw:\t{},\t{},\t{}\t{}\t\t\t{}'.format( \
+#               self.x_motion,self.y_motion,self.z_motion,self.yaw_motion,time.time() - start)
  
 
     def set_angular_velocity(self, ang_vx, ang_vy):

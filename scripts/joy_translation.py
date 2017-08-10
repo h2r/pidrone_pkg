@@ -1,16 +1,19 @@
 import rospy
 from pidrone_pkg.msg import Mode
 from sensor_msgs.msg import Joy
+from std_msgs.msg import Empty
 
 scalar = 15
 mode = Mode()
 mode.mode = 4
 modepub = rospy.Publisher('/pidrone/set_mode', Mode, queue_size=1)
+resetpub = rospy.Publisher('/pidrone/reset_homography', Empty, queue_size=1)
 
 def joy_callback(data):
     global scalar
     global modepub
     global mode
+    global resetpub
     if data.buttons[4] == 1:
         mode.mode = 4
         print mode
@@ -34,6 +37,8 @@ def joy_callback(data):
         mode.mode = 2
         print mode
         modepub.publish(mode)
+    elif data.buttons[1] == 1:
+        resetpub.publish(Empty())
     
 #   if data.buttons[7] == 0:
 #       mode.x_velocity = 0

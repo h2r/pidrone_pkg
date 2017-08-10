@@ -24,6 +24,13 @@ from pid_class import PIDaxis
 
 keynumber = 5
 
+current_mode = 0
+homography_started = False
+
+def mode_callback(data):
+    global current_mode
+    current_mode = data.mode
+
 class AnalyzeHomography(picamera.array.PiMotionAnalysis):
 
     def compose_pose(self, RT):
@@ -87,12 +94,12 @@ class AnalyzeHomography(picamera.array.PiMotionAnalysis):
     def write(self, data):
         print "data"
         img = np.reshape(np.fromstring(data, dtype=np.uint8), (240, 320, 3))
-        cv2.imshow("img", img)
-        cv2.waitKey(1)
-        print 1
+#       cv2.imshow("img", img)
+#       cv2.waitKey(1)
         if self.first:
             self.first = False
             self.first_kp, self.first_des = self.orb.detectAndCompute(img, None)
+            print len(self.first_kp), "features for first"
             self.prev_time = rospy.get_time()
         else:
             curr_time = rospy.get_time()
@@ -122,8 +129,6 @@ class AnalyzeHomography(picamera.array.PiMotionAnalysis):
                 mode.x_velocity = 0
                 mode.y_velocity = 0
                 print "LOST"
-                self.prev_time = curr_time
-                self.pospub.publish(mode)
 
         
     def setup(self):
@@ -137,8 +142,8 @@ class AnalyzeHomography(picamera.array.PiMotionAnalysis):
         self.prev_time = None
         self.pospub = rospy.Publisher('/pidrone/set_mode', Mode, queue_size=1)
         self.smoothed_pos = PoseStamped()
-        self.lr_pid = PIDaxis(-0.22, -0., -0., midpoint=0, control_range=(-15., 15.))
-        self.fb_pid = PIDaxis(0.22, 0., 0., midpoint=0, control_range=(-15., 15.))
+        self.lr_pid = PIDaxis(-0.01, -0., -0.01, midpoint=0, control_range=(-15., 15.))
+        self.fb_pid = PIDaxis(0.01, 0., 0.01, midpoint=0, control_range=(-15., 15.))
         self.index_params = dict(algorithm = 6, table_number = 6,
                                 key_size = 12, multi_probe_level = 1)
         self.search_params = dict(checks = 50)
@@ -148,31 +153,45 @@ class AnalyzeHomography(picamera.array.PiMotionAnalysis):
                                     [   0., 0., 1.]])
         self.z = 100
 
+camera = picamera.PiCamera(framerate=90)
+homography_analyzer = AnalyzeHomography(camera)
+
+def reset_callback(data):
+    print "Resetting Homography"
+    homography_analyzer.first = True
+
 if __name__ == '__main__':
     rospy.init_node('flow_pub')
     velpub= rospy.Publisher('/pidrone/plane_err', axes_err, queue_size=1)
     imgpub = rospy.Publisher("/pidrone/camera", Image, queue_size=1)
+    rospy.Subscriber("/pidrone/mode", Mode, mode_callback)
+    rospy.Subscriber("/pidrone/reset_homography", Empty, reset_callback)
+    global current_mode
+    global homography_started
+    global camera
+    global homography_analyzer
     try:
         velocity = axes_err()
         bridge = CvBridge()
-        with picamera.PiCamera(framerate=90) as camera:
-            with AnalyzeFlow(camera) as flow_analyzer:
-                with AnalyzeHomography(camera) as homography_analyzer:
-                    camera.resolution = (320, 240)
-                    flow_analyzer.setup(camera.resolution)
-                    homography_analyzer.setup()
-                    camera.start_recording("/dev/null", format='h264', splitter_port=1, motion_output=flow_analyzer)
-                    camera.start_recording(homography_analyzer, format='bgr', splitter_port=2)
-                    i = 0
-                    while not rospy.is_shutdown():
-                        velocity.x.err = flow_analyzer.x_motion 
-                        velocity.y.err = flow_analyzer.y_motion
-                        velocity.z.err = flow_analyzer.z_motion
-                        camera.wait_recording(1/100.0)
-                        velpub.publish(velocity)
+        with AnalyzeFlow(camera) as flow_analyzer:
+            camera.resolution = (320, 240)
+            flow_analyzer.setup(camera.resolution)
+            homography_analyzer.setup()
+            camera.start_recording("/dev/null", format='h264', splitter_port=1, motion_output=flow_analyzer)
+            print "Starting Homography"
+            camera.start_recording(homography_analyzer, format='bgr', splitter_port=2)
+            homography_started = True
+            i = 0
+            while not rospy.is_shutdown():
+                velocity.x.err = flow_analyzer.x_motion 
+                velocity.y.err = flow_analyzer.y_motion
+                velocity.z.err = flow_analyzer.z_motion
+                camera.wait_recording(1/100.0)
+                velpub.publish(velocity)
 
-                    camera.stop_recording(splitter_port=1)
-                    camera.stop_recording(splitter_port=2)
+            camera.stop_recording(splitter_port=1)
+            if homography_started:
+                camera.stop_recording(splitter_port=2)
         print "Shutdown Recieved"
         sys.exit()
     except Exception as e:

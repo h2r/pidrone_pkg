@@ -10,7 +10,6 @@ import time
 import sys
 import signal
 
-sp_z = 30
 set_z = 20
 init_z = 0
 smoothed_vel = np.array([0, 0, 0])
@@ -24,6 +23,7 @@ current_mode = 4
 set_vel_x = 0
 set_vel_y = 0
 errpub = rospy.Publisher('/pidrone/err', axes_err, queue_size=1)
+modepub = rospy.Publisher('/pidrone/mode', Mode, queue_size=1)
 flow_height_z = 0.000001
 reset_pid = True
 pid_is = [0,0,0,0]
@@ -50,13 +50,16 @@ def idle():
         cmds = [1500, 1500, 1500, 1000]
 
 def takeoff():
-    global sp_z
     global set_z
     global current_mode
+    global set_vel_x
+    global set_vel_y
     if current_mode == 1:
         current_mode = 2
         try:
-            for i in range(40,80):
+            for i in range(40, 60):
+                set_vel_x = 0
+                set_vel_y = 0
                 set_z = i/2.
                 rospy.sleep(1)
             fly(None)
@@ -70,7 +73,6 @@ def land():
     if current_mode == 5 or current_mode == 2:
         try:
             for i in range(set_z, 0, -1):
-                print i
                 set_z -= 1
                 rospy.sleep(0.1)
             disarm()
@@ -96,7 +98,7 @@ def fly(velocity_cmd):
     global set_vel_x, set_vel_y, set_z
     if current_mode == 1 or current_mode == 5 or current_mode == 2:
         current_mode = 5
-        set_z = 30
+        set_z = 20
         if velocity_cmd is not None:
             set_vel_x = velocity_cmd.x_velocity
             set_vel_y = velocity_cmd.y_velocity
@@ -107,7 +109,6 @@ def kill_throttle():
     pass
 
 def mode_callback(data):
-    print data
     global pid, reset_pid, pid_is
     if data.mode == 0:
         reset_pid = True
@@ -154,7 +155,6 @@ def ultra_callback(data):
                     #init_z = ultra_z
                     first = False
                 else:
-                    print error.z.err, ultra_z, set_z
                     error.z.err = init_z - ultra_z + set_z
                     # print "setting cmds"
                     cmds = pid.step(error)
@@ -215,8 +215,10 @@ if __name__ == '__main__':
     prev_angy = 0
     prev_angt = time.time()
 
+    mode_to_pub = Mode()
     while not rospy.is_shutdown():
-        print current_mode, cmds
+        mode_to_pub.mode = current_mode
+        modepub.publish(mode_to_pub)
         errpub.publish(error)
         
         if current_mode != 4:
@@ -226,18 +228,19 @@ if __name__ == '__main__':
                 new_angt = time.time()
                 new_angx = mw_data['angx']/180.0*np.pi
                 new_angy = mw_data['angy']/180.0*np.pi
-                mw_angle_comp_x_tan = np.tan((new_angx - prev_angx) * (new_angt - prev_angt)) * mw_angle_coeff
-                mw_angle_comp_y_tan = np.tan((new_angy - prev_angy) * (new_angt - prev_angt)) * mw_angle_coeff
+                mw_angle_comp_x = np.tan((new_angx - prev_angx) * (new_angt - prev_angt)) * mw_angle_coeff
+                mw_angle_comp_y = np.tan((new_angy - prev_angy) * (new_angt - prev_angt)) * mw_angle_coeff
                 d_theta_x = new_angx - prev_angx
                 d_theta_y = new_angy - prev_angy
                 dt = new_angt - prev_angt
 
                 angle_mag = np.arccos(np.cos(d_theta_x * dt) * np.cos(d_theta_y * dt))
-                mw_angle_comp_x = np.sin(d_theta_x * dt) * angle_mag * mw_angle_coeff
-                mw_angle_comp_y = (-np.sin(d_theta_y * dt) * np.cos(d_theta_x * dt)) * angle_mag * mw_angle_coeff
+#               mw_angle_comp_x = np.sin(d_theta_x * dt) * angle_mag * mw_angle_coeff
+#               mw_angle_comp_y = (-np.sin(d_theta_y * dt) * np.cos(d_theta_x * dt)) * angle_mag * mw_angle_coeff
                 # print mw_angle_comp_x, mw_angle_comp_x_tan
                 # the ultrasonic reading is scaled by cos(roll) * cos(pitch)
-                mw_angle_alt_scale = np.cos(new_angx) * np.cos(new_angy)
+                mw_angle_alt_scale = 1.
+                #mw_angle_alt_scale = np.cos(new_angx) * np.cos(new_angy)
                 prev_angx = new_angx
                 prev_angy = new_angy
                 prev_angt = new_angt
@@ -252,6 +255,7 @@ if __name__ == '__main__':
                 board.close()
                 board = MultiWii("/dev/ttyUSB0")
 
+        print cmds
         board.sendCMD(8, MultiWii.SET_RAW_RC, cmds)
         board.receiveDataPacket()
         time.sleep(0.01)
