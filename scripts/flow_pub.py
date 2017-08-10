@@ -14,7 +14,7 @@ from sensor_msgs.msg import Image
 if __name__ == '__main__':
     rospy.init_node('flow_pub')
     velpub= rospy.Publisher('/pidrone/plane_err', axes_err, queue_size=1)
-    imgpub = rospy.Publisher("/pidrone/images", Image, queue_size=1)
+    imgpub = rospy.Publisher("/pidrone/camera", Image, queue_size=1)
     try:
         velocity = axes_err()
         bridge = CvBridge()
