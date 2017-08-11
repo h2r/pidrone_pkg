@@ -34,7 +34,7 @@ class AnalyzeFlow(picamera.array.PiMotionAnalysis):
                 np.sum(np.multiply(y, self.yaw_filter_y))
        
         if self.pub is not None:
-            print 'PUBLISHING\t', 
+#           print 'PUBLISHING\t', 
             self.velocity.x.err = self.x_motion 
             self.velocity.y.err = self.y_motion
             self.velocity.z.err = self.z_motion
