@@ -32,8 +32,9 @@ if __name__ == '__main__':
                         image = np.empty((240 * 320 * 3,), dtype=np.uint8)
                         camera.capture(image, 'bgr', use_video_port=True)
                         image = image.reshape((240, 320, 3))
-                        cv_image = bridge.cv2_to_imgmsg(image, "bgr8")
-                        imgpub.publish(cv_image)
+                        image  = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
+                        ros_image = bridge.cv2_to_imgmsg(image, "mono8")
+                        imgpub.publish(ros_image)
                         i = 0
                     velocity.x.err = flow_analyzer.x_motion 
                     velocity.y.err = flow_analyzer.y_motion

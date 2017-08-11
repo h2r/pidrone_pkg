@@ -10,7 +10,7 @@ import time
 import sys
 import signal
 
-set_z = 30
+set_z = 50
 init_z = 0
 smoothed_vel = np.array([0, 0, 0])
 alpha = 1.0
@@ -25,6 +25,7 @@ set_vel_y = 0
 errpub = rospy.Publisher('/pidrone/err', axes_err, queue_size=1)
 flow_height_z = 0.000001
 reset_pid = True
+pid_is = [0,0,0,0]
 
 mw_angle_comp_x = 0
 mw_angle_comp_y = 0
@@ -81,7 +82,7 @@ def fly(velocity_cmd):
     global set_vel_x, set_vel_y, set_z
     if current_mode == 1 or current_mode == 5:
         current_mode = 5
-        set_z = 30
+        set_z = 50
         if velocity_cmd is not None:
             set_vel_x = velocity_cmd.x_velocity
             set_vel_y = velocity_cmd.y_velocity
@@ -93,7 +94,7 @@ def kill_throttle():
 
 def mode_callback(data):
     print data
-    global pid, reset_pid
+    global pid, reset_pid, pid_is
     if data.mode == 0:
         reset_pid = True
         arm()
@@ -105,11 +106,17 @@ def mode_callback(data):
         land()
     elif data.mode == 4:
         disarm()
-    elif data.mode == 5:
+    elif data.mode == 5:        # STATIC FLIGHT
         if reset_pid: 
-            pid.throttle.zero_i()
+            pid._t = None
+            pid.throttle._i = 0
             reset_pid = False
         fly(data)
+#   elif data.mode == 6:        # DYNAMIC FLIGHT 
+#       pid_is = pid.get_is()
+#       pid_is[0:3] = 0
+#       pid.set_is(pid_is)
+
 
 def ultra_callback(data):
     global ultra_z, flow_height_z

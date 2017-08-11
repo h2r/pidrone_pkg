@@ -35,11 +35,6 @@ class PIDaxis():
         self._dd = 0
         self._ddd = 0
 
-    def zero_i(self):
-        self._i = 0
-        self.time_elapsed = 1
-        self._t = rospy.get_time()
-
     def step(self, err, time_elapsed, error = None):
         if self._old_err is None: self._old_err = err # first time around prevent d term spike	
         # find the p,i,d components
@@ -76,13 +71,20 @@ class PIDaxis():
 
 class PID:
     def __init__(self, 
-        roll = PIDaxis(4.0, 0.2, 0.3, control_range=(1400, 1600)),
-        pitch = PIDaxis(4.0, 0.2, 0.3, control_range=(1400,
+#       roll = PIDaxis(8.0, 0.0, 0.4, control_range=(1400, 1600)),
+#       pitch = PIDaxis(8.0, 0.0, 0.4, control_range=(1400,
+#       1600)),
+#       yaw = PIDaxis(0.0, 0.0, 0.0),
+#       throttle = PIDaxis(2.0, 2.0, 2.0, kp_upper = 0, i_range=(0, 400),\
+#           control_range=(1200,2000), d_range=(-400, 400), midpoint =
+#           1300), smoothing=False):
+        roll = PIDaxis(3.0, 2., 0.3, control_range=(1400, 1600)),
+        pitch = PIDaxis(3.0, 2., 0.3, control_range=(1400,
         1600)),
         yaw = PIDaxis(0.0, 0.0, 0.0),
-        throttle = PIDaxis(2.0, 2.0, 2.0, kp_upper = 0, i_range=(0, 400),\
+        throttle = PIDaxis(2., 0.1, 0.2, kp_upper = 0, i_range=(0, 400),\
             control_range=(1200,2000), d_range=(-400, 400), midpoint =
-            1300), smoothing=False):
+            1460), smoothing=True):
         # roll = PIDaxis(1.2, 05, 1.2),
         # pitch = PIDaxis(1.2, 0.5, 1.2),
         # yaw = PIDaxis(-1000.0, 0,0),
@@ -95,7 +97,16 @@ class PID:
         self.throttle = throttle
         self.sp = None
         self._t = None
-   
+    
+    def get_is(self):
+        return [self.roll._i, self.pitch._i, self.yaw._i, self.throttle._i]
+    
+    def set_is(self, i):
+        self.roll._i = i[0]
+        self.pitch._i = i[1]
+        self.yaw._i = i[2]
+        self.throttle._i = i[3]
+
     def update_setpoint(self, data):
         self.sp = data
 

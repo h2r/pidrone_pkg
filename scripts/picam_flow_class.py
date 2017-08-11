@@ -33,9 +33,17 @@ class AnalyzeFlow(picamera.array.PiMotionAnalysis):
         self.yaw_motion = np.sum(np.multiply(x, self.yaw_filter_x)) + \
                 np.sum(np.multiply(y, self.yaw_filter_y))
        
+        if self.pub is not None:
+            print 'PUBLISHING\t', 
+            self.velocity.x.err = self.x_motion 
+            self.velocity.y.err = self.y_motion
+            self.velocity.z.err = self.z_motion
+            self.pub.publish(self.velocity)
+      
         print 'XYZyaw:\t{},\t{},\t{}\t{}\t\t\t{}'.format( \
                 self.x_motion,self.y_motion,self.z_motion,self.yaw_motion,time.time() - start)
-    
+ 
+
     def set_angular_velocity(self, ang_vx, ang_vy):
         self.ang_vx = ang_vx
         self.ang_vy = ang_vy
@@ -68,7 +76,7 @@ class AnalyzeFlow(picamera.array.PiMotionAnalysis):
         self.yaw_filter_x = self.z_filter_y
         self.yaw_filter_y = -1 * self.z_filter_x
 
-    def setup(self, camera_wh = (320,240), flow_scale = 16.5):
+    def setup(self, camera_wh = (320,240), pub=None, flow_scale = 16.5):
         self.get_z_filter(camera_wh)
         self.get_yaw_filter(camera_wh)
         self.ang_vx = 0
@@ -82,6 +90,9 @@ class AnalyzeFlow(picamera.array.PiMotionAnalysis):
         self.max_flow = camera_wh[0] / 16.0 * camera_wh[1] / 16.0 * 2**7
         self.norm_flow_to_cm = flow_scale # the conversion from flow units to cm
         self.flow_coeff = self.norm_flow_to_cm/self.max_flow
+        self.pub = pub
+        if self.pub is not None:
+            self.velocity = axes_err() 
 
 if __name__ == '__main__':
     board = MultiWii("/dev/ttyACM0")
