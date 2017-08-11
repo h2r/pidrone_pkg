@@ -26,7 +26,7 @@ keynumber = 5
 
 class AnalyzeHomography(picamera.array.PiMotionAnalysis):
 
-    def compose_pose(RT):
+    def compose_pose(self, RT):
         pos = PoseStamped()
         quat_r = tf.transformations.quaternion_from_matrix(RT)
         pos.header.frame_id = 'world'
@@ -43,14 +43,13 @@ class AnalyzeHomography(picamera.array.PiMotionAnalysis):
         return pos
 
     def get_H(self, curr_img):
-        global first_kp, first_des
-        curr_kp, curr_des = orb.detectAndCompute(curr_img,None)
+        curr_kp, curr_des = self.orb.detectAndCompute(curr_img,None)
 
         good = []
-        flann = cv2.FlannBasedMatcher(index_params, search_params)
+        flann = cv2.FlannBasedMatcher(self.index_params, self.search_params)
 
-        if first_des is not None and curr_des is not None and len(first_des) > 3 and len(curr_des) > 3:
-            matches = flann.knnMatch(first_des,curr_des,k=2)
+        if self.first_des is not None and curr_des is not None and len(self.first_des) > 3 and len(curr_des) > 3:
+            matches = flann.knnMatch(self.first_des, curr_des, k=2)
             # store all the good matches as per Lowe's ratio test.
             for test in matches:
                 if len(test) > 1:
@@ -59,20 +58,21 @@ class AnalyzeHomography(picamera.array.PiMotionAnalysis):
                          good.append(m)
 
             H = None
-            if len(good) > min_match_count:
-                src_pts = np.float32([first_kp[m.queryIdx].pt for m in good]).reshape(-1,1,2) dst_pts = np.float32([curr_kp[m.trainIdx].pt for m in good]).reshape(-1,1,2)
+            if len(good) > self.min_match_count:
+                src_pts = np.float32([self.first_kp[m.queryIdx].pt for m in good]).reshape(-1,1,2) 
+                dst_pts = np.float32([curr_kp[m.trainIdx].pt for m in good]).reshape(-1,1,2)
 
                 H, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC,5.0)
 
             return H
 
-    else:
-        print "Not enough matches are found - %d/%d" % (len(good),min_match_count)
-        return None
+        else:
+            print "Not enough matches are found - %d/%d" % (len(good), self.min_match_count)
+            return None
 
     def get_RT(self, H):
         retval, Rs, ts, norms = cv2.decomposeHomographyMat(H,
-                camera_matrix)
+                self.camera_matrix)
         min_index = 0
         min_z_norm = 0
         for i in range(len(Rs)):
@@ -80,21 +80,23 @@ class AnalyzeHomography(picamera.array.PiMotionAnalysis):
                 min_z_norm = norms[i][2]
                 min_index = i
 
-        T = ts[min_index] * z
+        T = ts[min_index] * self.z
 
         return Rs[min_index], T, norms[min_index]
 
     def write(self, data):
-        cv2.imshow("data", data)
+        print "data"
+        img = np.reshape(np.fromstring(data, dtype=np.uint8), (240, 320, 3))
+        cv2.imshow("img", img)
         cv2.waitKey(1)
-        img = data
+        print 1
         if self.first:
             self.first = False
-            self.first_kp, self.first_des = self.orb.detectAndCompute(first_img, None)
+            self.first_kp, self.first_des = self.orb.detectAndCompute(img, None)
             self.prev_time = rospy.get_time()
         else:
             curr_time = rospy.get_time()
-            H = get_H(img)
+            H = self.get_H(img)
             if H is not None:
                 R, t, n = self.get_RT(H)
                 RT = np.identity(4)
@@ -124,7 +126,7 @@ class AnalyzeHomography(picamera.array.PiMotionAnalysis):
                 self.pospub.publish(mode)
 
         
-    def setup(self, camera_wh = (320,240), pub=None, flow_scale = 16.5):
+    def setup(self):
         self.first_kp = None
         self.first_des = None
         self.first = True
@@ -137,6 +139,14 @@ class AnalyzeHomography(picamera.array.PiMotionAnalysis):
         self.smoothed_pos = PoseStamped()
         self.lr_pid = PIDaxis(-0.22, -0., -0., midpoint=0, control_range=(-15., 15.))
         self.fb_pid = PIDaxis(0.22, 0., 0., midpoint=0, control_range=(-15., 15.))
+        self.index_params = dict(algorithm = 6, table_number = 6,
+                                key_size = 12, multi_probe_level = 1)
+        self.search_params = dict(checks = 50)
+        self.min_match_count = 10
+        self.camera_matrix = np.array([[ 250.0, 0., 160.0], 
+                                    [ 0., 250.0, 120.0], 
+                                    [   0., 0., 1.]])
+        self.z = 100
 
 if __name__ == '__main__':
     rospy.init_node('flow_pub')
@@ -150,7 +160,9 @@ if __name__ == '__main__':
                 with AnalyzeHomography(camera) as homography_analyzer:
                     camera.resolution = (320, 240)
                     flow_analyzer.setup(camera.resolution)
-                    camera.start_recording(homography_analyzer, format='h264', motion_output=flow_analyzer)
+                    homography_analyzer.setup()
+                    camera.start_recording("/dev/null", format='h264', splitter_port=1, motion_output=flow_analyzer)
+                    camera.start_recording(homography_analyzer, format='bgr', splitter_port=2)
                     i = 0
                     while not rospy.is_shutdown():
                         velocity.x.err = flow_analyzer.x_motion 
@@ -159,7 +171,8 @@ if __name__ == '__main__':
                         camera.wait_recording(1/100.0)
                         velpub.publish(velocity)
 
-                    camera.stop_recording()
+                    camera.stop_recording(splitter_port=1)
+                    camera.stop_recording(splitter_port=2)
         print "Shutdown Recieved"
         sys.exit()
     except Exception as e:
