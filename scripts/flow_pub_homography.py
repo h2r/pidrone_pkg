@@ -71,6 +71,9 @@ class AnalyzeHomography(picamera.array.PiMotionAnalysis):
 
                 H, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC,5.0)
 
+# Comment out for first frame
+            self.first_kp = curr_kp
+            self.first_des = curr_des
             return H
 
         else:
@@ -110,7 +113,8 @@ class AnalyzeHomography(picamera.array.PiMotionAnalysis):
                 RT[0:3, 0:3] = R[0:3, 0:3]
                 if np.linalg.norm(t) < 50:
                     RT[0:3, 3] = t.T[0]
-                new_pos = self.compose_pose(RT)
+                self.est_RT = np.dot(RT, self.est_RT)
+                new_pos = self.compose_pose(self.est_RT)
                 self.smoothed_pos.header = new_pos.header
                 self.smoothed_pos.pose.position.x = (1. - self.alpha) * self.smoothed_pos.pose.position.x + self.alpha * new_pos.pose.position.x
                 self.smoothed_pos.pose.position.y = (1. - self.alpha) * self.smoothed_pos.pose.position.y + self.alpha * new_pos.pose.position.y
@@ -143,8 +147,8 @@ class AnalyzeHomography(picamera.array.PiMotionAnalysis):
         self.prev_time = None
         self.pospub = rospy.Publisher('/pidrone/set_mode', Mode, queue_size=1)
         self.smoothed_pos = PoseStamped()
-        self.lr_pid = PIDaxis(-0.1, -0., -0.01, midpoint=0, control_range=(-15., 15.))
-        self.fb_pid = PIDaxis(0.1, 0., 0.01, midpoint=0, control_range=(-15., 15.))
+        self.lr_pid = PIDaxis(-0.1, -0., -0.0, midpoint=0, control_range=(-15., 15.))
+        self.fb_pid = PIDaxis(0.1, 0., 0.0, midpoint=0, control_range=(-15., 15.))
         self.index_params = dict(algorithm = 6, table_number = 6,
                                 key_size = 12, multi_probe_level = 1)
         self.search_params = dict(checks = 50)
@@ -153,6 +157,7 @@ class AnalyzeHomography(picamera.array.PiMotionAnalysis):
                                     [ 0., 250.0, 120.0], 
                                     [   0., 0., 1.]])
         self.z = 7.5
+        self.est_RT = np.identity(4)
 
 camera = picamera.PiCamera(framerate=90)
 homography_analyzer = AnalyzeHomography(camera)
@@ -164,7 +169,7 @@ def range_callback(data):
 
 def reset_callback(data):
     print "Resetting Homography"
-    homography_analyzer.first = True
+    homography_analyzer.est_RT = np.identity(4)
 
 if __name__ == '__main__':
     rospy.init_node('flow_pub')
