@@ -10,7 +10,7 @@ import time
 import sys
 import signal
 
-set_z = 20
+set_z = 30
 init_z = 0
 smoothed_vel = np.array([0, 0, 0])
 alpha = 1.0
@@ -98,7 +98,7 @@ def fly(velocity_cmd):
     global set_vel_x, set_vel_y, set_z
     if current_mode == 1 or current_mode == 5 or current_mode == 2:
         current_mode = 5
-        set_z = 20
+        set_z = 30
         if velocity_cmd is not None:
             set_vel_x = velocity_cmd.x_velocity
             set_vel_y = velocity_cmd.y_velocity

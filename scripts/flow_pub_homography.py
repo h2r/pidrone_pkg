@@ -120,7 +120,7 @@ class AnalyzeHomography(picamera.array.PiMotionAnalysis):
                 self.fb_err.err = self.smoothed_pos.pose.position.y
                 mode.x_velocity = self.lr_pid.step(self.lr_err.err, self.prev_time - curr_time)
                 mode.y_velocity = self.fb_pid.step(self.fb_err.err, self.prev_time - curr_time)
-                print 'lr', mode.x_velocity, 'fb', mode.y_velocity
+                print 'lr', mode.x_velocity, 'fb', mode.y_velocity, self.z
                 self.prev_time = curr_time
                 self.pospub.publish(mode)
             else:
@@ -143,8 +143,8 @@ class AnalyzeHomography(picamera.array.PiMotionAnalysis):
         self.prev_time = None
         self.pospub = rospy.Publisher('/pidrone/set_mode', Mode, queue_size=1)
         self.smoothed_pos = PoseStamped()
-        self.lr_pid = PIDaxis(-0.1, -0., -0.0, midpoint=0, control_range=(-15., 15.))
-        self.fb_pid = PIDaxis(0.1, 0., 0.0, midpoint=0, control_range=(-15., 15.))
+        self.lr_pid = PIDaxis(-0.1, -0., -0.01, midpoint=0, control_range=(-15., 15.))
+        self.fb_pid = PIDaxis(0.1, 0., 0.01, midpoint=0, control_range=(-15., 15.))
         self.index_params = dict(algorithm = 6, table_number = 6,
                                 key_size = 12, multi_probe_level = 1)
         self.search_params = dict(checks = 50)
@@ -152,10 +152,15 @@ class AnalyzeHomography(picamera.array.PiMotionAnalysis):
         self.camera_matrix = np.array([[ 250.0, 0., 160.0], 
                                     [ 0., 250.0, 120.0], 
                                     [   0., 0., 1.]])
-        self.z = 100
+        self.z = 7.5
 
 camera = picamera.PiCamera(framerate=90)
 homography_analyzer = AnalyzeHomography(camera)
+
+def range_callback(data):
+    global homography_analyzer
+    if data.range != -1:
+        homography_analyzer.z = data.range
 
 def reset_callback(data):
     print "Resetting Homography"
@@ -167,6 +172,7 @@ if __name__ == '__main__':
     imgpub = rospy.Publisher("/pidrone/camera", Image, queue_size=1)
     rospy.Subscriber("/pidrone/mode", Mode, mode_callback)
     rospy.Subscriber("/pidrone/reset_homography", Empty, reset_callback)
+    rospy.Subscriber("/pidrone/infrared", Range, range_callback)
     global current_mode
     global homography_started
     global camera
