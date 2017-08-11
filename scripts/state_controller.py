@@ -96,12 +96,17 @@ def fly(velocity_cmd):
     global cmds
     global current_mode
     global set_vel_x, set_vel_y, set_z
+    global pid
     if current_mode == 1 or current_mode == 5 or current_mode == 2:
         current_mode = 5
         set_z = 30
         if velocity_cmd is not None:
             set_vel_x = velocity_cmd.x_velocity
             set_vel_y = velocity_cmd.y_velocity
+            scalar = 1.
+            print velocity_cmd.x_i * scalar, velocity_cmd.y_i * scalar
+            pid.roll._i += velocity_cmd.x_i * scalar
+            pid.pitch._i += velocity_cmd.y_i * scalar
             if set_z + velocity_cmd.z_velocity > 20 and set_z + velocity_cmd.z_velocity < 50:
                 set_z += velocity_cmd.z_velocity
 
