@@ -142,8 +142,8 @@ class AnalyzeHomography(picamera.array.PiMotionAnalysis):
         self.prev_time = None
         self.pospub = rospy.Publisher('/pidrone/set_mode', Mode, queue_size=1)
         self.smoothed_pos = PoseStamped()
-        self.lr_pid = PIDaxis(-0.01, -0., -0.01, midpoint=0, control_range=(-15., 15.))
-        self.fb_pid = PIDaxis(0.01, 0., 0.01, midpoint=0, control_range=(-15., 15.))
+        self.lr_pid = PIDaxis(-0.01, -0., -0.0, midpoint=0, control_range=(-15., 15.))
+        self.fb_pid = PIDaxis(0.01, 0., 0.0, midpoint=0, control_range=(-15., 15.))
         self.index_params = dict(algorithm = 6, table_number = 6,
                                 key_size = 12, multi_probe_level = 1)
         self.search_params = dict(checks = 50)

@@ -35,8 +35,8 @@ class AnalyzeFlow(picamera.array.PiMotionAnalysis):
        
         if self.pub is not None:
 #           print 'PUBLISHING\t', 
-            self.velocity.x.err = self.x_motion 
-            self.velocity.y.err = self.y_motion
+            self.velocity.x.err = (1.0 - self.alpha) * self.velocity.x.err + alpha * self.x_motion 
+            self.velocity.y.err = (1.0 - self.alpha) * self.velocity.y.err + alpha * self.y_motion 
             self.velocity.z.err = self.z_motion
             self.pub.publish(self.velocity)
       
@@ -91,6 +91,7 @@ class AnalyzeFlow(picamera.array.PiMotionAnalysis):
         self.norm_flow_to_cm = flow_scale # the conversion from flow units to cm
         self.flow_coeff = self.norm_flow_to_cm/self.max_flow
         self.pub = pub
+        self.alpha = 0.5
         if self.pub is not None:
             self.velocity = axes_err() 
 
