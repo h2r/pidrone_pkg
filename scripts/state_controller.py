@@ -10,7 +10,8 @@ import time
 import sys
 import signal
 
-set_z = 50
+sp_z = 30
+set_z = 20
 init_z = 0
 smoothed_vel = np.array([0, 0, 0])
 alpha = 1.0
@@ -49,16 +50,29 @@ def idle():
         cmds = [1500, 1500, 1500, 1000]
 
 def takeoff():
-    fly(None)
+    global sp_z
+    global set_z
+    global current_mode
+    if current_mode == 1:
+        current_mode = 2
+        try:
+            for i in range(40,80):
+                set_z = i/2.
+                rospy.sleep(1)
+            fly(None)
+        except Exception as e:
+            disarm()
+            raise
 
 def land():
     global set_z
     global current_mode
-    if current_mode == 5:
+    if current_mode == 5 or current_mode == 2:
         try:
             for i in range(set_z, 0, -1):
+                print i
                 set_z -= 1
-                time.sleep(0.1)
+                rospy.sleep(0.1)
             disarm()
         except Exception as e:
             disarm()
@@ -80,9 +94,9 @@ def fly(velocity_cmd):
     global cmds
     global current_mode
     global set_vel_x, set_vel_y, set_z
-    if current_mode == 1 or current_mode == 5:
+    if current_mode == 1 or current_mode == 5 or current_mode == 2:
         current_mode = 5
-        set_z = 50
+        set_z = 30
         if velocity_cmd is not None:
             set_vel_x = velocity_cmd.x_velocity
             set_vel_y = velocity_cmd.y_velocity
@@ -101,6 +115,11 @@ def mode_callback(data):
     elif data.mode == 1:
         idle()
     elif data.mode == 2:
+        if reset_pid: 
+            pid._t = None
+            pid.throttle._i = 100 # PRELOAD
+            reset_pid = False
+
         takeoff()
     elif data.mode == 3:
         land()
@@ -109,7 +128,7 @@ def mode_callback(data):
     elif data.mode == 5:        # STATIC FLIGHT
         if reset_pid: 
             pid._t = None
-            pid.throttle._i = 0
+            pid.throttle._i = 100 # PRELOAD
             reset_pid = False
         fly(data)
 #   elif data.mode == 6:        # DYNAMIC FLIGHT 
@@ -130,11 +149,12 @@ def ultra_callback(data):
         ultra_z = data.range * mw_angle_alt_scale
         # print 'ultra_z', ultra_z
         try:
-            if current_mode == 5:
+            if current_mode == 5 or current_mode == 3 or current_mode == 2:
                 if first:
                     #init_z = ultra_z
                     first = False
                 else:
+                    print error.z.err, ultra_z, set_z
                     error.z.err = init_z - ultra_z + set_z
                     # print "setting cmds"
                     cmds = pid.step(error)
@@ -196,7 +216,7 @@ if __name__ == '__main__':
     prev_angt = time.time()
 
     while not rospy.is_shutdown():
-        # print current_mode, cmds
+        print current_mode, cmds
         errpub.publish(error)
         
         if current_mode != 4:

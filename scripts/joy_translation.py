@@ -30,6 +30,10 @@ def joy_callback(data):
         mode.z_velocity = data.axes[1]
         print mode
         modepub.publish(mode)
+    elif data.buttons[0] == 1:
+        mode.mode = 2
+        print mode
+        modepub.publish(mode)
     
 #   if data.buttons[7] == 0:
 #       mode.x_velocity = 0
