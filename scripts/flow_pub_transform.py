@@ -20,6 +20,7 @@ import time
 from cv_bridge import CvBridge, CvBridgeError
 import sys
 from pid_class import PIDaxis
+import math
 
 keynumber = 5
 
@@ -36,14 +37,14 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
         img = np.reshape(np.fromstring(data, dtype=np.uint8), (240, 320, 3))
 #       cv2.imshow("img", img)
 #       cv2.waitKey(1)
+        curr_time = rospy.get_time()
         if self.first:
             self.first = False
             self.first_img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)            
             self.prev_img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
             self.prev_time = rospy.get_time()
-        else:
+        elif self.transforming:
             curr_img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
-            curr_time = rospy.get_time()
             corr_first = cv2.estimateRigidTransform(self.first_img, curr_img, False)
             corr_int = cv2.estimateRigidTransform(self.prev_img, curr_img, False)
             self.prev_img = curr_img
@@ -51,30 +52,52 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
                 print "first"
                 first_displacement = [corr_first[0, 2] / 320., corr_first[1, 2] / 240.]
                 print first_displacement
-                self.pos = [first_displacement[0] * self.z, first_displacement[1] * self.z / 240.]
+                scalex = np.linalg.norm(corr_first[:, 0])
+                scalez = np.linalg.norm(corr_first[:, 1])
+                corr_first[:, 0] /= scalex
+                corr_first[:, 1] /= scalez
+                yaw = math.atan2(corr_first[1, 0], corr_first[0, 0])
+                self.pos = [first_displacement[0] * self.z, first_displacement[1] * self.z / 240., yaw]
                 self.lr_err.err = self.pos[0]
                 self.fb_err.err = self.pos[1]
                 mode = Mode()
                 mode.mode = 5
                 mode.x_i += self.lr_pid.step(self.lr_err.err, self.prev_time - curr_time)
                 mode.y_i += self.fb_pid.step(self.fb_err.err, self.prev_time - curr_time)
+#               mode.yaw_velocity = yaw * self.kp_yaw
                 self.pospub.publish(mode)
             elif corr_int is not None:
                 print "integrated"
                 int_displacement = [corr_int[0, 2] / 320., corr_int[1, 2] / 240.]
                 print int_displacement
+                scalex = np.linalg.norm(corr_int[:, 0])
+                scalez = np.linalg.norm(corr_int[:, 1])
+                corr_int[:, 0] /= scalex
+                corr_int[:, 1] /= scalez
+                yaw = math.atan2(corr_int[1, 0], corr_int[0, 0])
                 self.pos[0] += int_displacement[0] * self.z
                 self.pos[1] += int_displacement[1] * self.z
+#               self.pos[2] = yaw
                 self.lr_err.err = self.pos[0]
                 self.fb_err.err = self.pos[1]
                 mode = Mode()
                 mode.mode = 5
                 mode.x_i += self.lr_pid.step(self.lr_err.err, self.prev_time - curr_time)
                 mode.y_i += self.fb_pid.step(self.fb_err.err, self.prev_time - curr_time)
+                mode.yaw_velocity = yaw * self.kp_yaw
                 self.pospub.publish(mode)
             else:
                 print "LOST"
-            prev_time = curr_time
+        else:
+            print "Not transforming"
+            curr_img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+            corr_first = cv2.estimateRigidTransform(self.first_img, curr_img, False)
+            if corr_first is not None:
+                print "first"
+            else:
+                print "no first"
+            self.prev_img = curr_img
+        prev_time = curr_time
 
         
     def setup(self):
@@ -86,9 +109,11 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
         self.fb_err = ERR()
         self.prev_time = None
         self.pospub = rospy.Publisher('/pidrone/set_mode', Mode, queue_size=1)
-        self.pos = [0, 0]
-        self.lr_pid = PIDaxis(0.05, 0., 0.001, midpoint=0, control_range=(-15., 15.))
-        self.fb_pid = PIDaxis(-0.05, 0., -0.001, midpoint=0, control_range=(-15., 15.))
+        self.pos = [0, 0, 0]
+        self.lr_pid = PIDaxis(0.025, 0., 0.01, midpoint=0, control_range=(-15., 15.))
+        self.fb_pid = PIDaxis(-0.025, 0., -0.01, midpoint=0, control_range=(-15., 15.))
+        #self.lr_pid = PIDaxis(0.05, 0., 0.001, midpoint=0, control_range=(-15., 15.))
+        #self.fb_pid = PIDaxis(-0.05, 0., -0.001, midpoint=0, control_range=(-15., 15.))
         self.index_params = dict(algorithm = 6, table_number = 6,
                                 key_size = 12, multi_probe_level = 1)
         self.search_params = dict(checks = 50)
@@ -99,6 +124,8 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
         self.z = 7.5
         self.est_RT = np.identity(4)
         self.threshold = 0.5
+        self.kp_yaw = 0
+        self.transforming = False
 
 camera = picamera.PiCamera(framerate=90)
 phase_analyzer = AnalyzePhase(camera)
@@ -116,12 +143,17 @@ def reset_callback(data):
     phase_analyzer.fb_pid._i = 0
     phase_analyzer.lr_pid._i = 0
 
+def toggle_callback(data):
+    global phase_analyzer
+    phase_analyzer.transforming = not phase_analyzer.transforming
+
 if __name__ == '__main__':
     rospy.init_node('flow_pub')
     velpub= rospy.Publisher('/pidrone/plane_err', axes_err, queue_size=1)
     imgpub = rospy.Publisher("/pidrone/camera", Image, queue_size=1)
     rospy.Subscriber("/pidrone/mode", Mode, mode_callback)
-    rospy.Subscriber("/pidrone/reset_phase", Empty, reset_callback)
+    rospy.Subscriber("/pidrone/reset_transform", Empty, reset_callback)
+    rospy.Subscriber("/pidrone/toggle_transform", Empty, toggle_callback)
     rospy.Subscriber("/pidrone/infrared", Range, range_callback)
     global current_mode
     global phase_started

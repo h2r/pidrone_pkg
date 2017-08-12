@@ -7,7 +7,8 @@ scalar = 15
 mode = Mode()
 mode.mode = 4
 modepub = rospy.Publisher('/pidrone/set_mode', Mode, queue_size=1)
-resetpub = rospy.Publisher('/pidrone/reset_phase', Empty, queue_size=1)
+resetpub = rospy.Publisher('/pidrone/reset_transform', Empty, queue_size=1)
+togglepub = rospy.Publisher('/pidrone/toggle_transform', Empty, queue_size=1)
 
 def joy_callback(data):
     global scalar
@@ -38,7 +39,11 @@ def joy_callback(data):
         print mode
         modepub.publish(mode)
     elif data.buttons[1] == 1:
+        print "resetting transform"
         resetpub.publish(Empty())
+    elif data.buttons[2] == 1:
+        print "toggling transform"
+        togglepub.publish(Empty())
     
 #   if data.buttons[7] == 0:
 #       mode.x_velocity = 0
