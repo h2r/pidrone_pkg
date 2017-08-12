@@ -10,7 +10,7 @@ import time
 import sys
 import signal
 
-set_z = 40
+set_z = 20
 init_z = 0
 smoothed_vel = np.array([0, 0, 0])
 alpha = 1.0
@@ -99,7 +99,7 @@ def fly(velocity_cmd):
     global pid
     if current_mode == 1 or current_mode == 5 or current_mode == 2:
         current_mode = 5
-        set_z = 40
+        set_z = 20
         if velocity_cmd is not None:
             set_vel_x = velocity_cmd.x_velocity
             set_vel_y = velocity_cmd.y_velocity
@@ -258,7 +258,6 @@ if __name__ == '__main__':
                 print "BOARD ERRORS!!!!!!!!!!!!!!"
                 sys.exit()
                 board.close()
-                board = MultiWii("/dev/ttyUSB0")
 
         print cmds
         board.sendCMD(8, MultiWii.SET_RAW_RC, cmds)

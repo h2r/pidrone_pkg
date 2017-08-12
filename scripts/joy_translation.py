@@ -7,7 +7,7 @@ scalar = 15
 mode = Mode()
 mode.mode = 4
 modepub = rospy.Publisher('/pidrone/set_mode', Mode, queue_size=1)
-resetpub = rospy.Publisher('/pidrone/reset_homography', Empty, queue_size=1)
+resetpub = rospy.Publisher('/pidrone/reset_phase', Empty, queue_size=1)
 
 def joy_callback(data):
     global scalar

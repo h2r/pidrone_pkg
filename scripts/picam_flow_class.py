@@ -91,7 +91,7 @@ class AnalyzeFlow(picamera.array.PiMotionAnalysis):
         self.norm_flow_to_cm = flow_scale # the conversion from flow units to cm
         self.flow_coeff = self.norm_flow_to_cm/self.max_flow
         self.pub = pub
-        self.alpha = 0.7
+        self.alpha = 0.5
         if self.pub is not None:
             self.velocity = axes_err() 
 
