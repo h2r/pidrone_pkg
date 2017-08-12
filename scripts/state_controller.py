@@ -206,6 +206,8 @@ def plane_callback(data):
     global flow_height_z
     global set_vel_x, set_vel_y
 
+    print set_vel_x, set_vel_y
+
     error.x.err = (data.x.err - mw_angle_comp_x) * min(ultra_z, 30.) + set_vel_x
     error.y.err = (data.y.err + mw_angle_comp_y) * min(ultra_z, 30.) + set_vel_y
     # error.z.err = data.z.err

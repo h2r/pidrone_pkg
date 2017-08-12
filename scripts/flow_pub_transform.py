@@ -77,6 +77,8 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
                 mode.mode = 5
                 mode.x_i += self.lr_pid.step(self.lr_err.err, self.prev_time - curr_time)
                 mode.y_i += self.fb_pid.step(self.fb_err.err, self.prev_time - curr_time)
+                mode.x_velocity = mode.x_i
+                mode.y_velocity = mode.y_i
                 mode.yaw_velocity = yaw * self.kp_yaw
                 self.pospub.publish(mode)
             elif corr_int is not None:
@@ -97,6 +99,8 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
                 mode.mode = 5
                 mode.x_i += self.lr_pid.step(self.lr_err.err, self.prev_time - curr_time)
                 mode.y_i += self.fb_pid.step(self.fb_err.err, self.prev_time - curr_time)
+                mode.x_velocity = mode.x_i
+                mode.y_velocity = mode.y_i
                 #mode.yaw_velocity = yaw * self.kp_yaw
                 self.pospub.publish(mode)
             else:
@@ -128,8 +132,8 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
         self.pospub = rospy.Publisher('/pidrone/set_mode', Mode, queue_size=1)
         self.pos = [0, 0, 0]
 # -, -, 0.1
-        self.lr_pid = PIDaxis(-0.5, -0.000, -0, midpoint=0, control_range=(-15., 15.))
-        self.fb_pid = PIDaxis(-0.5, -0.000, -0, midpoint=0, control_range=(-15., 15.))
+        self.lr_pid = PIDaxis(0.100, 0.00, 0.050, midpoint=0, control_range=(-15., 15.))
+        self.fb_pid = PIDaxis(-0.100, -0.00, -0.050, midpoint=0, control_range=(-15., 15.))
         #self.lr_pid = PIDaxis(0.05, 0., 0.001, midpoint=0, control_range=(-15., 15.))
         #self.fb_pid = PIDaxis(-0.05, 0., -0.001, midpoint=0, control_range=(-15., 15.))
         self.index_params = dict(algorithm = 6, table_number = 6,
