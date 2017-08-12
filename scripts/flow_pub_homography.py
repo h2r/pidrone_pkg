@@ -131,7 +131,7 @@ class AnalyzeHomography(picamera.array.PiMotionAnalysis):
                 mode.x_i += self.lr_pid.step(self.lr_err.err, self.prev_time - curr_time)
                 mode.y_i += self.fb_pid.step(self.fb_err.err, self.prev_time - curr_time)
                 self.prev_time = curr_time
-                mode.featureset = 1
+                mode.featureset = 1.
                 self.pospub.publish(mode)
             elif int_H is not None:
                 print "only integrated"
@@ -152,7 +152,7 @@ class AnalyzeHomography(picamera.array.PiMotionAnalysis):
                 mode.x_i += self.lr_pid.step(self.lr_err.err, self.prev_time - curr_time)
                 mode.y_i += self.fb_pid.step(self.fb_err.err, self.prev_time - curr_time)
                 self.prev_time = curr_time
-                mmode.featureset = -1
+                mode.featureset = -1.
                 self.pospub.publish(mode)
             else:
                 print "LOST"
