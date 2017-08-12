@@ -39,42 +39,55 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
 #       cv2.waitKey(1)
         curr_time = rospy.get_time()
         if self.first:
+            print "taking new first"
             self.first = False
-            self.first_img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)            
-            self.prev_img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+            #self.first_img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)            
+            self.first_img = img
+            cv2.imwrite("first_img" + str(self.i) + ".jpg", self.first_img)
+            #self.prev_img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+            self.prev_img = img
             self.prev_time = rospy.get_time()
+            self.i += 1
         elif self.transforming:
-            curr_img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+            #curr_img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+            curr_img = img
             corr_first = cv2.estimateRigidTransform(self.first_img, curr_img, False)
             corr_int = cv2.estimateRigidTransform(self.prev_img, curr_img, False)
             self.prev_img = curr_img
             if corr_first is not None:
+                self.last_first_time = curr_time
                 print "first"
+                if curr_time - self.last_first_time > 2:
+                    self.first = True
                 first_displacement = [corr_first[0, 2] / 320., corr_first[1, 2] / 240.]
-                print first_displacement
                 scalex = np.linalg.norm(corr_first[:, 0])
                 scalez = np.linalg.norm(corr_first[:, 1])
                 corr_first[:, 0] /= scalex
                 corr_first[:, 1] /= scalez
                 yaw = math.atan2(corr_first[1, 0], corr_first[0, 0])
-                self.pos = [first_displacement[0] * self.z, first_displacement[1] * self.z / 240., yaw]
+                print first_displacement, yaw
+                # jgo XXX see what happens if we dont reset upon seeing first
+                #self.pos = [first_displacement[0] * self.z, first_displacement[1] * self.z / 240., yaw]
+                # jgo XXX see what happens if we use alpha blending 
+                hybrid_alpha = 0.01 # needs to be between 0 and 1.0
+                self.pos = [(hybrid_alpha) * first_displacement[0] * self.z + (1.0 - hybrid_alpha) * self.pos[0], (hybrid_alpha) * first_displacement[1] * self.z / 240. + (1.0 - hybrid_alpha) * self.pos[1], yaw]
                 self.lr_err.err = self.pos[0]
                 self.fb_err.err = self.pos[1]
                 mode = Mode()
                 mode.mode = 5
                 mode.x_i += self.lr_pid.step(self.lr_err.err, self.prev_time - curr_time)
                 mode.y_i += self.fb_pid.step(self.fb_err.err, self.prev_time - curr_time)
-#               mode.yaw_velocity = yaw * self.kp_yaw
+                mode.yaw_velocity = yaw * self.kp_yaw
                 self.pospub.publish(mode)
             elif corr_int is not None:
-                print "integrated"
+                print "integrated", curr_time - self.last_first_time
                 int_displacement = [corr_int[0, 2] / 320., corr_int[1, 2] / 240.]
-                print int_displacement
                 scalex = np.linalg.norm(corr_int[:, 0])
                 scalez = np.linalg.norm(corr_int[:, 1])
                 corr_int[:, 0] /= scalex
                 corr_int[:, 1] /= scalez
                 yaw = math.atan2(corr_int[1, 0], corr_int[0, 0])
+                print int_displacement, yaw
                 self.pos[0] += int_displacement[0] * self.z
                 self.pos[1] += int_displacement[1] * self.z
 #               self.pos[2] = yaw
@@ -84,18 +97,22 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
                 mode.mode = 5
                 mode.x_i += self.lr_pid.step(self.lr_err.err, self.prev_time - curr_time)
                 mode.y_i += self.fb_pid.step(self.fb_err.err, self.prev_time - curr_time)
-                mode.yaw_velocity = yaw * self.kp_yaw
+                #mode.yaw_velocity = yaw * self.kp_yaw
                 self.pospub.publish(mode)
             else:
                 print "LOST"
         else:
             print "Not transforming"
-            curr_img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+            #curr_img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+            curr_img = img
             corr_first = cv2.estimateRigidTransform(self.first_img, curr_img, False)
             if corr_first is not None:
                 print "first"
+                self.last_first_time = rospy.get_time()
+                if curr_time - self.last_first_time > 2:
+                    self.first = True
             else:
-                print "no first"
+                print "no first", curr_time - self.last_first_time
             self.prev_img = curr_img
         prev_time = curr_time
 
@@ -110,8 +127,9 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
         self.prev_time = None
         self.pospub = rospy.Publisher('/pidrone/set_mode', Mode, queue_size=1)
         self.pos = [0, 0, 0]
-        self.lr_pid = PIDaxis(0.025, 0., 0.01, midpoint=0, control_range=(-15., 15.))
-        self.fb_pid = PIDaxis(-0.025, 0., -0.01, midpoint=0, control_range=(-15., 15.))
+# -, -, 0.1
+        self.lr_pid = PIDaxis(-0.5, -0.000, -0, midpoint=0, control_range=(-15., 15.))
+        self.fb_pid = PIDaxis(-0.5, -0.000, -0, midpoint=0, control_range=(-15., 15.))
         #self.lr_pid = PIDaxis(0.05, 0., 0.001, midpoint=0, control_range=(-15., 15.))
         #self.fb_pid = PIDaxis(-0.05, 0., -0.001, midpoint=0, control_range=(-15., 15.))
         self.index_params = dict(algorithm = 6, table_number = 6,
@@ -124,10 +142,13 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
         self.z = 7.5
         self.est_RT = np.identity(4)
         self.threshold = 0.5
-        self.kp_yaw = 0
+        self.kp_yaw = 100.0
         self.transforming = False
+        self.i = 0
+        self.last_first_time = None
 
 camera = picamera.PiCamera(framerate=90)
+# camera = picamera.PiCamera(framerate=40, sensor_mode=4)
 phase_analyzer = AnalyzePhase(camera)
 
 def range_callback(data):

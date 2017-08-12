@@ -28,6 +28,9 @@ flow_height_z = 0.000001
 reset_pid = True
 pid_is = [0,0,0,0]
 
+cmd_velocity = [0, 0]
+cmd_yaw_velocity = 0
+
 mw_angle_comp_x = 0
 mw_angle_comp_y = 0
 mw_angle_alt_scale = 1.0
@@ -97,6 +100,8 @@ def fly(velocity_cmd):
     global current_mode
     global set_vel_x, set_vel_y, set_z
     global pid
+    global cmd_velocity
+    global cmd_yaw_velocity
     if current_mode == 1 or current_mode == 5 or current_mode == 2:
         current_mode = 5
         set_z = 20
@@ -104,9 +109,12 @@ def fly(velocity_cmd):
             set_vel_x = velocity_cmd.x_velocity
             set_vel_y = velocity_cmd.y_velocity
             scalar = 1.
-            print velocity_cmd.x_i * scalar, velocity_cmd.y_i * scalar
-            pid.roll._i += velocity_cmd.x_i * scalar
-            pid.pitch._i += velocity_cmd.y_i * scalar
+            cmd_velocity = [velocity_cmd.x_i, velocity_cmd.y_i]
+            cmd_yaw_velocity = velocity_cmd.yaw_velocity
+            print cmd_yaw_velocity, "hello"
+#           print velocity_cmd.x_i * scalar, velocity_cmd.y_i * scalar
+#           pid.roll._i += velocity_cmd.x_i * scalar
+#           pid.pitch._i += velocity_cmd.y_i * scalar
             if set_z + velocity_cmd.z_velocity > 20 and set_z + velocity_cmd.z_velocity < 50:
                 set_z += velocity_cmd.z_velocity
 
@@ -150,6 +158,8 @@ def ultra_callback(data):
     global init_z
     global cmds
     global current_mode
+    global cmd_velocity
+    global cmd_yaw_velocity
     if data.range != -1:
         # scale ultrasonic reading to get z accounting for tilt of the drone
         ultra_z = data.range * mw_angle_alt_scale
@@ -162,7 +172,7 @@ def ultra_callback(data):
                 else:
                     error.z.err = init_z - ultra_z + set_z
                     # print "setting cmds"
-                    cmds = pid.step(error)
+                    cmds = pid.step(error, cmd_velocity, cmd_yaw_velocity)
         except Exception as e:
             land()
             raise
