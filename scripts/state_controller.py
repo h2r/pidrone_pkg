@@ -10,7 +10,8 @@ import time
 import sys
 import signal
 
-set_z = 20
+initial_set_z = 30
+set_z = initial_set_z
 init_z = 0
 smoothed_vel = np.array([0, 0, 0])
 alpha = 1.0
@@ -97,6 +98,7 @@ def disarm():
 
 def fly(velocity_cmd):
     global cmds
+    global initial_set_z
     global current_mode
     global set_vel_x, set_vel_y, set_z
     global pid
@@ -104,7 +106,7 @@ def fly(velocity_cmd):
     global cmd_yaw_velocity
     if current_mode == 1 or current_mode == 5 or current_mode == 2:
         current_mode = 5
-        set_z = 20
+        set_z = initial_set_z
         if velocity_cmd is not None:
             set_vel_x = velocity_cmd.x_velocity
             set_vel_y = velocity_cmd.y_velocity
