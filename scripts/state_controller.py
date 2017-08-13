@@ -10,7 +10,7 @@ import time
 import sys
 import signal
 
-initial_set_z = 30
+initial_set_z = 20
 set_z = initial_set_z
 init_z = 0
 smoothed_vel = np.array([0, 0, 0])
@@ -165,6 +165,7 @@ def ultra_callback(data):
     if data.range != -1:
         # scale ultrasonic reading to get z accounting for tilt of the drone
         ultra_z = data.range * mw_angle_alt_scale
+        #print mw_angle_alt_scale, data.range, ultra_z # jgo
         # print 'ultra_z', ultra_z
         try:
             if current_mode == 5 or current_mode == 3 or current_mode == 2:
@@ -258,8 +259,9 @@ if __name__ == '__main__':
 #               mw_angle_comp_y = (-np.sin(d_theta_y * dt) * np.cos(d_theta_x * dt)) * angle_mag * mw_angle_coeff
                 # print mw_angle_comp_x, mw_angle_comp_x_tan
                 # the ultrasonic reading is scaled by cos(roll) * cos(pitch)
-                mw_angle_alt_scale = 1.
-                #mw_angle_alt_scale = np.cos(new_angx) * np.cos(new_angy)
+                #jgo
+                #mw_angle_alt_scale = 1.
+                mw_angle_alt_scale = np.cos(new_angx) * np.cos(new_angy)
                 prev_angx = new_angx
                 prev_angy = new_angy
                 prev_angt = new_angt

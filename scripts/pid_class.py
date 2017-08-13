@@ -81,8 +81,10 @@ class PID:
 #       throttle = PIDaxis(2.0, 2.0, 2.0, kp_upper = 0, i_range=(0, 400),\
 #           control_range=(1200,2000), d_range=(-400, 400), midpoint =
 #           1300), smoothing=False):
-        roll = PIDaxis(4., 2., 0.3, control_range=(1400, 1600)),
-        pitch = PIDaxis(4., 2., 0.3, control_range=(1400,
+        #roll = PIDaxis(4., 2., 0.3, control_range=(1400, 1600)),
+        #pitch = PIDaxis(4., 2., 0.3, control_range=(1400,
+        roll = PIDaxis(4., 2., 0.1, control_range=(1400, 1600)),
+        pitch = PIDaxis(4., 2., 0.1, control_range=(1400,
         1600)),
 #       roll = PIDaxis(2., 2., 0.15, control_range=(1400, 1600)),
 #       pitch = PIDaxis(2., 2., 0.15, control_range=(1400,
@@ -91,8 +93,10 @@ class PID:
         # jgo XXX throttle = PIDaxis(1.2, 2., 2.0, kp_upper = 0, i_range=(0, 400),\
         #throttle = PIDaxis(1.0, 0.75, 3.0, kp_upper = 0, i_range=(0, 400),\
         #throttle = PIDaxis(2.0, 0.75, 6.0, i_range=(0, 400),\
-        #throttle = PIDaxis(0.50, 0.75, 3.0, kp_upper = 4.0, i_range=(0, 400),\
-        throttle = PIDaxis(0.250, 0.5, 3.0, kp_upper = 4.0, i_range=(0, 400),\
+        #gthrottle = PIDaxis(0.50, 0.75, 3.0, kp_upper = 4.0, i_range=(0, 400),\
+        #throttle = PIDaxis(3.0, 0.2, 3.0, kp_upper = 8.0, i_range=(0, 400),\
+        #throttle = PIDaxis(1.0, 0.3, 3.0, kp_upper = 1, i_range=(0, 400),\
+        throttle = PIDaxis(1.0, 0.4, 3.0, kp_upper = 0.0, i_range=(0, 400),\
             control_range=(1200,2000), d_range=(-40, 40), midpoint =
             1250), smoothing=False):
         # roll = PIDaxis(1.2, 05, 1.2),

@@ -59,7 +59,7 @@ stuff "emacs"
 screen -t " flight"
 stuff "source setup.sh"
 stuff "cd $(rospack find pidrone_pkg)/scripts"
-stuff "python state_controller.py"
+stuff "python state_controller.py" # starting state controller automatically is unsafe
 
 screen -t " vision"
 stuff "source setup.sh"
