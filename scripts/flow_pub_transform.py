@@ -69,7 +69,7 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
                 # jgo XXX see what happens if we dont reset upon seeing first
                 #self.pos = [first_displacement[0] * self.z, first_displacement[1] * self.z / 240., yaw]
                 # jgo XXX see what happens if we use alpha blending 
-                hybrid_alpha = 0.01 # needs to be between 0 and 1.0
+                hybrid_alpha = 0.1 # needs to be between 0 and 1.0
                 self.pos = [(hybrid_alpha) * first_displacement[0] * self.z + (1.0 - hybrid_alpha) * self.pos[0], (hybrid_alpha) * first_displacement[1] * self.z / 240. + (1.0 - hybrid_alpha) * self.pos[1], yaw]
                 self.lr_err.err = self.pos[0]
                 self.fb_err.err = self.pos[1]
@@ -77,8 +77,15 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
                 mode.mode = 5
                 mode.x_i += self.lr_pid.step(self.lr_err.err, self.prev_time - curr_time)
                 mode.y_i += self.fb_pid.step(self.fb_err.err, self.prev_time - curr_time)
-                mode.x_velocity = mode.x_i
-                mode.y_velocity = mode.y_i
+                #mode.x_velocity = mode.x_i
+                #mode.y_velocity = mode.y_i
+                # jgo XXX LOLOL constant velocity controller 
+                cvc_norm = np.sqrt(mode.x_i * mode.x_i + mode.y_i * mode.y_i)
+                if cvc_norm <= 0.01:
+                    cvc_norm = 1.0
+                cvc_vel = 0.5
+                mode.x_velocity = cvc_vel * mode.x_i / cvc_norm
+                mode.y_velocity = cvc_vel * mode.y_i / cvc_norm
                 mode.yaw_velocity = yaw * self.kp_yaw
                 self.pospub.publish(mode)
             elif corr_int is not None:
@@ -99,9 +106,14 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
                 mode.mode = 5
                 mode.x_i += self.lr_pid.step(self.lr_err.err, self.prev_time - curr_time)
                 mode.y_i += self.fb_pid.step(self.fb_err.err, self.prev_time - curr_time)
-                mode.x_velocity = mode.x_i
-                mode.y_velocity = mode.y_i
-                #mode.yaw_velocity = yaw * self.kp_yaw
+                # jgo XXX LOLOL constant velocity controller 
+                cvc_norm = np.sqrt(mode.x_i * mode.x_i + mode.y_i * mode.y_i)
+                if cvc_norm <= 0.01:
+                    cvc_norm = 1.0
+                cvc_vel = 0.5
+                mode.x_velocity = cvc_vel * mode.x_i / cvc_norm
+                mode.y_velocity = cvc_vel * mode.y_i / cvc_norm
+                mode.yaw_velocity = yaw * self.kp_yaw
                 self.pospub.publish(mode)
             else:
                 print "LOST"
@@ -132,8 +144,8 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
         self.pospub = rospy.Publisher('/pidrone/set_mode', Mode, queue_size=1)
         self.pos = [0, 0, 0]
 # -, -, 0.1
-        self.lr_pid = PIDaxis(0.100, 0.00, 0.050, midpoint=0, control_range=(-15., 15.))
-        self.fb_pid = PIDaxis(-0.100, -0.00, -0.050, midpoint=0, control_range=(-15., 15.))
+        self.lr_pid = PIDaxis(0.0200, 0.00, 0.00, midpoint=0, control_range=(-15., 15.))
+        self.fb_pid = PIDaxis(-0.0200, -0.00, -0.00, midpoint=0, control_range=(-15., 15.))
         #self.lr_pid = PIDaxis(0.05, 0., 0.001, midpoint=0, control_range=(-15., 15.))
         #self.fb_pid = PIDaxis(-0.05, 0., -0.001, midpoint=0, control_range=(-15., 15.))
         self.index_params = dict(algorithm = 6, table_number = 6,
@@ -146,7 +158,7 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
         self.z = 7.5
         self.est_RT = np.identity(4)
         self.threshold = 0.5
-        self.kp_yaw = 100.0
+        self.kp_yaw = 25.0
         self.transforming = False
         self.i = 0
         self.last_first_time = None

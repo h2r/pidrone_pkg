@@ -64,7 +64,8 @@ class PIDaxis():
             error.d = self._d
 
         print 1
-        raw_output = self._p + self._i + self.ki * cmd_velocity + self._d
+        #raw_output = self._p + self._i + self.ki * cmd_velocity + self._d
+        raw_output = self._p + self._i + self._d
         output = min(max(raw_output + self.midpoint, self.control_range[0]),
                 self.control_range[1])
 
