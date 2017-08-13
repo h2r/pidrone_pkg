@@ -90,8 +90,8 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
                 if cvc_norm <= 0.01:
                     cvc_norm = 1.0
                 cvc_vel = 0.50
-                mode.x_velocity = cvc_vel * mode.x_i / cvc_norm
-                mode.y_velocity = cvc_vel * mode.y_i / cvc_norm
+                #mode.x_velocity = cvc_vel * mode.x_i / cvc_norm
+                #mode.y_velocity = cvc_vel * mode.y_i / cvc_norm
                 mode.yaw_velocity = yaw * self.kp_yaw
                 self.pospub.publish(mode)
                 print "first", max_first_counter, first_counter
