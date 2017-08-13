@@ -27,6 +27,9 @@ keynumber = 5
 current_mode = 0
 phase_started = False
 
+first_counter = 0
+max_first_counter = 0
+
 def mode_callback(data):
     global current_mode
     current_mode = data.mode
@@ -34,6 +37,8 @@ def mode_callback(data):
 class AnalyzePhase(picamera.array.PiMotionAnalysis):
 
     def write(self, data):
+        global first_counter
+        global max_first_counter
         img = np.reshape(np.fromstring(data, dtype=np.uint8), (240, 320, 3))
 #       cv2.imshow("img", img)
 #       cv2.waitKey(1)
@@ -56,7 +61,6 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
             self.prev_img = curr_img
             if corr_first is not None:
                 self.last_first_time = curr_time
-                print "first"
                 if curr_time - self.last_first_time > 2:
                     self.first = True
                 first_displacement = [corr_first[0, 2] / 320., corr_first[1, 2] / 240.]
@@ -80,16 +84,20 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
                 #mode.x_velocity = mode.x_i
                 #mode.y_velocity = mode.y_i
                 # jgo XXX LOLOL constant velocity controller 
+                first_counter = first_counter + 1
+                max_first_counter = max(first_counter, max_first_counter)
                 cvc_norm = np.sqrt(mode.x_i * mode.x_i + mode.y_i * mode.y_i)
                 if cvc_norm <= 0.01:
                     cvc_norm = 1.0
-                cvc_vel = 0.5
+                cvc_vel = 0.75
                 mode.x_velocity = cvc_vel * mode.x_i / cvc_norm
                 mode.y_velocity = cvc_vel * mode.y_i / cvc_norm
                 mode.yaw_velocity = yaw * self.kp_yaw
                 self.pospub.publish(mode)
+                print "first", max_first_counter, first_counter
             elif corr_int is not None:
                 print "integrated", curr_time - self.last_first_time
+                print "max_first_counter: ", max_first_counter
                 int_displacement = [corr_int[0, 2] / 320., corr_int[1, 2] / 240.]
                 scalex = np.linalg.norm(corr_int[:, 0])
                 scalez = np.linalg.norm(corr_int[:, 1])
@@ -107,13 +115,14 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
                 mode.x_i += self.lr_pid.step(self.lr_err.err, self.prev_time - curr_time)
                 mode.y_i += self.fb_pid.step(self.fb_err.err, self.prev_time - curr_time)
                 # jgo XXX LOLOL constant velocity controller 
+                first_counter = 0
                 cvc_norm = np.sqrt(mode.x_i * mode.x_i + mode.y_i * mode.y_i)
                 if cvc_norm <= 0.01:
                     cvc_norm = 1.0
-                cvc_vel = 0.5
+                cvc_vel = 0.750
                 mode.x_velocity = cvc_vel * mode.x_i / cvc_norm
                 mode.y_velocity = cvc_vel * mode.y_i / cvc_norm
-                mode.yaw_velocity = yaw * self.kp_yaw
+                #mode.yaw_velocity = yaw * self.kp_yaw
                 self.pospub.publish(mode)
             else:
                 print "LOST"
@@ -158,7 +167,7 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
         self.z = 7.5
         self.est_RT = np.identity(4)
         self.threshold = 0.5
-        self.kp_yaw = 25.0
+        self.kp_yaw = 100.0
         self.transforming = False
         self.i = 0
         self.last_first_time = None

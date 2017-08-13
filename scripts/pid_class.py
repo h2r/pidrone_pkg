@@ -88,7 +88,8 @@ class PID:
 #       pitch = PIDaxis(2., 2., 0.15, control_range=(1400,
 #       1600)),
         yaw = PIDaxis(0.0, 0.0, 0.0),
-        throttle = PIDaxis(1.2, 2., 2.0, kp_upper = 0, i_range=(0, 400),\
+        # jgo XXX throttle = PIDaxis(1.2, 2., 2.0, kp_upper = 0, i_range=(0, 400),\
+        throttle = PIDaxis(1.6, 0.5, 2.0, kp_upper = 0, i_range=(0, 400),\
             control_range=(1200,2000), d_range=(-40, 40), midpoint =
             1250), smoothing=False):
         # roll = PIDaxis(1.2, 05, 1.2),
