@@ -2,18 +2,50 @@ import rospy
 from pidrone_pkg.msg import Mode
 from sensor_msgs.msg import Joy
 from std_msgs.msg import Empty
+import numpy as np
 
+z_counter = -1
+z_step = 10 # cm
 scalar = 15
 mode = Mode()
 mode.mode = 4
 modepub = rospy.Publisher('/pidrone/set_mode', Mode, queue_size=1)
-resetpub = rospy.Publisher('/pidrone/reset_homography', Empty, queue_size=1)
+resetpub = rospy.Publisher('/pidrone/reset_transform', Empty, queue_size=1)
+togglepub = rospy.Publisher('/pidrone/toggle_transform', Empty, queue_size=1)
 
 def joy_callback(data):
     global scalar
     global modepub
     global mode
     global resetpub
+    global z_counter
+    global z_step
+
+    if data.buttons[3] == 1:
+        z_counter = (z_counter+1) % 4
+        print 3, "Z Stepping", z_counter
+        mode.mode = 5
+        mode.x_velocity = 0
+        mode.y_velocity = 0
+        if z_counter > 1:
+            mode.z_velocity = -z_step
+        else:
+            mode.z_velocity = z_step
+        print mode
+        modepub.publish(mode)
+    if data.buttons[7] == 1:
+        print 7
+        print mode
+    if data.buttons[8] == 1:
+        print 8
+        print mode
+    if data.buttons[9] == 1:
+        print 9
+        print mode
+    if data.buttons[10] == 1:
+        print 10
+        print mode
+
     if data.buttons[4] == 1:
         mode.mode = 4
         print mode
@@ -37,8 +69,14 @@ def joy_callback(data):
         mode.mode = 2
         print mode
         modepub.publish(mode)
-    elif data.buttons[1] == 1:
+
+    # should be able to do these at the same time 
+    if data.buttons[1] == 1:
+        print "resetting transform"
         resetpub.publish(Empty())
+    if data.buttons[2] == 1:
+        print "toggling transform"
+        togglepub.publish(Empty())
     
 #   if data.buttons[7] == 0:
 #       mode.x_velocity = 0

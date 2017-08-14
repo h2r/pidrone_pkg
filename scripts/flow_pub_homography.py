@@ -49,14 +49,12 @@ class AnalyzeHomography(picamera.array.PiMotionAnalysis):
 
         return pos
 
-    def get_H(self, curr_img):
-        curr_kp, curr_des = self.orb.detectAndCompute(curr_img,None)
-
+    def get_H_helper(self, prev_kp, prev_des, curr_kp, curr_des):
         good = []
         flann = cv2.FlannBasedMatcher(self.index_params, self.search_params)
 
-        if self.first_des is not None and curr_des is not None and len(self.first_des) > 3 and len(curr_des) > 3:
-            matches = flann.knnMatch(self.first_des, curr_des, k=2)
+        if prev_des is not None and curr_des is not None and len(prev_des) > 3 and len(curr_des) > 3:
+            matches = flann.knnMatch(prev_des, curr_des, k=2)
             # store all the good matches as per Lowe's ratio test.
             for test in matches:
                 if len(test) > 1:
@@ -66,16 +64,25 @@ class AnalyzeHomography(picamera.array.PiMotionAnalysis):
 
             H = None
             if len(good) > self.min_match_count:
-                src_pts = np.float32([self.first_kp[m.queryIdx].pt for m in good]).reshape(-1,1,2) 
+                src_pts = np.float32([prev_kp[m.queryIdx].pt for m in good]).reshape(-1,1,2) 
                 dst_pts = np.float32([curr_kp[m.trainIdx].pt for m in good]).reshape(-1,1,2)
 
                 H, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC,5.0)
 
             return H
-
         else:
-            print "Not enough matches are found - %d/%d" % (len(good), self.min_match_count)
             return None
+
+    def get_H(self, curr_img):
+        curr_kp, curr_des = self.orb.detectAndCompute(curr_img,None)
+
+        H = self.get_H_helper(self.first_kp, self.first_des, curr_kp, curr_des)
+        int_H = self.get_H_helper(self.prev_kp, self.prev_des, curr_kp, curr_des)
+
+        self.prev_kp = curr_kp
+        self.prev_des = curr_des
+        return H, int_H
+
 
     def get_RT(self, H):
         retval, Rs, ts, norms = cv2.decomposeHomographyMat(H,
@@ -92,7 +99,6 @@ class AnalyzeHomography(picamera.array.PiMotionAnalysis):
         return Rs[min_index], T, norms[min_index]
 
     def write(self, data):
-        print "data"
         img = np.reshape(np.fromstring(data, dtype=np.uint8), (240, 320, 3))
 #       cv2.imshow("img", img)
 #       cv2.waitKey(1)
@@ -100,17 +106,21 @@ class AnalyzeHomography(picamera.array.PiMotionAnalysis):
             self.first = False
             self.first_kp, self.first_des = self.orb.detectAndCompute(img, None)
             print len(self.first_kp), "features for first"
+            self.prev_kp = deepcopy(self.first_kp)
+            self.prev_des = deepcopy(self.first_des)
             self.prev_time = rospy.get_time()
         else:
             curr_time = rospy.get_time()
-            H = self.get_H(img)
+            H, int_H = self.get_H(img)
             if H is not None:
+                print "first"
                 R, t, n = self.get_RT(H)
                 RT = np.identity(4)
                 RT[0:3, 0:3] = R[0:3, 0:3]
                 if np.linalg.norm(t) < 50:
                     RT[0:3, 3] = t.T[0]
-                new_pos = self.compose_pose(RT)
+                self.est_RT = RT
+                new_pos = self.compose_pose(self.est_RT)
                 self.smoothed_pos.header = new_pos.header
                 self.smoothed_pos.pose.position.x = (1. - self.alpha) * self.smoothed_pos.pose.position.x + self.alpha * new_pos.pose.position.x
                 self.smoothed_pos.pose.position.y = (1. - self.alpha) * self.smoothed_pos.pose.position.y + self.alpha * new_pos.pose.position.y
@@ -118,16 +128,33 @@ class AnalyzeHomography(picamera.array.PiMotionAnalysis):
                 mode.mode = 5
                 self.lr_err.err = self.smoothed_pos.pose.position.x
                 self.fb_err.err = self.smoothed_pos.pose.position.y
-                mode.x_velocity = self.lr_pid.step(self.lr_err.err, self.prev_time - curr_time)
-                mode.y_velocity = self.fb_pid.step(self.fb_err.err, self.prev_time - curr_time)
-                print 'lr', mode.x_velocity, 'fb', mode.y_velocity, self.z
+                mode.x_i += self.lr_pid.step(self.lr_err.err, self.prev_time - curr_time)
+                mode.y_i += self.fb_pid.step(self.fb_err.err, self.prev_time - curr_time)
                 self.prev_time = curr_time
+                mode.featureset = 1.
                 self.pospub.publish(mode)
-            else:
+            elif int_H is not None:
+                print "only integrated"
+                R, t, n = self.get_RT(int_H)
+                RT = np.identity(4)
+                RT[0:3, 0:3] = R[0:3, 0:3]
+                if np.linalg.norm(t) < 50:
+                    RT[0:3, 3] = t.T[0]
+                self.est_RT = np.dot(RT, self.est_RT)
+                new_pos = self.compose_pose(self.est_RT)
+                self.smoothed_pos.header = new_pos.header
+                self.smoothed_pos.pose.position.x = (1. - self.alpha) * self.smoothed_pos.pose.position.x + self.alpha * new_pos.pose.position.x
+                self.smoothed_pos.pose.position.y = (1. - self.alpha) * self.smoothed_pos.pose.position.y + self.alpha * new_pos.pose.position.y
                 mode = Mode()
                 mode.mode = 5
-                mode.x_velocity = 0
-                mode.y_velocity = 0
+                self.lr_err.err = self.smoothed_pos.pose.position.x
+                self.fb_err.err = self.smoothed_pos.pose.position.y
+                mode.x_i += self.lr_pid.step(self.lr_err.err, self.prev_time - curr_time)
+                mode.y_i += self.fb_pid.step(self.fb_err.err, self.prev_time - curr_time)
+                self.prev_time = curr_time
+                mode.featureset = -1.
+                self.pospub.publish(mode)
+            else:
                 print "LOST"
                 self.prev_time = curr_time
 
@@ -135,16 +162,18 @@ class AnalyzeHomography(picamera.array.PiMotionAnalysis):
     def setup(self):
         self.first_kp = None
         self.first_des = None
+        self.prev_kp = None
+        self.prev_des = None
         self.first = True
         self.orb = cv2.ORB_create(nfeatures=500, nlevels=8, scaleFactor=1.1)
-        self.alpha = 0.6
+        self.alpha = 0.7
         self.lr_err = ERR()
         self.fb_err = ERR()
         self.prev_time = None
         self.pospub = rospy.Publisher('/pidrone/set_mode', Mode, queue_size=1)
         self.smoothed_pos = PoseStamped()
-        self.lr_pid = PIDaxis(-0.1, -0., -0.01, midpoint=0, control_range=(-15., 15.))
-        self.fb_pid = PIDaxis(0.1, 0., 0.01, midpoint=0, control_range=(-15., 15.))
+        self.lr_pid = PIDaxis(-0.01, -0., -0.005, midpoint=0, control_range=(-15., 15.))
+        self.fb_pid = PIDaxis(0.01, 0., 0.005, midpoint=0, control_range=(-15., 15.))
         self.index_params = dict(algorithm = 6, table_number = 6,
                                 key_size = 12, multi_probe_level = 1)
         self.search_params = dict(checks = 50)
@@ -153,6 +182,7 @@ class AnalyzeHomography(picamera.array.PiMotionAnalysis):
                                     [ 0., 250.0, 120.0], 
                                     [   0., 0., 1.]])
         self.z = 7.5
+        self.est_RT = np.identity(4)
 
 camera = picamera.PiCamera(framerate=90)
 homography_analyzer = AnalyzeHomography(camera)
@@ -165,6 +195,9 @@ def range_callback(data):
 def reset_callback(data):
     print "Resetting Homography"
     homography_analyzer.first = True
+    homography_analyzer.est_RT = np.identity(4)
+    homography_analyzer.fb_pid._i = 0
+    homography_analyzer.lr_pid._i = 0
 
 if __name__ == '__main__':
     rospy.init_node('flow_pub')

@@ -8,10 +8,19 @@ GAIN = 1
 m = 181818.18181818182
 b = -8.3 + 7.5
 smoothed_distance = 0
-alpha = 0.3
+alpha = 0.7
+
+alpha_50 = 0.7
+alpha_20 = 0.7
 
 def get_range():
     global smoothed_distance
+
+    slew_distance = max( min( smoothed_distance, 50.0 ), 20.0)
+    alpha = ( (slew_distance - 20.0) * alpha_50 + (50.0 - slew_distance) * alpha_20 ) / (50.0-20.0)
+    print alpha
+
+
     voltage = adc.read_adc(0, gain=GAIN)
     distance = (1.0 / voltage) * m + b
     smoothed_distance = (1.0 - alpha) * smoothed_distance + alpha * distance

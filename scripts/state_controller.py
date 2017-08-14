@@ -10,7 +10,8 @@ import time
 import sys
 import signal
 
-set_z = 30
+initial_set_z = 20
+set_z = initial_set_z
 init_z = 0
 smoothed_vel = np.array([0, 0, 0])
 alpha = 1.0
@@ -27,6 +28,9 @@ modepub = rospy.Publisher('/pidrone/mode', Mode, queue_size=1)
 flow_height_z = 0.000001
 reset_pid = True
 pid_is = [0,0,0,0]
+
+cmd_velocity = [0, 0]
+cmd_yaw_velocity = 0
 
 mw_angle_comp_x = 0
 mw_angle_comp_y = 0
@@ -94,14 +98,25 @@ def disarm():
 
 def fly(velocity_cmd):
     global cmds
+    global initial_set_z
     global current_mode
     global set_vel_x, set_vel_y, set_z
+    global pid
+    global cmd_velocity
+    global cmd_yaw_velocity
     if current_mode == 1 or current_mode == 5 or current_mode == 2:
         current_mode = 5
-        set_z = 30
+        set_z = initial_set_z
         if velocity_cmd is not None:
             set_vel_x = velocity_cmd.x_velocity
             set_vel_y = velocity_cmd.y_velocity
+            scalar = 1.
+            cmd_velocity = [velocity_cmd.x_i, velocity_cmd.y_i]
+            cmd_yaw_velocity = velocity_cmd.yaw_velocity
+            print cmd_yaw_velocity, "hello"
+#           print velocity_cmd.x_i * scalar, velocity_cmd.y_i * scalar
+#           pid.roll._i += velocity_cmd.x_i * scalar
+#           pid.pitch._i += velocity_cmd.y_i * scalar
             if set_z + velocity_cmd.z_velocity > 20 and set_z + velocity_cmd.z_velocity < 50:
                 set_z += velocity_cmd.z_velocity
 
@@ -145,9 +160,12 @@ def ultra_callback(data):
     global init_z
     global cmds
     global current_mode
+    global cmd_velocity
+    global cmd_yaw_velocity
     if data.range != -1:
         # scale ultrasonic reading to get z accounting for tilt of the drone
         ultra_z = data.range * mw_angle_alt_scale
+        #print mw_angle_alt_scale, data.range, ultra_z # jgo
         # print 'ultra_z', ultra_z
         try:
             if current_mode == 5 or current_mode == 3 or current_mode == 2:
@@ -157,7 +175,7 @@ def ultra_callback(data):
                 else:
                     error.z.err = init_z - ultra_z + set_z
                     # print "setting cmds"
-                    cmds = pid.step(error)
+                    cmds = pid.step(error, cmd_velocity, cmd_yaw_velocity)
         except Exception as e:
             land()
             raise
@@ -191,8 +209,10 @@ def plane_callback(data):
     global flow_height_z
     global set_vel_x, set_vel_y
 
-    error.x.err = (data.x.err - mw_angle_comp_x) * ultra_z + set_vel_x
-    error.y.err = (data.y.err + mw_angle_comp_y) * ultra_z + set_vel_y
+    print set_vel_x, set_vel_y
+
+    error.x.err = (data.x.err - mw_angle_comp_x) * min(ultra_z, 30.) + set_vel_x
+    error.y.err = (data.y.err + mw_angle_comp_y) * min(ultra_z, 30.) + set_vel_y
     # error.z.err = data.z.err
 
 
@@ -239,8 +259,9 @@ if __name__ == '__main__':
 #               mw_angle_comp_y = (-np.sin(d_theta_y * dt) * np.cos(d_theta_x * dt)) * angle_mag * mw_angle_coeff
                 # print mw_angle_comp_x, mw_angle_comp_x_tan
                 # the ultrasonic reading is scaled by cos(roll) * cos(pitch)
-                mw_angle_alt_scale = 1.
-                #mw_angle_alt_scale = np.cos(new_angx) * np.cos(new_angy)
+                #jgo
+                #mw_angle_alt_scale = 1.
+                mw_angle_alt_scale = np.cos(new_angx) * np.cos(new_angy)
                 prev_angx = new_angx
                 prev_angy = new_angy
                 prev_angt = new_angt
@@ -253,7 +274,6 @@ if __name__ == '__main__':
                 print "BOARD ERRORS!!!!!!!!!!!!!!"
                 sys.exit()
                 board.close()
-                board = MultiWii("/dev/ttyUSB0")
 
         print cmds
         board.sendCMD(8, MultiWii.SET_RAW_RC, cmds)
