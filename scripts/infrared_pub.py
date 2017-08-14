@@ -10,8 +10,8 @@ b = -8.3 + 7.5
 smoothed_distance = 0
 alpha = 0.7
 
-alpha_50 = 0.7
-alpha_20 = 0.7
+alpha_50 = 0.5
+alpha_20 = 0.5
 
 def get_range():
     global smoothed_distance
@@ -19,7 +19,7 @@ def get_range():
     slew_distance = max( min( smoothed_distance, 50.0 ), 20.0)
     alpha = ( (slew_distance - 20.0) * alpha_50 + (50.0 - slew_distance) * alpha_20 ) / (50.0-20.0)
     print alpha
-
+    #alpha = 1. # TESTING FOR COMPARING ULTRA AND INFRA
 
     voltage = adc.read_adc(0, gain=GAIN)
     distance = (1.0 / voltage) * m + b

@@ -89,14 +89,15 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
                 cvc_norm = np.sqrt(mode.x_i * mode.x_i + mode.y_i * mode.y_i)
                 if cvc_norm <= 0.01:
                     cvc_norm = 1.0
-                cvc_vel = 0.50
-                #mode.x_velocity = cvc_vel * mode.x_i / cvc_norm
-                #mode.y_velocity = cvc_vel * mode.y_i / cvc_norm
+                cvc_vel = 0.25
+                mode.x_velocity = cvc_vel * mode.x_i / cvc_norm
+                mode.y_velocity = cvc_vel * mode.y_i / cvc_norm
                 mode.yaw_velocity = yaw * self.kp_yaw
                 self.pospub.publish(mode)
                 print "first", max_first_counter, first_counter
             elif corr_int is not None:
-                print "integrated", curr_time - self.last_first_time
+                time_since_first = curr_time - self.last_first_time
+                print "integrated", time_since_first
                 print "max_first_counter: ", max_first_counter
                 int_displacement = [corr_int[0, 2] / 320., corr_int[1, 2] / 240.]
                 scalex = np.linalg.norm(corr_int[:, 0])
@@ -119,7 +120,8 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
                 cvc_norm = np.sqrt(mode.x_i * mode.x_i + mode.y_i * mode.y_i)
                 if cvc_norm <= 0.01:
                     cvc_norm = 1.0
-                cvc_vel = 0.50
+                cvc_vel = 1.0
+                #cvc_vel = max(min(time_since_first * 0.1, 1.0), 0.0)
                 mode.x_velocity = cvc_vel * mode.x_i / cvc_norm
                 mode.y_velocity = cvc_vel * mode.y_i / cvc_norm
                 #mode.yaw_velocity = yaw * self.kp_yaw

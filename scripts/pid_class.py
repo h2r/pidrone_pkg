@@ -15,7 +15,7 @@ import sys
 #						PID							#
 #####################################################
 class PIDaxis():
-    def __init__(self, kp, ki, kd, kp_upper = None, i_range = None, d_range = None, control_range = (1000,2000), midpoint = 1500, smoothing = True):
+    def __init__(self, kp, ki, kd, kp_upper = None, kpi = None, kpi_max = None, i_range = None, d_range = None, control_range = (1000,2000), midpoint = 1500, smoothing = True):
         # tuning
         self.kp = kp
         self.ki = ki
@@ -34,8 +34,15 @@ class PIDaxis():
         self._d = 0
         self._dd = 0
         self._ddd = 0
+        
+        self.kpi = kpi
+        self.kpi_max = kpi_max
+        if self.kpi_max is None:
+            self.kpi_max = 0.1
+
 
     def step(self, err, time_elapsed, error = None, cmd_velocity=0, cmd_yaw_velocity=0):
+
         if self._old_err is None: self._old_err = err # first time around prevent d term spike	
         # find the p,i,d components
         if self.kp_upper is not None and err < 0:
@@ -43,6 +50,9 @@ class PIDaxis():
         else: 
             self._p = err * self.kp
 
+
+        if self.kpi is not None:
+            self._i += np.sign(err) * err * err * self.kpi * time_elapsed
         self._i += err * self.ki * time_elapsed
         if self.i_range is not None:
             self._i = max(self.i_range[0], min(self._i, self.i_range[1]))
@@ -83,8 +93,8 @@ class PID:
 #           1300), smoothing=False):
         #roll = PIDaxis(4., 2., 0.3, control_range=(1400, 1600)),
         #pitch = PIDaxis(4., 2., 0.3, control_range=(1400,
-        roll = PIDaxis(4., 2., 0.1, control_range=(1400, 1600)),
-        pitch = PIDaxis(4., 2., 0.1, control_range=(1400,
+        roll = PIDaxis(4., 2., 0.01, control_range=(1400, 1600)),
+        pitch = PIDaxis(4., 2., 0.01, control_range=(1400,
         1600)),
 #       roll = PIDaxis(2., 2., 0.15, control_range=(1400, 1600)),
 #       pitch = PIDaxis(2., 2., 0.15, control_range=(1400,
@@ -96,9 +106,10 @@ class PID:
         #gthrottle = PIDaxis(0.50, 0.75, 3.0, kp_upper = 4.0, i_range=(0, 400),\
         #throttle = PIDaxis(3.0, 0.2, 3.0, kp_upper = 8.0, i_range=(0, 400),\
         #throttle = PIDaxis(1.0, 0.3, 3.0, kp_upper = 1, i_range=(0, 400),\
-        throttle = PIDaxis(1.0, 0.4, 3.0, kp_upper = 0.0, i_range=(0, 400),\
+        throttle = PIDaxis(1.0, 0.05, 2.0, kp_upper = 0.0, kpi = 0.02, kpi_max = 0.5, i_range=(0, 400),\
             control_range=(1200,2000), d_range=(-40, 40), midpoint =
-            1250), smoothing=False):
+            1400), smoothing=False):
+            #1250), smoothing=False):
         # roll = PIDaxis(1.2, 05, 1.2),
         # pitch = PIDaxis(1.2, 0.5, 1.2),
         # yaw = PIDaxis(-1000.0, 0,0),
