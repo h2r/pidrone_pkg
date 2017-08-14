@@ -27,3 +27,13 @@ and go to the "Firmware Flasher" tab.
 5. Go to the "Reveiver" tab and change the input map to "AERT1234"
 
 6. Plug the skyline back into the Pi and you should be set to fly!
+
+## Other Options
+
+### Throttle Angle Compensation
+
+Go to "CLI" tab and type
+
+`set thr_corr_value = XX` and `set thr_corr_angle = YY`
+
+This will set it (linearly?) so that it adds `XX` to the throttle when at angle `YY`
