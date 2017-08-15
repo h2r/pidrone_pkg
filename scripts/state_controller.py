@@ -10,7 +10,7 @@ import time
 import sys
 import signal
 
-initial_set_z = 20
+initial_set_z = 40
 set_z = initial_set_z
 init_z = 0
 smoothed_vel = np.array([0, 0, 0])
@@ -106,18 +106,19 @@ def fly(velocity_cmd):
     global cmd_yaw_velocity
     if current_mode == 1 or current_mode == 5 or current_mode == 2:
         current_mode = 5
-        set_z = initial_set_z
+        #set_z = initial_set_z
+        print set_z
         if velocity_cmd is not None:
             set_vel_x = velocity_cmd.x_velocity
             set_vel_y = velocity_cmd.y_velocity
             scalar = 1.
             cmd_velocity = [velocity_cmd.x_i, velocity_cmd.y_i]
             cmd_yaw_velocity = velocity_cmd.yaw_velocity
-            print cmd_yaw_velocity, "hello"
+            #print cmd_yaw_velocity, "hello"
 #           print velocity_cmd.x_i * scalar, velocity_cmd.y_i * scalar
 #           pid.roll._i += velocity_cmd.x_i * scalar
 #           pid.pitch._i += velocity_cmd.y_i * scalar
-            if set_z + velocity_cmd.z_velocity > 20 and set_z + velocity_cmd.z_velocity < 50:
+            if set_z + velocity_cmd.z_velocity > 19 and set_z + velocity_cmd.z_velocity < 101:
                 set_z += velocity_cmd.z_velocity
 
 def kill_throttle():
@@ -209,10 +210,12 @@ def plane_callback(data):
     global flow_height_z
     global set_vel_x, set_vel_y
 
-    print set_vel_x, set_vel_y
+    #print set_vel_x, set_vel_y
 
-    error.x.err = (data.x.err - mw_angle_comp_x) * min(ultra_z, 30.) + set_vel_x
-    error.y.err = (data.y.err + mw_angle_comp_y) * min(ultra_z, 30.) + set_vel_y
+    #error.x.err = (data.x.err - mw_angle_comp_x) * min(ultra_z, 30.) + set_vel_x
+    #error.y.err = (data.y.err + mw_angle_comp_y) * min(ultra_z, 30.) + set_vel_y
+    error.x.err = (data.x.err - mw_angle_comp_x) * ultra_z + set_vel_x
+    error.y.err = (data.y.err + mw_angle_comp_y) * ultra_z + set_vel_y
     # error.z.err = data.z.err
 
 
@@ -226,7 +229,7 @@ if __name__ == '__main__':
     rospy.init_node('state_controller')
     rospy.Subscriber("/pidrone/plane_err", axes_err, plane_callback)
     board = MultiWii("/dev/ttyUSB0")
-    rospy.Subscriber("/pidrone/infrared", Range, ultra_callback)
+    rospy.Subscriber("/pidrone/ultra_smooth", Range, ultra_callback)
     rospy.Subscriber("/pidrone/vrpn_pos", PoseStamped, vrpn_callback)
     rospy.Subscriber("/pidrone/set_mode", Mode, mode_callback)
     signal.signal(signal.SIGINT, ctrl_c_handler)
@@ -275,7 +278,8 @@ if __name__ == '__main__':
                 sys.exit()
                 board.close()
 
-        print cmds
+        #print cmds
+        print set_z
         board.sendCMD(8, MultiWii.SET_RAW_RC, cmds)
         board.receiveDataPacket()
         time.sleep(0.01)

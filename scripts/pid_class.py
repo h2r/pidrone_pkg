@@ -73,7 +73,7 @@ class PIDaxis():
             error.i = self._i
             error.d = self._d
 
-        print 1
+        #print 1
         #raw_output = self._p + self._i + self.ki * cmd_velocity + self._d
         raw_output = self._p + self._i + self._d
         output = min(max(raw_output + self.midpoint, self.control_range[0]),
@@ -139,11 +139,11 @@ class PID:
         if self._t is None: time_elapsed = 1 # first time around prevent time spike
         else: time_elapsed = rospy.get_time() - self._t
         self._t = rospy.get_time()
-        print cmd_velocity
+        #print cmd_velocity
         cmd_r = self.roll.step(error.x.err, time_elapsed, error.x, cmd_velocity=cmd_velocity[1])
         cmd_p = self.pitch.step(error.y.err, time_elapsed, error.y, cmd_velocity=cmd_velocity[0])
         cmd_y = 1500 + cmd_yaw_velocity
-        print cmd_y, cmd_yaw_velocity, "HELLO"
+        #print cmd_y, cmd_yaw_velocity, "HELLO"
         cmd_t = self.throttle.step(error.z.err, time_elapsed, error.z)
 
         return [cmd_r, cmd_p, cmd_y, cmd_t]

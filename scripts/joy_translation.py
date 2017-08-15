@@ -4,8 +4,10 @@ from sensor_msgs.msg import Joy
 from std_msgs.msg import Empty
 import numpy as np
 
+z_total_steps = 24
+#z_counter = (z_total_steps / 4) - 1
 z_counter = -1
-z_step = 10 # cm
+z_step = 5 # cm
 scalar = 15
 mode = Mode()
 mode.mode = 4
@@ -20,14 +22,15 @@ def joy_callback(data):
     global resetpub
     global z_counter
     global z_step
+    global z_total_steps
 
     if data.buttons[3] == 1:
-        z_counter = (z_counter+1) % 4
+        z_counter = (z_counter+1) % z_total_steps
         print 3, "Z Stepping", z_counter
         mode.mode = 5
         mode.x_velocity = 0
         mode.y_velocity = 0
-        if z_counter > 1:
+        if z_counter > ((z_total_steps / 2) - 1):
             mode.z_velocity = -z_step
         else:
             mode.z_velocity = z_step

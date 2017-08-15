@@ -10,8 +10,8 @@ b = -8.3 + 7.5
 smoothed_distance = 0
 alpha = 0.7
 
-alpha_50 = 0.5
-alpha_20 = 0.5
+alpha_50 = 0.2
+alpha_20 = 0.2
 
 def get_range():
     global smoothed_distance

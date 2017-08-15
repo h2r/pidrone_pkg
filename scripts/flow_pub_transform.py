@@ -89,7 +89,7 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
                 cvc_norm = np.sqrt(mode.x_i * mode.x_i + mode.y_i * mode.y_i)
                 if cvc_norm <= 0.01:
                     cvc_norm = 1.0
-                cvc_vel = 0.25
+                cvc_vel = 0.5#0.25
                 mode.x_velocity = cvc_vel * mode.x_i / cvc_norm
                 mode.y_velocity = cvc_vel * mode.y_i / cvc_norm
                 mode.yaw_velocity = yaw * self.kp_yaw
@@ -120,7 +120,7 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
                 cvc_norm = np.sqrt(mode.x_i * mode.x_i + mode.y_i * mode.y_i)
                 if cvc_norm <= 0.01:
                     cvc_norm = 1.0
-                cvc_vel = 1.0
+                cvc_vel = 0.75 #1.0 
                 #cvc_vel = max(min(time_since_first * 0.1, 1.0), 0.0)
                 mode.x_velocity = cvc_vel * mode.x_i / cvc_norm
                 mode.y_velocity = cvc_vel * mode.y_i / cvc_norm
