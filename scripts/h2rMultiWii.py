@@ -217,6 +217,7 @@ class MultiWii:
             self.boxnames = temp
             return self.boxnames
         elif code == MultiWii.STATUS:
+            print data
             temp = struct.unpack('<'+'HHHIb',data)
             self.status['cycleTime'] = temp[0]
             self.status['i2c_errors_count'] = temp[1]
