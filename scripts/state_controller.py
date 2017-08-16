@@ -37,6 +37,9 @@ mw_angle_comp_y = 0
 mw_angle_alt_scale = 1.0
 mw_angle_coeff = 10.0
 
+flow_x_old = 0.0
+flow_y_old = 0.0
+
 def arm():
     global cmds
     global current_mode
@@ -209,13 +212,18 @@ def plane_callback(data):
     global mw_angle_comp_x, mw_angle_comp_y
     global flow_height_z
     global set_vel_x, set_vel_y
-
+    global flow_x_old, flow_y_old
     #print set_vel_x, set_vel_y
-
     #error.x.err = (data.x.err - mw_angle_comp_x) * min(ultra_z, 30.) + set_vel_x
     #error.y.err = (data.y.err + mw_angle_comp_y) * min(ultra_z, 30.) + set_vel_y
     error.x.err = (data.x.err - mw_angle_comp_x) * ultra_z + set_vel_x
     error.y.err = (data.y.err + mw_angle_comp_y) * ultra_z + set_vel_y
+
+#    alpha = 0.5
+#    error.x.err = error.x.err * alpha + (1. - alpha) * flow_x_old
+#    error.y.err = error.y.err * alpha + (1. - alpha) * flow_y_old
+#    flow_x_old = error.x.err
+#    flow_y_old = error.y.err
     # error.z.err = data.z.err
 
 
