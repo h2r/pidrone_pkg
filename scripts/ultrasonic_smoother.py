@@ -1,6 +1,8 @@
 import rospy
 import numpy as np
 from sensor_msgs.msg import Range
+var_alpha = 0.1
+var_est = 0.0
 
 
 class VarianceSmoother():
@@ -48,7 +50,10 @@ class VarianceSmoother():
             self.sigma2 = self.mu2 - self.mu**2 + 0.1 # add constant to sigma2 to prevent convergence
             self.alpha = self.renorm(self.sigma2) # update alpha based on variance
             self.p_est = self.alpha * s + (1. - self.alpha) * self.p_est
-            print self.alpha
+            #print self.alpha
+            global var_est, var_alpha
+            var_est = var_est * (1.0 - var_alpha) + var_alpha * self.sigma2
+            print var_est, self.sigma2
             #print 's2, a, mu, new\t{}\t{}\t{}\t{}'.format(
             #    np.absolute(s-self.p_est)/np.sqrt(self.sigma2),self.alpha,self.mu,s)
 
@@ -118,5 +123,5 @@ if __name__ == '__main__':
     rospy.init_node('ultrasonic_smoother')
     pub = rospy.Publisher('/pidrone/ultra_smooth', Range, queue_size=1)
     smoother = VarianceSmoother(pub)
-    rospy.Subscriber('/pidrone/ultrasonic', Range, smoother.step)
+    rospy.Subscriber('/pidrone/infrared', Range, smoother.step)
     rospy.spin()

@@ -30,6 +30,18 @@ phase_started = False
 first_counter = 0
 max_first_counter = 0
 
+
+replan_period = 1.0 # seconds
+replan_scale = 0.5 
+replan_last_reset = 0
+replan_next_deadline = 0
+replan_until_deadline = 0
+replan_vel_x = 0
+replan_vel_y = 0
+
+
+
+
 def mode_callback(data):
     global current_mode
     current_mode = data.mode
@@ -39,10 +51,27 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
     def write(self, data):
         global first_counter
         global max_first_counter
+        global replan_period
+        global replan_last_reset
+        global replan_next_deadline
+        global replan_until_deadline
+        global replan_vel_x
+        global replan_vel_y
+        global replan_scale
         img = np.reshape(np.fromstring(data, dtype=np.uint8), (240, 320, 3))
 #       cv2.imshow("img", img)
 #       cv2.waitKey(1)
         curr_time = rospy.get_time()
+
+        shouldi_set_velocity = 1 #0
+        if np.abs(curr_time - replan_last_reset) > replan_period:
+            replan_last_reset = curr_time
+            replan_next_deadline = replan_last_reset + replan_period
+            shouldi_set_velocity = 1
+        replan_until_deadline = replan_next_deadline-curr_time
+        print curr_time, replan_last_reset, replan_next_deadline, replan_until_deadline, replan_vel_x, replan_vel_y
+
+
         if self.first:
             print "taking new first"
             self.first = False
@@ -79,19 +108,27 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
                 self.fb_err.err = self.pos[1]
                 mode = Mode()
                 mode.mode = 5
-                mode.x_i += self.lr_pid.step(self.lr_err.err, self.prev_time - curr_time)
-                mode.y_i += self.fb_pid.step(self.fb_err.err, self.prev_time - curr_time)
-                #mode.x_velocity = mode.x_i
-                #mode.y_velocity = mode.y_i
+                #mode.x_i += self.lr_pid.step(self.lr_err.err, self.prev_time - curr_time)
+                #mode.y_i += self.fb_pid.step(self.fb_err.err, self.prev_time - curr_time)
+                mode.x_velocity = mode.x_i
+                mode.y_velocity = mode.y_i
                 # jgo XXX LOLOL constant velocity controller 
                 first_counter = first_counter + 1
                 max_first_counter = max(first_counter, max_first_counter)
                 cvc_norm = np.sqrt(mode.x_i * mode.x_i + mode.y_i * mode.y_i)
                 if cvc_norm <= 0.01:
                     cvc_norm = 1.0
-                cvc_vel = 0.5#0.25
+                cvc_vel = 0.2#0.25
+
+                if shouldi_set_velocity:
+                    replan_vel_x = mode.x_i * replan_scale / max(replan_until_deadline, 0.1)
+                    replan_vel_y = mode.y_i * replan_scale / max(replan_until_deadline, 0.1)
+                    replan_vel_x = min(replan_vel_x, 1.0)
+                    replan_vel_y = min(replan_vel_y, 1.0)
                 mode.x_velocity = cvc_vel * mode.x_i / cvc_norm
                 mode.y_velocity = cvc_vel * mode.y_i / cvc_norm
+                #mode.x_velocity = replan_vel_x
+                #mode.y_velocity = replan_vel_y
                 mode.yaw_velocity = yaw * self.kp_yaw
                 self.pospub.publish(mode)
                 print "first", max_first_counter, first_counter
@@ -120,10 +157,20 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
                 cvc_norm = np.sqrt(mode.x_i * mode.x_i + mode.y_i * mode.y_i)
                 if cvc_norm <= 0.01:
                     cvc_norm = 1.0
-                cvc_vel = 0.75 #1.0 
+                cvc_vel = 0.35 #1.0 
+
+                if shouldi_set_velocity:
+                    #replan_vel_x = mode.x_i * replan_scale# * cvc_vel
+                    #replan_vel_y = mode.y_i * replan_scale# * cvc_vel
+                    replan_vel_x = mode.x_i * replan_scale / max(replan_until_deadline, 0.1)
+                    replan_vel_y = mode.y_i * replan_scale / max(replan_until_deadline, 0.1)
+                    replan_vel_x = min(replan_vel_x, 1.0)
+                    replan_vel_y = min(replan_vel_y, 1.0)
                 #cvc_vel = max(min(time_since_first * 0.1, 1.0), 0.0)
                 mode.x_velocity = cvc_vel * mode.x_i / cvc_norm
                 mode.y_velocity = cvc_vel * mode.y_i / cvc_norm
+                #mode.x_velocity = replan_vel_x
+                #mode.y_velocity = replan_vel_y
                 #mode.yaw_velocity = yaw * self.kp_yaw
                 self.pospub.publish(mode)
             else:

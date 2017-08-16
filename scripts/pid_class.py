@@ -93,8 +93,8 @@ class PID:
 #           1300), smoothing=False):
         #roll = PIDaxis(4., 2., 0.3, control_range=(1400, 1600)),
         #pitch = PIDaxis(4., 2., 0.3, control_range=(1400,
-        roll = PIDaxis(4., 2., 0.01, control_range=(1400, 1600)),
-        pitch = PIDaxis(4., 2., 0.01, control_range=(1400,
+        roll = PIDaxis(4., 2., 0.1, control_range=(1400, 1600)), # D term 0.1 or 0.01
+        pitch = PIDaxis(4., 2., 0.1, control_range=(1400,
         1600)),
 #       roll = PIDaxis(2., 2., 0.15, control_range=(1400, 1600)),
 #       pitch = PIDaxis(2., 2., 0.15, control_range=(1400,
