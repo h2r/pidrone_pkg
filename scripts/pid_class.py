@@ -93,8 +93,8 @@ class PID:
 #           1300), smoothing=False):
         #roll = PIDaxis(4., 2., 0.3, control_range=(1400, 1600)),
         #pitch = PIDaxis(4., 2., 0.3, control_range=(1400,
-        roll = PIDaxis(4., 2., 0.1, control_range=(1400, 1600)), # D term 0.1 or 0.01
-        pitch = PIDaxis(4., 2., 0.1, control_range=(1400,
+        roll = PIDaxis(4., 6., 0.0, control_range=(1400, 1600)), # D term 0.1 or 0.01
+        pitch = PIDaxis(4., 6., 0.0, control_range=(1400,
         1600)),
 #       roll = PIDaxis(2., 2., 0.15, control_range=(1400, 1600)),
 #       pitch = PIDaxis(2., 2., 0.15, control_range=(1400,
@@ -142,6 +142,7 @@ class PID:
         #print cmd_velocity
         cmd_r = self.roll.step(error.x.err, time_elapsed, error.x, cmd_velocity=cmd_velocity[1])
         cmd_p = self.pitch.step(error.y.err, time_elapsed, error.y, cmd_velocity=cmd_velocity[0])
+        print self.roll._i, self.pitch._i
         cmd_y = 1500 + cmd_yaw_velocity
         #print cmd_y, cmd_yaw_velocity, "HELLO"
         cmd_t = self.throttle.step(error.z.err, time_elapsed, error.z)
