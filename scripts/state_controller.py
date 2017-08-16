@@ -126,6 +126,7 @@ def kill_throttle():
 
 def mode_callback(data):
     global pid, reset_pid, pid_is
+    print 'GOT NEW MODE', data.mode
     if data.mode == 0:
         reset_pid = True
         arm()
@@ -229,7 +230,7 @@ if __name__ == '__main__':
     rospy.init_node('state_controller')
     rospy.Subscriber("/pidrone/plane_err", axes_err, plane_callback)
     board = MultiWii("/dev/ttyUSB0")
-    rospy.Subscriber("/pidrone/infrared", Range, ultra_callback)
+    rospy.Subscriber("/pidrone/ultra_smooth", Range, ultra_callback)
     rospy.Subscriber("/pidrone/vrpn_pos", PoseStamped, vrpn_callback)
     rospy.Subscriber("/pidrone/set_mode", Mode, mode_callback)
     signal.signal(signal.SIGINT, ctrl_c_handler)

@@ -60,5 +60,5 @@ if __name__ == "__main__":
     while not rospy.is_shutdown():
         rnge.header.stamp = rospy.get_rostime()
         rnge.range = get_range()
-        print rnge.range
-        pub.publish(rnge)
+        if rnge.range > 0:
+            pub.publish(rnge)

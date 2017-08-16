@@ -123,5 +123,5 @@ if __name__ == '__main__':
     rospy.init_node('ultrasonic_smoother')
     pub = rospy.Publisher('/pidrone/ultra_smooth', Range, queue_size=1)
     smoother = VarianceSmoother(pub)
-    rospy.Subscriber('/pidrone/infrared', Range, smoother.step)
+    rospy.Subscriber('/pidrone/ultrasonic', Range, smoother.step)
     rospy.spin()
