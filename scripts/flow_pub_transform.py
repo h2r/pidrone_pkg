@@ -210,8 +210,8 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
         self.pospub = rospy.Publisher('/pidrone/set_mode', Mode, queue_size=1)
         self.pos = [0, 0, 0]
 # -, -, 0.1
-        self.lr_pid = PIDaxis(0.0400, 0.000, 0.04, midpoint=0, control_range=(-0.2, 0.2))
-        self.fb_pid = PIDaxis(-0.0400, -0.000, -0.04, midpoint=0, control_range=(-0.2, 0.2))
+        self.lr_pid = PIDaxis(0.0800, 0.000, 0.04, midpoint=0, control_range=(-0.4, 0.4))
+        self.fb_pid = PIDaxis(-0.0800, -0.000, -0.04, midpoint=0, control_range=(-0.4, 0.4))
         #self.lr_pid = PIDaxis(0.0500, 0.001, 0.04, midpoint=0, control_range=(-15., 15.))
         #self.fb_pid = PIDaxis(-0.0500, -0.0010, -0.04, midpoint=0, control_range=(-15., 15.))
         #self.lr_pid = PIDaxis(0.05, 0., 0.001, midpoint=0, control_range=(-15., 15.))
@@ -228,7 +228,7 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
         self.threshold = 0.5
         self.kp_yaw = 100.0
         self.ki_yaw = 0.1
-        self.iacc_yaw = 0.38
+        self.iacc_yaw = 0.1
         self.transforming = False
         self.i = 0
         self.last_first_time = None
