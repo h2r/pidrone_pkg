@@ -104,8 +104,12 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
                 scalez = np.linalg.norm(corr_first[:, 1])
                 corr_first[:, 0] /= scalex
                 corr_first[:, 1] /= scalez
-                yaw = math.atan2(corr_first[1, 0], corr_first[0, 0])
-                print first_displacement, yaw
+                yaw_observed = math.atan2(corr_first[1, 0], corr_first[0, 0])
+                print first_displacement, yaw_observed
+                #yaw = yaw_observed
+                self.smoothed_yaw = (1.0 - self.alpha_yaw) * self.smoothed_yaw + (self.alpha_yaw) * yaw_observed 
+                yaw = self.smoothed_yaw
+                vel_average[0] = (1.0 - vel_alpha) * vel_average[0] + (vel_alpha) * self.pos[0]
                 # jgo XXX see what happens if we dont reset upon seeing first
                 #self.pos = [first_displacement[0] * self.z, first_displacement[1] * self.z / 240., yaw]
                 # jgo XXX see what happens if we use alpha blending 
@@ -145,6 +149,13 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
                 #mode.x_velocity = replan_vel_x
                 #mode.y_velocity = replan_vel_y
                 self.iacc_yaw += yaw * self.ki_yaw
+
+                yaw_kpi_term = np.sign(yaw) * yaw * yaw * self.kpi_yaw
+                if abs(yaw_kpi_term) < self.kpi_max_yaw:
+                    self.iacc_yaw += yaw_kpi_term
+                else:
+                    self.iacc_yaw += np.sign(yaw) * self.kpi_max_yaw
+
                 mode.yaw_velocity = yaw * self.kp_yaw + self.iacc_yaw
                 print "yaw iacc: ", self.iacc_yaw
                 self.pospub.publish(mode)
@@ -229,8 +240,8 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
         self.pospub = rospy.Publisher('/pidrone/set_mode', Mode, queue_size=1)
         self.pos = [0, 0, 0]
 # -, -, 0.1
-        self.lr_pid = PIDaxis(0.0400, 0.000, 0.16, midpoint=0, control_range=(-0.4, 0.4))
-        self.fb_pid = PIDaxis(-0.0400, -0.000, -0.16, midpoint=0, control_range=(-0.4, 0.4))
+        self.lr_pid = PIDaxis(0.1600, 0.000, 0.32, midpoint=0, control_range=(-0.4, 0.4))
+        self.fb_pid = PIDaxis(-0.1600, -0.000, -0.32, midpoint=0, control_range=(-0.4, 0.4))
         #self.lr_pid = PIDaxis(0.0500, 0.001, 0.04, midpoint=0, control_range=(-15., 15.))
         #self.fb_pid = PIDaxis(-0.0500, -0.0010, -0.04, midpoint=0, control_range=(-15., 15.))
         #self.lr_pid = PIDaxis(0.05, 0., 0.001, midpoint=0, control_range=(-15., 15.))
@@ -247,7 +258,11 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
         self.threshold = 0.5
         self.kp_yaw = 100.0
         self.ki_yaw = 0.1
-        self.iacc_yaw = 0.5
+        self.kpi_yaw = 10.0
+        self.kpi_max_yaw = 0.01
+        self.alpha_yaw = 0.1
+        self.smoothed_yaw = 0.0
+        self.iacc_yaw = 0.0
         self.transforming = False
         self.i = 0
         self.last_first_time = None

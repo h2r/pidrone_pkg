@@ -35,6 +35,7 @@ class PIDaxis():
         self._dd = 0
         self._ddd = 0
         
+        # XXX TODO implement
         self.kpi = kpi
         self.kpi_max = kpi_max
         if self.kpi_max is None:
@@ -93,9 +94,10 @@ class PID:
 #           1300), smoothing=False):
         #roll = PIDaxis(4., 2., 0.3, control_range=(1400, 1600)),
         #pitch = PIDaxis(4., 2., 0.3, control_range=(1400,
-        roll = PIDaxis(4., 6., 0.0, control_range=(1400, 1600)), # D term 0.1 or 0.01
-        pitch = PIDaxis(4., 6., 0.0, control_range=(1400,
-        1600)),
+        roll = PIDaxis(5., 4.0, 0.1, kpi = 0.00, kpi_max =
+        0.5,control_range=(1400, 1600), midpoint = 1512), # D term 0.1 or 0.01
+        pitch = PIDaxis(5., 4.0, 0.1, kpi = 0.00, kpi_max = 0.5,control_range=(1400,
+        1600), midpoint = 1502),
 #       roll = PIDaxis(2., 2., 0.15, control_range=(1400, 1600)),
 #       pitch = PIDaxis(2., 2., 0.15, control_range=(1400,
 #       1600)),

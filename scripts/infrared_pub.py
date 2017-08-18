@@ -22,6 +22,10 @@ def get_range():
     #alpha = 1. # TESTING FOR COMPARING ULTRA AND INFRA
 
     voltage = adc.read_adc(0, gain=GAIN)
+    #voltage = 0
+    if voltage <= 0:
+        voltage = 1
+        print "ERROR: BAD VOLTAGE!!!"
     distance = (1.0 / voltage) * m + b
     smoothed_distance = (1.0 - alpha) * smoothed_distance + alpha * distance
 
