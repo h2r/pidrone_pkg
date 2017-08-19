@@ -6,13 +6,17 @@ Download [firmware](https://github.com/cleanflight/cleanflight) and compile with
 
 `make TARGET=NAZE OPTIONS=USE_MSP_UART`
 
+There is also a version located [cleanflight_2.1.0_NAZE.hex][here]. 
+
 ## Flashing Fimware
 
 1. Open the [cleanflight configurator](https://chrome.google.com/webstore/detail/cleanflight-configurator/enacoimjcgeinfnnnpajinjgmkahmfgb)
-and go to the "Firmware Flasher" tab.
+and go to the "Firmware Flasher" tab.  This tab is before you connect to the base station. 
 
 2. Click "Load Firmware \[local\]" and load your custom firmware file from 
 `cleanflight/obj/cleanflight_x.y.z_NAZE.hex`
+
+(Stefanie loaded the firmwar
 
 ## Configuration Options
 
