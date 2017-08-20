@@ -131,6 +131,7 @@ class PID:
         # throttle = PIDaxis(7.5, 4.0, 2.0, kp_upper = 0, i_range=(0, 400),\
         #     control_range=(1150,2000), d_range=(-400, 400), midpoint =
         #     1200), smoothing=False):
+        self.trim_controller_cap = 5.0
         self.trim_controller_thresh = 0.01 #5.0
         self.roll = roll
         self.pitch = pitch
@@ -171,12 +172,28 @@ class PID:
             cmd_r = self.roll_low.step(error.x.err, time_elapsed, error.x, cmd_velocity=cmd_velocity[1])
             self.roll._i = 0
         else:
+            #self.roll_low.step(error.x.err, time_elapsed, error.x, cmd_velocity=cmd_velocity[1])
+            if error.x.err > self.trim_controller_cap:
+                self.roll_low.step(self.trim_controller_cap, time_elapsed, error.x, cmd_velocity=cmd_velocity[1])
+            elif error.x.err < -self.trim_controller_cap:
+                self.roll_low.step(-self.trim_controller_cap, time_elapsed, error.x, cmd_velocity=cmd_velocity[1])
+            else:
+                self.roll_low.step(error.x.err, time_elapsed, error.x, cmd_velocity=cmd_velocity[1])
+
             cmd_r = self.roll_low._i + self.roll.step(error.x.err, time_elapsed, error.x, cmd_velocity=cmd_velocity[1])
 
         if abs(error.y.err) < self.trim_controller_thresh:
             cmd_p = self.pitch_low.step(error.y.err, time_elapsed, error.y, cmd_velocity=cmd_velocity[0])
             self.pitch._i = 0
         else:
+            #cmd_p = self.pitch_low.step(error.y.err, time_elapsed, error.y, cmd_velocity=cmd_velocity[0])
+            if error.y.err > self.trim_controller_cap:
+                self.pitch_low.step(self.trim_controller_cap, time_elapsed, error.y, cmd_velocity=cmd_velocity[0])
+            elif error.y.err < -self.trim_controller_cap:
+                self.pitch_low.step(-self.trim_controller_cap, time_elapsed, error.y, cmd_velocity=cmd_velocity[0])
+            else:
+                self.pitch_low.step(error.y.err, time_elapsed, error.y, cmd_velocity=cmd_velocity[0])
+
             cmd_p = self.pitch_low._i + self.pitch.step(error.y.err, time_elapsed, error.y, cmd_velocity=cmd_velocity[0])
 
 
