@@ -135,13 +135,20 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
                 cvc_norm = np.sqrt(mode.x_i * mode.x_i + mode.y_i * mode.y_i)
                 if cvc_norm <= 0.01:
                     cvc_norm = 1.0
-                cvc_vel = 1.0#0.15#0.25
+
+
+                # XXX
+                cvc_vel = 1.00#0.15#0.25
 
                 if shouldi_set_velocity:
                     replan_vel_x = mode.x_i * replan_scale / max(replan_until_deadline, 0.1)
                     replan_vel_y = mode.y_i * replan_scale / max(replan_until_deadline, 0.1)
                     replan_vel_x = min(replan_vel_x, 1.0)
                     replan_vel_y = min(replan_vel_y, 1.0)
+                # XXX coast if first frame found but still do PID update to
+                # integrate!
+                #mode.x_velocity = 0
+                #mode.y_velocity = 0
                 mode.x_velocity = cvc_vel * mode.x_i 
                 mode.y_velocity = cvc_vel * mode.y_i 
                 #mode.x_velocity = cvc_vel * mode.x_i / cvc_norm
@@ -191,7 +198,7 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
                 cvc_norm = np.sqrt(mode.x_i * mode.x_i + mode.y_i * mode.y_i)
                 if cvc_norm <= 0.01:
                     cvc_norm = 1.0
-                cvc_vel = 1.0#0.25 #1.0 
+                cvc_vel = 0.5#0.25 #1.0 
 
                 if shouldi_set_velocity:
                     #replan_vel_x = mode.x_i * replan_scale# * cvc_vel
@@ -240,8 +247,8 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
         self.pospub = rospy.Publisher('/pidrone/set_mode', Mode, queue_size=1)
         self.pos = [0, 0, 0]
 # -, -, 0.1
-        self.lr_pid = PIDaxis(0.1600, 0.000, 0.32, midpoint=0, control_range=(-0.4, 0.4))
-        self.fb_pid = PIDaxis(-0.1600, -0.000, -0.32, midpoint=0, control_range=(-0.4, 0.4))
+        self.lr_pid = PIDaxis(0.200, 0.0000, 0.00, midpoint=0, control_range=(-10.0, 10.0))
+        self.fb_pid = PIDaxis(-0.200, -0.000, -0.00, midpoint=0, control_range=(-10.0, 10.0))
         #self.lr_pid = PIDaxis(0.0500, 0.001, 0.04, midpoint=0, control_range=(-15., 15.))
         #self.fb_pid = PIDaxis(-0.0500, -0.0010, -0.04, midpoint=0, control_range=(-15., 15.))
         #self.lr_pid = PIDaxis(0.05, 0., 0.001, midpoint=0, control_range=(-15., 15.))
@@ -258,8 +265,8 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
         self.threshold = 0.5
         self.kp_yaw = 100.0
         self.ki_yaw = 0.1
-        self.kpi_yaw = 10.0
-        self.kpi_max_yaw = 0.01
+        self.kpi_yaw = 20.0
+        self.kpi_max_yaw = 0.05
         self.alpha_yaw = 0.1
         self.smoothed_yaw = 0.0
         self.iacc_yaw = 0.0

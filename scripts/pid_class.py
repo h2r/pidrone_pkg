@@ -53,7 +53,12 @@ class PIDaxis():
 
 
         if self.kpi is not None:
-            self._i += np.sign(err) * err * err * self.kpi * time_elapsed
+            kpi_term = np.sign(err) * err * err * self.kpi * time_elapsed
+            if abs(kpi_term) < self.kpi_max:
+                self._i += kpi_term
+            else:
+                self._i += self.kpi_max * np.sign(err)
+
         self._i += err * self.ki * time_elapsed
         if self.i_range is not None:
             self._i = max(self.i_range[0], min(self._i, self.i_range[1]))
@@ -94,10 +99,17 @@ class PID:
 #           1300), smoothing=False):
         #roll = PIDaxis(4., 2., 0.3, control_range=(1400, 1600)),
         #pitch = PIDaxis(4., 2., 0.3, control_range=(1400,
-        roll = PIDaxis(5., 4.0, 0.1, kpi = 0.00, kpi_max =
-        0.5,control_range=(1400, 1600), midpoint = 1512), # D term 0.1 or 0.01
-        pitch = PIDaxis(5., 4.0, 0.1, kpi = 0.00, kpi_max = 0.5,control_range=(1400,
-        1600), midpoint = 1502),
+
+        roll = PIDaxis(4., 4.0, 0.0, kpi = 0.00, kpi_max =
+        0.5,control_range=(1400, 1600), midpoint = 1500), # D term 0.1 or 0.01
+        pitch = PIDaxis(4., 4.0, 0.0, kpi = 0.00, kpi_max = 0.5,control_range=(1400,
+        1600), midpoint = 1500),
+
+        roll_low = PIDaxis(4., 0.5, 0.0, kpi = 0.00, kpi_max =
+        0.5,control_range=(1400, 1600), midpoint = 1500), # D term 0.1 or 0.01
+        pitch_low = PIDaxis(4., 0.5, 0.0, kpi = 0.00, kpi_max = 0.5,control_range=(1400,
+        1600), midpoint = 1500),
+
 #       roll = PIDaxis(2., 2., 0.15, control_range=(1400, 1600)),
 #       pitch = PIDaxis(2., 2., 0.15, control_range=(1400,
 #       1600)),
@@ -108,7 +120,8 @@ class PID:
         #gthrottle = PIDaxis(0.50, 0.75, 3.0, kp_upper = 4.0, i_range=(0, 400),\
         #throttle = PIDaxis(3.0, 0.2, 3.0, kp_upper = 8.0, i_range=(0, 400),\
         #throttle = PIDaxis(1.0, 0.3, 3.0, kp_upper = 1, i_range=(0, 400),\
-        throttle = PIDaxis(1.0, 0.05, 2.0, kp_upper = 0.0, kpi = 0.02, kpi_max = 0.5, i_range=(0, 400),\
+        throttle = PIDaxis(1.0, 0.05, 2.0, kp_upper = 0.0, kpi = 0.02, kpi_max
+        = 0.04, i_range=(0, 400),\
             control_range=(1200,2000), d_range=(-40, 40), midpoint =
             1400), smoothing=False):
             #1250), smoothing=False):
@@ -118,12 +131,17 @@ class PID:
         # throttle = PIDaxis(7.5, 4.0, 2.0, kp_upper = 0, i_range=(0, 400),\
         #     control_range=(1150,2000), d_range=(-400, 400), midpoint =
         #     1200), smoothing=False):
+        self.trim_controller_thresh = 0.01 #5.0
         self.roll = roll
         self.pitch = pitch
+        self.roll_low = roll_low
+        self.pitch_low = pitch_low
         self.yaw = yaw
         self.throttle = throttle
         self.sp = None
         self._t = None
+        self.roll_low._i = 33
+        self.pitch_low._i = -1.2
     
     def get_is(self):
         return [self.roll._i, self.pitch._i, self.yaw._i, self.throttle._i]
@@ -142,9 +160,30 @@ class PID:
         else: time_elapsed = rospy.get_time() - self._t
         self._t = rospy.get_time()
         #print cmd_velocity
-        cmd_r = self.roll.step(error.x.err, time_elapsed, error.x, cmd_velocity=cmd_velocity[1])
-        cmd_p = self.pitch.step(error.y.err, time_elapsed, error.y, cmd_velocity=cmd_velocity[0])
-        print self.roll._i, self.pitch._i
+
+        # single mode step
+        #cmd_r = self.roll.step(error.x.err, time_elapsed, error.x, cmd_velocity=cmd_velocity[1])
+        #cmd_p = self.pitch.step(error.y.err, time_elapsed, error.y, cmd_velocity=cmd_velocity[0])
+        #trim mode step
+        cmd_r = 0
+        cmd_p = 0
+        if abs(error.x.err) < self.trim_controller_thresh:
+            cmd_r = self.roll_low.step(error.x.err, time_elapsed, error.x, cmd_velocity=cmd_velocity[1])
+            self.roll._i = 0
+        else:
+            cmd_r = self.roll_low._i + self.roll.step(error.x.err, time_elapsed, error.x, cmd_velocity=cmd_velocity[1])
+
+        if abs(error.y.err) < self.trim_controller_thresh:
+            cmd_p = self.pitch_low.step(error.y.err, time_elapsed, error.y, cmd_velocity=cmd_velocity[0])
+            self.pitch._i = 0
+        else:
+            cmd_p = self.pitch_low._i + self.pitch.step(error.y.err, time_elapsed, error.y, cmd_velocity=cmd_velocity[0])
+
+
+        #print self.roll._i, self.pitch._i
+        print "Roll  low, hi:", self.roll_low._i, self.roll._i
+        print "Pitch low, hi:", self.pitch_low._i, self.pitch._i
+
         cmd_y = 1500 + cmd_yaw_velocity
         #print cmd_y, cmd_yaw_velocity, "HELLO"
         cmd_t = self.throttle.step(error.z.err, time_elapsed, error.z)

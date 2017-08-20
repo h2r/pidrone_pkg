@@ -169,7 +169,10 @@ def ultra_callback(data):
     global cmd_yaw_velocity
     if data.range != -1:
         # scale ultrasonic reading to get z accounting for tilt of the drone
-        ultra_z = data.range * mw_angle_alt_scale
+        #ultra_z = data.range * mw_angle_alt_scale
+        # XXX jgo experimental thrust  compensation
+        ultra_z = data.range * mw_angle_alt_scale * mw_angle_alt_scale
+        
         #print mw_angle_alt_scale, data.range, ultra_z # jgo
         # print 'ultra_z', ultra_z
         try:
