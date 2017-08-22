@@ -120,8 +120,9 @@ class PID:
         #gthrottle = PIDaxis(0.50, 0.75, 3.0, kp_upper = 4.0, i_range=(0, 400),\
         #throttle = PIDaxis(3.0, 0.2, 3.0, kp_upper = 8.0, i_range=(0, 400),\
         #throttle = PIDaxis(1.0, 0.3, 3.0, kp_upper = 1, i_range=(0, 400),\
-        throttle = PIDaxis(1.0, 0.05, 2.0, kp_upper = 0.0, kpi = 0.02, kpi_max
-        = 0.04, i_range=(0, 400),\
+        throttle = PIDaxis(1.0, 0.05, 2.0, kp_upper = 0.0, kpi = 0.01, kpi_max
+        = 100000000000.0, i_range=(0, 400),\
+        #= 0.04, i_range=(0, 400),\
             control_range=(1200,2000), d_range=(-40, 40), midpoint =
             1400), smoothing=False):
             #1250), smoothing=False):
@@ -141,8 +142,8 @@ class PID:
         self.throttle = throttle
         self.sp = None
         self._t = None
-        self.roll_low._i = 33
-        self.pitch_low._i = -1.2
+        self.roll_low._i = 6.0
+        self.pitch_low._i = -8.0
     
     def get_is(self):
         return [self.roll._i, self.pitch._i, self.yaw._i, self.throttle._i]

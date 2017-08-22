@@ -40,7 +40,7 @@ replan_vel_x = 0
 replan_vel_y = 0
 
 vel_average = [0,0]
-vel_alpha = 0.3
+vel_alpha = 1.0
 vel_average_time = 0.0
 
 
@@ -198,7 +198,7 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
                 cvc_norm = np.sqrt(mode.x_i * mode.x_i + mode.y_i * mode.y_i)
                 if cvc_norm <= 0.01:
                     cvc_norm = 1.0
-                cvc_vel = 0.5#0.25 #1.0 
+                cvc_vel = 3.0#0.25 #1.0 
 
                 if shouldi_set_velocity:
                     #replan_vel_x = mode.x_i * replan_scale# * cvc_vel
@@ -247,8 +247,9 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
         self.pospub = rospy.Publisher('/pidrone/set_mode', Mode, queue_size=1)
         self.pos = [0, 0, 0]
 # -, -, 0.1
-        self.lr_pid = PIDaxis(0.200, 0.0000, 0.00, midpoint=0, control_range=(-10.0, 10.0))
-        self.fb_pid = PIDaxis(-0.200, -0.000, -0.00, midpoint=0, control_range=(-10.0, 10.0))
+        #self.lr_pid = PIDaxis(0.100, -0.000100, 0.0050, midpoint=0, control_range=(-10.0, 10.0))
+        self.lr_pid = PIDaxis(0.0500, -0.00000, 0.000, midpoint=0, control_range=(-10.0, 10.0))
+        self.fb_pid = PIDaxis(-0.0500, 0.0000, -0.000, midpoint=0, control_range=(-10.0, 10.0))
         #self.lr_pid = PIDaxis(0.0500, 0.001, 0.04, midpoint=0, control_range=(-15., 15.))
         #self.fb_pid = PIDaxis(-0.0500, -0.0010, -0.04, midpoint=0, control_range=(-15., 15.))
         #self.lr_pid = PIDaxis(0.05, 0., 0.001, midpoint=0, control_range=(-15., 15.))
@@ -266,7 +267,7 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
         self.kp_yaw = 100.0
         self.ki_yaw = 0.1
         self.kpi_yaw = 20.0
-        self.kpi_max_yaw = 0.05
+        self.kpi_max_yaw = 0.01
         self.alpha_yaw = 0.1
         self.smoothed_yaw = 0.0
         self.iacc_yaw = 0.0
