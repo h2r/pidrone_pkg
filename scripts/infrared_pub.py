@@ -5,8 +5,12 @@ import Adafruit_ADS1x15
 
 adc = Adafruit_ADS1x15.ADS1115()
 GAIN = 1
-m = 181818.18181818182
+# XXX jgo these values underestimate the height on my sensor significantly
+#m = 181818.18181818182
+#m = 2.0 * 181818.18181818182
+m = 181818.18181818182 * 1.238 # 1.3 / 1.05
 b = -8.3 + 7.5
+#b = -8.3 + 7.5 - 17.0
 smoothed_distance = 0
 alpha = 0.7
 
