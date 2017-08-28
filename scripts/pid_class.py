@@ -105,9 +105,9 @@ class PID:
         pitch = PIDaxis(4., 4.0, 0.0, kpi = 0.00, kpi_max = 0.5,control_range=(1400,
         1600), midpoint = 1500),
 
-        roll_low = PIDaxis(4., 0.5, 0.0, kpi = 0.00, kpi_max =
+        roll_low = PIDaxis(4., 0.2, 0.0, kpi = 0.00, kpi_max =
         0.5,control_range=(1400, 1600), midpoint = 1500), # D term 0.1 or 0.01
-        pitch_low = PIDaxis(4., 0.5, 0.0, kpi = 0.00, kpi_max = 0.5,control_range=(1400,
+        pitch_low = PIDaxis(4., 0.2, 0.0, kpi = 0.00, kpi_max = 0.5,control_range=(1400,
         1600), midpoint = 1500),
 
 #       roll = PIDaxis(2., 2., 0.15, control_range=(1400, 1600)),
@@ -120,30 +120,55 @@ class PID:
         #gthrottle = PIDaxis(0.50, 0.75, 3.0, kp_upper = 4.0, i_range=(0, 400),\
         #throttle = PIDaxis(3.0, 0.2, 3.0, kp_upper = 8.0, i_range=(0, 400),\
         #throttle = PIDaxis(1.0, 0.3, 3.0, kp_upper = 1, i_range=(0, 400),\
-        throttle = PIDaxis(1.0, 0.05, 2.0, kp_upper = 0.0, kpi = 0.01, kpi_max
-        = 100000000000.0, i_range=(0, 400),\
-        #= 0.04, i_range=(0, 400),\
+
+        #throttle = PIDaxis(1.0, 0.05, 2.0, kp_upper = 0.0, kpi = 0.01, kpi_max
+        #= 100000000000.0, i_range=(0, 400),\
+        ##= 0.04, i_range=(0, 400),\
+            #control_range=(1200,2000), d_range=(-40, 40), midpoint =
+            #1400), smoothing=False):
+            ##1250), smoothing=False):
+
+        throttle = PIDaxis(1.0/1.238, 0.5/1.238, 2.0/1.238, kp_upper = 1.0/1.238, kpi = 0.00, kpi_max
+        = 0.0, i_range=(0, 400),
             control_range=(1200,2000), d_range=(-40, 40), midpoint =
-            1400), smoothing=False):
-            #1250), smoothing=False):
+            1300),
+
+        throttle_low = PIDaxis(1.0/1.238, 0.05/1.238, 2.0/1.238, kp_upper = 1.0/1.238, kpi = 0.00, kpi_max
+        = 0.0, i_range=(0, 400),
+        control_range=(1200,2000), d_range=(-40, 40), midpoint =
+        1300), 
+        
+        smoothing=False):
+
+
+
+
+
+
+
+
         # roll = PIDaxis(1.2, 05, 1.2),
         # pitch = PIDaxis(1.2, 0.5, 1.2),
         # yaw = PIDaxis(-1000.0, 0,0),
         # throttle = PIDaxis(7.5, 4.0, 2.0, kp_upper = 0, i_range=(0, 400),\
         #     control_range=(1150,2000), d_range=(-400, 400), midpoint =
         #     1200), smoothing=False):
-        self.trim_controller_cap = 5.0
-        self.trim_controller_thresh = 0.01 #5.0
+        self.trim_controller_cap_plane = 5.0
+        self.trim_controller_thresh_plane = 0.01 #5.0
         self.roll = roll
         self.pitch = pitch
         self.roll_low = roll_low
         self.pitch_low = pitch_low
         self.yaw = yaw
+        self.trim_controller_cap_throttle = 5.0
+        self.trim_controller_thresh_throttle = 5.0 #5.0
         self.throttle = throttle
+        self.throttle_low = throttle_low
         self.sp = None
         self._t = None
-        self.roll_low._i = 6.0
-        self.pitch_low._i = -8.0
+        self.roll_low._i = 13.0
+        self.pitch_low._i = -2.0
+        self.throttle_low._i = 100.0
     
     def get_is(self):
         return [self.roll._i, self.pitch._i, self.yaw._i, self.throttle._i]
@@ -169,29 +194,30 @@ class PID:
         #trim mode step
         cmd_r = 0
         cmd_p = 0
-        if abs(error.x.err) < self.trim_controller_thresh:
+        cmd_p = 0
+        if abs(error.x.err) < self.trim_controller_thresh_plane:
             cmd_r = self.roll_low.step(error.x.err, time_elapsed, error.x, cmd_velocity=cmd_velocity[1])
             self.roll._i = 0
         else:
             #self.roll_low.step(error.x.err, time_elapsed, error.x, cmd_velocity=cmd_velocity[1])
-            if error.x.err > self.trim_controller_cap:
-                self.roll_low.step(self.trim_controller_cap, time_elapsed, error.x, cmd_velocity=cmd_velocity[1])
-            elif error.x.err < -self.trim_controller_cap:
-                self.roll_low.step(-self.trim_controller_cap, time_elapsed, error.x, cmd_velocity=cmd_velocity[1])
+            if error.x.err > self.trim_controller_cap_plane:
+                self.roll_low.step(self.trim_controller_cap_plane, time_elapsed, error.x, cmd_velocity=cmd_velocity[1])
+            elif error.x.err < -self.trim_controller_cap_plane:
+                self.roll_low.step(-self.trim_controller_cap_plane, time_elapsed, error.x, cmd_velocity=cmd_velocity[1])
             else:
                 self.roll_low.step(error.x.err, time_elapsed, error.x, cmd_velocity=cmd_velocity[1])
 
             cmd_r = self.roll_low._i + self.roll.step(error.x.err, time_elapsed, error.x, cmd_velocity=cmd_velocity[1])
 
-        if abs(error.y.err) < self.trim_controller_thresh:
+        if abs(error.y.err) < self.trim_controller_thresh_plane:
             cmd_p = self.pitch_low.step(error.y.err, time_elapsed, error.y, cmd_velocity=cmd_velocity[0])
             self.pitch._i = 0
         else:
             #cmd_p = self.pitch_low.step(error.y.err, time_elapsed, error.y, cmd_velocity=cmd_velocity[0])
-            if error.y.err > self.trim_controller_cap:
-                self.pitch_low.step(self.trim_controller_cap, time_elapsed, error.y, cmd_velocity=cmd_velocity[0])
-            elif error.y.err < -self.trim_controller_cap:
-                self.pitch_low.step(-self.trim_controller_cap, time_elapsed, error.y, cmd_velocity=cmd_velocity[0])
+            if error.y.err > self.trim_controller_cap_plane:
+                self.pitch_low.step(self.trim_controller_cap_plane, time_elapsed, error.y, cmd_velocity=cmd_velocity[0])
+            elif error.y.err < -self.trim_controller_cap_plane:
+                self.pitch_low.step(-self.trim_controller_cap_plane, time_elapsed, error.y, cmd_velocity=cmd_velocity[0])
             else:
                 self.pitch_low.step(error.y.err, time_elapsed, error.y, cmd_velocity=cmd_velocity[0])
 
@@ -201,10 +227,26 @@ class PID:
         #print self.roll._i, self.pitch._i
         print "Roll  low, hi:", self.roll_low._i, self.roll._i
         print "Pitch low, hi:", self.pitch_low._i, self.pitch._i
+        print "Throttle low, hi:", self.throttle_low._i, self.throttle._i
 
         cmd_y = 1500 + cmd_yaw_velocity
         #print cmd_y, cmd_yaw_velocity, "HELLO"
-        cmd_t = self.throttle.step(error.z.err, time_elapsed, error.z)
+
+        #cmd_t = self.throttle.step(error.z.err, time_elapsed, error.z)
+
+        if abs(error.z.err) < self.trim_controller_thresh_throttle:
+            cmd_t = self.throttle_low.step(error.z.err, time_elapsed, error.z)
+            self.throttle_low._i += self.throttle._i
+            self.throttle._i = 0
+        else:
+            if error.z.err > self.trim_controller_cap_throttle:
+                self.throttle_low.step(self.trim_controller_cap_throttle, time_elapsed, error.z)
+            elif error.z.err < -self.trim_controller_cap_throttle:
+                self.throttle_low.step(-self.trim_controller_cap_throttle, time_elapsed, error.z)
+            else:
+                self.throttle_low.step(error.z.err, time_elapsed, error.z)
+
+            cmd_t = self.throttle_low._i + self.throttle.step(error.z.err, time_elapsed, error.z)
 
         return [cmd_r, cmd_p, cmd_y, cmd_t]
 
