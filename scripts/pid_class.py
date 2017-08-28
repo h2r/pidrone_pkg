@@ -169,6 +169,7 @@ class PID:
         self.roll_low._i = 13.0
         self.pitch_low._i = -2.0
         self.throttle_low._i = 100.0
+        self.throttle.mw_angle_alt_scale = 1.0
     
     def get_is(self):
         return [self.roll._i, self.pitch._i, self.yaw._i, self.throttle._i]
@@ -225,9 +226,9 @@ class PID:
 
 
         #print self.roll._i, self.pitch._i
-        print "Roll  low, hi:", self.roll_low._i, self.roll._i
-        print "Pitch low, hi:", self.pitch_low._i, self.pitch._i
-        print "Throttle low, hi:", self.throttle_low._i, self.throttle._i
+        #print "Roll  low, hi:", self.roll_low._i, self.roll._i
+        #print "Pitch low, hi:", self.pitch_low._i, self.pitch._i
+        #print "Throttle low, hi:", self.throttle_low._i, self.throttle._i
 
         cmd_y = 1500 + cmd_yaw_velocity
         #print cmd_y, cmd_yaw_velocity, "HELLO"
@@ -247,6 +248,8 @@ class PID:
                 self.throttle_low.step(error.z.err, time_elapsed, error.z)
 
             cmd_t = self.throttle_low._i + self.throttle.step(error.z.err, time_elapsed, error.z)
+            cmd_t = cmd_t * self.throttle.mw_angle_alt_scale
+            print "mw factor: ", self.throttle.mw_angle_alt_scale
 
         return [cmd_r, cmd_p, cmd_y, cmd_t]
 
