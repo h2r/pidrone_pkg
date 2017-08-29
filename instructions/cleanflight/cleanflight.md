@@ -2,11 +2,11 @@
 
 ## Compiling Firmware
 
-Download [firmware](https://github.com/cleanflight/cleanflight) and compile with
+Download the firmware source code at [https://github.com/cleanflight/cleanflight](https://github.com/cleanflight/cleanflight) and compile with
 
 `make TARGET=NAZE OPTIONS=USE_MSP_UART`
 
-There is also a version located [cleanflight_2.1.0_NAZE.hex](here). 
+There is also a version located in the Github Directory.
 
 ## Flashing Fimware
 
