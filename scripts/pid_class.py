@@ -248,7 +248,12 @@ class PID:
                 self.throttle_low.step(error.z.err, time_elapsed, error.z)
 
             cmd_t = self.throttle_low._i + self.throttle.step(error.z.err, time_elapsed, error.z)
-            cmd_t = cmd_t * self.throttle.mw_angle_alt_scale
+            # jgo: this seems to mostly make a difference before the I term has
+            # built enough to be stable, but it really seems better with it. To
+            # see the real difference, compare cmd_t / mw_angle_alt_scale to
+            # cmd_t * mw_angle_alt_scale and see how it sinks. That happens to
+            # a less noticeable degree with no modification.
+            cmd_t = cmd_t / self.throttle.mw_angle_alt_scale
             print "mw factor: ", self.throttle.mw_angle_alt_scale
 
         return [cmd_r, cmd_p, cmd_y, cmd_t]

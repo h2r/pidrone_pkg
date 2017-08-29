@@ -10,7 +10,7 @@ import time
 import sys
 import signal
 
-initial_set_z = 20
+initial_set_z = 30
 set_z = initial_set_z
 init_z = 0
 smoothed_vel = np.array([0, 0, 0])
