@@ -1,30 +1,34 @@
 # Install Guide for Cleanflight and Control via MSP
+The Skyline 32 is the flight controller; it has an onboard accelerometer and gyroscope, and sends commands to the ESCs. We compile the firmware (called CleanFlight) with an option that allows us to control the Skyline via USB.
 
-## Compiling Firmware
+## Compiling Firmware For Skyline32
 
 Download the firmware source code at [https://github.com/cleanflight/cleanflight](https://github.com/cleanflight/cleanflight) and compile with
 
 `make TARGET=NAZE OPTIONS=USE_MSP_UART`
 
-There is also a version located in the Github Directory.
+There is a [pre-compiled hex](https://github.com/h2r/pidrone_pkg/blob/feature/instructions/instructions/cleanflight/cleanflight_2.1.0_NAZE.hex) located in the pidrone_pkg github, which can also be used.
 
 ## Flashing Fimware
 
-1. Open the [cleanflight configurator](https://chrome.google.com/webstore/detail/cleanflight-configurator/enacoimjcgeinfnnnpajinjgmkahmfgb)
+1. Plug the skyline into the computer via USB. If your skyline is already on a drone, do not connect the battery. 
+
+2. Open [cleanflight configurator](https://chrome.google.com/webstore/detail/cleanflight-configurator/enacoimjcgeinfnnnpajinjgmkahmfgb)
 and go to the "Firmware Flasher" tab.  This tab is before you connect to the base station. 
 
 ![Firmware Flasher](pics/firmware_flasher.png)
+ 
 
-2. Click "Load Firmware \[local\]" and load your custom firmware file from 
+3. Click "Load Firmware \[local\]" and load your custom firmware file from 
 `cleanflight/obj/cleanflight_x.y.z_NAZE.hex`
 
 ![Load Firmware](pics/load_firmware.png)
 
-3. Click the "Flash Firmware" button to flash the flight controller.
+4. Click the "Flash Firmware" button to flash the flight controller.
 
 ![Flash Firmware](pics/flash_firmware.png)
 
-4. If this is a success, the bar at the bottom will say "Programming: 
+5. If this is a success, the bar at the bottom will say "Programming: 
 SUCCESSFUL" and you are ready to move to the next step.
 
 ![Successful Flash](pics/success.png)
@@ -82,6 +86,9 @@ SUCCESSFUL" and you are ready to move to the next step.
 7. Plug the skyline back into the Pi and you should be set to fly!
 
 ## Other Options
+
+### Battery Monitoring and Voltage Compensation
+_Coming soon..._
 
 ### Throttle Angle Compensation
 
