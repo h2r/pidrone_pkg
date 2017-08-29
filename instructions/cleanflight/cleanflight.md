@@ -2,11 +2,11 @@
 
 ## Compiling Firmware
 
-Download [firmware](https://github.com/cleanflight/cleanflight) and compile with
+Download the firmware source code at [https://github.com/cleanflight/cleanflight](https://github.com/cleanflight/cleanflight) and compile with
 
 `make TARGET=NAZE OPTIONS=USE_MSP_UART`
 
-There is also a version located [cleanflight_2.1.0_NAZE.hex](here). 
+There is also a version located in the Github Directory.
 
 ## Flashing Fimware
 
@@ -33,17 +33,51 @@ SUCCESSFUL" and you are ready to move to the next step.
 
 1. Plug in Skyline and click "Connect"
 
-2. Go to "Ports" tab and disable SerialRX for UART2 and click "Save and Reboot"
+![Connect to Skyline](pics/connect.png)
 
-3. Go to "Configuration" tab and flip the yaw by 180 degrees and click "Save and Reboot"
+2. Go to "Ports" tab and make sure SerialRX for UART2 is disabled and click "Save and Reboot"
 
-4. Also change the receiver to "MSP_RX" and click "Save and Reboot"
+![Disable SerialRX](pics/serialrx.png)
 
-5. Go to the "Receiver" tab and change the input map to "AERT1234" and click "Save"
+3. Go to "Configuration" tab 
 
-6. Go to the "Modes" tab
+    a. Flip the yaw by 180 degrees and click "Save and Reboot"
 
-a. 
+    ![Flip Yaw](pics/flip_yaw.png)
+
+    b. Also change the receiver to "MSP_RX" and click "Save and Reboot"
+
+    ![MSP RX](pics/msprx.png)
+
+4. Go to the "Receiver" tab and change the input map to "AERT1234" and click "Save"
+
+![Channel Mapping](pics/channel_mapping.png)
+
+5. Go to the "Modes" tab
+
+    a. Under "Angle", click "Add Range"
+
+    ![Add Range](pics/add_range.png)
+
+    b. Drag the sliders so that the range spans from 900 to 2100
+
+    ![Angle Range Before](pics/angle_range.png)
+
+    ![Angle Range After](pics/angle_range_2.png)
+
+    c. Click "Save"
+
+6. Go to the "PID Tuning" tab
+
+    a. Change the "ROLL" and "PITCH" PID terms to match the image
+
+    ![PID Settings](pics/pid_settings.png)
+
+    b. Change the "Angle Limit" to 50
+
+    ![Angle Limit](pics/angle_limit.png)
+
+    c. Click "Save"
 
 7. Plug the skyline back into the Pi and you should be set to fly!
 
