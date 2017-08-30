@@ -112,6 +112,7 @@ class MultiWii:
         footerString = MultiWii.footerS.pack(checksum)
         
         self.ser.write(MultiWii.emptyString.join((MultiWii.headerString, dataString, footerString, "\n")))
+        # return self.receiveDataPacket()
 
 
 
@@ -216,6 +217,7 @@ class MultiWii:
             self.boxnames = temp
             return self.boxnames
         elif code == MultiWii.STATUS:
+            print data
             temp = struct.unpack('<'+'HHHIb',data)
             self.status['cycleTime'] = temp[0]
             self.status['i2c_errors_count'] = temp[1]
@@ -290,6 +292,8 @@ class MultiWii:
             self.motor['elapsed']= elapsed
             self.motor['timestamp']= readTime
             return self.motor
+        elif code == MultiWii.SET_RAW_RC:
+            return "Set Raw RC"
         else:
             print "No return error!: %d" % code
             raise

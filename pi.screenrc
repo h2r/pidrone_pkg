@@ -53,22 +53,39 @@ stuff "vim"
 screen -t " emacs"
 stuff "source setup.sh"
 stuff "cd $(rospack find pidrone_pkg)/scripts"
+stuff "vim -p flow_pub_transform.py state_controller.py pid_class.py"
+
+screen -t " emacs"
+stuff "source setup.sh"
+stuff "cd $(rospack find pidrone_pkg)/scripts"
 stuff "emacs"
 
 screen -t " flight"
 stuff "source setup.sh"
 stuff "cd $(rospack find pidrone_pkg)/scripts"
-stuff "python velocity_flight_sonar.py"
+stuff "python state_controller.py" # starting state controller automatically is unsafe
 
 screen -t " vision"
 stuff "source setup.sh"
 stuff "cd $(rospack find pidrone_pkg)/scripts"
-stuff "python velocity_flight_phase.py"
+stuff "python flow_pub_transform.py"
 
 screen -t " infrared"
 stuff "source setup.sh"
 stuff "cd $(rospack find pidrone_pkg)/scripts/"
 stuff "python infrared_pub.py"
+
+screen -t " joy_node"
+stuff "source setup.sh"
+stuff "cd $(rospack find pidrone_pkg)/scripts/"
+stuff "python joy_translation.py"
+
+
+screen -t " key_node"
+stuff "source setup.sh"
+stuff "cd $(rospack find pidrone_pkg)/scripts/"
+stuff "python key_translation.py"
+
 
 screen -t " free"
 stuff "source setup.sh"

@@ -11,7 +11,7 @@ from copy import deepcopy
 
 prev_pos_time = time.time()
 
-pospub = rospy.Publisher('/pidrone/est_pos', PoseStamped, queue_size=1)
+pospub = rospy.Publisher('/pidrone/vrpn_pos', PoseStamped, queue_size=1)
 sdpub = rospy.Publisher('/pidrone/sd_pos', PoseStamped, queue_size=1)
 
 def callback_pos(data):
