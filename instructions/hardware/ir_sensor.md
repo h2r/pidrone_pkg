@@ -26,5 +26,22 @@ Twist the black and red wires from your connector and from your header together 
 
 ![IR CABLE](pics/ir_setup/twist-header-ir.jpg)
 
-Now solder your two connectors to the ADC.
+Now solder your connectors to the ADC.
 
+| Wire Color                          | ADC Pin |
+|:------------------------------------|:-------:|
+|    Red                              | VDD     |
+|    Black                            | GND     |
+|    Yellow (from Pi connector)       | SCL     |
+|    Green                            | SDA     |
+|    Yellow (from infrared connector) | A0      |
+
+![SOLDERED ADC](pics/ir_setup/solder-to-adc.jpg)
+
+Push the IR sensor connector wires towards the mounting holes, and the Pi connector wires in the opposite direction (as shown). Apply hot glue over the wires to reinforce your solder joints.
+
+![SOLDERED ADC](pics/ir_setup/hot-glue-adc.jpg)
+
+Use short M1.5 bolts to screw the ADC to the Pi mount on the flat side of the mount. 
+
+![SOLDERED ADC](pics/ir_setup/adc-mount.jpg)
