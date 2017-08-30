@@ -82,16 +82,15 @@ def land():
     if current_mode == 5 or current_mode == 2:
         current_mode = 3
         try:
-            set_z = 0
-#            for i in range(int(set_z), 0, -1):
-#                set_z -= 1
-#                # print i, 'fsjsoidjfdsfjdsijfdsfdsfj'
-#                rospy.sleep(0.1)
-#            while abs(error.z.err) > landing_threshold:
-#                # print "NO", np.absolute(error.z.err), ultra_z, set_z
-#                rospy.sleep(0.1)
-#            print "I am not high ;)"
-#            disarm()
+            for i in range(int(set_z), 0, -1):
+                set_z -= 1
+                # print i, 'fsjsoidjfdsfjdsijfdsfdsfj'
+                rospy.sleep(0.1)
+            while np.absolute(error.z.err) > landing_threshold:
+                # print "NO", np.absolute(error.z.err), ultra_z, set_z
+                rospy.sleep(0.1)
+            print "I am not high ;)"
+            disarm()
         except Exception as e:
             print e
             print "ERROR"
@@ -107,7 +106,7 @@ def disarm():
     print "disarming"
     current_mode = 4
     cmds = [1500, 1500, 1000, 900]
-    rospy.sleep(1)
+    time.sleep(1)
     sys.exit()
 
 def fly(velocity_cmd):
@@ -133,7 +132,6 @@ def fly(velocity_cmd):
 #           pid.pitch._i += velocity_cmd.y_i * scalar
             if set_z + velocity_cmd.z_velocity > 19 and set_z + velocity_cmd.z_velocity < 101:
                 set_z += velocity_cmd.z_velocity
-            print set_z, "set_z"
 
 def kill_throttle():
     pass
@@ -153,10 +151,10 @@ def mode_callback(data):
             reset_pid = False
 
         takeoff()
-    elif data.mode == 4:
-        disarm()
     elif data.mode == 3:
         land()
+    elif data.mode == 4:
+        disarm()
     elif data.mode == 5:        # STATIC FLIGHT
         if reset_pid: 
             pid._t = None
@@ -255,11 +253,11 @@ if __name__ == '__main__':
     global mw_angle_comp_x, mw_angle_comp_y, mw_angle_coeff, mw_angle_alt_scale
     global current_mode
     rospy.init_node('state_controller')
-    rospy.Subscriber("/pidrone/plane_err", axes_err, plane_callback)
+    rospy.Subscriber("/pidrone/plane_err", axes_err, plane_callback, queue_size = 1)
     board = MultiWii("/dev/ttyUSB0")
-    rospy.Subscriber("/pidrone/infrared", Range, ultra_callback)
-    rospy.Subscriber("/pidrone/vrpn_pos", PoseStamped, vrpn_callback)
-    rospy.Subscriber("/pidrone/set_mode", Mode, mode_callback)
+    rospy.Subscriber("/pidrone/infrared", Range, ultra_callback, queue_size = 1)
+    rospy.Subscriber("/pidrone/vrpn_pos", PoseStamped, vrpn_callback, queue_size = 1)
+    rospy.Subscriber("/pidrone/set_mode", Mode, mode_callback, queue_size = 1)
     signal.signal(signal.SIGINT, ctrl_c_handler)
 
     prev_angx = 0

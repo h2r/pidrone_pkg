@@ -168,7 +168,7 @@ class PID:
         self._t = None
         self.roll_low._i = 13.0
         self.pitch_low._i = -2.0
-        self.throttle_low._i = 100.0
+        self.throttle_low._i = 220.0
         self.throttle.mw_angle_alt_scale = 1.0
     
     def get_is(self):
@@ -254,7 +254,7 @@ class PID:
             # cmd_t * mw_angle_alt_scale and see how it sinks. That happens to
             # a less noticeable degree with no modification.
             cmd_t = cmd_t / self.throttle.mw_angle_alt_scale
-            print "mw factor: ", self.throttle.mw_angle_alt_scale
+            #print "mw factor: ", self.throttle.mw_angle_alt_scale
 
         return [cmd_r, cmd_p, cmd_y, cmd_t]
 
