@@ -58,8 +58,6 @@ Solder the ESC wires
 
 ### Mount ESCs
 
-
-
 ![ROUTE ZIPTIE](pics/ziptie-location.jpg)
 
 ![WIRES IN ZIPTIE](pics/ESC-routing.jpg)
