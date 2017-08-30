@@ -24,27 +24,41 @@
 ### Bolt things together
 Two of the motors are counter-clockwise threaded and the other two are clockwise threaded. Screw the included nuts that came each motor onto the motor shaft so you don't forget which is which. 
 
-Screw motors into frame as shown. Make sure to route the wire through the hole in the frame to the underside of the frame.
+The motors with the red nuts will spin counter-clockwise and the black clockwise, so it is critical that they are attached to the correct arms. Make sure to route the wire through the hole in the frame to the underside of the frame _before_ bolting on the motor. 
 
 ![FRAME WITH MOTORS](pics/motor-orientation.jpg)
 
+Use two of the long M3 bolts included with the motor and screw them in tightly.
+
 ![SINGLE MOTOR BOLT IN](pics/single-motor-installation.jpg)
+
+Screw the short M3 bolts into the brass 6mm M3 standoffs.
+
+![SHORT SCREWS IN STANDOFF](pics/m3-in-standoffs.jpg)
+
+Use a hex key to screw the standoffs through the PDB into grooves in the frame in the shown orientation. Apply a downward pressure as you are turning to ensure the standoffs bite into the plastic. Be careful not to overtighten the standoffs and strip out the groove.
+
+![MOUNT PDB](pics/screw-standoffs.jpg)
 
 ### Solder ESCs to Motors
 
+Place your 3mm diameter heatshrink tubing cut to 1cm sections onto each of the motor leads.
+
 ![HEATSHRINK ON WIRES](pics/motor-wires-shrinkwrap.jpg)
 
+Tin the ESC wires thoroughly if you haven't already. Tin the motor wires as well. (Note: They come pre-tinned, but with a different, higher temperature solder and not quite enough of it)
+
 ![TIN WIRES](pics/tinned-wires.jpg)
+
+Solder the ESC wires
 
 ![SOLDER TOGETHER](pics/motors-wires-no-shrinkwarp-2.jpg)
 
 ![HEATSHRINK OVER JOINTS](pics/motor-esc-shrinkwrapped.jpg)
 
-### Mount PDB and ESCs
+### Mount ESCs
 
-![SHORT SCREWS IN STANDOFF](pics/m3-in-standoffs.jpg)
 
-![MOUNT PDB](pics/screw-standoffs.jpg)
 
 ![ROUTE ZIPTIE](pics/ziptie-location.jpg)
 
