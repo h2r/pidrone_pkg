@@ -11,20 +11,36 @@ Repeat this procedure four times, one for each ESC.
 
 2. Plug the ESC into the flashing tool
 
+![Not Plugged In](pics/fc_esc_setup/plug_in_1.JPG)
+
+![Plugged In](pics/fc_esc_setup/plug_in_2.JPG)
+
 3. Click the "Connect" button in BLHeliSuite
+
+![Click Connect](pics/fc_esc_setup/open_blheli.png)
 
 4. Click the "Read Setup" button
 
+![Read Setup](pics/fc_esc_setup/connected.png)
+
 5. When prompted to flash your ESC, click "Yes"
 
+![Flash ESC](pics/fc_esc_setup/read.png)
+
 6. A window will appear, notifying you that you are flashing the ESC
+
+![Flashing ESC](pics/fc_esc_setup/flashing.png)
 
 7. When finished, a window will appear, notifying you that the ESC has properly
 been flashed. If there are any errors, call over a TA. Click "OK" to dismiss 
 the window.
 
+![Successful Flash](pics/fc_esc_setup/flashed.png)
+
 8. A window will appear notifying you that the ESC setup has been read 
-successfully.
+successfully. Click "OK", "Disconnect", and plug the ESC back into your Skyline.
+
+![Successful Read](pics/fc_esc_setup/done.png)
 
 ## Calibrating ESCS and checking ESC Direction
 
