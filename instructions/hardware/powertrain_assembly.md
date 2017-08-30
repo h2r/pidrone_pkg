@@ -29,18 +29,25 @@ TODO: Picture of Props
 
 * 1 Skyline box
 TODO: Image of skyline box
+
+![Box for flight controller](pics/components/skyline.jpg)
+
 * 1 Raspberry Pi
-TODO: Image of Pi Box/Pi
+
+![Raspberry Pi](pics/components/pi.jpg)
+
 * 1 Battery Elimination Circuit (BEC). This is a 5V [switching regulator](https://www.dimensionengineering.com/info/switching-regulators) used to power the Pi.
-TODO: Image of BEC
-* 1 IR sensor and cable
-TODO: Image of IR sensor
-* 1 camera and ribbon cable
-TODO: Image of camera
-* 1 analog to digitial converter
-TODO: Image of ADC
-* 1 Raspberry Pi mounting bracket
-TODO: Image
+
+![Battery Elimination Circuit](pics/components/bec.jpg)
+
+* 1 IR sensor
+
+![IR Sensor](pics/components/ir.jpg)
+
+* 1 camera
+
+![Camera](pics/components/camera.jpg)
+
 * 4 standoffs, with 4 M3 bolts
 
 ![SHORT SCREWS IN STANDOFF](pics/m3-in-standoffs.jpg)
@@ -95,15 +102,49 @@ After soldering each motor to its corresponding ESC, move the heatshrink over th
 ![HEATSHRINK OVER JOINTS](pics/motor-esc-shrinkwrapped.jpg)
 
 
-### Solder the PDB
-Next, you must solder the ESCs to the PDB. Begin by adding a lump of solder to the PDB, as shown in the image:
-![PDB](pics/pdb.jpg)
-Then tin the ends of the ESC wires. Now solder the four pairs of ESC wires to the PDB by melting the solder lumps on the PDB and inserting the wire into the melted solder (the red wires go to the + terminals).
+## Solder the PDB
 
-You must also solder the battery connector to the PDB. Solder it to one of the free pairs of pads on the PDB, just like you did for the ESCs.
+Just like the human body has a circulatory system to carry oxygen-rich blood to wherever it is needed, the drone has a power distribution board (PDB) to take the all-important battery power and send it to every component. In this step, you will mount 4 ESCs (electronic speed controllers), a BEC (battery eliminator circuit), a battery lead with XT60 connector, and a battery monitor lead to your PDB (power distribution board). 
 
-Finally, you need a way to power the Pi. You will attach the The Skyline flight controller needs to know the battery voltage so it can compensate as the battery discharges. In the Skyline box, you will find a plastic connector with a red and black wire in it. You will have to cut off the black connectors, as shown ![BATTERY MONITOR](pics/monitor-cut-strip.jpg). Attach these wires to the battery connector as shown in the image:![Battery Monitor attached to battery connector](pics/bec-and-monitor-lead.jpg). Solder these wires to the PDB as well.
+### Strip Wires
 
+Cut off all the bullet connectors on the thick wires of the ESC as close to the connector as possible. Leave the PWM signal connector alone.
+Strip 0.5 cm from each of the wires you just cut. 
+
+![ESC PRE POST SNIP](pics/esc-cut-strip.jpg)
+
+Strip 0.5cm off your battery lead with XT60 connector.
+
+![XT60 PIGTAIL STRIPPED](pics/xt60.jpg)
+
+Inside the plastic box labeled, SKYLINE 32, find the battery monitor lead, cut off the two larger connectors, and strip 1cm.
+
+![SKYLINE BATTERY MONITOR PRE POST STRIP](pics/monitor-cut-strip.jpg)
+
+### Tin PDB and Stripped wires.
+
+Tin all 20 ESC leads.
+Twist the battery monitor leads around the BEC leads and tin.
+
+![BEC AND BATT MONITOR](pics/bec-and-monitor-lead.jpg)
+
+Thoroughly tin the battery lead with XT60 connector. It is important that solder flows all the way through the exposed wire. 
+
+![TINNED BATT LEAD](pics/pigtail-soldering.JPG)
+
+Tin the pads on the PDB as shown. Leave the 5V OUT and 12V OUT pads alone. 
+
+![TINNED PDB](pics/pdb-tinned.jpg)
+
+### Connect components to the PDB
+
+Solder the tinned components to the PDB as shown. Make sure Red goes to **+** and black/brown goes to *-*.
+
+![PDB OCTOPUS FAR](pics/pdb-complete-far.jpg)
+
+![PDB OCTOPUS CLOSE](pics/pdb-complete-close.jpg)
+
+## Routing
 Now everything has been soldered to the PDB, and you can start worrying about wire management. Route ESC wires nicely with zip ties. There is no single correct way to do this. You just need to ensure that the wires will not be cut by the spinning props. It is best to secure the ESCs and wires underneath the frame. The next several images provide some examples for how you might want to route your wires and ESCs.
 
 ![ROUTE ZIPTIE](pics/ziptie-location.jpg)
@@ -115,32 +156,16 @@ Now everything has been soldered to the PDB, and you can start worrying about wi
 ![ALL FOUR ZIPTIES](pics/ziptied-all-motors.jpg)
 
 
-  9. Flash ESCs (battery required)
+## Camera Attachment
+Now you will attach the camera to your frame. Place double-sided sticky tape around the camera, as shown in the picture.
 
-  10. Attach the PWM cable to the Skyline
+![TAPED CAMERA](pics/camera_install/tape-cam.jpg)
 
-  11. Attach the ESC PWM controls to the Skyline via the cable from 8. RR = 1, FR =
-     2, RL = 3, FL = 4
+Place the camera through the hole in the back of the frame, as in the picture. Make sure it is straight. 
 
- 12. Attach the batery voltage check wire to the Skyline
+![CAMERA PLACEMENT](pics/camera_install/cam-on-frame.jpg)
 
- 13. Use ClearFlight to test the direction of the motors. [see image for correct
-         rotation direction. Diagonals spin the same direction]. Mark which motors
-             need to be reversed. (battery required)
-
-  14. For each motor that must be reversed, plug in its ESC PWM input to the ESC
-      flashing device. Read ESC -> reverse -> write ESC [image(s)] (battery
-                  required)
-
-  15. Attach the Skyline to the "front deck" of the frame with double-sided sticky
-          tape.
-
-  16. Screw the Pi mounting bracket onto the standoffs on the PDB. Now is a good
-              time to make sure the ESC wires are mounted nicely and tucked inside of this
-                  mounting bracket [image]
-
-  17. Attach the Pi to the mounting bracket with two screws. The USB port on the
-                      Pi should be facing forward
-
-
+## IR Attachment
+Zip tie the IR sensor onto the bottom of the frame's front platform, as in the picture.
+![IR Attachment Location](pics/zip-ir-1.jpg)
 
