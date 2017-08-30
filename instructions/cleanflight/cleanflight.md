@@ -5,7 +5,9 @@ The Skyline 32 is the flight controller; it has an onboard accelerometer and gyr
 
 Download the firmware source code at [https://github.com/cleanflight/cleanflight](https://github.com/cleanflight/cleanflight) and compile with
 
-`make TARGET=NAZE OPTIONS=USE_MSP_UART`
+`make arm_sdk_install`
+
+`make NAZE OPTIONS=USE_MSP_UART`
 
 There is a [pre-compiled hex](https://github.com/h2r/pidrone_pkg/blob/feature/instructions/instructions/cleanflight/cleanflight_2.1.0_NAZE.hex) located in the pidrone_pkg github, which can also be used.
 
