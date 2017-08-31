@@ -129,7 +129,7 @@ class PID:
             ##1250), smoothing=False):
 
         throttle = PIDaxis(1.0/1.238, 0.5/1.238, 2.0/1.238, kp_upper = 1.0/1.238, kpi = 0.00, kpi_max
-        = 0.0, i_range=(0, 400),
+        = 0.0, i_range=(-400, 400),
             control_range=(1200,2000), d_range=(-40, 40), midpoint =
             1300),
 
@@ -220,13 +220,14 @@ class PID:
         #print self.roll._i, self.pitch._i
         #print "Roll  low, hi:", self.roll_low._i, self.roll._i
         #print "Pitch low, hi:", self.pitch_low._i, self.pitch._i
-        #print "Throttle low, hi:", self.throttle_low._i, self.throttle._i
+        print "Throttle low, hi:", self.throttle_low._i, self.throttle._i
 
         cmd_y = 1500 + cmd_yaw_velocity
         #print cmd_y, cmd_yaw_velocity, "HELLO"
 
         #cmd_t = self.throttle.step(error.z.err, time_elapsed, error.z)
 
+        print "zerr: ", abs(error.z.err), self.trim_controller_thresh_throttle
         if abs(error.z.err) < self.trim_controller_thresh_throttle:
             cmd_t = self.throttle_low.step(error.z.err, time_elapsed, error.z)
             self.throttle_low._i += self.throttle._i
@@ -245,7 +246,7 @@ class PID:
             # see the real difference, compare cmd_t / mw_angle_alt_scale to
             # cmd_t * mw_angle_alt_scale and see how it sinks. That happens to
             # a less noticeable degree with no modification.
-            cmd_t = cmd_t / self.throttle.mw_angle_alt_scale
+            cmd_t = cmd_t / max(0.5, self.throttle.mw_angle_alt_scale)
             #print "mw factor: ", self.throttle.mw_angle_alt_scale
 
         return [cmd_r, cmd_p, cmd_y, cmd_t]

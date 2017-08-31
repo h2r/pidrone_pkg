@@ -131,7 +131,7 @@ def fly(velocity_cmd):
 #           print velocity_cmd.x_i * scalar, velocity_cmd.y_i * scalar
 #           pid.roll._i += velocity_cmd.x_i * scalar
 #           pid.pitch._i += velocity_cmd.y_i * scalar
-            if set_z + velocity_cmd.z_velocity > 10.0 and set_z + velocity_cmd.z_velocity < 40.0:
+            if set_z + velocity_cmd.z_velocity > 10.0 and set_z + velocity_cmd.z_velocity < 49.0:
                 set_z += velocity_cmd.z_velocity
             print set_z, "set_z"
 

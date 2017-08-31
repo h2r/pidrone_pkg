@@ -32,6 +32,7 @@ def get_range():
         print "ERROR: BAD VOLTAGE!!!"
     distance = (1.0 / voltage) * m + b
     smoothed_distance = (1.0 - alpha) * smoothed_distance + alpha * distance
+    smoothed_distance = min(smoothed_distance, 55.0)
 
     print smoothed_distance, distance, (smoothed_distance - distance)
     return smoothed_distance

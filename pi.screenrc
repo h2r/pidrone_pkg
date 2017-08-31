@@ -48,10 +48,6 @@ stuff ""
 
 screen -t " vim"
 stuff "source setup.sh"
-stuff "vim"
-
-screen -t " emacs"
-stuff "source setup.sh"
 stuff "cd $(rospack find pidrone_pkg)/scripts"
 stuff "vim -p flow_pub_transform.py state_controller.py pid_class.py"
 
