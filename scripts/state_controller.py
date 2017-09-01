@@ -259,7 +259,7 @@ if __name__ == '__main__':
     board = MultiWii("/dev/ttyUSB0")
     rospy.Subscriber("/pidrone/infrared", Range, ultra_callback)
     rospy.Subscriber("/pidrone/vrpn_pos", PoseStamped, vrpn_callback)
-    rospy.Subscriber("/pidrone/set_mode", Mode, mode_callback)
+    rospy.Subscriber("/pidrone/set_mode_vel", Mode, mode_callback)
     signal.signal(signal.SIGINT, ctrl_c_handler)
 
     prev_angx = 0

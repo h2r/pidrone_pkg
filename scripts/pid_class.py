@@ -220,14 +220,14 @@ class PID:
         #print self.roll._i, self.pitch._i
         #print "Roll  low, hi:", self.roll_low._i, self.roll._i
         #print "Pitch low, hi:", self.pitch_low._i, self.pitch._i
-        print "Throttle low, hi:", self.throttle_low._i, self.throttle._i
+        #print "Throttle low, hi:", self.throttle_low._i, self.throttle._i
 
         cmd_y = 1500 + cmd_yaw_velocity
         #print cmd_y, cmd_yaw_velocity, "HELLO"
 
         #cmd_t = self.throttle.step(error.z.err, time_elapsed, error.z)
 
-        print "zerr: ", abs(error.z.err), self.trim_controller_thresh_throttle
+        #print "zerr: ", abs(error.z.err), self.trim_controller_thresh_throttle
         if abs(error.z.err) < self.trim_controller_thresh_throttle:
             cmd_t = self.throttle_low.step(error.z.err, time_elapsed, error.z)
             self.throttle_low._i += self.throttle._i

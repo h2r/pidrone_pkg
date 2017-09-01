@@ -48,7 +48,15 @@ vel_average_time = 0.0
 
 def mode_callback(data):
     global current_mode
+    global phase_analyzer
     current_mode = data.mode
+    if not phase_analyzer.transforming or data.mode == 4 or data.mode == 3:
+        print "VELOCITY"
+        phase_analyzer.pospub.publish(data)
+    else:
+        phase_analyzer.target_x = data.x_velocity * 1.
+        phase_analyzer.target_y = -data.y_velocity * 1.
+        print "POSITION", phase_analyzer.target_x, phase_analyzer.target_y
 
 class AnalyzePhase(picamera.array.PiMotionAnalysis):
 
@@ -76,7 +84,7 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
             replan_next_deadline = replan_last_reset + replan_period
             shouldi_set_velocity = 1
         replan_until_deadline = replan_next_deadline-curr_time
-        print curr_time, replan_last_reset, replan_next_deadline, replan_until_deadline, replan_vel_x, replan_vel_y
+        #print curr_time, replan_last_reset, replan_next_deadline, replan_until_deadline, replan_vel_x, replan_vel_y
 
 
         if self.first:
@@ -105,7 +113,7 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
                 corr_first[:, 0] /= scalex
                 corr_first[:, 1] /= scalez
                 yaw_observed = math.atan2(corr_first[1, 0], corr_first[0, 0])
-                print first_displacement, yaw_observed
+                #print first_displacement, yaw_observed
                 #yaw = yaw_observed
                 self.smoothed_yaw = (1.0 - self.alpha_yaw) * self.smoothed_yaw + (self.alpha_yaw) * yaw_observed 
                 yaw = self.smoothed_yaw
@@ -118,11 +126,12 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
                 vel_average[0] = (1.0 - vel_alpha) * vel_average[0] + (vel_alpha) * self.pos[0]
                 vel_average[1] = (1.0 - vel_alpha) * vel_average[1] + (vel_alpha) * self.pos[1]
                 vel_average_time = (1.0 - vel_alpha) * vel_average_time + (vel_alpha) * curr_time
-                print "times: ", vel_average_time, curr_time, curr_time - vel_average_time
-                self.lr_err.err = vel_average[0]
-                self.fb_err.err = vel_average[1]
-                #self.lr_err.err = self.pos[0]
-                #self.fb_err.err = self.pos[1]
+                #print "times: ", vel_average_time, curr_time, curr_time - vel_average_time
+                #self.lr_err.err = vel_average[0] + self.target_x
+                #self.fb_err.err = vel_average[1] + self.target_y
+                self.lr_err.err = self.pos[0] + self.target_x
+                self.fb_err.err = self.pos[1] + self.target_y
+                print "ERR", self.lr_err.err, self.fb_err.err
                 mode = Mode()
                 mode.mode = 5
                 mode.x_i += self.lr_pid.step(self.lr_err.err, self.prev_time - curr_time)
@@ -184,11 +193,12 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
                 #vel_average = (1.0 - vel_alpha) * vel_average[0] + (vel_alpha) * self.pos[0]
                 #vel_average = (1.0 - vel_alpha) * vel_average[1] + (vel_alpha) * self.pos[1]
                 vel_average_time = (1.0 - vel_alpha) * vel_average_time + (vel_alpha) * curr_time
-                print "times: ", vel_average_time, curr_time, curr_time - vel_average_time
-                self.lr_err.err = vel_average[0]
-                self.fb_err.err = vel_average[1]
-                self.lr_err.err = self.pos[0]
-                self.fb_err.err = self.pos[1]
+                #print "times: ", vel_average_time, curr_time, curr_time - vel_average_time
+                #self.lr_err.err = vel_average[0] + self.target_x
+                #self.fb_err.err = vel_average[1] + self.target_y
+                self.lr_err.err = self.pos[0] + self.target_x
+                self.fb_err.err = self.pos[1] + self.target_y
+                print "ERR", self.lr_err.err, self.fb_err.err
                 mode = Mode()
                 mode.mode = 5
                 mode.x_i += self.lr_pid.step(self.lr_err.err, self.prev_time - curr_time)
@@ -222,12 +232,12 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
             else:
                 print "LOST"
         else:
-            print "Not transforming"
+            #print "Not transforming"
             #curr_img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
             curr_img = img
             corr_first = cv2.estimateRigidTransform(self.first_img, curr_img, False)
             if corr_first is not None:
-                print "first"
+                #print "first"
                 self.last_first_time = rospy.get_time()
                 if curr_time - self.last_first_time > 2:
                     self.first = True
@@ -244,7 +254,7 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
         self.lr_err = ERR()
         self.fb_err = ERR()
         self.prev_time = None
-        self.pospub = rospy.Publisher('/pidrone/set_mode', Mode, queue_size=1)
+        self.pospub = rospy.Publisher('/pidrone/set_mode_vel', Mode, queue_size=1)
         self.pos = [0, 0, 0]
 # -, -, 0.1
         #self.lr_pid = PIDaxis(0.100, -0.000100, 0.0050, midpoint=0, control_range=(-10.0, 10.0))
@@ -274,6 +284,8 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
         self.transforming = False
         self.i = 0
         self.last_first_time = None
+        self.target_x = 0
+        self.target_y = 0
 
 camera = picamera.PiCamera(framerate=90)
 # camera = picamera.PiCamera(framerate=40, sensor_mode=4)
@@ -291,6 +303,8 @@ def reset_callback(data):
     phase_analyzer.pos = [0, 0]
     phase_analyzer.fb_pid._i = 0
     phase_analyzer.lr_pid._i = 0
+    phase_analyzer.target_x = 0
+    phase_analyzer.target_y = 0
 
 def toggle_callback(data):
     global phase_analyzer
@@ -300,7 +314,7 @@ if __name__ == '__main__':
     rospy.init_node('flow_pub')
     velpub= rospy.Publisher('/pidrone/plane_err', axes_err, queue_size=1)
     imgpub = rospy.Publisher("/pidrone/camera", Image, queue_size=1)
-    rospy.Subscriber("/pidrone/mode", Mode, mode_callback)
+    rospy.Subscriber("/pidrone/set_mode", Mode, mode_callback)
     rospy.Subscriber("/pidrone/reset_transform", Empty, reset_callback)
     rospy.Subscriber("/pidrone/toggle_transform", Empty, toggle_callback)
     rospy.Subscriber("/pidrone/infrared", Range, range_callback)

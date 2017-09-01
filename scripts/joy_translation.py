@@ -66,7 +66,7 @@ def joy_callback(data):
         mode.x_velocity = -data.axes[2] * scalar
         mode.y_velocity = data.axes[3] * scalar
         mode.z_velocity = data.axes[1]
-        mode.yaw_velocity = -100.0 * data.axes[0]
+        mode.yaw_velocity = -200.0 * data.axes[0]
         print mode
         modepub.publish(mode)
     elif data.buttons[0] == 1:
