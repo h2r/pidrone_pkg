@@ -54,8 +54,8 @@ def mode_callback(data):
         print "VELOCITY"
         phase_analyzer.pospub.publish(data)
     else:
-        phase_analyzer.target_x = data.x_velocity * 1.
-        phase_analyzer.target_y = -data.y_velocity * 1.
+        phase_analyzer.target_x = data.x_velocity * 4.
+        phase_analyzer.target_y = -data.y_velocity * 4.
         print "POSITION", phase_analyzer.target_x, phase_analyzer.target_y
 
 class AnalyzePhase(picamera.array.PiMotionAnalysis):
