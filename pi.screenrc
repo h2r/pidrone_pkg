@@ -83,6 +83,19 @@ stuff "cd $(rospack find pidrone_pkg)/scripts/"
 stuff "python key_translation.py"
 
 
+
+
+screen -t " rosbridge"
+stuff "source setup.sh"
+stuff "roslaunch rosbridge_server rosbridge_websocket.launch"
+
+
+screen -t " web_video_server"
+stuff "source setup.sh"
+stuff " rosrun web_video_server web_video_server"
+
+
+
 screen -t " free"
 stuff "source setup.sh"
 stuff "cd $(rospack find pidrone_pkg)/scripts/"
