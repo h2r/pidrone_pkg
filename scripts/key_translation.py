@@ -19,26 +19,53 @@ Commands:
 j:  arm
 k:  disarm
 t:  takeoff
+l:  land
 q:  quit
 """
     try:
+        print msg
         while not rospy.is_shutdown():
-            print msg
-            ch = getch.getch()
+            ch = getch.getch(0.1)
+            if ch == None:
+                continue
+
             if ch == "k":
+                # disarm
+                print "disarming"
                 mode.mode = 4
+                modepub.publish(mode)
             elif ch == "j":
+                # arm
                 mode.mode = 0
+                modepub.publish(mode)
+            elif ch == "l":
+                # land
+                mode.mode = 3
+                modepub.publish(mode)
             elif ch == "a":
                 mode.mode = 5
-                mode.x_velocity = 0
+                mode.x_velocity = -1
                 mode.y_velocity = 0
-                mode.z_velocity = 5
+                mode.z_velocity = 0
+                modepub.publish(mode)
             elif ch == "d":
                 mode.mode = 5
-                mode.x_velocity = 0
+                mode.x_velocity = 1
                 mode.y_velocity = 0
-                mode.z_velocity = 5
+                mode.z_velocity = 0
+                modepub.publish(mode)
+            elif ch == "w":
+                mode.mode = 5
+                mode.x_velocity = -1
+                mode.y_velocity = 1
+                mode.z_velocity = 0
+                modepub.publish(mode)
+            elif ch == "s":
+                mode.mode = 5
+                mode.x_velocity = 1
+                mode.y_velocity = 1
+                mode.z_velocity = 0
+                modepub.publish(mode)
             elif ch == "0":
                 mode.mode = 0
             elif ch == "1":
@@ -53,20 +80,20 @@ q:  quit
                 mode.mode = 5
             elif ch == "t":
                 mode.mode = 2
+                modepub.publish(mode)
             elif ch == "y":
                 mode.mode = 1
             elif ch == "q":
                 break
-            elif ord(ch) == 3:
-                break
+            elif ord(ch) == 3: # Ctrl-C
+                break            
             else:
                 print "unknown character: '%d'" % ord(ch)
                 pass
-
-            modepub.publish(mode)
+            print msg
             rate.sleep()
-
     finally:
+        print "sending disarm"
         mode.mode = 4
         modepub.publish(mode)
         time.sleep(0.25)
