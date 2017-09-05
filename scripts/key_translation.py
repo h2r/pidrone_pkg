@@ -16,10 +16,19 @@ def main():
     rate = rospy.Rate(10)
     msg = """
 Commands: 
-j:  arm
-k:  disarm
+;:  arm
+' ' (spacebar):  disarm
 t:  takeoff
 l:  land
+a:  yaw left
+d:  yaw right
+w:  up
+z:  down
+i:  forward
+k:  backward
+j:  left
+l:  right
+h:  hover
 q:  quit
 """
     try:
@@ -29,43 +38,110 @@ q:  quit
             if ch == None:
                 continue
 
-            if ch == "k":
+            if ord(ch) == 32:
                 # disarm
                 print "disarming"
                 mode.mode = 4
+                mode.x_velocity = 0
+                mode.y_velocity = 0
+                mode.z_velocity = 0
+                mode.yaw_velocity = 0
                 modepub.publish(mode)
-            elif ch == "j":
+            elif ch == ";":
                 # arm
-                mode.mode = 0
+                mode.mode = 0                
+                mode.x_velocity = 0
+                mode.y_velocity = 0
+                mode.z_velocity = 0
+                mode.yaw_velocity = 0
                 modepub.publish(mode)
-            elif ch == "l":
+            elif ch == "y":
                 # land
+                mode.x_velocity = 0
+                mode.y_velocity = 0
+                mode.z_velocity = 0
+                mode.yaw_velocity = 0
                 mode.mode = 3
                 modepub.publish(mode)
-            elif ch == "a":
-                mode.mode = 5
-                mode.x_velocity = -1
+            elif ch == "h":
+                # hover
+                mode.mode = 5                
+                mode.x_velocity = 0
                 mode.y_velocity = 0
                 mode.z_velocity = 0
+                mode.yaw_velocity = 0
+                modepub.publish(mode)
+            elif ch == "t":
+                mode.x_velocity = 0
+                mode.y_velocity = 0
+                mode.z_velocity = 0
+                mode.yaw_velocity = 0
+                mode.mode = 2
+                modepub.publish(mode)
+            elif ch == "j":
+                print "left"
+                mode.mode = 5
+                mode.x_velocity = -5
+                mode.y_velocity = 0
+                mode.z_velocity = 0
+                mode.yaw_velocity = 0
+                modepub.publish(mode)
+            elif ch == "l":
+                print "right"
+                mode.mode = 5
+                mode.x_velocity = 5
+                mode.y_velocity = 0
+                mode.z_velocity = 0
+                mode.yaw_velocity = 0
+                modepub.publish(mode)
+            elif ch == "k":
+                print "backward"
+                mode.mode = 5
+                mode.x_velocity = 0
+                mode.y_velocity = -5
+                mode.z_velocity = 0
+                mode.yaw_velocity = 0
+                modepub.publish(mode)
+            elif ch == "i":
+                print "forward"
+                mode.mode = 5
+                mode.x_velocity = 0
+                mode.y_velocity = 5
+                mode.z_velocity = 0
+                mode.yaw_velocity = 0
+                modepub.publish(mode)
+            elif ch == "a":
+                print "yaw left"                
+                mode.mode = 5
+                mode.x_velocity = 0
+                mode.y_velocity = 0
+                mode.z_velocity = 0
+                mode.yaw_velocity = -50
                 modepub.publish(mode)
             elif ch == "d":
+                print "yaw right"                
                 mode.mode = 5
-                mode.x_velocity = 1
+                mode.x_velocity = 0
                 mode.y_velocity = 0
                 mode.z_velocity = 0
+                mode.yaw_velocity = 50
                 modepub.publish(mode)
             elif ch == "w":
+                print "up"
                 mode.mode = 5
-                mode.x_velocity = -1
-                mode.y_velocity = 1
-                mode.z_velocity = 0
+                mode.x_velocity = 0
+                mode.y_velocity = 0
+                mode.z_velocity = 1
+                mode.yaw_velocity = 0
                 modepub.publish(mode)
             elif ch == "s":
+                print "down"
                 mode.mode = 5
-                mode.x_velocity = 1
-                mode.y_velocity = 1
-                mode.z_velocity = 0
-                modepub.publish(mode)
+                mode.x_velocity = 0
+                mode.y_velocity = 0
+                mode.z_velocity = -1
+                mode.yaw_velocity = 0
+                modepub.publish(mode)                                
             elif ch == "0":
                 mode.mode = 0
             elif ch == "1":
@@ -78,9 +154,6 @@ q:  quit
                 mode.mode = 4
             elif ch == "5":
                 mode.mode = 5
-            elif ch == "t":
-                mode.mode = 2
-                modepub.publish(mode)
             elif ch == "y":
                 mode.mode = 1
             elif ch == "q":
