@@ -131,9 +131,9 @@ def fly(velocity_cmd):
 #           print velocity_cmd.x_i * scalar, velocity_cmd.y_i * scalar
 #           pid.roll._i += velocity_cmd.x_i * scalar
 #           pid.pitch._i += velocity_cmd.y_i * scalar
-            if set_z + velocity_cmd.z_velocity > 10.0 and set_z + velocity_cmd.z_velocity < 49.0:
+            if set_z + velocity_cmd.z_velocity > 0.0 and set_z + velocity_cmd.z_velocity < 49.0:
                 set_z += velocity_cmd.z_velocity
-            print set_z, "set_z"
+            print "set_z", set_z, "cmd.z_velocity", velocity_cmd.z_velocity
 
 def kill_throttle():
     pass
@@ -147,24 +147,20 @@ def mode_callback(data):
     elif data.mode == 1:
         idle()
     elif data.mode == 2:
-        if reset_pid: 
-            pid._t = None
-            pid.throttle._i = 100 # PRELOAD
+        if reset_pid:
             reset_pid = False
-
+            pid.reset()
+            set_z = initial_set_z
         takeoff()
     elif data.mode == 4:
         disarm()
     elif data.mode == 3:
         land()
     elif data.mode == 5:        # STATIC FLIGHT
-        if reset_pid: 
-            pid._t = None
-            set_z = initial_set_z
-            # pid.throttle._i = 100 # PRELOAD
-            # pid.throttle_low._i = 0
-            pid.throttle_low._i = 220.0
+        if reset_pid:
             reset_pid = False
+            pid.reset()
+            set_z = initial_set_z
         fly(data)
 #   elif data.mode == 6:        # DYNAMIC FLIGHT 
 #       pid_is = pid.get_is()

@@ -49,6 +49,7 @@ q:  quit
                 modepub.publish(mode)
             elif ch == ";":
                 # arm
+                print "arm"
                 mode.mode = 0                
                 mode.x_velocity = 0
                 mode.y_velocity = 0
@@ -57,6 +58,7 @@ q:  quit
                 modepub.publish(mode)
             elif ch == "y":
                 # land
+                print "land"
                 mode.x_velocity = 0
                 mode.y_velocity = 0
                 mode.z_velocity = 0
@@ -65,6 +67,7 @@ q:  quit
                 modepub.publish(mode)
             elif ch == "h":
                 # hover
+                print "hover"
                 mode.mode = 5                
                 mode.x_velocity = 0
                 mode.y_velocity = 0
@@ -72,11 +75,12 @@ q:  quit
                 mode.yaw_velocity = 0
                 modepub.publish(mode)
             elif ch == "t":
+                print "takeoff"
                 mode.x_velocity = 0
                 mode.y_velocity = 0
                 mode.z_velocity = 0
                 mode.yaw_velocity = 0
-                mode.mode = 2
+                mode.mode = 5
                 modepub.publish(mode)
             elif ch == "j":
                 print "left"
