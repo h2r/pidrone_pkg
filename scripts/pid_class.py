@@ -87,6 +87,9 @@ class PIDaxis():
 
         return output
 
+height_factor = 1.238
+battery_factor = 0.75
+
 class PID:
     def __init__(self, 
 #               P   I   D
@@ -128,15 +131,23 @@ class PID:
             #1400), smoothing=False):
             ##1250), smoothing=False):
 
-        throttle = PIDaxis(1.0/1.238, 0.5/1.238, 2.0/1.238, kp_upper = 1.0/1.238, kpi = 0.00, kpi_max
+        throttle = PIDaxis(1.0/height_factor * battery_factor, 0.5/height_factor * battery_factor, 2.0/height_factor * battery_factor, kp_upper = 1.0/height_factor * battery_factor, kpi = 0.00, kpi_max
         = 0.0, i_range=(-400, 400),
-            control_range=(1200,2000), d_range=(-40, 40), midpoint =
-            1300),
+        control_range=(1200,2000), d_range=(-40, 40), midpoint =
+        1250),
+        # kV 2300 motors
+        #1300),
+        # kV 2550 motors
+        #1250),
 
-        throttle_low = PIDaxis(1.0/1.238, 0.05/1.238, 2.0/1.238, kp_upper = 1.0/1.238, kpi = 0.00, kpi_max
+        throttle_low = PIDaxis(1.0/height_factor * battery_factor, 0.05/height_factor * battery_factor, 2.0/height_factor * battery_factor, kp_upper = 1.0/height_factor * battery_factor, kpi = 0.00, kpi_max
         = 0.0, i_range=(0, 400),
         control_range=(1200,2000), d_range=(-40, 40), midpoint =
-        1300), 
+        1250), 
+        # kV 2300 motors
+        #1300), 
+        # kV 2550 motors
+        #1250),
         
         smoothing=False):
         # roll = PIDaxis(1.2, 05, 1.2),
@@ -158,9 +169,14 @@ class PID:
         self.throttle_low = throttle_low
         self.sp = None
         self._t = None
-        self.roll_low._i = 13.0
-        self.pitch_low._i = -2.0
-        self.throttle_low._i = 220.0
+        # steve005 presets
+        #self.roll_low._i = 13.0
+        #self.pitch_low._i = -2.0
+        #self.throttle_low._i = 220.0
+        # safer presets
+        self.roll_low._i = 0.0
+        self.pitch_low._i = 0.0
+        self.throttle_low._i = 0.0
         self.throttle.mw_angle_alt_scale = 1.0
     
     def get_is(self):
