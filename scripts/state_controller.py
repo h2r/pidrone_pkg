@@ -69,7 +69,7 @@ def takeoff():
                 set_vel_x = 0
                 set_vel_y = 0
                 set_z = i/2.
-                rospy.sleep(1)
+                rospy.sleep(0.1)
             fly(None)
         except Exception as e:
             disarm()
