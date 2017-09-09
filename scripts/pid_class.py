@@ -176,7 +176,7 @@ class PID:
         # safer presets
         #self.roll_low._i = 0.0
         #self.pitch_low._i = 0.0
-        self.throttle_low.init_i = 220.0
+        self.throttle_low.init_i = 100
         self.throttle.init_i = 0.0
         self.reset()
 
