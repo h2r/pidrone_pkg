@@ -9,7 +9,7 @@ from h2rMultiWii import MultiWii
 from picam_flow_class import AnalyzeFlow
 from pidrone_pkg.msg import axes_err, Mode, ERR
 from cv_bridge import CvBridge, CvBridgeError
-from sensor_msgs.msg import Image, Range
+from sensor_msgs.msg import Image, Range, CameraInfo
 from geometry_msgs.msg import PoseStamped, Point
 from std_msgs.msg import Empty
 import rospy
@@ -21,6 +21,8 @@ from cv_bridge import CvBridge, CvBridgeError
 import sys
 from pid_class import PIDaxis
 import math
+import camera_info_manager
+            
 
 keynumber = 5
 
@@ -310,14 +312,27 @@ def toggle_callback(data):
     global phase_analyzer
     phase_analyzer.transforming = not phase_analyzer.transforming
 
-if __name__ == '__main__':
+def main():
     rospy.init_node('flow_pub')
     velpub= rospy.Publisher('/pidrone/plane_err', axes_err, queue_size=1)
-    imgpub = rospy.Publisher("/pidrone/camera", Image, queue_size=1)
+
     rospy.Subscriber("/pidrone/set_mode", Mode, mode_callback)
     rospy.Subscriber("/pidrone/reset_transform", Empty, reset_callback)
     rospy.Subscriber("/pidrone/toggle_transform", Empty, toggle_callback)
     rospy.Subscriber("/pidrone/infrared", Range, range_callback)
+
+
+    image_pub = rospy.Publisher("/pidrone/picamera/image_raw", Image, queue_size=1, tcp_nodelay=False)
+    #image_mono_pub = rospy.Publisher("/pidrone/picamera/image_mono",Image, queue_size=1, tcp_nodelay=False)
+    camera_info_pub = rospy.Publisher("/pidrone/picamera/camera_info", CameraInfo, queue_size=1, tcp_nodelay=False)
+
+                                                                        
+    cim = camera_info_manager.CameraInfoManager("picamera", "package://pidrone_pkg/params/picamera.yaml")
+    cim.loadCameraInfo()
+    if not cim.isCalibrated():
+        rospy.logerr("warning, could not find calibration for the camera.")
+                                             
+    
     global current_mode
     global phase_started
     global camera
@@ -341,6 +356,14 @@ if __name__ == '__main__':
                 camera.wait_recording(1/100.0)
                 velpub.publish(velocity)
 
+
+                if phase_analyzer.prev_img != None:
+                    image_message = bridge.cv2_to_imgmsg(phase_analyzer.prev_img, encoding="bgr8")
+                    image_pub.publish(image_message)
+                    camera_info_pub.publish(cim.getCameraInfo())
+                
+                
+
             camera.stop_recording(splitter_port=1)
             if phase_started:
                 camera.stop_recording(splitter_port=2)
@@ -348,3 +371,7 @@ if __name__ == '__main__':
         sys.exit()
     except Exception as e:
         raise 
+    
+
+if __name__ == '__main__':
+    main()
