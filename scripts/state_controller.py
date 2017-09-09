@@ -1,3 +1,7 @@
+from sensor_msgs.msg import Imu
+import tf
+import math
+from visualization_msgs.msg import Marker
 from pid_class import PID
 from geometry_msgs.msg import PoseStamped
 from sensor_msgs.msg import Range
@@ -100,6 +104,68 @@ def land():
 
 def hover():
     pass
+
+
+
+
+import rospkg
+import yaml
+rospack = rospkg.RosPack()
+path = rospack.get_path('pidrone_pkg')
+f = open("%s/params/multiwii.yaml" % path)
+means = yaml.load(f)
+f.close()
+print "means", means
+accRawToMss = 9.8 / means["az"]
+accZeroX = means["ax"] * accRawToMss
+accZeroY = means["ay"] * accRawToMss
+accZeroZ = means["az"] * accRawToMss
+
+
+def publishRos(board, imupub, markerpub):
+
+    
+    imu = Imu()
+    marker = Marker()
+    roll = board.attitude['angx']
+    pitch = board.attitude['angy']
+    yaw = board.attitude['heading']
+    quaternion = tf.transformations.quaternion_from_euler(roll * 2 * math.pi / 360, pitch * 2 * math.pi / 360, 0)
+    # print(roll, pitch, yaw, quaternion)
+    imu.header.frame_id = "base"
+    imu.orientation.x = quaternion[0]
+    imu.orientation.y = quaternion[1]
+    imu.orientation.z = quaternion[2]
+    imu.orientation.w = quaternion[3]
+    imu.linear_acceleration.x = board.rawIMU['ax'] * accRawToMss - accZeroX
+    imu.linear_acceleration.y = board.rawIMU['ay'] * accRawToMss - accZeroY
+    imu.linear_acceleration.z = board.rawIMU['az'] * accRawToMss - accZeroZ
+    imupub.publish(imu)
+
+    marker.header.stamp = rospy.Time.now()
+    marker.header.frame_id = "/base"
+    marker.type = Marker.CUBE
+    marker.action = 0
+    marker.pose.orientation = imu.orientation
+    marker.pose.position.x = imu.linear_acceleration.x * 0.1
+    marker.pose.position.y = imu.linear_acceleration.y * 0.1
+    marker.pose.position.z = imu.linear_acceleration.z * 0.1
+    #marker.points.append(Point(0, 0, 0))
+    #marker.points.append(Point(imu.linear_acceleration.x * 1,
+    #                           imu.linear_acceleration.y * 1,
+    #                           imu.linear_acceleration.z * 1))
+
+
+    marker.id = 0
+    marker.lifetime = rospy.Duration(10)
+    marker.scale.x = 0.1
+    marker.scale.y = 0.1
+    marker.scale.z = 0.1
+    marker.color.r = 1
+    marker.color.g = 1
+    marker.color.b = 1
+    marker.color.a = 1
+    markerpub.publish(marker)
 
 def disarm():
     global cmds
@@ -258,6 +324,11 @@ if __name__ == '__main__':
     rospy.Subscriber("/pidrone/set_mode_vel", Mode, mode_callback)
     signal.signal(signal.SIGINT, ctrl_c_handler)
 
+    imupub = rospy.Publisher('/pidrone/imu', Imu, queue_size=1, tcp_nodelay=False)
+    markerpub = rospy.Publisher('/pidrone/imu_visualization_marker', Marker, queue_size=1, tcp_nodelay=False)
+        
+        
+
     prev_angx = 0
     prev_angy = 0
     prev_angt = time.time()
@@ -267,11 +338,12 @@ if __name__ == '__main__':
         mode_to_pub.mode = current_mode
         modepub.publish(mode_to_pub)
         errpub.publish(error)
+        mw_data = board.getData(MultiWii.ATTITUDE)
+        publishRos(board, imupub, markerpub)        
         
         if current_mode != 4:
             # angle compensation calculations
             try:
-                mw_data = board.getData(MultiWii.ATTITUDE)
                 new_angt = time.time()
                 new_angx = mw_data['angx']/180.0*np.pi
                 new_angy = mw_data['angy']/180.0*np.pi
@@ -292,6 +364,8 @@ if __name__ == '__main__':
                 prev_angx = new_angx
                 prev_angy = new_angy
                 prev_angt = new_angt
+
+
             except:
                 print "BOARD ERRORS!!!!!!!!!!!!!!"
                 print "BOARD ERRORS!!!!!!!!!!!!!!"
