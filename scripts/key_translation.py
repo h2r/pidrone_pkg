@@ -85,7 +85,7 @@ q:  quit
             elif ch == "j":
                 print "left"
                 mode.mode = 5
-                mode.x_velocity = -5
+                mode.x_velocity = -3
                 mode.y_velocity = 0
                 mode.z_velocity = 0
                 mode.yaw_velocity = 0
@@ -93,7 +93,7 @@ q:  quit
             elif ch == "l":
                 print "right"
                 mode.mode = 5
-                mode.x_velocity = 5
+                mode.x_velocity = 3
                 mode.y_velocity = 0
                 mode.z_velocity = 0
                 mode.yaw_velocity = 0
@@ -102,7 +102,7 @@ q:  quit
                 print "backward"
                 mode.mode = 5
                 mode.x_velocity = 0
-                mode.y_velocity = -5
+                mode.y_velocity = -3
                 mode.z_velocity = 0
                 mode.yaw_velocity = 0
                 modepub.publish(mode)
@@ -110,7 +110,7 @@ q:  quit
                 print "forward"
                 mode.mode = 5
                 mode.x_velocity = 0
-                mode.y_velocity = 5
+                mode.y_velocity = 3
                 mode.z_velocity = 0
                 mode.yaw_velocity = 0
                 modepub.publish(mode)
