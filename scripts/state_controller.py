@@ -5,6 +5,7 @@ from visualization_msgs.msg import Marker
 from pid_class import PID
 from geometry_msgs.msg import PoseStamped
 from sensor_msgs.msg import Range
+from std_msgs.msg import String
 import cv2
 import rospy
 import numpy as np
@@ -33,6 +34,7 @@ modepub = rospy.Publisher('/pidrone/mode', Mode, queue_size=1)
 flow_height_z = 0.000001
 reset_pid = True
 pid_is = [0,0,0,0]
+last_heartbeat = None
 
 cmd_velocity = [0, 0]
 cmd_yaw_velocity = 0
@@ -106,7 +108,11 @@ def hover():
     pass
 
 
-
+def shouldILand():
+    if rospy.Time.now() - last_heartbeat > rospy.Duration.from_sec(5):
+        return True
+    else:
+        return False
 
 import rospkg
 import yaml
@@ -203,6 +209,10 @@ def fly(velocity_cmd):
 
 def kill_throttle():
     pass
+
+def heartbeat_callback(msg):
+    global last_heartbeat
+    last_heartbeat = rospy.Time.now()
 
 def mode_callback(data):
     global pid, reset_pid, pid_is, set_z, initial_set_z
@@ -313,6 +323,8 @@ def ctrl_c_handler(signal, frame):
     print "Land Recieved"
     disarm()
 
+
+
 if __name__ == '__main__':
     global mw_angle_comp_x, mw_angle_comp_y, mw_angle_coeff, mw_angle_alt_scale
     global current_mode
@@ -322,13 +334,14 @@ if __name__ == '__main__':
     rospy.Subscriber("/pidrone/infrared", Range, ultra_callback)
     rospy.Subscriber("/pidrone/vrpn_pos", PoseStamped, vrpn_callback)
     rospy.Subscriber("/pidrone/set_mode_vel", Mode, mode_callback)
+    rospy.Subscriber("/pidrone/heartbeat", String, heartbeat_callback)
+    global last_heartbeat
+    last_heartbeat = rospy.Time.now()
     signal.signal(signal.SIGINT, ctrl_c_handler)
 
     imupub = rospy.Publisher('/pidrone/imu', Imu, queue_size=1, tcp_nodelay=False)
     markerpub = rospy.Publisher('/pidrone/imu_visualization_marker', Marker, queue_size=1, tcp_nodelay=False)
         
-        
-
     prev_angx = 0
     prev_angy = 0
     prev_angt = time.time()
@@ -366,6 +379,10 @@ if __name__ == '__main__':
                 prev_angt = new_angt
 
 
+                if shouldILand():
+                    print "Landing because a safety check failed."
+                    break
+
             except:
                 print "BOARD ERRORS!!!!!!!!!!!!!!"
                 print "BOARD ERRORS!!!!!!!!!!!!!!"
@@ -376,7 +393,6 @@ if __name__ == '__main__':
                 sys.exit()
                 board.close()
 
-        #print cmds
         board.sendCMD(8, MultiWii.SET_RAW_RC, cmds)
         board.receiveDataPacket()
         time.sleep(0.01)
@@ -385,3 +401,5 @@ if __name__ == '__main__':
     land()
     # board.disarm()
     sys.exit()
+
+
