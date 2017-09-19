@@ -5,7 +5,7 @@ Fall 2017
 
 pid_class.py
 '''
-import rospy
+
 import numpy as np
 
 ###############################################################################
@@ -22,8 +22,8 @@ import numpy as np
 # 	a command output. This is where your actual PID calculation will occur.
 #	- pv:		is a 'process variable'. In this case, it is the drone's z 
 #				position in meters
-#	- stamp:	A ros header message indicating the time at which pv was 
-#				was measured. 
+#	- t:		The time (in seconds) at which the process variable was 
+#				measured
 #	- return: 	Your output should be a value between 1100 and 1900. This is
 #				a PWM command, which will be sent to the SkyLine's throttle
 #				channel.
@@ -40,6 +40,7 @@ import numpy as np
 #				is trying to fly at
 ###############################################################################
 # YOUR CODE BELOW THIS LINE
+###############################################################################
 
 class PID():
 
@@ -48,7 +49,7 @@ class PID():
 		self.ki = ki
 		self.kd = kd
 
-	def step(self, pv, stamp):
+	def step(self, pv, t):
 		return 1100
 
 	def reset(self):
