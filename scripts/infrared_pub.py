@@ -34,7 +34,6 @@ def get_range():
     smoothed_distance = (1.0 - alpha) * smoothed_distance + alpha * distance
     smoothed_distance = min(smoothed_distance, 55.0)
 
-    print smoothed_distance, distance, (smoothed_distance - distance)
     return smoothed_distance
 
 if __name__ == "__main__":
@@ -48,5 +47,6 @@ if __name__ == "__main__":
         r = rospy.Rate(100)
         rnge.header.stamp = rospy.get_rostime()
         rnge.range = get_range()
+        print rnge
         pub.publish(rnge)
         r.sleep()
