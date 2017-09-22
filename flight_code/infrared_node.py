@@ -10,7 +10,6 @@ import rospy
 from sensor_msgs.msg import Range
 import Adafruit_ADS1x15
 
-
 ###############################################################################
 # YOUR CODE HERE
 ###############################################################################
@@ -39,7 +38,7 @@ def exp_smooth(raw_dist, prev_smooth_dist):
 # DO NOT EDIT BELOW THIS LINE
 ###############################################################################
 
-if __name__ == "__main__":
+def main():
     rospy.init_node("infrared_node")
     pub = rospy.Publisher('/pidrone/infrared', Range, queue_size=1)
     rnge = Range()
@@ -50,6 +49,7 @@ if __name__ == "__main__":
     r = rospy.Rate(100)
 
     prev_smooth_dist = None
+
     while not rospy.is_shutdown():
         voltage = adc.read_adc(0, gain=1)
         raw_dist = calc_distance(voltage)
@@ -62,3 +62,6 @@ if __name__ == "__main__":
         pub.publish(rnge)
 
         r.sleep()
+
+if __name__ == "__main__":
+    main()

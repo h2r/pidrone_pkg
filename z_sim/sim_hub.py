@@ -3,7 +3,7 @@ from pid_class import PID
 import matplotlib.pyplot as plt
 import time
 
-if __name__ == '__main__':
+def main():
     sim = DroneSim()
     pid = PID(60.,60.,100.)
     
@@ -28,3 +28,6 @@ if __name__ == '__main__':
 
     plt.plot(ts, ps)
     plt.show()
+
+if __name__ == '__main__':
+    main()
