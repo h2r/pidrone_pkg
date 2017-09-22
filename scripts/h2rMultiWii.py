@@ -204,7 +204,7 @@ class MultiWii:
         elif code == MultiWii.ANALOG:
             temp = struct.unpack('<'+'bHHH', data)
             self.analog['vbat'] = temp[0]
-            self.analog['intPowerMEterSum'] = temp[1]
+            self.analog['intPowerMeterSum'] = temp[1]
             self.analog['rssi'] = temp[2]
             self.analog['amperage'] = temp[3]
             self.analog['timestamp']= readTime

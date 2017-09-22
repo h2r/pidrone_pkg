@@ -1,7 +1,7 @@
 from sensor_msgs.msg import Imu
 import tf
 import math
-from visualization_msgs.msg import Marker
+from visualization_msgs.msg import Marker, MarkerArray
 from pid_class import PID
 from geometry_msgs.msg import PoseStamped
 from sensor_msgs.msg import Range
@@ -9,7 +9,7 @@ from std_msgs.msg import String
 import cv2
 import rospy
 import numpy as np
-from pidrone_pkg.msg import axes_err, Mode
+from pidrone_pkg.msg import axes_err, Mode, State
 from h2rMultiWii import MultiWii
 import time
 import sys
@@ -141,8 +141,11 @@ accZeroY = means["ay"] * accRawToMss
 accZeroZ = means["az"] * accRawToMss
 
 
-def publishRos(board, imupub, markerpub):
-
+def publishRos(board, imupub, markerpub, markerarraypub, statepub):
+    state = State()
+    state.vbat = board.analog['vbat']
+    state.amperage = board.analog['amperage']
+    statepub.publish(state)
     
     imu = Imu()
     marker = Marker()
@@ -377,7 +380,10 @@ if __name__ == '__main__':
 
     imupub = rospy.Publisher('/pidrone/imu', Imu, queue_size=1, tcp_nodelay=False)
     markerpub = rospy.Publisher('/pidrone/imu_visualization_marker', Marker, queue_size=1, tcp_nodelay=False)
-        
+    markerarraypub = rospy.Publisher('/pidrone/imu_visualization_marker_array', MarkerArray, queue_size=1, tcp_nodelay=False)
+    statepub = rospy.Publisher('/pidrone/state', State, queue_size=1, tcp_nodelay=False)
+
+    
     prev_angx = 0
     prev_angy = 0
     prev_angt = time.time()
@@ -400,7 +406,9 @@ if __name__ == '__main__':
         modepub.publish(mode_to_pub)
         errpub.publish(error)
         mw_data = board.getData(MultiWii.ATTITUDE)
-        publishRos(board, imupub, markerpub)        
+        analog_data = board.getData(MultiWii.ANALOG)
+
+        publishRos(board, imupub, markerpub, markerarraypub, statepub)        
         
         if current_mode != 4: # stefie10: ENUM ENUM ENUM!
             # angle compensation calculations
