@@ -14,7 +14,7 @@ def main():
     pid.reset()
     sim.step()
     sim.pos = 0.08
-    while sim.t < 100:
+    while sim.t < 10:
         sim.step()
         
         m = sim.measure_pos()
