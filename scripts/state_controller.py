@@ -143,7 +143,7 @@ accZeroZ = means["az"] * accRawToMss
 
 def publishRos(board, imupub, markerpub, markerarraypub, statepub):
     state = State()
-    state.vbat = board.analog['vbat']
+    state.vbat = board.analog['vbat'] * 0.10
     state.amperage = board.analog['amperage']
     statepub.publish(state)
     
