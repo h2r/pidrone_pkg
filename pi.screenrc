@@ -87,12 +87,12 @@ stuff "python key_translation.py"
 
 screen -t " rosbridge"
 stuff "source setup.sh"
-stuff "roslaunch rosbridge_server rosbridge_websocket.launch"
+stuff "sleep 10s && roslaunch rosbridge_server rosbridge_websocket.launch"
 
 
 screen -t " web_video_server"
 stuff "source setup.sh"
-stuff " rosrun web_video_server web_video_server"
+stuff " rosrun web_video_server web_video_server"
 
 
 
