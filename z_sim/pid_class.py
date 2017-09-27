@@ -11,7 +11,7 @@ import numpy as np
 ###############################################################################
 # This generic PID class will be used to control throttle in project 2, but in
 # future projects may be applied to control other axes on the drone. DO NOT
-# change the the function specifications. You will implement the following
+# change the the function specifications. You will implement the following:
 ###############################################################################
 # __init__()
 #   This function get's called once when your PID class is instantiated. Use
@@ -20,8 +20,8 @@ import numpy as np
 # step()
 #   This function will get called at each sensor update, and should return 
 #   a command output. This is where your actual PID calculation will occur.
-#   - pv:       is a 'process variable'. In this case, it is the drone's z 
-#               position in meters
+#   - e:        the error at time t. for example if the drone was 10cm below
+#               the setpoint, e would be 0.1
 #   - t:        The time (in seconds) at which the process variable was 
 #               measured
 #   - return:   Your output should be a value between 1100 and 1900. This is
@@ -33,11 +33,7 @@ import numpy as np
 #   to do any necessary preparation before step get's called. (HINT: what 
 #   happens if a lot of time elapses between calls to step? What happens
 #   if start flying with a nonzero integral term?)
-#
-# set_target()
-#   Sets the target (in meters) that the drone is trying to fly to
-#       - sp:   is the 'set point'. The position altitude that the drone
-#               is trying to fly at
+
 ###############################################################################
 # YOUR CODE BELOW THIS LINE
 ###############################################################################
@@ -53,24 +49,17 @@ class PID():
         self.max        = 1900
         self.min        = 1100      
 
-        self.sp = 0
-        self.p = 0
-        self.i = 0
-        self.d = 0
-        self.tt = 0 # old timestamp
-        self.ee = 0 # old error
-        self.re = True
+        self.reset()
 
-    def step(self, pv, t):
-        e = self.sp - pv
+
+    def step(self, e, t):
         dt = t - self.tt
-
+        e *= -1
         self.p = self.kp * e
         self.i += self.ki * e * dt
         self.d = self.kd * (e - self.ee) / dt 
         pwm = max(self.p,0) + self.i + self.d + self.midpoint
-        print self.p, self.i, self.d
-        
+        print pwm, self.p, self.i, self.d
         self.tt = t
         self.ee = e
 
@@ -81,7 +70,10 @@ class PID():
             return min(self.max, max(self.min, pwm))
 
     def reset(self):
+        self.p = 0
+        self.i = 0
+        self.d = 0
+        self.tt = 0 # old timestamp
+        self.ee = 0 # old error
         self.re = True
 
-    def set_target(self, sp):
-        self.sp = sp
