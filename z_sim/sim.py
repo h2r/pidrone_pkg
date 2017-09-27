@@ -1,26 +1,32 @@
 from time import time
 from pid_class import PID
-from numpy import sign
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.animation as animation
+import argparse
 
 class VerticalDrone:
-    def __init__(self, axes, histaxes):
+    def __init__(self, axes, histaxes, step_size=0, latency=0, drag_coeff=0, mass=460, sensor_noise=0):
         self.axes = axes
         self.histaxes = histaxes
         self.x = 0
-
-        self.setpoint = 0
-        self.drag_coeff = 0.05
+        self.xsp = 0
         self.g = -9.81
-        self.mass = 460
-        self.pid = PID(50.,40.,100.)
+        self.step_size = step_size/100.
+        self.latency = latency
+        self.drag_coeff = drag_coeff
+        self.mass = mass
+        self.sensor_noise = sensor_noise/100.
+        # TODO load in params from a yaml file
+        self.pid = PID(300, 40, 200)
         self.reset()
 
     def init_animation(self):
-        self.axes.plot([0], [0], 'x-', lw=2, c='red')
+        self.linesp, = self.axes.plot([], [], 'x-', lw=2, c='red')
         self.line, = self.axes.plot([], [], 'o-', lw=2)
         self.history, = self.histaxes.plot([0], [0], '-', lw=2)
         self.text = self.axes.text(0.05, 0.8, '', transform=self.axes.transAxes)
-        return self.line, self.text
+        return self.linesp, self.line, self.text
         
     def step(self, t):
         dt = t - self.lastt     # update time
@@ -31,14 +37,18 @@ class VerticalDrone:
         self.deriverror = self.lasterror - self.error
         self.lasterror = self.error
 
-        pwm = self.pid.step(self.error, t)     # calc forces
-        thrust = self.pwm_to_thrust(pwm)
-        drag = - sign(self.vz) * self.vz ** 2 * self.drag_coeff
+        noise = np.random.normal(scale=self.sensor_noise)
+        pwm = self.pid.step(self.error + noise, t)     # calc forces
 
+        self.latent_thrusts.append(self.pwm_to_thrust(pwm))
+        thrust = self.latent_thrusts.pop(0)
+        drag = - np.sign(self.vz) * self.vz ** 2 * self.drag_coeff
+        # TODO - add ground effect 
+        
         self.az = self.g + (drag + thrust) / self.mass    # update drone
         self.vz += + self.az * dt
         self.z += self.vz * dt
-        if self.z < 0:
+        if self.z <= 0:
             self.z = 0
             self.vz = 0
 
@@ -46,19 +56,20 @@ class VerticalDrone:
         t = time() - self.start
         self.step(t)
 
+        self.linesp.set_data([self.xsp], [self.setpoint])
         self.line.set_data([self.x], [self.z])
         self.text.set_text("z: %.3f\nvz: %.3f\naz: %.3f\nerror: %.3f\nintegrated error: %.3f\nderiv of error: %.3f" % 
                            (self.z, self.vz, self.az, self.error, self.interror, self.deriverror))
         self.times.append(t)
         self.errors.append(self.error)
         self.history.set_data(self.times, self.errors)
-        return self.line, self.text, self.history
+        return self.linesp, self.line, self.text, self.history
 
     def press(self, event):
         if event.key == 'up':
-            self.setpoint += 0.05
+            self.setpoint += self.step_size
         elif event.key == 'down':
-            if self.setpoint > 0: self.setpoint -= 0.05
+            if self.setpoint > 0: self.setpoint -= self.step_size
         elif event.key == 'r':
             self.reset()
 
@@ -67,15 +78,17 @@ class VerticalDrone:
         self.lastt = 0
         self.times = []
         self.errors = []
+        self.latent_thrusts = [1100] * self.latency
+        self.z = 0
         self.vz = 0
         self.az = 0
-        self.z = 1
+        self.setpoint = 0
         self.interror = 0
         self.lasterror = 0
         self.pid.reset()
 
     def pwm_to_thrust(self, pwm):
-        max_thrust = 10000. # max thrust in newtons
+        max_thrust = 420 * 4 * 9.81 # max thrust in newtons
         pwm_min = 1100.
         pwm_max = 1900.
         pwm = max(pwm_min, min(pwm, pwm_max))   # bound the pwm between 1100 and 1900
@@ -83,25 +96,44 @@ class VerticalDrone:
         return throttle_fraction * max_thrust
 
 def main():
+    parser = argparse.ArgumentParser(description='''
+        This PID simulator simulates gravity acting on a hovering drone.
+        Drag, latency, and sensor noise are disabled by default, but can be
+        enabled with the flags below.
 
-    import matplotlib.pyplot as plt
-    import matplotlib.animation as animation
+        For a more realistic simulation of taking off to 30cm try
+
+        python sim.py -l 2 -n 0.5 -d 0.02 -s 30
+        ''')
+    parser.add_argument('-s', '--step', type=int, default=1,
+        help='the size of a command step in centimeters')
+    parser.add_argument('-d', '--drag', type=float, default=0,
+        help='the amount of drag in the simulation')
+    parser.add_argument('-m', '--mass', type=int, default=450,
+        help='the mass of the simulated drone')
+    parser.add_argument('-n', '--noise', type=float, default=0)
+    parser.add_argument('-l', '--latency', type=int, default=0,
+        help='the number of timesteps of latency (in 40ms increments)')
+
+    args = parser.parse_args()
+
     fig = plt.figure()
 
-    
-    ax = fig.add_subplot(121, autoscale_on=False, xlim=(-10, 10), ylim=(-0, 2))
+    ax = fig.add_subplot(121, autoscale_on=False, xlim=(-10, 10), ylim=(-0, 1))
     plt.title("1D Drone")
-
-    ax2 = fig.add_subplot(122, autoscale_on=False, xlim=(0, 100), ylim=(-2, 2))
+    ax2 = fig.add_subplot(122, autoscale_on=False, xlim=(0, 100), ylim=(-1, 1))
     plt.title("Error history")
 
-    arm = VerticalDrone(ax, ax2)
+    sim = VerticalDrone(ax, ax2,
+        step_size=max(args.step, 0),
+        latency=max(args.latency, 0),
+        drag_coeff=max(args.drag, 0),
+        mass=max(args.mass, 0),
+        sensor_noise=max(args.noise, 0))
 
-    fig.canvas.mpl_connect('key_press_event', arm.press)
-
-    ani = animation.FuncAnimation(fig, arm.animate,
-                                  interval=25, blit=True, init_func=arm.init_animation)
-    print ani
+    fig.canvas.mpl_connect('key_press_event', sim.press)
+    ani = animation.FuncAnimation(fig, sim.animate,
+                                  interval=25, blit=True, init_func=sim.init_animation)
     plt.show()
 
 

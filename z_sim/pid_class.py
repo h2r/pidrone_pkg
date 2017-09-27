@@ -45,7 +45,7 @@ class PID():
         self.ki = ki
         self.kd = kd
 
-        self.midpoint   = 1400
+        self.midpoint   = 1300
         self.max        = 1900
         self.min        = 1100      
 
