@@ -1,5 +1,5 @@
 from time import time
-from pid_class import PID
+from student_pid_class import PID
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation

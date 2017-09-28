@@ -7,6 +7,7 @@ pid_class.py
 '''
 
 import numpy as np
+import sys
 
 ###############################################################################
 # This generic PID class will be used to control throttle in project 2, but in
@@ -38,14 +39,14 @@ import numpy as np
 # YOUR CODE BELOW THIS LINE
 ###############################################################################
 
-class PID():
+class student_PID():
 
     def __init__(self, kp, ki, kd):
         self.kp = kp
         self.ki = ki
         self.kd = kd
 
-        self.midpoint   = 1300
+        self.midpoint   = 1200
         self.max        = 1900
         self.min        = 1100      
 
@@ -59,21 +60,22 @@ class PID():
         self.i += self.ki * e * dt
         self.d = self.kd * (e - self.ee) / dt 
         pwm = max(self.p,0) + self.i + self.d + self.midpoint
-        print pwm, self.p, self.i, self.d
         self.tt = t
         self.ee = e
 
         if self.re:
             self.re = False
+            self.tt = t
             return 1100
         else: 
+            print self.p, self.i, self.d, e, dt, pwm
             return min(self.max, max(self.min, pwm))
 
     def reset(self):
-        self.p = 0
-        self.i = 0
-        self.d = 0
-        self.tt = 0 # old timestamp
-        self.ee = 0 # old error
+        self.p = 0.
+        self.i = 0.
+        self.d = 0.
+        self.tt = 0. # old timestamp
+        self.ee = 0. # old error
         self.re = True
 
