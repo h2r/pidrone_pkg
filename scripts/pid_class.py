@@ -170,8 +170,8 @@ class PID:
         self.sp = None
         self._t = None
         # steve005 presets
-        self.roll_low._i = 13.0
-        self.pitch_low._i = -2.0
+        self.roll_low._i = -10.0
+        self.pitch_low._i = 0.0
         #self.throttle_low._i = 220.0
         # safer presets
         #self.roll_low._i = 0.0
