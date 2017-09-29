@@ -1,12 +1,18 @@
 from time import time
-from student_pid_class import PID
+from pid_class import PID
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import argparse
 
+import yaml
+
+
+
 class VerticalDrone:
-    def __init__(self, axes, histaxes, step_size=0, latency=0, drag_coeff=0, mass=460, sensor_noise=0):
+    def __init__(self, axes, histaxes, pid_terms = [0,0,0,0], 
+        step_size=0, latency=0, drag_coeff=0, mass=460, sensor_noise=0):
+
         self.axes = axes
         self.histaxes = histaxes
         self.x = 0
@@ -18,7 +24,8 @@ class VerticalDrone:
         self.mass = mass
         self.sensor_noise = sensor_noise/100.
         # TODO load in params from a yaml file
-        self.pid = PID(300, 40, 200)
+        self.pid = PID(pid_terms[0], pid_terms[1], pid_terms[2], pid_terms[3])
+        self.start = time()
         self.reset()
 
     def init_animation(self):
@@ -74,8 +81,7 @@ class VerticalDrone:
             self.reset()
 
     def reset(self):
-        self.start = time()
-        self.lastt = 0
+        self.lastt = time() - self.start
         self.times = []
         self.errors = []
         self.latent_thrusts = [1100] * self.latency
@@ -101,21 +107,32 @@ def main():
         Drag, latency, and sensor noise are disabled by default, but can be
         enabled with the flags below.
 
-        For a more realistic simulation of taking off to 30cm try
-
+        For a more realistic sim of a snap-setpoint takeoff to 30cm try 
+        
         python sim.py -l 2 -n 0.5 -d 0.02 -s 30
         ''')
     parser.add_argument('-s', '--step', type=int, default=1,
         help='the size of a command step in centimeters')
     parser.add_argument('-d', '--drag', type=float, default=0,
         help='the amount of drag in the simulation')
-    parser.add_argument('-m', '--mass', type=int, default=450,
+    parser.add_argument('-m', '--mass', type=int, default=460,
         help='the mass of the simulated drone')
     parser.add_argument('-n', '--noise', type=float, default=0)
     parser.add_argument('-l', '--latency', type=int, default=0,
         help='the number of timesteps of latency (in 40ms increments)')
 
     args = parser.parse_args()
+
+    pid_terms = []
+    with open("../scripts/z_pid.yaml", 'r') as stream:
+        try:
+            yaml_data = yaml.safe_load(stream)
+            print yaml_data
+            pid_terms = [yaml_data['Kp'],yaml_data['Ki'],yaml_data['Kd'],yaml_data['K']]
+        except yaml.YAMLError as exc:
+            print exc
+            print 'Failed to load PID terms! Exiting.'
+            sys.exit(1)
 
     fig = plt.figure()
 
@@ -125,6 +142,7 @@ def main():
     plt.title("Error history")
 
     sim = VerticalDrone(ax, ax2,
+        pid_terms=pid_terms,
         step_size=max(args.step, 0),
         latency=max(args.latency, 0),
         drag_coeff=max(args.drag, 0),
