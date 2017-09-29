@@ -32,22 +32,22 @@ import numpy as np
 #   This function will be called each time before takeoff. Use this space
 #   to do any necessary preparation before step get's called. (HINT: what 
 #   happens if a lot of time elapses between calls to step? What happens
-#   if start flying with a nonzero integral term?)
+#   if we start flying with a nonzero integral term?)
 
 ###############################################################################
 # YOUR CODE BELOW THIS LINE
 ###############################################################################
 
-class student_PID():
+class PID():
 
-    def __init__(self, kp, ki, kd):
+    def __init__(self, kp, ki, kd, k):
         self.kp = kp
         self.ki = ki
         self.kd = kd
 
-        self.midpoint   = 1300
+        self.midpoint   = k
         self.max        = 1900
-        self.min        = 1100      
+        self.min        = 1100   
 
         self.reset()
 
