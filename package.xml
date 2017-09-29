@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <package>
-  <name>pidrone_pkg</name>
+  <name>pidrone_hover_pkg</name>
   <version>0.0.0</version>
   <description>The pidrone_pkg package</description>
 
