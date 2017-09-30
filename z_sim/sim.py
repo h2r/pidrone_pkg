@@ -23,7 +23,6 @@ class VerticalDrone:
         self.drag_coeff = drag_coeff
         self.mass = mass
         self.sensor_noise = sensor_noise/100.
-        # TODO load in params from a yaml file
         self.pid = PID(pid_terms[0], pid_terms[1], pid_terms[2], pid_terms[3])
         self.start = time()
         self.reset()

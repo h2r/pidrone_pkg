@@ -16,6 +16,8 @@ import time
 import sys
 import signal
 
+import yaml
+
 # stefie10: High-level comments: 1) Make a class 2) put everything
 # inside a main method and 3) no global variables.
 
@@ -51,8 +53,7 @@ mw_angle_coeff = 10.0
 flow_x_old = 0.0
 flow_y_old = 0.0
 
-# Student, modify this line to specify the terms for your pid
-throttle_pid = student_PID(300, 40, 200)
+throttle_pid = None
 
 def arm():
     global cmds
@@ -347,6 +348,20 @@ def ctrl_c_handler(signal, frame):
 
 
 if __name__ == '__main__':
+# Load YAML
+    pid_terms = []
+    with open("z_pid.yaml", 'r') as stream:
+        try:
+            yaml_data = yaml.safe_load(stream)
+            print yaml_data
+            pid_terms = [yaml_data['Kp'],yaml_data['Ki'],yaml_data['Kd'],yaml_data['K']]
+        except yaml.YAMLError as exc:
+            print exc
+            print 'Failed to load PID terms! Exiting.'
+            sys.exit(1)
+    global throttle_pid
+    throttle_pid = student_PID(pid_terms[0], pid_terms[1], pid_terms[2].  [pid_terms[3]])
+
     # stefie10: PUt all this code in a main() method.  The globals
     # should be fields in a class for the controller, as should all
     # the callbacks.
