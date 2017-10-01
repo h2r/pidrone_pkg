@@ -44,7 +44,7 @@ class VerticalDrone:
         self.deriverror = self.lasterror - self.error
         self.lasterror = self.error
 
-        noise = np.random.normal(scale=self.sensor_noise)
+        noise = np.random.normal(scale=self.sensor_noise) if self.sensor_noise > 0 else 0
         pwm = self.pid.step(self.error + noise, t)     # calc forces
 
         self.latent_thrusts.append(self.pwm_to_thrust(pwm))
