@@ -141,7 +141,7 @@ accZeroY = means["ay"] * accRawToMss
 accZeroZ = means["az"] * accRawToMss
 
 
-def publishRos(board, imupub, markerpub, markerarraypub, statepub, br):
+def publishRos(board, imupub, markerpub, markerarraypub, statepub):
     state = State()
     state.vbat = board.analog['vbat'] * 0.10
     state.amperage = board.analog['amperage']
@@ -406,7 +406,7 @@ if __name__ == '__main__':
         mw_data = board.getData(MultiWii.ATTITUDE)
         analog_data = board.getData(MultiWii.ANALOG)
 
-        publishRos(board, imupub, markerpub, markerarraypub, statepub, br)
+        publishRos(board, imupub, markerpub, markerarraypub, statepub)
         
         if current_mode != 4: # stefie10: ENUM ENUM ENUM!
             # angle compensation calculations

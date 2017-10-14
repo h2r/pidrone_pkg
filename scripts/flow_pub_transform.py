@@ -256,6 +256,7 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
                 print "no first", curr_time - self.last_first_time
             self.prev_img = curr_img
         prev_time = curr_time
+        #print "smoothed yaw: ", self.smoothed_yaw
         self.br.sendTransform((self.pos[0], self.pos[1], self.pos[2]),
                               tf.transformations.quaternion_from_euler(0, 0, self.smoothed_yaw),
                               rospy.Time.now(),
@@ -310,14 +311,14 @@ phase_analyzer = AnalyzePhase(camera)
 def range_callback(data):
     global phase_analyzer
     if data.range != -1:
-        phase_analyzer.z = data.range
+        phase_analyzer.z = data.range * 100
         phase_analyzer.pos[2] = data.range
 
 def reset_callback(data):
     global phase_analyzer
     print "Resetting Phase"
     phase_analyzer.first = True
-    phase_analyzer.pos = [0, 0]
+    phase_analyzer.pos = [0, 0, 0]
     phase_analyzer.fb_pid._i = 0
     phase_analyzer.lr_pid._i = 0
     phase_analyzer.target_x = 0

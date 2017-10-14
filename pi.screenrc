@@ -80,7 +80,7 @@ stuff "python joy_translation.py"
 screen -t " ros_stuff"
 stuff "source setup.sh"
 stuff "cd $(rospack find pidrone_pkg)/scripts/"
-stuff "python ros_stuff.py"
+stuff "python ros_stuff.py"
 
 
 
