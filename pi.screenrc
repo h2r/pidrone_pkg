@@ -77,10 +77,10 @@ stuff "cd $(rospack find pidrone_pkg)/scripts/"
 stuff "python joy_translation.py"
 
 
-screen -t " key_node"
+screen -t " ros_stuff"
 stuff "source setup.sh"
 stuff "cd $(rospack find pidrone_pkg)/scripts/"
-stuff "python key_translation.py"
+stuff "python ros_stuff.py"
 
 
 

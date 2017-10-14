@@ -61,6 +61,10 @@ def mode_callback(data):
         print "POSITION", phase_analyzer.target_x, phase_analyzer.target_y
 
 class AnalyzePhase(picamera.array.PiMotionAnalysis):
+    def __init__(self, camera):
+        picamera.array.PiMotionAnalysis.__init__(self, camera)
+        self.br = tf.TransformBroadcaster()
+
 
     def write(self, data):
         global first_counter
@@ -233,6 +237,9 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
                 self.pospub.publish(mode)
             else:
                 print "LOST"
+
+
+            
         else:
             #print "Not transforming"
             #curr_img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
@@ -247,6 +254,11 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
                 print "no first", curr_time - self.last_first_time
             self.prev_img = curr_img
         prev_time = curr_time
+        self.br.sendTransform((self.pos[0], self.pos[1], self.pos[2]),
+                              tf.transformations.quaternion_from_euler(0, 0, self.smoothed_yaw),
+                              rospy.Time.now(),
+                              "base",
+                              "world")
 
         
     def setup(self):
@@ -297,6 +309,7 @@ def range_callback(data):
     global phase_analyzer
     if data.range != -1:
         phase_analyzer.z = data.range
+        phase_analyzer.pos[2] = data.range
 
 def reset_callback(data):
     global phase_analyzer
@@ -316,10 +329,6 @@ def main():
     rospy.init_node('flow_pub')
     velpub= rospy.Publisher('/pidrone/plane_err', axes_err, queue_size=1)
 
-    rospy.Subscriber("/pidrone/set_mode", Mode, mode_callback)
-    rospy.Subscriber("/pidrone/reset_transform", Empty, reset_callback)
-    rospy.Subscriber("/pidrone/toggle_transform", Empty, toggle_callback)
-    rospy.Subscriber("/pidrone/infrared", Range, range_callback)
 
 
     image_pub = rospy.Publisher("/pidrone/picamera/image_raw", Image, queue_size=1, tcp_nodelay=False)
@@ -344,6 +353,12 @@ def main():
             camera.resolution = (320, 240)
             flow_analyzer.setup(camera.resolution)
             phase_analyzer.setup()
+
+            rospy.Subscriber("/pidrone/set_mode", Mode, mode_callback)
+            rospy.Subscriber("/pidrone/reset_transform", Empty, reset_callback)
+            rospy.Subscriber("/pidrone/toggle_transform", Empty, toggle_callback)
+            rospy.Subscriber("/pidrone/infrared", Range, range_callback)
+            
             camera.start_recording("/dev/null", format='h264', splitter_port=1, motion_output=flow_analyzer)
             print "Starting Flow"
             camera.start_recording(phase_analyzer, format='bgr', splitter_port=2)

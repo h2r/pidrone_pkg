@@ -141,7 +141,7 @@ accZeroY = means["ay"] * accRawToMss
 accZeroZ = means["az"] * accRawToMss
 
 
-def publishRos(board, imupub, markerpub, markerarraypub, statepub):
+def publishRos(board, imupub, markerpub, markerarraypub, statepub, br):
     state = State()
     state.vbat = board.analog['vbat'] * 0.10
     state.amperage = board.analog['amperage']
@@ -360,7 +360,6 @@ def ctrl_c_handler(signal, frame):
     disarm()
 
 
-
 if __name__ == '__main__':
     # stefie10: PUt all this code in a main() method.  The globals
     # should be fields in a class for the controller, as should all
@@ -374,8 +373,6 @@ if __name__ == '__main__':
     rospy.Subscriber("/pidrone/vrpn_pos", PoseStamped, vrpn_callback)
     rospy.Subscriber("/pidrone/set_mode_vel", Mode, mode_callback)
     rospy.Subscriber("/pidrone/heartbeat", String, heartbeat_callback)
-    br = tf.TransformBroadcaster()
-        
     global last_heartbeat
     last_heartbeat = rospy.Time.now()
     signal.signal(signal.SIGINT, ctrl_c_handler)
@@ -384,7 +381,6 @@ if __name__ == '__main__':
     markerpub = rospy.Publisher('/pidrone/imu_visualization_marker', Marker, queue_size=1, tcp_nodelay=False)
     markerarraypub = rospy.Publisher('/pidrone/imu_visualization_marker_array', MarkerArray, queue_size=1, tcp_nodelay=False)
     statepub = rospy.Publisher('/pidrone/state', State, queue_size=1, tcp_nodelay=False)
-
     
     prev_angx = 0
     prev_angy = 0
@@ -410,7 +406,7 @@ if __name__ == '__main__':
         mw_data = board.getData(MultiWii.ATTITUDE)
         analog_data = board.getData(MultiWii.ANALOG)
 
-        publishRos(board, imupub, markerpub, markerarraypub, statepub)        
+        publishRos(board, imupub, markerpub, markerarraypub, statepub, br)
         
         if current_mode != 4: # stefie10: ENUM ENUM ENUM!
             # angle compensation calculations

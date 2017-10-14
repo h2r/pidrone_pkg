@@ -22,7 +22,7 @@ def get_range():
 
     slew_distance = max( min( smoothed_distance, 50.0 ), 20.0)
     alpha = ( (slew_distance - 20.0) * alpha_50 + (50.0 - slew_distance) * alpha_20 ) / (50.0-20.0)
-    print alpha
+    #print alpha
     #alpha = 1. # TESTING FOR COMPARING ULTRA AND INFRA
 
     voltage = adc.read_adc(0, gain=GAIN)
@@ -36,17 +36,21 @@ def get_range():
 
     return smoothed_distance
 
-if __name__ == "__main__":
+def main():
     rospy.init_node("infrared_pub")
     pub = rospy.Publisher('/pidrone/infrared', Range, queue_size=1)
     rnge = Range()
     rnge.max_range = 100 * 0.01
     rnge.min_range = 0
     rnge.header.frame_id = "base"
+    r = rospy.Rate(60)
+    print "publishing IR"
     while not rospy.is_shutdown():
-        r = rospy.Rate(100)
         rnge.header.stamp = rospy.get_rostime()
+        rnge.header.frame_id = "ir_link"
         rnge.range = get_range() * 0.01
-        print rnge
         pub.publish(rnge)
         r.sleep()
+
+if __name__ == "__main__":
+    main()
