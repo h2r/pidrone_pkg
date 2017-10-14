@@ -40,13 +40,13 @@ if __name__ == "__main__":
     rospy.init_node("infrared_pub")
     pub = rospy.Publisher('/pidrone/infrared', Range, queue_size=1)
     rnge = Range()
-    rnge.max_range = 100
+    rnge.max_range = 100 * 0.01
     rnge.min_range = 0
-    rnge.header.frame_id = "world"
+    rnge.header.frame_id = "base"
     while not rospy.is_shutdown():
         r = rospy.Rate(100)
         rnge.header.stamp = rospy.get_rostime()
-        rnge.range = get_range()
+        rnge.range = get_range() * 0.01
         print rnge
         pub.publish(rnge)
         r.sleep()

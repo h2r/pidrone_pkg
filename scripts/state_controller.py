@@ -288,7 +288,7 @@ def ultra_callback(data):
     global cmd_yaw_velocity
     if data.range != -1:
         # scale ultrasonic reading to get z accounting for tilt of the drone
-        ultra_z = data.range * mw_angle_alt_scale
+        ultra_z = data.range * mw_angle_alt_scale * 100
         # XXX jgo experimental thrust  compensation, undoing and moving
         #ultra_z = data.range * mw_angle_alt_scale * mw_angle_alt_scale
         # XXX less experimental
@@ -374,6 +374,8 @@ if __name__ == '__main__':
     rospy.Subscriber("/pidrone/vrpn_pos", PoseStamped, vrpn_callback)
     rospy.Subscriber("/pidrone/set_mode_vel", Mode, mode_callback)
     rospy.Subscriber("/pidrone/heartbeat", String, heartbeat_callback)
+    br = tf.TransformBroadcaster()
+        
     global last_heartbeat
     last_heartbeat = rospy.Time.now()
     signal.signal(signal.SIGINT, ctrl_c_handler)
