@@ -1,0 +1,16 @@
+vx :            # left-right velocity
+    kp : 0
+    ki : 0
+    kd : 0
+    k  : 1500
+vy :            # front-back velocity    
+    kp : 0
+    ki : 0
+    kd : 0
+    k  : 1500
+z :             # altitude
+    kp : 0
+    ki : 0
+    kd : 0
+    k  : 1300
+    
