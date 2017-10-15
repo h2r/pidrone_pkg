@@ -177,7 +177,7 @@
       } else{
         irChart.data.datasets[1].data[count - 1] = 0;
       }
-      irChart.data.datasets[1].data[count] = 60;
+      irChart.data.datasets[1].data[count] = 0.6;
       count = count + 1;
       count = count % irChart.data.datasets[0].data.length;
       irChart.update();
@@ -295,7 +295,7 @@ var irChart = new Chart(ctx, {
                 ticks: {
                     beginAtZero:true,
                     min: 0,
-                    max: 60,
+                    max: 0.6,
                 }
             }],
             xAxes: [{
@@ -404,7 +404,7 @@ function publishTakeoff() {
 function publishTranslateLeft() {
   console.log("translate left");
   modeMsg.mode = 5
-  modeMsg.x_velocity = -10
+  modeMsg.x_velocity = -0.1
   modeMsg.y_velocity = 0
   modeMsg.z_velocity = 0
   modeMsg.yaw_velocity = 0
@@ -414,7 +414,7 @@ function publishTranslateLeft() {
 function publishTranslateRight() {
   console.log("translate right");
   modeMsg.mode = 5
-  modeMsg.x_velocity = 10
+  modeMsg.x_velocity = 0.1
   modeMsg.y_velocity = 0
   modeMsg.z_velocity = 0
   modeMsg.yaw_velocity = 0
@@ -425,7 +425,7 @@ function publishTranslateForward() {
   console.log("translate forward");
   modeMsg.mode = 5
   modeMsg.x_velocity = 0
-  modeMsg.y_velocity = 10
+  modeMsg.y_velocity = 0.1
   modeMsg.z_velocity = 0
   modeMsg.yaw_velocity = 0
   modepub.publish(modeMsg);
@@ -436,7 +436,7 @@ function publishTranslateBackward() {
   console.log("translate backward");
   modeMsg.mode = 5
   modeMsg.x_velocity = 0
-  modeMsg.y_velocity = -10
+  modeMsg.y_velocity = -0.1
   modeMsg.z_velocity = 0
   modeMsg.yaw_velocity = 0
   modepub.publish(modeMsg);
