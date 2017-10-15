@@ -103,6 +103,10 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
             self.prev_img = img
             self.prev_time = rospy.get_time()
             self.i += 1
+            image_message = self.bridge.cv2_to_imgmsg(img, encoding="bgr8")
+            self.first_image_pub.publish(image_message)
+
+            
         elif self.transforming:
             #curr_img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
             curr_img = img
@@ -334,6 +338,10 @@ def main():
 
 
 
+
+
+    first_image_pub = rospy.Publisher("/pidrone/picamera/first_image", Image, queue_size=1, latch=True)
+    
     image_pub = rospy.Publisher("/pidrone/picamera/image_raw", Image, queue_size=1, tcp_nodelay=False)
     #image_mono_pub = rospy.Publisher("/pidrone/picamera/image_mono",Image, queue_size=1, tcp_nodelay=False)
     camera_info_pub = rospy.Publisher("/pidrone/picamera/camera_info", CameraInfo, queue_size=1, tcp_nodelay=False)
@@ -352,16 +360,20 @@ def main():
     try:
         velocity = axes_err()
         bridge = CvBridge()
+        
         with AnalyzeFlow(camera) as flow_analyzer:
+            flow_analyzer.bridge = bridge
             camera.resolution = (320, 240)
             flow_analyzer.setup(camera.resolution)
             phase_analyzer.setup()
-
             rospy.Subscriber("/pidrone/set_mode", Mode, mode_callback)
             rospy.Subscriber("/pidrone/reset_transform", Empty, reset_callback)
             rospy.Subscriber("/pidrone/toggle_transform", Empty, toggle_callback)
             rospy.Subscriber("/pidrone/infrared", Range, range_callback)
-            
+            phase_analyzer.bridge = bridge
+            phase_analyzer.first_image_pub = first_image_pub
+
+
             camera.start_recording("/dev/null", format='h264', splitter_port=1, motion_output=flow_analyzer)
             print "Starting Flow"
             camera.start_recording(phase_analyzer, format='bgr', splitter_port=2)
