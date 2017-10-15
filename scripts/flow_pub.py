@@ -7,7 +7,7 @@ import time
 import sys
 from h2rMultiWii import MultiWii
 from picam_flow_class import AnalyzeFlow
-from pidrone_pkg.msg import axes_err
+from p3_pkg.msg import axes_err
 from cv_bridge import CvBridge, CvBridgeError
 from sensor_msgs.msg import Image
 

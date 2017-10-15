@@ -10,7 +10,7 @@ from std_msgs.msg import String
 import cv2
 import rospy
 import numpy as np
-from pidrone_pkg.msg import axes_err, Mode, State
+from p3_pkg.msg import axes_err, Mode, State
 from h2rMultiWii import MultiWii
 import time
 import sys
@@ -143,7 +143,7 @@ def shouldILand():
         return False
 
 rospack = rospkg.RosPack()
-path = rospack.get_path('pidrone_pkg')
+path = rospack.get_path('p3_pkg')
 f = open("%s/params/multiwii.yaml" % path)
 means = yaml.load(f)
 f.close()

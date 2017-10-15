@@ -7,7 +7,7 @@ import time
 import sys
 from h2rMultiWii import MultiWii
 from picam_flow import AnalyzeFlow
-from pidrone_pkg.msg import axes_err
+from p3_pkg.msg import axes_err
 
 if __name__ == '__main__':
     rospy.init_node('velocity_flight_flow')

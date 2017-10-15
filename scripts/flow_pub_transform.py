@@ -7,7 +7,7 @@ import time
 import sys
 from h2rMultiWii import MultiWii
 from picam_flow_class import AnalyzeFlow
-from pidrone_pkg.msg import axes_err, Mode, ERR
+from p3_pkg.msg import axes_err, Mode, ERR
 from cv_bridge import CvBridge, CvBridgeError
 from sensor_msgs.msg import Image, Range, CameraInfo
 from geometry_msgs.msg import PoseStamped, Point
@@ -327,7 +327,7 @@ def main():
     camera_info_pub = rospy.Publisher("/pidrone/picamera/camera_info", CameraInfo, queue_size=1, tcp_nodelay=False)
 
                                                                         
-    cim = camera_info_manager.CameraInfoManager("picamera", "package://pidrone_pkg/params/picamera.yaml")
+    cim = camera_info_manager.CameraInfoManager("picamera", "package://p3_pkg/params/picamera.yaml")
     cim.loadCameraInfo()
     if not cim.isCalibrated():
         rospy.logerr("warning, could not find calibration for the camera.")

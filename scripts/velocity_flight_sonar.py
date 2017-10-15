@@ -5,7 +5,7 @@ from h2rPiCam import streamPi
 import cv2
 import rospy
 import numpy as np
-from pidrone_pkg.msg import axes_err, Mode
+from p3_pkg.msg import axes_err, Mode
 from h2rMultiWii import MultiWii
 import time
 import sys

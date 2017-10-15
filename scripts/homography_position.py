@@ -1,6 +1,6 @@
 import cv2
 import numpy as np
-from pidrone_pkg.msg import Mode, ERR
+from p3_pkg.msg import Mode, ERR
 from geometry_msgs.msg import PoseStamped, Point
 from sensor_msgs.msg import Image, Range
 from std_msgs.msg import Empty

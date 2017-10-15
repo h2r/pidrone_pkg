@@ -101,7 +101,7 @@
     modepub = new ROSLIB.Topic({
       ros : ros,
       name : '/pidrone/set_mode',
-      messageType : 'pidrone_pkg/Mode'
+      messageType : 'p3_pkg/Mode'
     });
 
     modeMsg = new ROSLIB.Message({
@@ -144,7 +144,7 @@
     statesub = new ROSLIB.Topic({
       ros : ros,
       name : '/pidrone/state',
-      messageType : 'pidrone_pkg/State',
+      messageType : 'p3_pkg/State',
       queue_length : 2,
       throttle_rate : 2
     });

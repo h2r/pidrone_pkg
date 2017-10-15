@@ -1,5 +1,5 @@
 import rospy
-from pidrone_pkg.msg import Mode
+from p3_pkg.msg import Mode
 import getch
 import time
 

@@ -4,7 +4,7 @@ import picamera.array
 import cv2
 from h2rMultiWii import MultiWii
 import time
-from pidrone_pkg.msg import axes_err
+from p3_pkg.msg import axes_err
   
 # RASPBERRY PI?
 camera_matrix = np.array([[ 253.70549591,    0.,          162.39457585], 

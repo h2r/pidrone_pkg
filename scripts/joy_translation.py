@@ -1,5 +1,5 @@
 import rospy
-from pidrone_pkg.msg import Mode
+from p3_pkg.msg import Mode
 from sensor_msgs.msg import Joy
 from std_msgs.msg import Empty
 import numpy as np

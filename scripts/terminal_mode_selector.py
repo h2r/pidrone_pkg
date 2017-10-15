@@ -1,5 +1,5 @@
 import rospy
-from pidrone_pkg.msg import Mode
+from p3_pkg.msg import Mode
 
 if __name__ == '__main__':
     rospy.init_node('terminal_mode_selector')

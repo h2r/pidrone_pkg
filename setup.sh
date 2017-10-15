@@ -7,7 +7,6 @@
 # also set any other ROS environment variables here.
 
 source ../../devel/setup.bash
-export ROS_IP=192.168.42.1
-#export ROS_HOSTNAME=`hostname`
+export ROS_HOSTNAME=defaultdrone
 export PS1="\[\033[00;33m\][pidrone - ${ROS_MASTER_URI}]\[\033[00m\] $PS1"
 
