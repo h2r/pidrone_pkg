@@ -13,9 +13,9 @@ vy :            # front-back velocity
     max_pwm : 1600
     min_pwm : 1400
 z :             # altitude
-    kp : 0
-    ki : 0
-    kd : 0
+    kp : 300
+    ki : 30
+    kd : 40
     k  : 1300
     max_pwm : 1900
     min_pwm : 1100
