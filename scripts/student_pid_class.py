@@ -3,7 +3,7 @@ CS1951R - Introduction to Robotics
 Brown University
 Fall 2017
 
-pid_class.py
+student_pid_class.py
 '''
 
 import numpy as np
@@ -39,7 +39,7 @@ import numpy as np
 # YOUR CODE BELOW THIS LINE
 ###############################################################################
 
-class PID():
+class student_PID():
 
     def __init__(self, params):
     	self.kp = params["kp"]

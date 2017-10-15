@@ -3,6 +3,7 @@ import tf
 import math
 from visualization_msgs.msg import Marker, MarkerArray
 from pid_class import PID
+from student_pid_class import student_PID
 from geometry_msgs.msg import PoseStamped
 from sensor_msgs.msg import Range
 from std_msgs.msg import String
@@ -14,9 +15,20 @@ from h2rMultiWii import MultiWii
 import time
 import sys
 import signal
+import rospkg
+import yaml
 
 # stefie10: High-level comments: 1) Make a class 2) put everything
 # inside a main method and 3) no global variables.
+
+# Import yaml and pass to roll_pid, pitch_pid, and throttle_pid
+
+roll_stream = open("roll.yml", 'r')
+roll_yaml = yaml.load(roll_stream)
+pitch_stream = open("pitch.yml", 'r')
+pitch_yaml = yaml.load(pitch_stream)
+throttle_stream = open("throttle.yml", 'r')
+throttle_yaml = yaml.load(throttle_stream)
 
 landing_threshold = 9.
 initial_set_z = 30.0
@@ -26,6 +38,9 @@ smoothed_vel = np.array([0, 0, 0])
 alpha = 1.0
 ultra_z = 0
 pid = PID()
+roll_pid = student_PID(roll_yaml)
+pitch_pid = student_PID(pitch_yaml)
+throttle_pid = student_PID(throttle_yaml)
 first = True
 error = axes_err()
 cmds = [1500, 1500, 1500, 900]
@@ -127,8 +142,6 @@ def shouldILand():
     else:
         return False
 
-import rospkg
-import yaml
 rospack = rospkg.RosPack()
 path = rospack.get_path('pidrone_pkg')
 f = open("%s/params/multiwii.yaml" % path)
@@ -215,7 +228,6 @@ def fly(velocity_cmd):
     global initial_set_z
     global current_mode
     global set_vel_x, set_vel_y, set_z
-    global pid
     global cmd_velocity
     global cmd_yaw_velocity
     if current_mode == 1 or current_mode == 5 or current_mode == 2:
@@ -227,10 +239,6 @@ def fly(velocity_cmd):
             scalar = 1.
             cmd_velocity = [velocity_cmd.x_i, velocity_cmd.y_i]
             cmd_yaw_velocity = velocity_cmd.yaw_velocity
-            #print cmd_yaw_velocity, "hello"
-#           print velocity_cmd.x_i * scalar, velocity_cmd.y_i * scalar
-#           pid.roll._i += velocity_cmd.x_i * scalar
-#           pid.pitch._i += velocity_cmd.y_i * scalar
             if set_z + velocity_cmd.z_velocity > 0.0 and set_z + velocity_cmd.z_velocity < 49.0:
                 set_z += velocity_cmd.z_velocity
             print "set_z", set_z, "cmd.z_velocity", velocity_cmd.z_velocity
@@ -244,6 +252,7 @@ def heartbeat_callback(msg):
 
 def mode_callback(data):
     global pid, reset_pid, pid_is, set_z, initial_set_z
+    global roll_pid, pitch_pid, throttle_pid
     print 'GOT NEW MODE', data.mode
     # stefie10: PLEASE use enums here.  
     if data.mode == 0:
@@ -254,7 +263,9 @@ def mode_callback(data):
     elif data.mode == 2:
         if reset_pid:
             reset_pid = False
-            pid.reset()  
+            roll_pid.reset()
+            pitch_pid.reset()
+            throttle_pid.reset()
 # stefie10: John and I refactored this to a method, but we thought
 # that set_z should possibly also be inside the PID controller and it
 # calls reset just once.  Then you could simply call pid.reset() and
@@ -268,7 +279,9 @@ def mode_callback(data):
     elif data.mode == 5:        # STATIC FLIGHT
         if reset_pid:
             reset_pid = False
-            pid.reset()
+            roll_pid.reset()
+            pitch_pid.reset()
+            throttle_pid.reset()
             set_z = initial_set_z
         fly(data)
 #   elif data.mode == 6:        # DYNAMIC FLIGHT 
@@ -304,7 +317,11 @@ def ultra_callback(data):
                 else:
                     error.z.err = init_z - ultra_z + set_z
                     # print "setting cmds"
-                    cmds = pid.step(error, cmd_velocity, cmd_yaw_velocity)
+                    time = rospy.get_time()
+                    max_angle = 100
+                    cmds[0] = max(min(pitch_pid.step(error.x.err, time), 1500 + max_angle), 1500 - max_angle)
+                    cmds[1] = max(min(roll_pid.step(error.y.err, time), 1500 + max_angle), 1500 - max_angle)
+                    cmds[2] = throttle_pid.step(error.z.err, time)
         except Exception as e:
             land()
             raise
@@ -462,15 +479,6 @@ if __name__ == '__main__':
         time.sleep(0.01)
 
     print "Shutdown Recieved"
-    # stefie10: I think below is a straight-up bug, because it should
-    # just disarm after exiting.  This will only actually do anything
-    # if it is still looping, because after the drone shuts down, it
-    # won't send any more PID signals.
-    land()
-    # board.disarm()
-
-    # stefie10: No need to call sys.exit when returning from main, it
-    # will happen by itself, delete this line of code.
-    sys.exit()
+    board.disarm()
 
 

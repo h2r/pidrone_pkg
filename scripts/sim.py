@@ -1,5 +1,5 @@
 from time import time
-from student_pid_class import PID
+from student_pid_class import student_PID
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
@@ -23,7 +23,7 @@ class VerticalDrone:
         self.drag_coeff = drag_coeff
         self.mass = mass
         self.sensor_noise = sensor_noise/100.
-        self.pid = PID(pid_params)
+        self.pid = student_PID(pid_params)
         self.start = time()
         self.reset()
 
