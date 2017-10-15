@@ -23,7 +23,6 @@ from pid_class import PIDaxis
 import math
 import camera_info_manager
             
-
 keynumber = 5
 
 current_mode = 0
