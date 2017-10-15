@@ -20,8 +20,9 @@ alpha_20 = 0.2
 def get_range():
     global smoothed_distance
 
-    slew_distance = max( min( smoothed_distance, 50.0 ), 20.0)
-    alpha = ( (slew_distance - 20.0) * alpha_50 + (50.0 - slew_distance) * alpha_20 ) / (50.0-20.0)
+    slew_distance = max( min( smoothed_distance, 0.50 ), 0.20)
+    alpha = ( (slew_distance - 0.20) * alpha_50 + (0.50 - slew_distance) *
+    alpha_20 ) / (0.5-0.2)
     print alpha
     #alpha = 1. # TESTING FOR COMPARING ULTRA AND INFRA
 
@@ -30,9 +31,9 @@ def get_range():
     if voltage <= 0:
         voltage = 1
         print "ERROR: BAD VOLTAGE!!!"
-    distance = (1.0 / voltage) * m + b
+    distance = ((1.0 / voltage) * m + b)/100.
     smoothed_distance = (1.0 - alpha) * smoothed_distance + alpha * distance
-    smoothed_distance = min(smoothed_distance, 55.0)
+    smoothed_distance = min(smoothed_distance, 0.65)
 
     return smoothed_distance
 

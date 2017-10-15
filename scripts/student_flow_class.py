@@ -73,7 +73,7 @@ class AnalyzeFlow(picamera.array.PiMotionAnalysis):
     #     self.yaw_filter_x = self.z_filter_y
     #     self.yaw_filter_y = -1 * self.z_filter_x
 
-    def setup(self, camera_wh = (320,240), pub=None, flow_scale = 16.5):
+    def setup(self, camera_wh = (320,240), pub=None, flow_scale = 0.165):
         # self.get`yaw_filter(camera_wh)
         # self.ang_vx = 0
         # self.ang_vy = 0
@@ -84,8 +84,7 @@ class AnalyzeFlow(picamera.array.PiMotionAnalysis):
         # self.z_motion = 0
         # self.yaw_motion = 0
         self.max_flow = camera_wh[0] / 16.0 * camera_wh[1] / 16.0 * 2**7
-        self.norm_flow_to_cm = flow_scale # the conversion from flow units to cm
-        self.flow_coeff = self.norm_flow_to_cm/self.max_flow
+        self.flow_coeff = flow_scale/self.max_flow
         # self.pub = pub
         # self.alpha = 0.3
         # if self.pub is not None:
