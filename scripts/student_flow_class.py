@@ -10,17 +10,17 @@ from pidrone_pkg.msg import axes_err
 class AnalyzeFlow(picamera.array.PiMotionAnalysis):
 
     def analyse(self, a):
-        start = time.time()
+#       start = time.time()
         x = a['x']
         y = a['y']
-        sad = a['sad']
+#       sad = a['sad']
 
-        curr_time = time.time()
-        diff_time = curr_time - self.prev_time
-        self.prev_time = curr_time
+       #curr_time = time.time()
+       #diff_time = curr_time - self.prev_time
+       #self.prev_time = curr_time
         
         # IZZY - we don't use angle compensation here
-        self.x_motion = 0 - np.sum(x) * self.flow_coeff # + np.arctan(self.ang_vx * diff_time) * self.ang_coefficient
+        self.x_motion =  -np.sum(x) * self.flow_coeff # + np.arctan(self.ang_vx * diff_time) * self.ang_coefficient
         self.y_motion = np.sum(y) * self.flow_coeff # + np.arctan(self.ang_vy * diff_time) * self.ang_coefficient
         # IZZY - z and yaw are not needed either
         # self.z_motion = np.sum(np.multiply(x, self.z_filter_x)) + \
@@ -91,40 +91,40 @@ class AnalyzeFlow(picamera.array.PiMotionAnalysis):
         # if self.pub is not None:
         #     self.velocity = axes_err() 
 
-if __name__ == '__main__':
-    board = MultiWii("/dev/ttyACM0")
-    
-    with picamera.PiCamera(framerate=90) as camera:
-        with AnalyzeFlow(camera) as flow_analyzer:
-            rate = rospy.Rate(90)
-            camera.resolution = (320, 240)
-            flow_analyzer.setup(camera.resolution)
-            output = SplitFrames(width, height)
-            camera.start_recording('/dev/null', format='h264', motion_output=flow_analyzer)
-            
-            prev_angx = 0
-            prev_angy = 0
-            prev_time = time.time()
-            while not rospy.is_shutdown():
-                mw_data = board.getData(MultiWii.ATTITUDE)
-                curr_angx = mw_data['angx'] / 180.0 * np.pi
-                curr_angy = mw_data['angy'] / 180.0 * np.pi
-                curr_time = time.time()
-                flow_analyzer.set_angular_velocity(
-                        (curr_angx - prev_angx)/(curr_time - prev_time),
-                        (curr_angy - prev_angy)/(curr_time - prev_time))
-                prev_angx = curr_angx
-                prev_angy = curr_angy
-                prev_time = curr_time
-                camera.wait_recording(0)
-                if len(output.images) == 0:
-                    continue
-                ts, image = output.images[-1]
-                if ts == last_ts:
-                    continue
-                cv2.imshow('color', image)
-                cv2.waitKey(1)
-                rate.sleep()
-
-            camera.wait_recording(30)
-            camera.stop_recording()
+#if __name__ == '__main__':
+#    board = MultiWii("/dev/ttyACM0")
+#    
+#    with picamera.PiCamera(framerate=90) as camera:
+#        with AnalyzeFlow(camera) as flow_analyzer:
+#            rate = rospy.Rate(90)
+#            camera.resolution = (320, 240)
+#            flow_analyzer.setup(camera.resolution)
+#            output = SplitFrames(width, height)
+#            camera.start_recording('/dev/null', format='h264', motion_output=flow_analyzer)
+#            
+#            prev_angx = 0
+#            prev_angy = 0
+#            prev_time = time.time()
+#            while not rospy.is_shutdown():
+#                mw_data = board.getData(MultiWii.ATTITUDE)
+#                curr_angx = mw_data['angx'] / 180.0 * np.pi
+#                curr_angy = mw_data['angy'] / 180.0 * np.pi
+#                curr_time = time.time()
+#                flow_analyzer.set_angular_velocity(
+#                        (curr_angx - prev_angx)/(curr_time - prev_time),
+#                        (curr_angy - prev_angy)/(curr_time - prev_time))
+#                prev_angx = curr_angx
+#                prev_angy = curr_angy
+#                prev_time = curr_time
+#                camera.wait_recording(0)
+#                if len(output.images) == 0:
+#                    continue
+#                ts, image = output.images[-1]
+#                if ts == last_ts:
+#                    continue
+#                cv2.imshow('color', image)
+#                cv2.waitKey(1)
+#                rate.sleep()
+#
+#            camera.wait_recording(30)
+#            camera.stop_recording()

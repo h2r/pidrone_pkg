@@ -6,7 +6,7 @@ import rospy
 import time
 import sys
 from h2rMultiWii import MultiWii
-from picam_flow_class import AnalyzeFlow
+from student_flow_class import AnalyzeFlow
 from p3_pkg.msg import axes_err, Mode, ERR
 from cv_bridge import CvBridge, CvBridgeError
 from sensor_msgs.msg import Image, Range, CameraInfo
@@ -323,7 +323,6 @@ def main():
 
 
     image_pub = rospy.Publisher("/pidrone/picamera/image_raw", Image, queue_size=1, tcp_nodelay=False)
-    #image_mono_pub = rospy.Publisher("/pidrone/picamera/image_mono",Image, queue_size=1, tcp_nodelay=False)
     camera_info_pub = rospy.Publisher("/pidrone/picamera/camera_info", CameraInfo, queue_size=1, tcp_nodelay=False)
 
                                                                         
@@ -352,7 +351,7 @@ def main():
             while not rospy.is_shutdown():
                 velocity.x.err = flow_analyzer.x_motion 
                 velocity.y.err = flow_analyzer.y_motion
-                velocity.z.err = flow_analyzer.z_motion
+                # velocity.z.err = flow_analyzer.z_motion
                 camera.wait_recording(1/100.0)
                 velpub.publish(velocity)
 
