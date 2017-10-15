@@ -122,7 +122,7 @@ def main():
 
     args = parser.parse_args()
 
-    with open("pid_terms.yaml", 'r') as stream:
+    with open("pid_terms.yml", 'r') as stream:
         try:
             yaml_data = yaml.safe_load(stream)
             print yaml_data['z']

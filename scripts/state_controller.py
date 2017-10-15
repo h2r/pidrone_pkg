@@ -23,13 +23,17 @@ import yaml
 
 # Import yaml and pass to roll_pid, pitch_pid, and throttle_pid
 
-roll_stream = open("roll.yml", 'r')
-roll_yaml = yaml.load(roll_stream)
-pitch_stream = open("pitch.yml", 'r')
-pitch_yaml = yaml.load(pitch_stream)
-throttle_stream = open("throttle.yml", 'r')
-throttle_yaml = yaml.load(throttle_stream)
-
+with open("pid_terms.yml", 'r') as stream:
+    try:
+        yaml_data = yaml.safe_load(stream)
+        vx_yaml = yaml_data['vx']
+        vy_yaml = yaml_data['vy']
+        z_yaml = yaml_data['z']
+    except yaml.YAMLError as exc:
+        print exc
+        print 'Failed to load PID terms! Exiting.'
+        sys.exit(1)
+        
 landing_threshold = 9.
 initial_set_z = 30.0
 set_z = initial_set_z
@@ -38,9 +42,9 @@ smoothed_vel = np.array([0, 0, 0])
 alpha = 1.0
 ultra_z = 0
 pid = PID()
-roll_pid = student_PID(roll_yaml)
-pitch_pid = student_PID(pitch_yaml)
-throttle_pid = student_PID(throttle_yaml)
+roll_pid = student_PID(vx_yaml)
+pitch_pid = student_PID(vy_yaml)
+throttle_pid = student_PID(z_yaml)
 first = True
 error = axes_err()
 cmds = [1500, 1500, 1500, 900]
