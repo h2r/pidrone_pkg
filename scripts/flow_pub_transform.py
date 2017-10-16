@@ -81,7 +81,8 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
         img = np.reshape(np.fromstring(data, dtype=np.uint8), (240, 320, 3))
 #       cv2.imshow("img", img)
 #       cv2.waitKey(1)
-        curr_time = rospy.get_time()
+        curr_rostime = rospy.Time.now()
+        curr_time = curr_rostime.to_sec()
 
         shouldi_set_velocity = 1 #0
         if np.abs(curr_time - replan_last_reset) > replan_period:
@@ -100,7 +101,9 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
             cv2.imwrite("first_img" + str(self.i) + ".jpg", self.first_img)
             #self.prev_img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
             self.prev_img = img
-            self.prev_time = rospy.get_time()
+            self.prev_rostime = curr_rostime
+            self.prev_time = curr_time
+
             self.i += 1
             image_message = self.bridge.cv2_to_imgmsg(img, encoding="bgr8")
             self.first_image_pub.publish(image_message)
@@ -112,6 +115,10 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
             corr_first = cv2.estimateRigidTransform(self.first_img, curr_img, False)
             corr_int = cv2.estimateRigidTransform(self.prev_img, curr_img, False)
             self.prev_img = curr_img
+            self.prev_rostime = curr_rostime
+            self.prev_time = curr_time
+
+
             if corr_first is not None:
                 self.last_first_time = curr_time
                 if curr_time - self.last_first_time > 2:
@@ -121,10 +128,10 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
                 scalez = np.linalg.norm(corr_first[:, 1])
                 corr_first[:, 0] /= scalex
                 corr_first[:, 1] /= scalez
-                yaw_observed = math.atan2(corr_first[1, 0], corr_first[0, 0])
+                self.yaw_observed = math.atan2(corr_first[1, 0], corr_first[0, 0])
                 #print first_displacement, yaw_observed
                 #yaw = yaw_observed
-                self.smoothed_yaw = (1.0 - self.alpha_yaw) * self.smoothed_yaw + (self.alpha_yaw) * yaw_observed 
+                self.smoothed_yaw = (1.0 - self.alpha_yaw) * self.smoothed_yaw + (self.alpha_yaw) * self.yaw_observed 
                 yaw = self.smoothed_yaw
                 vel_average[0] = (1.0 - vel_alpha) * vel_average[0] + (vel_alpha) * self.pos[0]
                 # jgo XXX see what happens if we dont reset upon seeing first
@@ -258,10 +265,13 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
             else:
                 print "no first", curr_time - self.last_first_time
             self.prev_img = curr_img
+            self.prev_rostime = curr_rostime
+            self.prev_time = curr_time
+            
         prev_time = curr_time
         #print "smoothed yaw: ", self.smoothed_yaw
-        self.br.sendTransform((self.pos[0], self.pos[1], self.pos[2]),
-                              tf.transformations.quaternion_from_euler(0, 0, self.smoothed_yaw),
+        self.br.sendTransform((self.pos[0] * 0.01, self.pos[1] * 0.01, self.pos[2] * 0.01),
+                              tf.transformations.quaternion_from_euler(0, 0, self.yaw_observed),
                               rospy.Time.now(),
                               "base",
                               "world")
@@ -300,6 +310,7 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
         self.kpi_max_yaw = 0.01
         self.alpha_yaw = 0.1
         self.smoothed_yaw = 0.0
+        self.yaw_observed = 0.0
         self.iacc_yaw = 0.0
         self.transforming = False
         self.i = 0
@@ -315,7 +326,6 @@ def range_callback(data):
     global phase_analyzer
     if data.range != -1:
         phase_analyzer.z = data.range * 100
-        phase_analyzer.pos[2] = data.range
 
 def reset_callback(data):
     global phase_analyzer
@@ -378,6 +388,7 @@ def main():
             camera.start_recording(phase_analyzer, format='bgr', splitter_port=2)
             phase_started = True
             i = 0
+            last_time = None
             while not rospy.is_shutdown():
                 velocity.x.err = flow_analyzer.x_motion 
                 velocity.y.err = flow_analyzer.y_motion
@@ -386,9 +397,14 @@ def main():
                 velpub.publish(velocity)
 
 
-                if phase_analyzer.prev_img != None:
+                if phase_analyzer.prev_img != None and phase_analyzer.prev_time != last_time:
                     image_message = bridge.cv2_to_imgmsg(phase_analyzer.prev_img, encoding="bgr8")
+                    image_message.header.stamp = phase_analyzer.prev_rostime
+                    #print "stamp", image_message.header.stamp
+                    last_time = phase_analyzer.prev_rostime
                     image_pub.publish(image_message)
+                    
+
                     camera_info_pub.publish(cim.getCameraInfo())
                 
                 
