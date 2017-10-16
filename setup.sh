@@ -7,6 +7,6 @@
 # also set any other ROS environment variables here.
 
 source ../../devel/setup.bash
-export ROS_HOSTNAME=aaron-drone
+export ROS_HOSTNAME=leaf
 export PS1="\[\033[00;33m\][pidrone - ${ROS_MASTER_URI}]\[\033[00m\] $PS1"
 

@@ -3,7 +3,7 @@ import tf
 import math
 from visualization_msgs.msg import Marker, MarkerArray
 from pid_class import PID
-from student_pid_class import student_PID
+from solution_pid_class import student_PID
 from geometry_msgs.msg import PoseStamped
 from sensor_msgs.msg import Range
 from std_msgs.msg import String
@@ -35,9 +35,8 @@ with open("pid_terms.yml", 'r') as stream:
         sys.exit(1)
         
 landing_threshold = 9.
-initial_set_z = 30.0
+initial_set_z = 0.12
 set_z = initial_set_z
-init_z = 0
 smoothed_vel = np.array([0, 0, 0])
 alpha = 1.0
 ultra_z = 0
@@ -243,7 +242,7 @@ def fly(velocity_cmd):
             scalar = 1.
             cmd_velocity = [velocity_cmd.x_i, velocity_cmd.y_i]
             cmd_yaw_velocity = velocity_cmd.yaw_velocity
-            if set_z + velocity_cmd.z_velocity > 0.0 and set_z + velocity_cmd.z_velocity < 49.0:
+            if set_z + velocity_cmd.z_velocity > 0.0 and set_z + velocity_cmd.z_velocity < 0.5:
                 set_z += velocity_cmd.z_velocity
             print "set_z", set_z, "cmd.z_velocity", velocity_cmd.z_velocity
 
@@ -298,7 +297,6 @@ def ultra_callback(data):
     global ultra_z, flow_height_z
     global pid
     global first
-    global init_z
     global cmds
     global current_mode
     global cmd_velocity
@@ -316,43 +314,40 @@ def ultra_callback(data):
         try:
             if current_mode == 5 or current_mode == 3 or current_mode == 2:
                 if first:
-                    #init_z = ultra_z
                     first = False
                 else:
-                    error.z.err = init_z - ultra_z + set_z
+                    error.z.err = ultra_z - set_z
                     # print "setting cmds"
                     time = rospy.get_time()
                     max_angle = 100
                     cmds[0] = max(min(pitch_pid.step(error.x.err, time), 1500 + max_angle), 1500 - max_angle)
                     cmds[1] = max(min(roll_pid.step(error.y.err, time), 1500 + max_angle), 1500 - max_angle)
-                    cmds[2] = throttle_pid.step(error.z.err, time)
+                    cmds[3] = throttle_pid.step(error.z.err, time)
         except Exception as e:
             land()
             raise
 
-def vrpn_callback(data):
-    global ultra_z, flow_height_z
-    global pid
-    global first
-    global init_z
-    global cmds
-    global current_mode
-    # scale ultrasonic reading to get z accounting for tilt of the drone
-    ultra_z = data.pose.position.z
-    # print 'ultra_z', ultra_z
-    try:
-        if current_mode == 5:
-            if first:
-                #init_z = ultra_z
-                first = False
-            else:
-                error.z.err = init_z - ultra_z + set_z
-                # print "setting cmds"
-                cmds = pid.step(error)
-    except Exception as e:
-        land()
-        raise
-
+#def vrpn_callback(data):
+#    global ultra_z, flow_height_z
+#    global pid
+#    global first
+#    global cmds
+#    global current_mode
+#    # scale ultrasonic reading to get z accounting for tilt of the drone
+#    ultra_z = data.pose.position.z
+#    # print 'ultra_z', ultra_z
+#    try:
+#        if current_mode == 5:
+#            if first:
+#                first = False
+#            else:
+#                error.z.err = ultra_z - set_z
+#                # print "setting cmds"
+#                cmds = pid.step(error)
+#    except Exception as e:
+#        land()
+#        raise
+#
 # stefie10: as we discussed, these globals are UGH.  Make this a
 # method on a class, replace all the global calls with "self.error",
 # "self.mw_angle", etc.
@@ -392,7 +387,7 @@ if __name__ == '__main__':
     rospy.Subscriber("/pidrone/plane_err", axes_err, plane_callback)
     board = MultiWii("/dev/ttyUSB0")
     rospy.Subscriber("/pidrone/infrared", Range, ultra_callback)
-    rospy.Subscriber("/pidrone/vrpn_pos", PoseStamped, vrpn_callback)
+    #rospy.Subscriber("/pidrone/vrpn_pos", PoseStamped, vrpn_callback)
     rospy.Subscriber("/pidrone/set_mode_vel", Mode, mode_callback)
     rospy.Subscriber("/pidrone/heartbeat", String, heartbeat_callback)
     global last_heartbeat
@@ -478,6 +473,7 @@ if __name__ == '__main__':
                 # exit.
                 board.close()
 
+        print cmds
         board.sendCMD(8, MultiWii.SET_RAW_RC, cmds)
         board.receiveDataPacket()
         time.sleep(0.01)

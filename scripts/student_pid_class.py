@@ -46,10 +46,13 @@ class student_PID():
     	self.ki = params["kp"]
     	self.kd = params["kp"]
     	self.k = params["k"]
+        self.max_pwm = params["max_pwm"]
+        self.min_pwm= params["min_pwm"]
+        
         pass
 
     def step(self, e, t):
-        return 1100
+        return self.k
 
     def reset(self):
         pass

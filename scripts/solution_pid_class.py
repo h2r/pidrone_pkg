@@ -7,6 +7,7 @@ student_pid_class.py
 '''
 
 import numpy as np
+import rospy
 
 ###############################################################################
 # This generic PID class will be used to control throttle in project 2, but in
@@ -69,7 +70,7 @@ class student_PID():
         return max(self.min, min(self.max, u))
 
     def reset(self):
-        self.prev_t = 0
+        self.prev_t = rospy.get_time()
         self.int_e = 0
         self.old_e = 0
 

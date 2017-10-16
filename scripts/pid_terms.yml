@@ -1,21 +1,21 @@
 vx :            # left-right velocity
-    kp : 0
-    ki : 0
+    kp : 800
+    ki : 400
     kd : 0
     k  : 1500
     max_pwm : 1600
     min_pwm : 1400
 vy :            # front-back velocity    
-    kp : 0
-    ki : 0
+    kp : 800
+    ki : 400
     kd : 0
     k  : 1500
     max_pwm : 1600
     min_pwm : 1400
 z :             # altitude
-    kp : -150
-    ki : -40
-    kd : -170
+    kp : -100
+    ki : -22
+    kd : -100
     k  : 1300
     max_pwm : 1900
     min_pwm : 1100
