@@ -31,14 +31,48 @@ def calc_distance(voltage):
 # Implement exponentional moving average smoothing. The return from this
 # function will be passed in again the next time it is called
 
-def exp_smooth(raw_dist, prev_smooth_dist):
-    return raw_dist
+def exp_smooth(raw_dist, prev_smooth_dist, alpha):
+    return raw_dist * alpha + prev_smooth_dist * (1.-alpha)
 
 ###############################################################################
-# DO NOT EDIT BELOW THIS LINE
+# YOUR CODE ABOVE
 ###############################################################################
 
 def main():
+    rospy.init_node("infrared_node")
+    r = rospy.Rate(100)
+    adc = Adafruit_ADS1x15.ADS1115()
+    
+
+    ###############################################################################
+    # YOUR CODE HERE
+    ###############################################################################
+    alpha = 0.3 # feel free to adjust the amount of smoothing
+
+    # (1) initialize a publisher that publishes a Range message to the topic
+    # '/pidrone/infrared' with a queue_size of 1
+
+    # (2) instantiate a Range message which you will update and publish in the while
+    # loop below. Set the header.frame_id to 'world'
+
+    prev_smooth_dist = None
+    while not rospy.is_shutdown():
+        voltage = adc.read_adc(0, gain=1)
+        raw_dist = calc_distance(voltage) # you implemented this above
+
+        if prev_smooth_dist is None: prev_smooth_dist = raw_dist
+        smooth_dist = exp_smooth(raw_dist, prev_smooth_dist, alpha) # this one too!
+        prev_smooth_dist = smooth_dist
+
+        # (3) set the timestamp on the Range message using get_rostime. Set the
+        # Range to your smoothed distance estimate. Publish the message!
+
+    ###############################################################################
+    # YOUR CODE ABOVE
+    ###############################################################################
+        r.sleep()
+
+
     rospy.init_node("infrared_node")
     pub = rospy.Publisher('/pidrone/infrared', Range, queue_size=1)
     rnge = Range()
@@ -46,6 +80,7 @@ def main():
     rnge.min_range = 0.08
     rnge.header.frame_id = "world"
     adc = Adafruit_ADS1x15.ADS1115()
+    alpha = 0.3
     r = rospy.Rate(100)
 
     prev_smooth_dist = None
@@ -54,7 +89,7 @@ def main():
         voltage = adc.read_adc(0, gain=1)
         raw_dist = calc_distance(voltage)
         if prev_smooth_dist is None: prev_smooth_dist = raw_dist
-        smooth_dist = exp_smooth(raw_dist, prev_smooth_dist)
+        smooth_dist = exp_smooth(raw_dist, prev_smooth_dist, alpha)
         prev_smooth_dist = smooth_dist
 
         rnge.header.stamp = rospy.get_rostime()
