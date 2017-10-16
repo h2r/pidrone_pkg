@@ -314,7 +314,10 @@ def toggle_callback(data):
 
 def main():
     rospy.init_node('flow_pub')
+
+## TODO: Setup your velocity publisher here
     velpub= rospy.Publisher('/pidrone/plane_err', axes_err, queue_size=1)
+## END
 
     rospy.Subscriber("/pidrone/set_mode", Mode, mode_callback)
     rospy.Subscriber("/pidrone/reset_transform", Empty, reset_callback)
@@ -337,11 +340,12 @@ def main():
     global camera
     global phase_analyzer
     try:
-        velocity = axes_err()
         bridge = CvBridge()
-        with AnalyzeFlow(camera) as flow_analyzer:
+        with AnalyzeFlow(camera) as flow_analyzer: # Your flow analyzer is instantiated in this line
             camera.resolution = (320, 240)
+## TODO: Setup your flow analyzer here
             flow_analyzer.setup(camera.resolution)
+## END
             phase_analyzer.setup()
             camera.start_recording("/dev/null", format='h264', splitter_port=1, motion_output=flow_analyzer)
             print "Starting Flow"
@@ -349,11 +353,15 @@ def main():
             phase_started = True
             i = 0
             while not rospy.is_shutdown():
+## TODO: Extract the motion vectors from your flow_analyzer and put them in the velocity message to be published
+                velocity = axes_err() # Do we want this to be already done?
                 velocity.x.err = flow_analyzer.x_motion 
                 velocity.y.err = flow_analyzer.y_motion
-                # velocity.z.err = flow_analyzer.z_motion
-                camera.wait_recording(1/100.0)
+## END
+                camera.wait_recording(1/100.0) # This line needed to use the camera
+## TODO: Publish the velocity
                 velpub.publish(velocity)
+## END
 
 
                 if phase_analyzer.prev_img != None:

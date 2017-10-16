@@ -69,7 +69,7 @@ stuff "python flow_pub_transform.py"
 screen -t " infrared"
 stuff "source setup.sh"
 stuff "cd $(rospack find p3_pkg)/scripts/"
-stuff "python infrared_pub.py"
+stuff "python student_infrared_pub.py"
 
 screen -t " joy_node"
 stuff "source setup.sh"
