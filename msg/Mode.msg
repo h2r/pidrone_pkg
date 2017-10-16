@@ -1,4 +1,8 @@
-float32 mode
+uint8 MODE_ARM=0
+uint8 MODE_DISARM=4
+uint8 MODE_FLY=5
+
+uint8 mode
 float32 x_velocity
 float32 y_velocity
 float32 z_velocity
