@@ -31,37 +31,49 @@ def calc_distance(voltage):
 # Implement exponentional moving average smoothing. The return from this
 # function will be passed in again the next time it is called
 
-def exp_smooth(raw_dist, prev_smooth_dist):
+def exp_smooth(raw_dist, prev_smooth_dist, alpha):
     return raw_dist
 
 ###############################################################################
-# DO NOT EDIT BELOW THIS LINE
+# YOUR CODE ABOVE
 ###############################################################################
 
 def main():
     rospy.init_node("infrared_node")
-    pub = rospy.Publisher('/pidrone/infrared', Range, queue_size=1)
-    rnge = Range()
-    rnge.max_range = 0.55
-    rnge.min_range = 0.08
-    rnge.header.frame_id = "world"
-    adc = Adafruit_ADS1x15.ADS1115()
     r = rospy.Rate(100)
+    adc = Adafruit_ADS1x15.ADS1115()
+    
+
+    ###############################################################################
+    # YOUR CODE HERE
+    ###############################################################################
+    alpha = 0.3 # feel free to adjust the amount of smoothing
+
+    # (1) initialize a publisher that publishes a Range message to the topic
+    # '/pidrone/infrared' with a queue_size of 1
+
+    # (2) instantiate a Range message which you will update and publish in the while
+    # loop below. 
 
     prev_smooth_dist = None
-
     while not rospy.is_shutdown():
         voltage = adc.read_adc(0, gain=1)
-        raw_dist = calc_distance(voltage)
+        raw_dist = calc_distance(voltage) # you implemented this above
+
         if prev_smooth_dist is None: prev_smooth_dist = raw_dist
-        smooth_dist = exp_smooth(raw_dist, prev_smooth_dist)
+        smooth_dist = exp_smooth(raw_dist, prev_smooth_dist, alpha) # this one too!
         prev_smooth_dist = smooth_dist
 
-        rnge.header.stamp = rospy.get_rostime()
-        rnge.Range = smooth_dist
-        pub.publish(rnge)
+        # (3) set the timestamp on the Range message using get_rostime. Set the
+        # Range to your smoothed distance estimate. 
 
+        # (4)Publish the message!
+
+    ###############################################################################
+    # YOUR CODE ABOVE
+    ###############################################################################
         r.sleep()
+
 
 if __name__ == "__main__":
     main()
