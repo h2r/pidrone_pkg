@@ -40,7 +40,6 @@ set_z = initial_set_z
 smoothed_vel = np.array([0, 0, 0])
 alpha = 1.0
 ultra_z = 0
-pid = PID()
 roll_pid = student_PID(vx_yaml)
 pitch_pid = student_PID(vy_yaml)
 throttle_pid = student_PID(z_yaml)
@@ -256,7 +255,7 @@ def heartbeat_callback(msg):
     last_heartbeat = rospy.Time.now()
 
 def mode_callback(data):
-    global pid, reset_pid, pid_is, set_z, initial_set_z
+    global reset_pid, pid_is, set_z, initial_set_z
     global roll_pid, pitch_pid, throttle_pid
     print 'GOT NEW MODE', data.mode
     # stefie10: PLEASE use enums here.  
@@ -297,7 +296,6 @@ def mode_callback(data):
 
 def ultra_callback(data):
     global ultra_z, flow_height_z
-    global pid
     global first
     global cmds
     global current_mode
@@ -309,7 +307,6 @@ def ultra_callback(data):
         # XXX jgo experimental thrust  compensation, undoing and moving
         #ultra_z = data.range * mw_angle_alt_scale * mw_angle_alt_scale
         # XXX less experimental
-        pid.throttle.mw_angle_alt_scale = mw_angle_alt_scale
         
         #print mw_angle_alt_scale, data.range, ultra_z # jgo
         # print 'ultra_z', ultra_z
