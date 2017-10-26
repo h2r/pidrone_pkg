@@ -2,9 +2,8 @@ from sensor_msgs.msg import Imu
 import tf
 import math
 from visualization_msgs.msg import Marker, MarkerArray
-from pid_class import PID
 from student_flow_class import flow_angle_comp
-from solution_pid_class import student_PID
+from student_pid_class import student_PID
 from geometry_msgs.msg import PoseStamped
 from sensor_msgs.msg import Range
 from std_msgs.msg import String
@@ -398,8 +397,7 @@ if __name__ == '__main__':
     rospy.Subscriber("/pidrone/plane_err", axes_err, plane_callback)
     board = MultiWii("/dev/ttyUSB0")
     rospy.Subscriber("/pidrone/infrared", Range, ultra_callback)
-    #rospy.Subscriber("/pidrone/vrpn_pos", PoseStamped, vrpn_callback)
-    rospy.Subscriber("/pidrone/set_mode_vel", Mode, mode_callback)
+    rospy.Subscriber("/pidrone/set_mode", Mode, mode_callback)
     rospy.Subscriber("/pidrone/heartbeat", String, heartbeat_callback)
     global last_heartbeat
     last_heartbeat = rospy.Time.now()

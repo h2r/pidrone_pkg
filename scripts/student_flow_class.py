@@ -9,18 +9,20 @@ from pidrone_pkg.msg import axes_err
 
 class AnalyzeFlow(picamera.array.PiMotionAnalysis):
 
+# Please fill in this function to get the average x and y velocity. Make sure
+# that you output your final velocity estimates in the self.x_motion and
+# self.y_motion variables. These are accessed from outside your program
     def analyse(self, a):
         x = a['x']
         y = a['y']
-        self.x_motion =  -np.sum(x) * self.flow_coeff # + np.arctan(self.ang_vx * diff_time) * self.ang_coefficient
-        self.y_motion = np.sum(y) * self.flow_coeff # + np.arctan(self.ang_vy * diff_time) * self.ang_coefficient
+        self.x_motion =
+        self.y_motion =
 
+# Please fill in this setup function with the parameters you need to initialize.
+# Make sure that you initialize self.x_motion, self.y_motion, and any other
+# parameters you may need. Note that flow_scale is a scale factor that you can
+# divide your flow estimates by in order to normalize them. Note that you will
+# also need to figure out the conversion factor (a scalar) that you need to
+# multiply your normalized flow vectors by in order to convert the scale to
+# centimeters
     def setup(self, camera_wh = (320,240), pub=None, flow_scale = 0.165):
-        self.x_motion = 0
-        self.y_motion = 0
-        self.max_flow = camera_wh[0] / 16.0 * camera_wh[1] / 16.0 * 2**7
-        self.norm_flow_to_cm = flow_scale # the conversion from flow units to cm
-        self.flow_coeff = self.norm_flow_to_cm/self.max_flow
-
-def flow_angle_comp(raw_flow_x, raw_flow_y, d_theta_x_dt, d_theta_y_dt):
-    return (0,0)
