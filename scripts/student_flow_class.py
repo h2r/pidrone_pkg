@@ -28,5 +28,6 @@ class AnalyzeFlow(picamera.array.PiMotionAnalysis):
     def setup(self, camera_wh = (320,240), pub=None, flow_scale = 0.165):
         pass
 
-    def flow_angle_comp(raw_flow_x, raw_flow_y, d_theta_x_dt, d_theta_y_dt):
-        return (0,0) 
+
+def flow_angle_comp(raw_flow_x, raw_flow_y, d_theta_x_dt, d_theta_y_dt):
+    return (0,0) 
