@@ -34,6 +34,7 @@ with open("pid_terms.yml", 'r') as stream:
         print 'Failed to load PID terms! Exiting.'
         sys.exit(1)
         
+rospy.init_node('state_controller')
 landing_threshold = 9.
 initial_set_z = 0.12
 set_z = initial_set_z
@@ -383,7 +384,6 @@ if __name__ == '__main__':
     # the callbacks.
     global mw_angle_comp_x, mw_angle_comp_y, mw_angle_coeff, mw_angle_alt_scale
     global current_mode
-    rospy.init_node('state_controller')
     rospy.Subscriber("/pidrone/plane_err", axes_err, plane_callback)
     board = MultiWii("/dev/ttyUSB0")
     rospy.Subscriber("/pidrone/infrared", Range, ultra_callback)
