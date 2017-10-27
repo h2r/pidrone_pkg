@@ -358,7 +358,7 @@ def main():
                 velocity.x.err = flow_analyzer.x_motion 
                 velocity.y.err = flow_analyzer.y_motion
 ## END
-                camera.wait_recording(1/100.0) # This line needed to use the camera
+                camera.wait_recording(0.01) # This line needed to use the camera
 ## TODO: Publish the velocity
                 velpub.publish(velocity)
 ## END

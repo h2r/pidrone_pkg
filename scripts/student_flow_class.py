@@ -15,8 +15,9 @@ class AnalyzeFlow(picamera.array.PiMotionAnalysis):
     def analyse(self, a):
         x = a['x']
         y = a['y']
-        self.x_motion = np.sum(x) * self.flow_scale
-        self.y_motion = np.sum(y) * self.flow_scale
+        self.x_motion = self.alpha * (-np.sum(x) * self.flow_scale) + (1. - self.alpha) * self.x_motion
+        self.y_motion = self.alpha * (np.sum(y) * self.flow_scale) + (1. - self.alpha) * self.y_motion
+        
 
 # Please fill in this setup function with the parameters you need to initialize.
 # Make sure that you initialize self.x_motion, self.y_motion, and any other
@@ -26,12 +27,16 @@ class AnalyzeFlow(picamera.array.PiMotionAnalysis):
 # multiply your normalized flow vectors by in order to convert the scale to
 # centimeters
     def setup(self, camera_wh = (320,240), pub=None, flow_scale = 0.165):
-        self.flow_scale = 0.0004296875
+        self.flow_scale = 0.00004
         self.x_motion = 0
         self.y_motion = 0
-
+        self.old_smooth_x = 0
+        self.old_smooth_y = 0
+        self.alpha = 0.3
 
 def flow_angle_comp(raw_flow_x, raw_flow_y, d_theta_x_dt, d_theta_y_dt):
-    flow_x = raw_flow_x - np.tan(d_theta_x_dt) * 0.001
-    flow_y = raw_flow_y + np.tan(d_theta_y_dt) * 0.001
+    #print np.sign(raw_flow_x) ,np.sign(np.tan(d_theta_x_dt)) ,np.sign(raw_flow_y), np.sign(np.tan(d_theta_y_dt)) 
+    
+    flow_x = raw_flow_x - np.tan(d_theta_x_dt) * 0.008
+    flow_y = raw_flow_y - np.tan(d_theta_y_dt) * 0.008
     return flow_x, flow_y
