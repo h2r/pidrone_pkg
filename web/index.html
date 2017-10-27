@@ -404,7 +404,7 @@ function publishTakeoff() {
 function publishTranslateLeft() {
   console.log("translate left");
   modeMsg.mode = 5
-  modeMsg.x_velocity = -0.1
+  modeMsg.x_velocity = -0.05
   modeMsg.y_velocity = 0
   modeMsg.z_velocity = 0
   modeMsg.yaw_velocity = 0
@@ -414,7 +414,7 @@ function publishTranslateLeft() {
 function publishTranslateRight() {
   console.log("translate right");
   modeMsg.mode = 5
-  modeMsg.x_velocity = 0.1
+  modeMsg.x_velocity = 0.05
   modeMsg.y_velocity = 0
   modeMsg.z_velocity = 0
   modeMsg.yaw_velocity = 0
@@ -425,7 +425,7 @@ function publishTranslateForward() {
   console.log("translate forward");
   modeMsg.mode = 5
   modeMsg.x_velocity = 0
-  modeMsg.y_velocity = 0.1
+  modeMsg.y_velocity = 0.05
   modeMsg.z_velocity = 0
   modeMsg.yaw_velocity = 0
   modepub.publish(modeMsg);
@@ -436,7 +436,7 @@ function publishTranslateBackward() {
   console.log("translate backward");
   modeMsg.mode = 5
   modeMsg.x_velocity = 0
-  modeMsg.y_velocity = -0.1
+  modeMsg.y_velocity = -0.05
   modeMsg.z_velocity = 0
   modeMsg.yaw_velocity = 0
   modepub.publish(modeMsg);
