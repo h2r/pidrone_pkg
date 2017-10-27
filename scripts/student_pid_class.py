@@ -52,42 +52,7 @@ class student_PID():
         pass
 
     def step(self, e, t):
-        dt = t - self.prev_t
-        self.prev_t = t
-
-        de = (e - self.old_e)/dt
-        self.old_e = e
-
-        self.int_e += e * dt
-
-        self.p = self.kp * e
-        self.i = self.ki * self.int_e
-        self.d = self.kd * de
-        print self.i
-        u = self.p + self.i + self.d + self.k
-
-        return max(self.min, min(self.max, u))
+        pass
 
     def reset(self):
-        self.prev_t = rospy.get_time()
-        self.int_e = 0
-        self.old_e = 0
-
-#class student_PID():
-#
-#    def __init__(self, params):
-#    	self.kp = params["kp"]
-#    	self.ki = params["kp"]
-#    	self.kd = params["kp"]
-#    	self.k = params["k"]
-#        self.max_pwm = params["max_pwm"]
-#        self.min_pwm= params["min_pwm"]
-#        
-#        pass
-#
-#    def step(self, e, t):
-#        return self.k
-#
-#    def reset(self):
-#        pass
-#
+        pass
