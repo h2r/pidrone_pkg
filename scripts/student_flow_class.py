@@ -13,6 +13,7 @@ class AnalyzeFlow(picamera.array.PiMotionAnalysis):
 # that you output your final velocity estimates in the self.x_motion and
 # self.y_motion variables. These are accessed from outside your program
     def analyse(self, a):
+        self.a = a
         x = a['x']
         y = a['y']
         self.x_motion = self.alpha * (-np.sum(x) * self.flow_scale) + (1. - self.alpha) * self.x_motion
@@ -27,6 +28,7 @@ class AnalyzeFlow(picamera.array.PiMotionAnalysis):
 # multiply your normalized flow vectors by in order to convert the scale to
 # centimeters
     def setup(self, camera_wh = (320,240), pub=None, flow_scale = 0.165):
+        self.a = None
         self.flow_scale = 0.00004
         self.x_motion = 0
         self.y_motion = 0

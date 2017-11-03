@@ -324,7 +324,7 @@ def main():
     rospy.Subscriber("/pidrone/toggle_transform", Empty, toggle_callback)
     rospy.Subscriber("/pidrone/infrared", Range, range_callback)
 
-
+    flowvis_pub = rospy.Publisher("/pidrone/picamera/flow_vis", Image, queue_size=1, tcp_nodelay=False)
     image_pub = rospy.Publisher("/pidrone/picamera/image_raw", Image, queue_size=1, tcp_nodelay=False)
     camera_info_pub = rospy.Publisher("/pidrone/picamera/camera_info", CameraInfo, queue_size=1, tcp_nodelay=False)
 
@@ -363,7 +363,13 @@ def main():
                 velpub.publish(velocity)
 ## END
 
-
+                if flow_analyzer.a is not None:
+                    r = np.array(flow_analyzer.a['x'])
+                    g = np.zeros(r.shape)
+                    b = np.array(flow_analyzer.a['y'])
+                    raw_flow_vis = (np.dstack([r,g,b])/64 * 254).astype(np.uint8)
+                    image_message = bridge.cv2_to_imgmsg(raw_flow_vis, encoding="bgr8")
+                    flowvis_pub.publish(image_message)
                 if phase_analyzer.prev_img != None:
                     image_message = bridge.cv2_to_imgmsg(phase_analyzer.prev_img, encoding="bgr8")
                     image_pub.publish(image_message)
