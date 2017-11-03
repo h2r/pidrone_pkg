@@ -25,7 +25,8 @@ class AnalyzeFlow(picamera.array.PiMotionAnalysis):
         curr_time = time.time()
         diff_time = curr_time - self.prev_time
         self.prev_time = curr_time
-        
+        print self.flow_coeff
+
         self.x_motion = 0 - np.sum(x) * self.flow_coeff + np.arctan(self.ang_vx * diff_time) * self.ang_coefficient
         self.y_motion = np.sum(y) * self.flow_coeff  + np.arctan(self.ang_vy * diff_time) * self.ang_coefficient
         self.z_motion = np.sum(np.multiply(x, self.z_filter_x)) + \
