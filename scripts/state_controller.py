@@ -437,7 +437,7 @@ if __name__ == '__main__':
             try:
                 # stefie10: Put this code inside of a method or several methods. 
 
-                new_angt = time.time()
+                new_angt = rospy.get_time()
                 new_angx = mw_data['angx']/180.0*np.pi
                 new_angy = mw_data['angy']/180.0*np.pi
 
@@ -470,7 +470,8 @@ if __name__ == '__main__':
                     print "Landing because a safety check failed."
                     break
 
-            except:
+            except Exception as e:
+                print e
                 print "BOARD ERRORS!!!!!!!!!!!!!!"
                 print "BOARD ERRORS!!!!!!!!!!!!!!"
                 print "BOARD ERRORS!!!!!!!!!!!!!!"
@@ -485,7 +486,7 @@ if __name__ == '__main__':
                 # exit.
                 board.close()
 
-        print cmds
+        #print cmds
         board.sendCMD(8, MultiWii.SET_RAW_RC, cmds)
         board.receiveDataPacket()
         time.sleep(0.01)

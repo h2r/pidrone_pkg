@@ -15,8 +15,9 @@ class AnalyzeFlow(picamera.array.PiMotionAnalysis):
     def analyse(self, a):
         x = a['x']
         y = a['y']
-        self.x_motion = np.sum(x) * self.flow_scale
-        self.y_motion = np.sum(y) * self.flow_scale
+        self.x_motion = 0
+        self.y_motion = 0
+        
 
 # Please fill in this setup function with the parameters you need to initialize.
 # Make sure that you initialize self.x_motion, self.y_motion, and any other
@@ -30,5 +31,9 @@ class AnalyzeFlow(picamera.array.PiMotionAnalysis):
         self.x_motion = 0
         self.y_motion = 0
 
+# Please fill in this function. This will be called in order to get rid of the
+# portion of your flow that is due to rotation of the drone.
 def flow_angle_comp(raw_flow_x, raw_flow_y, d_theta_x_dt, d_theta_y_dt):
-    return (0,0) 
+    flow_x = 0
+    flow_y = 0
+    return flow_x, flow_y
