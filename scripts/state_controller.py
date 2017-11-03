@@ -4,6 +4,7 @@ import math
 from visualization_msgs.msg import Marker, MarkerArray
 from student_flow_class import flow_angle_comp
 from student_pid_class import student_PID
+from pid_class import PID
 from geometry_msgs.msg import PoseStamped
 from sensor_msgs.msg import Range
 from std_msgs.msg import String
@@ -329,7 +330,6 @@ def ultra_callback(data):
 
 #def vrpn_callback(data):
 #    global ultra_z, flow_height_z
-#    global pid
 #    global first
 #    global cmds
 #    global current_mode

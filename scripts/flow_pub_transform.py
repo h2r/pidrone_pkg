@@ -315,8 +315,8 @@ def toggle_callback(data):
 def main():
     rospy.init_node('flow_pub')
 
-## TODO: Setup your velocity publisher here
-    velpub= rospy.Publisher('/pidrone/plane_err', axes_err, queue_size=1)
+## TODO: Setup your velocity publisher here on the topic "/pidrone/plane_err"
+
 ## END
 
     rospy.Subscriber("/pidrone/set_mode", Mode, mode_callback)
@@ -344,7 +344,7 @@ def main():
         with AnalyzeFlow(camera) as flow_analyzer: # Your flow analyzer is instantiated in this line
             camera.resolution = (320, 240)
 ## TODO: Setup your flow analyzer here
-            flow_analyzer.setup(camera.resolution)
+
 ## END
             phase_analyzer.setup()
             camera.start_recording("/dev/null", format='h264', splitter_port=1, motion_output=flow_analyzer)
@@ -354,13 +354,13 @@ def main():
             i = 0
             while not rospy.is_shutdown():
 ## TODO: Extract the motion vectors from your flow_analyzer and put them in the velocity message to be published
-                velocity = axes_err() # Do we want this to be already done?
-                velocity.x.err = flow_analyzer.x_motion 
-                velocity.y.err = flow_analyzer.y_motion
+                velocity = axes_err()
+                velocity.x.err = ...
+                velocity.y.err = ...
 ## END
                 camera.wait_recording(0.01) # This line needed to use the camera
 ## TODO: Publish the velocity
-                velpub.publish(velocity)
+
 ## END
 
                 if flow_analyzer.a is not None:
