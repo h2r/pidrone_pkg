@@ -230,7 +230,8 @@
 
   function imageStream() {
     var image = document.getElementById('cameraImage');
-    image.src = "http://" + document.getElementById('hostname').value + ":8080/stream?topic=/pidrone/picamera/image_raw&quality=70";
+    image.src = "http://" + document.getElementById('hostname').value + ":8080/stream?topic=/pidrone/picamera/flow_vis&quality=70";
+    // image.src = "http://" + document.getElementById('hostname').value + ":8080/stream?topic=/pidrone/picamera/image_raw&quality=70";
   }
 
   function markerUpdate() {
