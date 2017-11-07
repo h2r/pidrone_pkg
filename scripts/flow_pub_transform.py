@@ -31,22 +31,12 @@ keynumber = 5
 
 
 
-def mode_callback(data):
-    global phase_analyzer
-    if not phase_analyzer.transforming or data.mode == 4 or data.mode == 3:
-        print "VELOCITY"
-        phase_analyzer.pospub.publish(data)
-    else:
-        phase_analyzer.target_x = data.x_velocity * 4.
-        phase_analyzer.target_y = -data.y_velocity * 4.
-        print "POSITION", phase_analyzer.target_x, phase_analyzer.target_y
 
 class AnalyzePhase(picamera.array.PiMotionAnalysis):
 
     def write(self, data):
         img = np.reshape(np.fromstring(data, dtype=np.uint8), (240, 320, 3))
-        curr_time = rospy.get_time()
-
+        curr_time = rospy.get_time() 
         shouldi_set_velocity = 1
         if np.abs(curr_time - self.replan_last_reset) > self.replan_period:
             self.replan_last_reset = curr_time
@@ -243,6 +233,15 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
         else:
             print "Position is now off"
 
+    def mode_callback(self, data):
+        if not self.transforming or data.mode == 4 or data.mode == 3:
+            print "VELOCITY"
+            self.pospub.publish(data)
+        else:
+            self.target_x = data.x_velocity * 4.
+            self.target_y = -data.y_velocity * 4.
+            print "POSITION", self.target_x, self.target_y
+
 def main():
     rospy.init_node('flow_pub')
     velpub= rospy.Publisher('/pidrone/plane_err', axes_err, queue_size=1)
@@ -250,7 +249,7 @@ def main():
     camera = picamera.PiCamera(framerate=90)
     phase_analyzer = AnalyzePhase(camera)
 
-    rospy.Subscriber("/pidrone/set_mode", Mode, mode_callback)
+    rospy.Subscriber("/pidrone/set_mode", Mode, phase_analyzer.mode_callback)
     rospy.Subscriber("/pidrone/reset_transform", Empty, phase_analyzer.reset_callback)
     rospy.Subscriber("/pidrone/toggle_transform", Empty, phase_analyzer.toggle_callback)
     rospy.Subscriber("/pidrone/infrared", Range, phase_analyzer.range_callback)
