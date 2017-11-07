@@ -270,16 +270,7 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
         #self.fb_pid = PIDaxis(-0.0500, -0.0010, -0.04, midpoint=0, control_range=(-15., 15.))
         #self.lr_pid = PIDaxis(0.05, 0., 0.001, midpoint=0, control_range=(-15., 15.))
         #self.fb_pid = PIDaxis(-0.05, 0., -0.001, midpoint=0, control_range=(-15., 15.))
-        self.index_params = dict(algorithm = 6, table_number = 6,
-                                key_size = 12, multi_probe_level = 1)
-        self.search_params = dict(checks = 50)
-        self.min_match_count = 10
-        self.camera_matrix = np.array([[ 250.0, 0., 160.0], 
-                                    [ 0., 250.0, 120.0], 
-                                    [   0., 0., 1.]])
         self.z = 7.5
-        self.est_RT = np.identity(4)
-        self.threshold = 0.5
         self.kp_yaw = 100.0
         self.ki_yaw = 0.1
         self.kpi_yaw = 20.0
@@ -293,37 +284,38 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
         self.target_x = 0
         self.target_y = 0
 
-camera = picamera.PiCamera(framerate=90)
-# camera = picamera.PiCamera(framerate=40, sensor_mode=4)
-phase_analyzer = AnalyzePhase(camera)
 
-def range_callback(data):
-    global phase_analyzer
-    if data.range != -1:
-        phase_analyzer.z = data.range
+    def range_callback(self, data):
+        if data.range != -1:
+            self.z = data.range
 
-def reset_callback(data):
-    global phase_analyzer
-    print "Resetting Phase"
-    phase_analyzer.first = True
-    phase_analyzer.pos = [0, 0]
-    phase_analyzer.fb_pid._i = 0
-    phase_analyzer.lr_pid._i = 0
-    phase_analyzer.target_x = 0
-    phase_analyzer.target_y = 0
+    def reset_callback(self, data):
+        print "Resetting Phase"
+        self.first = True
+        self.pos = [0, 0]
+        self.fb_pid._i = 0
+        self.lr_pid._i = 0
+        self.target_x = 0
+        self.target_y = 0
 
-def toggle_callback(data):
-    global phase_analyzer
-    phase_analyzer.transforming = not phase_analyzer.transforming
+    def toggle_callback(self, data):
+        self.transforming = not self.transforming
+        if self.transforming:
+            print "Position is now on"
+        else:
+            print "Position is now off"
 
 def main():
     rospy.init_node('flow_pub')
     velpub= rospy.Publisher('/pidrone/plane_err', axes_err, queue_size=1)
 
+    camera = picamera.PiCamera(framerate=90)
+    phase_analyzer = AnalyzePhase(camera)
+
     rospy.Subscriber("/pidrone/set_mode", Mode, mode_callback)
-    rospy.Subscriber("/pidrone/reset_transform", Empty, reset_callback)
-    rospy.Subscriber("/pidrone/toggle_transform", Empty, toggle_callback)
-    rospy.Subscriber("/pidrone/infrared", Range, range_callback)
+    rospy.Subscriber("/pidrone/reset_transform", Empty, phase_analyzer.reset_callback)
+    rospy.Subscriber("/pidrone/toggle_transform", Empty, phase_analyzer.toggle_callback)
+    rospy.Subscriber("/pidrone/infrared", Range, phase_analyzer.range_callback)
 
 
 
@@ -343,8 +335,6 @@ def main():
     
     global current_mode
     global phase_started
-    global camera
-    global phase_analyzer
     try:
         velocity = axes_err()
         bridge = CvBridge()
