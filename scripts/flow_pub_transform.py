@@ -74,7 +74,7 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
 #
 #
 #                # XXX
-#                cvc_vel = 1.00
+#                control_coeff = 1.00
 #
 #                self.replan_vel_x = mode.x_i * self.replan_scale / max(self.replan_until_deadline, 0.1)
 #                self.replan_vel_y = mode.y_i * self.replan_scale / max(self.replan_until_deadline, 0.1)
@@ -82,8 +82,8 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
 #                self.replan_vel_y = min(self.replan_vel_y, 1.0)
 #                # XXX coast if first frame found but still do PID update to
 #                # integrate!
-#                mode.x_velocity = cvc_vel * mode.x_i 
-#                mode.y_velocity = cvc_vel * mode.y_i 
+#                mode.x_velocity = control_coeff * mode.x_i 
+#                mode.y_velocity = control_coeff * mode.y_i 
                 self.step_pos_controller(corr_first, True, 1.0)            
                 yaw_observed = math.atan2(corr_first[1, 0], corr_first[0, 0])
                 self.smoothed_yaw = (1.0 - self.alpha_yaw) * self.smoothed_yaw + (self.alpha_yaw) * yaw_observed 
@@ -121,13 +121,13 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
 #                    mode.y_i += self.fb_pid.step(self.fb_err.err, self.prev_time - self.curr_time)
 #                    # jgo XXX LOLOL constant velocity controller 
 #                    self.first_counter = 0
-#                    cvc_vel = 3.0
+#                    control_coeff = 3.0
 #                    self.replan_vel_x = mode.x_i * self.replan_scale / max(self.replan_until_deadline, 0.1)
 #                    self.replan_vel_y = mode.y_i * self.replan_scale / max(self.replan_until_deadline, 0.1)
 #                    self.replan_vel_x = min(self.replan_vel_x, 1.0)
 #                    self.replan_vel_y = min(self.replan_vel_y, 1.0)
-#                    mode.x_velocity = cvc_vel * mode.x_i 
-#                    mode.y_velocity = cvc_vel * mode.y_i 
+#                    mode.x_velocity = control_coeff * mode.x_i 
+#                    mode.y_velocity = control_coeff * mode.y_i 
                     # yaw i term only
 
                     self.step_pos_controller(corr_int, False, 3.0)            
@@ -160,7 +160,7 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
         self.prev_time = None
         self.pospub = rospy.Publisher('/pidrone/set_mode_vel', Mode, queue_size=1)
         self.pos = [0, 0, 0]
-        self.lr_pid = PIDaxis(0.0500, -0.00000, 0.000, midpoint=0, control_range=(-10.0, 10.0))
+        self.lr_pid = PIDaxis(0.0500, -0.0000, 0.000, midpoint=0, control_range=(-10.0, 10.0))
         self.fb_pid = PIDaxis(-0.0500, 0.0000, -0.000, midpoint=0, control_range=(-10.0, 10.0))
         self.z = 7.5
         self.kp_yaw = 100.0
@@ -181,7 +181,7 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
         self.mode = Mode()
         self.hybrid_alpha = 0.1
 
-    def step_pos_controller(self, est_transform, first_frame_bool, cvc_vel):
+    def step_pos_controller(self, est_transform, first_frame_bool, control_coeff):
         first_displacement = [est_transform[0, 2] / 320., est_transform[1, 2] / 240.]
         scalex = np.linalg.norm(est_transform[:, 0])
         scalez = np.linalg.norm(est_transform[:, 1])
@@ -202,8 +202,8 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
         self.mode.mode = 5
         self.mode.x_i += self.lr_pid.step(self.lr_err.err, self.prev_time - self.curr_time)
         self.mode.y_i += self.fb_pid.step(self.fb_err.err, self.prev_time - self.curr_time)
-        self.mode.x_velocity = cvc_vel * self.mode.x_i 
-        self.mode.y_velocity = cvc_vel * self.mode.y_i 
+        self.mode.x_velocity = control_coeff * self.mode.x_i 
+        self.mode.y_velocity = control_coeff * self.mode.y_i 
 
 
     def range_callback(self, data):
