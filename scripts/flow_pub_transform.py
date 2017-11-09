@@ -47,20 +47,22 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
             corr_first = cv2.estimateRigidTransform(self.first_img, curr_img, False)
             if corr_first is not None:
                 self.last_first_time = self.curr_time
-                self.step_pos_controller(corr_first, True, 1.0)            
+                self.step_pos_controller(corr_first, True, 1.5)            
                 yaw_observed = math.atan2(corr_first[1, 0], corr_first[0, 0])
                 self.smoothed_yaw = (1.0 - self.alpha_yaw) * self.smoothed_yaw + (self.alpha_yaw) * yaw_observed 
                 yaw = self.smoothed_yaw
                 self.iacc_yaw += yaw * self.ki_yaw
-
-                yaw_kpi_term = np.sign(yaw) * np.min(yaw * yaw * self.kpi_yaw, self.kpi_max_yaw)
-                self.iacc_yaw += yaw_kpi_term
+                self.first_counter+=1
+                self.max_first_counter = max(self.max_first_counter,self.first_counter)
+                #yaw_kpi_term = np.sign(yaw) * np.min(yaw * yaw * self.kpi_yaw, self.kpi_max_yaw)
+                #self.iacc_yaw += yaw_kpi_term
                 self.mode.yaw_velocity = yaw * self.kp_yaw + self.iacc_yaw
                 print "yaw iacc: ", self.iacc_yaw, "kp_yaw: ", self.kp_yaw * yaw
                 
                 self.pospub.publish(self.mode)
-                # print "first", self.max_first_counter, self.first_counter
+                print "first", self.max_first_counter, self.first_counter
             else:
+                self.first_counter = 0
                 # integration if we failed to find the first frame
                 corr_int = cv2.estimateRigidTransform(self.prev_img, curr_img, False)
                 if corr_int is not None:
@@ -69,7 +71,7 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
                     print "self.max_first_counter: ", self.max_first_counter
                     # yaw i term only
 
-                    self.step_pos_controller(corr_int, False, 3.0)            
+                    self.step_pos_controller(corr_int, False, 1.5)            
                     yaw = math.atan2(corr_int[1, 0], corr_int[0, 0])
                     self.mode.yaw_velocity = self.iacc_yaw
                     print "yaw iacc: ", self.iacc_yaw
