@@ -47,43 +47,6 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
             corr_first = cv2.estimateRigidTransform(self.first_img, curr_img, False)
             if corr_first is not None:
                 self.last_first_time = self.curr_time
-                if self.curr_time - self.last_first_time > 2:
-                    self.first = True
-#                first_displacement = [corr_first[0, 2] / 320., corr_first[1, 2] / 240.]
-#                scalex = np.linalg.norm(corr_first[:, 0])
-#                scalez = np.linalg.norm(corr_first[:, 1])
-#                corr_first[:, 0] /= scalex
-#                corr_first[:, 1] /= scalez
-#                self.vel_average[0] = (1.0 - self.vel_alpha) * self.vel_average[0] + (self.vel_alpha) * self.pos[0]
-#                # jgo XXX see what happens if we use alpha blending 
-#                self.hybrid_alpha = 0.1 # needs to be between 0 and 1.0
-#                self.pos = [(self.hybrid_alpha) * first_displacement[0] * self.z + (1.0 - self.hybrid_alpha) * self.pos[0], (self.hybrid_alpha) * first_displacement[1] * self.z / 240. + (1.0 - self.hybrid_alpha) * self.pos[1], yaw]
-#                self.vel_average[0] = (1.0 - self.vel_alpha) * self.vel_average[0] + (self.vel_alpha) * self.pos[0]
-#                self.vel_average[1] = (1.0 - self.vel_alpha) * self.vel_average[1] + (self.vel_alpha) * self.pos[1]
-#                self.vel_average_time = (1.0 - self.vel_alpha) * self.vel_average_time + (self.vel_alpha) * self.curr_time
-#                self.lr_err.err = self.pos[0] + self.target_x
-#                self.fb_err.err = self.pos[1] + self.target_y
-#                print "ERR", self.lr_err.err, self.fb_err.err
-#                mode = Mode()
-#                mode.mode = 5
-#                mode.x_i += self.lr_pid.step(self.lr_err.err, self.prev_time - self.curr_time)
-#                mode.y_i += self.fb_pid.step(self.fb_err.err, self.prev_time - self.curr_time)
-#                # jgo XXX LOLOL constant velocity controller 
-#                self.first_counter = self.first_counter + 1
-#                self.max_first_counter = max(self.first_counter, self.max_first_counter)
-#
-#
-#                # XXX
-#                control_coeff = 1.00
-#
-#                self.replan_vel_x = mode.x_i * self.replan_scale / max(self.replan_until_deadline, 0.1)
-#                self.replan_vel_y = mode.y_i * self.replan_scale / max(self.replan_until_deadline, 0.1)
-#                self.replan_vel_x = min(self.replan_vel_x, 1.0)
-#                self.replan_vel_y = min(self.replan_vel_y, 1.0)
-#                # XXX coast if first frame found but still do PID update to
-#                # integrate!
-#                mode.x_velocity = control_coeff * mode.x_i 
-#                mode.y_velocity = control_coeff * mode.y_i 
                 self.step_pos_controller(corr_first, True, 1.0)            
                 yaw_observed = math.atan2(corr_first[1, 0], corr_first[0, 0])
                 self.smoothed_yaw = (1.0 - self.alpha_yaw) * self.smoothed_yaw + (self.alpha_yaw) * yaw_observed 
@@ -93,10 +56,10 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
                 yaw_kpi_term = np.sign(yaw) * np.min(yaw * yaw * self.kpi_yaw, self.kpi_max_yaw)
                 self.iacc_yaw += yaw_kpi_term
                 self.mode.yaw_velocity = yaw * self.kp_yaw + self.iacc_yaw
-                print "yaw iacc: ", self.iacc_yaw
+                print "yaw iacc: ", self.iacc_yaw, "kp_yaw: ", self.kp_yaw * yaw
                 
                 self.pospub.publish(self.mode)
-                print "first", self.max_first_counter, self.first_counter
+                # print "first", self.max_first_counter, self.first_counter
             else:
                 # integration if we failed to find the first frame
                 corr_int = cv2.estimateRigidTransform(self.prev_img, curr_img, False)
@@ -104,30 +67,6 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
                     time_since_first = self.curr_time - self.last_first_time
                     print "integrated", time_since_first
                     print "self.max_first_counter: ", self.max_first_counter
-#                    int_displacement = [corr_int[0, 2] / 320., corr_int[1, 2] / 240.]
-#                    scalex = np.linalg.norm(corr_int[:, 0])
-#                    scalez = np.linalg.norm(corr_int[:, 1])
-#                    corr_int[:, 0] /= scalex
-#                    corr_int[:, 1] /= scalez
-#                    self.pos[0] += int_displacement[0] * self.z
-#                    self.pos[1] += int_displacement[1] * self.z
-#                    self.vel_average_time = (1.0 - self.vel_alpha) * self.vel_average_time + (self.vel_alpha) * self.curr_time
-#                    self.lr_err.err = self.pos[0] + self.target_x
-#                    self.fb_err.err = self.pos[1] + self.target_y
-#                    print "ERR", self.lr_err.err, self.fb_err.err
-#                    mode = Mode()
-#                    mode.mode = 5
-#                    mode.x_i += self.lr_pid.step(self.lr_err.err, self.prev_time - self.curr_time)
-#                    mode.y_i += self.fb_pid.step(self.fb_err.err, self.prev_time - self.curr_time)
-#                    # jgo XXX LOLOL constant velocity controller 
-#                    self.first_counter = 0
-#                    control_coeff = 3.0
-#                    self.replan_vel_x = mode.x_i * self.replan_scale / max(self.replan_until_deadline, 0.1)
-#                    self.replan_vel_y = mode.y_i * self.replan_scale / max(self.replan_until_deadline, 0.1)
-#                    self.replan_vel_x = min(self.replan_vel_x, 1.0)
-#                    self.replan_vel_y = min(self.replan_vel_y, 1.0)
-#                    mode.x_velocity = control_coeff * mode.x_i 
-#                    mode.y_velocity = control_coeff * mode.y_i 
                     # yaw i term only
 
                     self.step_pos_controller(corr_int, False, 3.0)            
@@ -198,7 +137,7 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
         
         self.lr_err.err = self.pos[0] + self.target_x
         self.fb_err.err = self.pos[1] + self.target_y
-        print "ERR", self.lr_err.err, self.fb_err.err
+        #print "ERR", self.lr_err.err, self.fb_err.err
         self.mode.mode = 5
         self.mode.x_i += self.lr_pid.step(self.lr_err.err, self.prev_time - self.curr_time)
         self.mode.y_i += self.fb_pid.step(self.fb_err.err, self.prev_time - self.curr_time)
