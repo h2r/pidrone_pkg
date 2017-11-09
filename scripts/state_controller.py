@@ -457,6 +457,7 @@ if __name__ == '__main__':
                 # exit.
                 board.close()
 
+        print cmds
         board.sendCMD(8, MultiWii.SET_RAW_RC, cmds)
         board.receiveDataPacket()
         time.sleep(0.01)
