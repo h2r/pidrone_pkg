@@ -139,8 +139,8 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
         self.fb_err.err = self.pos[1] + self.target_y
         #print "ERR", self.lr_err.err, self.fb_err.err
         self.mode.mode = 5
-        self.mode.x_i += self.lr_pid.step(self.lr_err.err, self.prev_time - self.curr_time)
-        self.mode.y_i += self.fb_pid.step(self.fb_err.err, self.prev_time - self.curr_time)
+        self.mode.x_i = self.lr_pid.step(self.lr_err.err, self.prev_time - self.curr_time)
+        self.mode.y_i = self.fb_pid.step(self.fb_err.err, self.prev_time - self.curr_time)
         self.mode.x_velocity = control_coeff * self.mode.x_i 
         self.mode.y_velocity = control_coeff * self.mode.y_i 
 
