@@ -1,27 +1,11 @@
-import numpy as np
 import picamera
-import picamera.array
-import cv2
 import rospy
-import time
 import sys
-import rospy
-import tf
-import copy
-import time
-import sys
-import math
-import camera_info_manager
 from picam_flow_class import AnalyzeFlow
 from picam_pos_class import AnalyzePos
-from pidrone_pkg.msg import axes_err, Mode
-from cv_bridge import CvBridge, CvBridgeError
-from sensor_msgs.msg import Image, Range, CameraInfo
-from std_msgs.msg import Empty
-from cv_bridge import CvBridge, CvBridgeError
             
 def main():
-    rospy.init_node('flow_pub')                 
+    rospy.init_node('camera_controller')                 
     try:
         flow_msg = axes_err()
         with picamera.PiCamera(framerate=90) as camera:
