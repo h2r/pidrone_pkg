@@ -38,92 +38,64 @@ acladd stefie10
 # `:title " MAKE" (sets the title to " MAKE")
 #screen -t " MAKE"
 
-#stuff "unset STY
-"
-#stuff "screen
-"
+#stuff "unset STY"
+#stuff "screen"
 
 screen -t " roscore"
-stuff "source setup.sh
-"
-stuff "roscore
-"
+stuff "source setup.sh"
+stuff "roscore"
 stuff ""
 
 screen -t " vim"
-stuff "source setup.sh
-"
-stuff "cd $(rospack find pidrone_pkg)/scripts
-"
-stuff "vim -p state_controller.py camera_controller.py picam_pos_class.py
-"
+stuff "source setup.sh"
+stuff "cd $(rospack find pidrone_pkg)/scripts"
+stuff "vim -p picam_pos_controller.py camera_controller.py state_controller.py"
 
 screen -t " emacs"
-stuff "source setup.sh
-"
-stuff "cd $(rospack find pidrone_pkg)/scripts
-"
-stuff "emacs
-"
+stuff "source setup.sh"
+stuff "cd $(rospack find pidrone_pkg)/scripts"
+stuff "emacs"
 
 screen -t " flight"
-stuff "source setup.sh
-"
-stuff "cd $(rospack find pidrone_pkg)/scripts
-"
+stuff "source setup.sh"
+stuff "cd $(rospack find pidrone_pkg)/scripts"
 stuff "python state_controller.py" # starting state controller automatically is unsafe
 
 screen -t " vision"
-stuff "source setup.sh
-"
-stuff "cd $(rospack find pidrone_pkg)/scripts
-"
-stuff "python camera_controller.py
-"
+stuff "source setup.sh"
+stuff "cd $(rospack find pidrone_pkg)/scripts"
+stuff "python flow_pub_transform.py"
 
 screen -t " infrared"
-stuff "source setup.sh
-"
-stuff "cd $(rospack find pidrone_pkg)/scripts/
-"
-stuff "python infrared_pub.py
-"
+stuff "source setup.sh"
+stuff "cd $(rospack find pidrone_pkg)/scripts/"
+stuff "python infrared_pub.py"
 
 screen -t " joy_node"
-stuff "source setup.sh
-"
-stuff "cd $(rospack find pidrone_pkg)/scripts/
-"
-stuff "python joy_translation.py
-"
+stuff "source setup.sh"
+stuff "cd $(rospack find pidrone_pkg)/scripts/"
+stuff "python joy_translation.py"
 
 
 screen -t " key_node"
-stuff "source setup.sh
-"
-stuff "cd $(rospack find pidrone_pkg)/scripts/
-"
+stuff "source setup.sh"
+stuff "cd $(rospack find pidrone_pkg)/scripts/"
 stuff "python key_translation.py"
 
 
 
 
 screen -t " rosbridge"
-stuff "source setup.sh
-"
-stuff "sleep 10s && roslaunch rosbridge_server rosbridge_websocket.launch
-"
+stuff "source setup.sh"
+stuff "sleep 10s && roslaunch rosbridge_server rosbridge_websocket.launch"
 
 
 screen -t " web_video_server"
-stuff "source setup.sh
-"
+stuff "source setup.sh"
 stuff " rosrun web_video_server web_video_server"
 
 
 
 screen -t " free"
-stuff "source setup.sh
-"
-stuff "cd $(rospack find pidrone_pkg)/scripts/
-"
+stuff "source setup.sh"
+stuff "cd $(rospack find pidrone_pkg)/scripts/"
