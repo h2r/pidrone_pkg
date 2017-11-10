@@ -25,7 +25,7 @@ import camera_info_manager
             
 
 class AnalyzePhase(picamera.array.PiMotionAnalysis):
-
+    
     def setup(self):
         rospy.Subscriber("/pidrone/set_mode", Mode, self.mode_callback)
         rospy.Subscriber("/pidrone/reset_transform", Empty, self.reset_callback)
@@ -178,7 +178,7 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
 def main():
     rospy.init_node('flow_pub')
    
-    flowpub = rospy.Publisher('/pidrone/plane_err', axes_err, queue_size=1)
+    #flowpub = rospy.Publisher('/pidrone/plane_err', axes_err, queue_size=1)
 
     # image publishing for the web interface
     first_image_pub = rospy.Publisher("/pidrone/picamera/first_image", Image, queue_size=1, latch=True)
@@ -207,16 +207,11 @@ def main():
                     camera.start_recording("/dev/null", format='h264', splitter_port=1, motion_output=flow_analyzer)
                     camera.start_recording(phase_analyzer, format='bgr', splitter_port=2)
                     while not rospy.is_shutdown():
-                        flow_msg.x.err = flow_analyzer.x_motion 
-                        flow_msg.y.err = flow_analyzer.y_motion
-                        flow_msg.z.err = flow_analyzer.z_motion
-                        camera.wait_recording(1/100.0)
-                        flowpub.publish(flow_msg)
-
                         if phase_analyzer.prev_img != None:
                             phase_analyzer.publish_image(image_pub, phase_analyzer.prev_img)
                             camera_info_pub.publish(cim.getCameraInfo())
                         
+                        camera.wait_recording(1/100.0)
 
             camera.stop_recording(splitter_port=1)  # stop recording both the flow 
             camera.stop_recording(splitter_port=2)  # and the images
