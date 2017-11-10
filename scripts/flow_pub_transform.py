@@ -102,6 +102,7 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
                 
                     self.mode.yaw_velocity = self.iacc_yaw
                     self.velcmdpub.publish(self.mode)
+                
                 else:
                     print "LOST"
         else:
