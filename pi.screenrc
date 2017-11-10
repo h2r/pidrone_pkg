@@ -49,7 +49,7 @@ stuff ""
 screen -t " vim"
 stuff "source setup.sh"
 stuff "cd $(rospack find pidrone_pkg)/scripts"
-stuff "vim -p picam_pos_controller.py camera_controller.py state_controller.py"
+stuff "vim -p picam_pos_class.py camera_controller.py state_controller.py"
 
 screen -t " emacs"
 stuff "source setup.sh"
