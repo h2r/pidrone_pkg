@@ -458,8 +458,8 @@ if __name__ == '__main__':
                 board.close()
 
         print cmds
-        board.sendCMD(8, MultiWii.SET_RAW_RC, cmds)
-        board.receiveDataPacket()
+        #board.sendCMD(8, MultiWii.SET_RAW_RC, cmds)
+        #board.receiveDataPacket()
         time.sleep(0.01)
 
     print "Shutdown Recieved"
