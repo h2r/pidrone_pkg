@@ -4,7 +4,6 @@ import cv2
 import rospy
 import time
 import sys
-from picam_flow_class import AnalyzeFlow
 from pidrone_pkg.msg import axes_err, Mode
 from sensor_msgs.msg import Range
 from std_msgs.msg import Empty
@@ -104,10 +103,10 @@ class AnalyzePos(picamera.array.PiMotionAnalysis):
         
     def step_pos_controller(self, est_transform, first_frame_bool, control_coeff):
         first_displacement = [est_transform[0, 2] / 320., est_transform[1, 2] / 240.] # take the x and the y from the transform
-        scalex = np.linalg.norm(est_transform[:, 0])    # normalize by the first and second columns
-        scalez = np.linalg.norm(est_transform[:, 1])
-        est_transform[:, 0] /= scalex
-        est_transform[:, 1] /= scalez
+        # scalex = np.linalg.norm(est_transform[:, 0])    # normalize by the first and second columns
+        # scalez = np.linalg.norm(est_transform[:, 1])
+        # est_transform[:, 0] /= scalex
+        # est_transform[:, 1] /= scalez
         if first_frame_bool:    
             self.pos[0:2] = [(self.hybrid_alpha) * first_displacement[0] * self.z + (1.0 - self.hybrid_alpha) * self.pos[0], 
             (self.hybrid_alpha) * first_displacement[1] * self.z / 240. + (1.0 - self.hybrid_alpha) * self.pos[1]]
