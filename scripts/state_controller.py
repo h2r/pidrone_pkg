@@ -14,11 +14,12 @@ from h2rMultiWii import MultiWii
 import time
 import sys
 import signal
+from geometry_msgs.msg import TwistStamped
 
 # stefie10: High-level comments: 1) Make a class 2) put everything
 # inside a main method and 3) no global variables.
 
-landing_threshold = 9.
+landing_threshold = 0.09
 initial_set_z = 0.12
 set_z = initial_set_z
 init_z = 0
@@ -32,7 +33,6 @@ cmds = [1500, 1500, 1500, 900]
 current_mode = 4
 set_vel_x = 0
 set_vel_y = 0
-errpub = rospy.Publisher('/pidrone/err', axes_err, queue_size=1)
 modepub = rospy.Publisher('/pidrone/mode', Mode, queue_size=1)
 flow_height_z = 0.000001
 reset_pid = True
@@ -332,19 +332,8 @@ def plane_callback(data):
     global flow_height_z
     global set_vel_x, set_vel_y
     global flow_x_old, flow_y_old
-    #print set_vel_x, set_vel_y
-    #error.x.err = (data.x.err - mw_angle_comp_x) * min(ultra_z, 30.) + set_vel_x
-    #error.y.err = (data.y.err + mw_angle_comp_y) * min(ultra_z, 30.) + set_vel_y
-    error.x.err = (data.x.err - mw_angle_comp_x) * ultra_z + set_vel_x
-    error.y.err = (data.y.err + mw_angle_comp_y) * ultra_z + set_vel_y
-
-#    alpha = 0.5
-#    error.x.err = error.x.err * alpha + (1. - alpha) * flow_x_old
-#    error.y.err = error.y.err * alpha + (1. - alpha) * flow_y_old
-#    flow_x_old = error.x.err
-#    flow_y_old = error.y.err
-    # error.z.err = data.z.err
-
+    error.x.err = (data.twist.linear.x - mw_angle_comp_x) * ultra_z + set_vel_x
+    error.y.err = (data.twist.linear.y + mw_angle_comp_y) * ultra_z + set_vel_y
 
 def ctrl_c_handler(signal, frame):
     print "Land Recieved"
@@ -359,11 +348,11 @@ if __name__ == '__main__':
     global mw_angle_comp_x, mw_angle_comp_y, mw_angle_coeff, mw_angle_alt_scale
     global current_mode
     rospy.init_node('state_controller')
-    rospy.Subscriber("/pidrone/plane_err", axes_err, plane_callback)
+    rospy.Subscriber("/pidrone/flow_velocity", TwistStamped, plane_callback)
     board = MultiWii("/dev/ttyUSB0")
     rospy.Subscriber("/pidrone/infrared", Range, ultra_callback)
     rospy.Subscriber("/pidrone/vrpn_pos", PoseStamped, vrpn_callback)
-    rospy.Subscriber("/pidrone/set_mode_vel", Mode, mode_callback)
+    rospy.Subscriber("/pidrone/command/velocity", Mode, mode_callback)
     rospy.Subscriber("/pidrone/heartbeat", String, heartbeat_callback)
     global last_heartbeat
     last_heartbeat = rospy.Time.now()
@@ -395,7 +384,6 @@ if __name__ == '__main__':
     while not rospy.is_shutdown():
         mode_to_pub.mode = current_mode
         modepub.publish(mode_to_pub)
-        errpub.publish(error)
         mw_data = board.getData(MultiWii.ATTITUDE)
         analog_data = board.getData(MultiWii.ANALOG)
 

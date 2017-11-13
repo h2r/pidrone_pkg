@@ -5,7 +5,7 @@ import picamera.array
 import cv2
 from h2rMultiWii import MultiWii
 import time
-from pidrone_pkg.msg import axes_err
+from geometry_msgs.msg import TwistStamped
   
 # RASPBERRY PI?
 camera_matrix = np.array([[ 253.70549591,    0.,          162.39457585], 
@@ -33,9 +33,11 @@ class AnalyzeFlow(picamera.array.PiMotionAnalysis):
         self.yaw_motion = np.sum(np.multiply(x, self.yaw_filter_x)) + \
                 np.sum(np.multiply(y, self.yaw_filter_y))
        
-        self.velocity.x.err = self.x_motion
-        self.velocity.y.err = self.y_motion 
-        self.velocity.z.err = self.z_motion
+        self.velocity.twist.linear.x = self.x_motion
+        self.velocity.twist.linear.y = self.y_motion
+        self.velocity.twist.linear.z = self.z_motion
+        self.velocity.twist.angular.z = self.yaw_motion
+        self.velocity.header.stamp = rospy.get_rostime()
         self.pub.publish(self.velocity)
  
 
@@ -83,10 +85,10 @@ class AnalyzeFlow(picamera.array.PiMotionAnalysis):
         self.z_motion = 0
         self.yaw_motion = 0
         self.flow_coeff = 0.0004296875
-        self.pub = rospy.Publisher('/pidrone/plane_err', axes_err, queue_size=1)
+        self.pub = rospy.Publisher('/pidrone/flow_velocity', TwistStamped, queue_size=1)
         self.alpha = 0.3
         if self.pub is not None:
-            self.velocity = axes_err() 
+            self.velocity = TwistStamped() 
 
 if __name__ == '__main__':
     board = MultiWii("/dev/ttyACM0")

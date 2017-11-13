@@ -4,19 +4,19 @@ import cv2
 import rospy
 import time
 import sys
-from pidrone_pkg.msg import axes_err, Mode
 from sensor_msgs.msg import Range
 from std_msgs.msg import Empty
+from pidrone_pkg.msg import Mode
             
 
 class AnalyzePos(picamera.array.PiMotionAnalysis):
     
     def setup(self, camera_wh = (320,240)):
-        rospy.Subscriber("/pidrone/set_mode", Mode, self.mode_callback)
+        rospy.Subscriber("/pidrone/command/javascript", Mode, self.mode_callback)
         rospy.Subscriber("/pidrone/reset_transform", Empty, self.reset_callback)
         rospy.Subscriber("/pidrone/toggle_transform", Empty, self.toggle_callback)
         rospy.Subscriber("/pidrone/infrared", Range, self.range_callback)
-        self.velcmdpub = rospy.Publisher('/pidrone/set_mode_vel', Mode, queue_size=1)
+        self.velcmdpub = rospy.Publisher('/pidrone/command/velocity', Mode, queue_size=1)
         self.first_img = None
         self.prev_img = None
         self.first = True
@@ -50,7 +50,6 @@ class AnalyzePos(picamera.array.PiMotionAnalysis):
             self.first_img = curr_img
             self.prev_img = curr_img
             self.prev_time = rospy.get_time()
-            self.publish_image(self.first_image_pub, curr_img)
 
         elif self.transforming:
             corr_first = cv2.estimateRigidTransform(self.first_img, curr_img, False)
@@ -139,7 +138,7 @@ class AnalyzePos(picamera.array.PiMotionAnalysis):
 
     def mode_callback(self, data):
         if not self.transforming or data.mode == 4 or data.mode == 3:
-            # republish velocity commands on /pidrone/set_mode_vel if we're not holding pos
+            # republish velocity commands on /pidrone/command/velocity if we're not holding pos
             print "VELOCITY"
             self.velcmdpub.publish(data)
         else:

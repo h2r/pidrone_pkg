@@ -7,7 +7,6 @@ from picam_pos_class import AnalyzePos
 def main():
     rospy.init_node('camera_controller')                 
     try:
-        flow_msg = axes_err()
         with picamera.PiCamera(framerate=90) as camera:
             camera.resolution = (320, 240)
             with AnalyzePos(camera) as pos_analyzer:
