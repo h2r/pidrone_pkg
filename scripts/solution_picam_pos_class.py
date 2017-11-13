@@ -116,8 +116,8 @@ class AnalyzePos(picamera.array.PiMotionAnalysis):
         
         sp_err_x = self.pos[0] + self.target_x
         sp_err_y = self.pos[1] + self.target_y
-        self.mode.x_i = min(max(sp_err_x * 0.05, -10.), 10) # p control with a range of -10 to 10
-        self.mode.y_i = min(max(sp_err_y * -0.05, -10.), 10)
+        self.mode.x_i = min(max(sp_err_x * 0.05, -10.), 10.) # p control with a range of -10 to 10
+        self.mode.y_i = min(max(sp_err_y * -0.05, -10.), 10.)
         self.mode.x_velocity = control_coeff * self.mode.x_i 
         self.mode.y_velocity = control_coeff * self.mode.y_i 
 

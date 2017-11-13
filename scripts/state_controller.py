@@ -19,7 +19,7 @@ import signal
 # inside a main method and 3) no global variables.
 
 landing_threshold = 9.
-initial_set_z = 30.0
+initial_set_z = 0.12
 set_z = initial_set_z
 init_z = 0
 smoothed_vel = np.array([0, 0, 0])
@@ -102,15 +102,6 @@ def land():
         current_mode = 3
         try:
             set_z = 0
-#            for i in range(int(set_z), 0, -1):
-#                set_z -= 1
-#                # print i, 'fsjsoidjfdsfjdsijfdsfdsfj'
-#                rospy.sleep(0.1)
-#            while abs(error.z.err) > landing_threshold:
-#                # print "NO", np.absolute(error.z.err), ultra_z, set_z
-#                rospy.sleep(0.1)
-#            print "I am not high ;)"
-#            disarm()
         except Exception as e:
             print e
             print "ERROR"
