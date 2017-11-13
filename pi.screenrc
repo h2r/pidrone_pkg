@@ -28,10 +28,6 @@ multiuser on
 # the initiating user is allowed automatically, but add both so either can
 # run this script without modification.
 
-#acladd gen
-acladd oberlin
-acladd stefie10 
-
 # Starts a new screen with title " MAKE"
 # this is basically equivalent to pressing the following from within screen:
 # `c (starts a new window)
