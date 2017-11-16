@@ -7,7 +7,8 @@ class Skyline:
 	def __init__(self):
 		self.board = MultiWii("/dev/ttyUSB0")
 		self.pwm = PWM()
-		self.accepting_control = False
+		self.accepting_control = False	# True when accepting roll,pitch,yaw,throttle commands
+		self.busy = False				# True when performing atomic ops like arm/disarm
 		rospy.Subscriber(SKYLINE_COMMAND_TOPIC, PWM, self.pwm_cmd_callback)
 		rospy.Subscriber(JAVASCRIPT_COMMAND_TOPIC, Mode, self.mode_callback)
 		# TODO: add publisher for skyline information
@@ -27,12 +28,19 @@ class Skyline:
 		self.set_pwm_raw([1500,1500,1500,1100])
 
 	def arm(self):
-		accepting_control = False
+		self.busy = True
+		self.accepting_control = False
 		self.set_pwm_raw([1500,1500,1500,1100])
+		rospy.sleep(1)
+		self.idle()
+		self.busy = False
 
 	def disarm(self):
-		accepting_control = False	
+		self.busy = True
+		self.accepting_control = False	
 		self.set_pwm_raw([1500,1500,1500,1100])
+		rospy.sleep(1)
+		self.busy = False
 
 	def set_pwm_raw(self, desired_pwm):
 		self.pwm.roll = desired_pwm[0]
@@ -52,16 +60,14 @@ class Skyline:
 		if data.mode == 4:
 			self.disarm()
 		if data.mode == 5:
-			self.accepting_control = True
+			if not self.busy: self.accepting_control = True
 
 
 def main():
 	rospy.init_node("skyline")
 	s = Skyline()
-	r = rospy.Rate(50)		# we are going to write to the skyline consistently at 50hz
 	while not rospy.is_shutdown():
 		s.step()
-		r.sleep()
 
 	s.cleanup()
 	print 'EXIT'
