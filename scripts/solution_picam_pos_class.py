@@ -6,7 +6,7 @@ import time
 import sys
 from sensor_msgs.msg import Range
 from std_msgs.msg import Empty
-from pidrone_pkg.msg import Mode
+from steve_pkg.msg import Mode
             
 
 class AnalyzePos(picamera.array.PiMotionAnalysis):

@@ -1,4 +1,4 @@
-# PiDrone Pkg
+# steve_pkg
 
 For Stefanie Tellex's class
 
@@ -10,7 +10,7 @@ For Stefanie Tellex's class
 
 ## How to Fly
 
-- `roscd pidrone_pkg`
+- `roscd steve_pkg`
 - `screen -c pi.screenrc`
 
 ### Programs Needed to Fly

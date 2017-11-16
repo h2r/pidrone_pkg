@@ -44,23 +44,23 @@ stuff "rosrun rviz rviz"
 
 screen -t " vim"
 stuff "source setup.sh"
-stuff "cd $(rospack find pidrone_pkg)/"
+stuff "cd $(rospack find steve_pkg)/"
 stuff "vim -p scripts/h2rMultiWii.py"
 
 screen -t " emacs"
 stuff "source setup.sh"
-stuff "cd $(rospack find pidrone_pkg)"
+stuff "cd $(rospack find steve_pkg)"
 stuff "emacs -nw scripts/h2rMultiWii.py"
 
 
 screen -t " git"
 stuff "source setup.sh"
-stuff "cd $(rospack find pidrone_pkg)/"
+stuff "cd $(rospack find steve_pkg)/"
 
 screen -t " free"
 stuff "source setup.sh"
-stuff "cd $(rospack find pidrone_pkg)/"
+stuff "cd $(rospack find steve_pkg)/"
 
 screen -t " free"
 stuff "source setup.sh"
-stuff "cd $(rospack find pidrone_pkg)/"
+stuff "cd $(rospack find steve_pkg)/"

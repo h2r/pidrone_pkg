@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 from __future__ import division
 import rospy 
-from pidrone_pkg.msg import RC, ERR
+from steve_pkg.msg import RC, ERR
 from geometry_msgs.msg import Pose, PoseStamped
 import time
 import tf
