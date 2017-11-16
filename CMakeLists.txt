@@ -51,7 +51,7 @@ add_message_files(
   axes_err.msg
   Mode.msg
   State.msg
-  pwm.msg
+  PWM.msg
 )
 
 ## Generate services in the 'srv' folder
