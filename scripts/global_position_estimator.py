@@ -11,8 +11,13 @@ import rospy
 # pose as a ROS marker array.  Visualize it in rviz.
 
 # third, make a feature map.  So given the global true pose of the
-# robot from the mocap, store the global x,y,z location of each
+# robot from the mocap (Optitrak), store the global x,y,z location of each
 # feature by transforming above to the global frame using the mocap.
+
+# use time synchronizer to line up optitrak poses with images.
+# http://docs.ros.org/api/message_filters/html/python/#message_filters.TimeSynchronizer
+
+# 
 
 # fourth, write out the math and agree how it will work.
 
