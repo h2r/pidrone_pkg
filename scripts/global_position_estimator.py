@@ -58,6 +58,13 @@ class LocalizationParticleFilter:
         """
         landmark_model_known_correspondence from probablistic robotics
         """
+
+        # in this implementation zt is one feature, but really it will
+        # be a vector of features, so you'd multiply q together.  We
+        # should then use log probability. (So there would be an outer
+        # for loop over all the detected features, and q would be a
+        # log prob that we add, and return the sum.
+        
         x,y,z = xt
         j, r, phi = zt
         mx, my = self.map[j]
@@ -71,6 +78,7 @@ class LocalizationParticleFilter:
     def update(self, ut, zt):
         """
         We implement the MCL algorithm from probabilistic robotics (Table 8.2)
+        zt is the array of detected features.
         """
         newparticles = []
         weights = []
