@@ -42,8 +42,14 @@ tmux send-keys "source setup.sh" ^M
 tmux send-keys "cd $(rospack find pidrone_pkg)/scripts" ^M
 tmux send-keys "python state_controller.py"
 
-# set up second free pane
+# set up ros stuff
 tmux select-pane -t 7
+tmux split-window -v
+tmux send-keys "source setup.sh" ^M
+tmux send-keys "cd $(rospack find pidrone_pkg)/scripts" ^M
+tmux send-keys "python ros_stuff.py" ^M
+
+# set up free pane
 tmux split-window -v
 tmux send-keys "source setup.sh" ^M
 
