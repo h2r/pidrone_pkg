@@ -138,9 +138,8 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
                 #self.pos = [first_displacement[0] * self.z, first_displacement[1] * self.z / 240., yaw]
                 # jgo XXX see what happens if we use alpha blending 
                 hybrid_alpha = 0.1 # needs to be between 0 and 1.0
-                self.pos = [(hybrid_alpha) * first_displacement[0] * self.z + (1.0 - hybrid_alpha) * self.pos[0],
-                            (hybrid_alpha) * first_displacement[1] * self.z / 240. + (1.0 - hybrid_alpha) * self.pos[1],
-                            self.z]
+                self.pos[0:2] = [(hybrid_alpha) * first_displacement[0] * self.z + (1.0 - hybrid_alpha) * self.pos[0],
+                            (hybrid_alpha) * first_displacement[1] * self.z  + (1.0 - hybrid_alpha) * self.pos[1]]
                 vel_average[0] = (1.0 - vel_alpha) * vel_average[0] + (vel_alpha) * self.pos[0]
                 vel_average[1] = (1.0 - vel_alpha) * vel_average[1] + (vel_alpha) * self.pos[1]
                 vel_average_time = (1.0 - vel_alpha) * vel_average_time + (vel_alpha) * curr_time
@@ -250,8 +249,6 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
             else:
                 print "LOST"
 
-
-            
         else:
             #print "Not transforming"
             #curr_img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
