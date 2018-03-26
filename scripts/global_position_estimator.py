@@ -64,6 +64,10 @@ class LocalizationParticleFilter:
         # should then use log probability. (So there would be an outer
         # for loop over all the detected features, and q would be a
         # log prob that we add, and return the sum.
+
+        # in this implementation it's 2d, but really we need to do it
+        # in 3d.  phi in zt is actually a quaternion defined by the
+        # camera model and feature pixel location.
         
         x,y,z = xt
         j, r, phi = zt
