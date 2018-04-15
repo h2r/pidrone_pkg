@@ -3,7 +3,7 @@ import tf
 import math
 from visualization_msgs.msg import Marker, MarkerArray
 from pid_class import PID
-from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import PoseStamped, Twist
 from sensor_msgs.msg import Range
 from std_msgs.msg import String
 import cv2
@@ -266,6 +266,10 @@ def mode_callback(data):
     elif data.mode == 3:
         land()
     elif data.mode == 5:        # STATIC FLIGHT
+        if math.isnan(data.x_velocity):
+            data.x_velocity = 0
+        if math.isnan(data.y_velocity):
+            data.y_velocity = 0
         if reset_pid:
             reset_pid = False
             pid.reset()
@@ -381,6 +385,7 @@ if __name__ == '__main__':
     markerpub = rospy.Publisher('/pidrone/imu_visualization_marker', Marker, queue_size=1, tcp_nodelay=False)
     markerarraypub = rospy.Publisher('/pidrone/imu_visualization_marker_array', MarkerArray, queue_size=1, tcp_nodelay=False)
     statepub = rospy.Publisher('/pidrone/state', State, queue_size=1, tcp_nodelay=False)
+    anglepub = rospy.Publisher('/pidrone/angle', Twist, queue_size=1, tcp_nodelay=False)
     
     prev_angx = 0
     prev_angy = 0
@@ -398,6 +403,7 @@ if __name__ == '__main__':
     # as variable constants.
 
     mode_to_pub = Mode()
+    angle = Twist()
 
     while not rospy.is_shutdown():
         mode_to_pub.mode = current_mode
@@ -416,6 +422,11 @@ if __name__ == '__main__':
                 new_angt = time.time()
                 new_angx = mw_data['angx']/180.0*np.pi
                 new_angy = mw_data['angy']/180.0*np.pi
+
+                angle.angular.x = new_angx
+                angle.angular.y = new_angy
+                anglepub.publish(angle)
+
                 mw_angle_comp_x = np.tan((new_angx - prev_angx) * (new_angt - prev_angt)) * mw_angle_coeff
                 mw_angle_comp_y = np.tan((new_angy - prev_angy) * (new_angt - prev_angt)) * mw_angle_coeff
                 d_theta_x = new_angx - prev_angx
