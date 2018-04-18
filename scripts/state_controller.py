@@ -433,7 +433,7 @@ if __name__ == '__main__':
                 d_theta_y = new_angy - prev_angy
                 dt = new_angt - prev_angt
 
-                angle_mag = np.arccos(np.cos(d_theta_x * dt) * np.cos(d_theta_y * dt))
+                # angle_mag = np.arccos(np.cos(d_theta_x * dt) * np.cos(d_theta_y * dt))
 #               mw_angle_comp_x = np.sin(d_theta_x * dt) * angle_mag * mw_angle_coeff
 #               mw_angle_comp_y = (-np.sin(d_theta_y * dt) * np.cos(d_theta_x * dt)) * angle_mag * mw_angle_coeff
                 # print mw_angle_comp_x, mw_angle_comp_x_tan
