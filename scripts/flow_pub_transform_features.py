@@ -2,15 +2,25 @@ import numpy as np
 import picamera
 import picamera.array
 import cv2
+import rospy
+import time
+import sys
+from h2rMultiWii import MultiWii
 from picam_flow_class import AnalyzeFlow
 from pidrone_pkg.msg import axes_err, Mode, ERR
+from cv_bridge import CvBridge, CvBridgeError
 from sensor_msgs.msg import Image, Range, CameraInfo
+from geometry_msgs.msg import PoseStamped, Point
 from std_msgs.msg import Empty
 import rospy
 import tf
+import copy
+from pyquaternion import Quaternion
+import time
 from cv_bridge import CvBridge, CvBridgeError
 import sys
 from pid_class import PIDaxis
+import math
 import camera_info_manager
 
 
@@ -28,11 +38,11 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
         self.pospub = rospy.Publisher('/pidrone/set_mode_vel', Mode, queue_size=1)
         self.first_image_pub = rospy.Publisher("/pidrone/picamera/first_image", Image, queue_size=1, latch=True)
 
-        self.lr_pid = PIDaxis(4, 0.000, 0.00, midpoint=0, control_range=(-10.0, 10.0))
-        self.fb_pid = PIDaxis(4, 0.000, 0.00, midpoint=0, control_range=(-10.0, 10.0))
+        self.lr_pid = PIDaxis(0.0400, -0.00000, 0.000, midpoint=0, control_range=(-10.0, 10.0))
+        self.fb_pid = PIDaxis(0.0400, 0.0000, -0.000, midpoint=0, control_range=(-10.0, 10.0))
 
         self.prev_img = None
-        self.detector = cv2.ORB(nfeatures=120, scoreType=cv2.ORB_FAST_SCORE)  # FAST_SCORE is a little faster to compute
+        self.detector = cv2.ORB(nfeatures=120)
         self.index_params = dict(algorithm=6, table_number=6, key_size=12, multi_probe_level=1)
         self.search_params = dict(checks=50)
         self.matcher = cv2.FlannBasedMatcher(self.index_params, self.search_params)
@@ -58,7 +68,7 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
         self.max_first_counter = 0
         self.mode = Mode()
         # constant
-        self.kp_yaw = 70.0
+        self.kp_yaw = 80.0
         self.ki_yaw = 0.1
         self.kpi_yaw = 15.0
         self.kpi_max_yaw = 0.01
@@ -92,7 +102,7 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
                 self.max_first_counter = max(self.first_counter, self.max_first_counter)
 
                 # X and Y
-                first_displacement = [-corr_first[0, 2] / 280., corr_first[1, 2] / 280.]
+                first_displacement = [-corr_first[0, 2] / 320., corr_first[1, 2] / 240.]
                 self.pos = [
                     self.hybrid_alpha * first_displacement[0] * self.z + (1.0 - self.hybrid_alpha) * self.pos[0],
                     self.hybrid_alpha * first_displacement[1] * self.z + (1.0 - self.hybrid_alpha) * self.pos[1]]
@@ -101,9 +111,8 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
                 print "ERR", self.lr_err.err, self.fb_err.err
                 self.mode.x_i = self.lr_pid.step(self.lr_err.err, curr_time - self.prev_time)
                 self.mode.y_i = self.fb_pid.step(self.fb_err.err, curr_time - self.prev_time)
-                cvc_vel = 1.2
-                self.mode.x_velocity = cvc_vel * self.mode.x_i
-                self.mode.y_velocity = cvc_vel * self.mode.y_i
+                self.mode.x_velocity = self.mode.x_i
+                self.mode.y_velocity = self.mode.y_i
 
                 # Yaw
                 scalex = np.linalg.norm(corr_first[:, 0])
@@ -134,7 +143,7 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
                     print "max_first_counter: ", self.max_first_counter
 
                     # X and Y
-                    int_displacement = [-corr_int[0, 2] / 280., corr_int[1, 2] / 280.]
+                    int_displacement = [-corr_int[0, 2] / 320., corr_int[1, 2] / 240.]
                     self.pos[0] += int_displacement[0] * self.z
                     self.pos[1] += int_displacement[1] * self.z
                     self.lr_err.err = self.target_x - self.pos[0]
@@ -142,7 +151,7 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
                     print "ERR", self.lr_err.err, self.fb_err.err
                     self.mode.x_i = self.lr_pid.step(self.lr_err.err, curr_time - self.prev_time)
                     self.mode.y_i = self.fb_pid.step(self.fb_err.err, curr_time - self.prev_time)
-                    cvc_vel = 1.3  # 0.25 #1.0
+                    cvc_vel = 1.1  # 0.25 #1.0
                     self.mode.x_velocity = cvc_vel * self.mode.x_i
                     self.mode.y_velocity = cvc_vel * self.mode.y_i
 
@@ -188,7 +197,6 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
             src_pts = np.float32([kp1[m.queryIdx].pt for m in good]).reshape(-1, 1, 2)
             dst_pts = np.float32([kp2[m.trainIdx].pt for m in good]).reshape(-1, 1, 2)
 
-            # estimateRigidTransform needs at least three pairs
             if src_pts is not None and dst_pts is not None and len(src_pts) > 3 and len(dst_pts) > 3:
                 transform = cv2.estimateRigidTransform(src_pts, dst_pts, False)
 
@@ -216,6 +224,7 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
         print "Position hold", "enabled." if self.transforming else "disabled."
 
     def mode_callback(self, data):
+        self.mode.mode = data.mode
         if not self.transforming or data.mode == 4 or data.mode == 3:
             print "VELOCITY"
             self.pospub.publish(data)
@@ -245,6 +254,7 @@ def main():
         with picamera.PiCamera(framerate=90) as camera:
             camera.resolution = (320, 240)
             with AnalyzeFlow(camera) as flow_analyzer:
+                flow_analyzer.bridge = bridge
                 flow_analyzer.setup(camera.resolution)
                 phase_analyzer = AnalyzePhase(camera, bridge)
 

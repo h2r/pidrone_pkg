@@ -1,7 +1,6 @@
 import cv2
 import numpy as np
 import math
-import time
 
 
 def drawMatches(img1, kp1, img2, kp2, matches, mask):
@@ -82,15 +81,13 @@ def drawMatches(img1, kp1, img2, kp2, matches, mask):
 
 
 MIN_MATCH_COUNT = 10
+METER_TO_PIXEL = 1413
 MAP_WIDTH = 1024
 MAP_HEIGHT = 768
-MAP_REAL_WIDTH = 0.7    # in meter
-MAP_REAL_HEIGHT = 0.54
-METER_TO_PIXEL = (MAP_WIDTH / MAP_REAL_WIDTH + MAP_HEIGHT / MAP_REAL_HEIGHT) / 2.
 
-angle_x = 0.0
-angle_y = 0.0
-z = 0.0
+angle_x = -0.01
+angle_y = 0.02
+z = 0.24
 z = math.sqrt(z**2 / (1 + math.tan(angle_x)**2 + math.tan(angle_y)**2))
 
 offset_x = np.tan(angle_x) * z
@@ -108,6 +105,7 @@ img2 = cv2.imread('map4.jpg')
 # ORB FLANN knnMatch find object
 detector = cv2.ORB(nfeatures=120, scoreType=cv2.ORB_FAST_SCORE)
 detector2 = cv2.ORB(nfeatures=500, scoreType=cv2.ORB_FAST_SCORE)
+# detector2 = cv2.GridAdaptedFeatureDetector(detector, maxTotalKeypoints=1000, gridRows=4, gridCols=4)    # find features evenly
 
 index_params = dict(algorithm=6,
                     table_number=6,  # 12
@@ -116,24 +114,20 @@ index_params = dict(algorithm=6,
 search_params = dict(checks=50)   # or pass empty dictionary
 flann = cv2.FlannBasedMatcher(index_params, search_params)
 
-kp2, des2 = detector2.detectAndCompute(img2, None)
+kp2 = detector2.detect(img2, None)
+kp2, des2 = detector.compute(img2, kp2)
 img2 = cv2.drawKeypoints(img2, kp2, color=(0, 255, 0), flags=0)
 print len(kp2), len(des2)
 
-start_time1 = time.time()
 kp1, des1 = detector.detectAndCompute(img1, None)
-end_time1 = time.time()
 img1 = cv2.drawKeypoints(img1, kp1, color=(0, 255, 0), flags=0)
 print len(kp1), len(des1)
+matches = flann.knnMatch(des1, des2, k=2)
 
-start_time2 = time.time()
-for _ in range(10):
-    matches = flann.knnMatch(des1, des2, k=2)
-    good = []
-    for match in matches:
-        if len(match) > 1 and match[0].distance < 0.7 * match[1].distance:
-            good.append(match[0])
-end_time2 = time.time()
+good = []
+for match in matches:
+    if len(match) > 1 and match[0].distance < 0.7 * match[1].distance:
+        good.append(match[0])
 print len(good)
 
 if len(good) > MIN_MATCH_COUNT:
@@ -155,13 +149,11 @@ if len(good) > MIN_MATCH_COUNT:
     dcenter = [dcenter[0][0][0] / float(METER_TO_PIXEL), (MAP_HEIGHT - dcenter[0][0][1]) / float(METER_TO_PIXEL)]
     print dcenter
 
-    start_time3 = time.time()
     transform = cv2.estimateRigidTransform(src_pts, dst_pts, False)
     dcenter = cv2.transform(center, transform)
+    print transform
     cv2.circle(img2, (int(dcenter[0][0][0]), int(dcenter[0][0][1])), 3, (0, 0, 255), 2)
     dcenter = [dcenter[0][0][0] / float(METER_TO_PIXEL), (MAP_HEIGHT - dcenter[0][0][1]) / float(METER_TO_PIXEL)]
-    end_time3 = time.time()
-    print transform
     print dcenter
     yaw = np.arctan2(transform[1, 0], transform[0, 0])
     global_offset_x = math.cos(yaw) * offset_x + math.sin(yaw) * offset_y
@@ -173,10 +165,6 @@ else:
     matchesMask = None
 
 out = drawMatches(img1, kp1, img2, kp2, good, matchesMask)
-
-print "compute feature", end_time1 - start_time1
-print "find match", end_time2 - start_time2
-print "transform", end_time3 - start_time3
 
 # cv2.imwrite('mapping44.jpg', out)
 
