@@ -5,6 +5,7 @@ import cv2
 from h2rMultiWii import MultiWii
 import time
 from pidrone_pkg.msg import axes_err
+import rospy
   
 # RASPBERRY PI?
 camera_matrix = np.array([[ 253.70549591,    0.,          162.39457585], 
@@ -32,13 +33,12 @@ class AnalyzeFlow(picamera.array.PiMotionAnalysis):
                 np.sum(np.multiply(y, self.z_filter_y))
         self.yaw_motion = np.sum(np.multiply(x, self.yaw_filter_x)) + \
                 np.sum(np.multiply(y, self.yaw_filter_y))
-       
-        if self.pub is not None:
-#           print 'PUBLISHING\t', 
-            self.velocity.x.err = (1.0 - self.alpha) * self.velocity.x.err + self.alpha * self.x_motion 
-            self.velocity.y.err = (1.0 - self.alpha) * self.velocity.y.err + self.alpha * self.y_motion 
-            self.velocity.z.err = self.z_motion
-            self.pub.publish(self.velocity)
+
+        # TODO smooth or not
+        self.velocity.x.err = self.x_motion
+        self.velocity.y.err = self.y_motion
+        self.velocity.z.err = self.z_motion
+        self.pub.publish(self.velocity)
       
 #       print 'XYZyaw:\t{},\t{},\t{}\t{}\t\t\t{}'.format( \
 #               self.x_motion,self.y_motion,self.z_motion,self.yaw_motion,time.time() - start)
@@ -76,7 +76,7 @@ class AnalyzeFlow(picamera.array.PiMotionAnalysis):
         self.yaw_filter_x = self.z_filter_y
         self.yaw_filter_y = -1 * self.z_filter_x
 
-    def setup(self, camera_wh = (320,240), pub=None, flow_scale = 16.5):
+    def setup(self, camera_wh = (320,240), pub=None, flow_scale=16.5):
         self.get_z_filter(camera_wh)
         self.get_yaw_filter(camera_wh)
         self.ang_vx = 0
@@ -90,7 +90,7 @@ class AnalyzeFlow(picamera.array.PiMotionAnalysis):
         self.max_flow = camera_wh[0] / 16.0 * camera_wh[1] / 16.0 * 2**7
         self.norm_flow_to_cm = flow_scale # the conversion from flow units to cm
         self.flow_coeff = self.norm_flow_to_cm/self.max_flow
-        self.pub = pub
+        self.pub = rospy.Publisher('/pidrone/plane_err', axes_err, queue_size=1)
         self.alpha = 0.3
         if self.pub is not None:
             self.velocity = axes_err() 

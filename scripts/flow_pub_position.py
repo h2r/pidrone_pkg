@@ -42,8 +42,8 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
         self.pospub = rospy.Publisher('/pidrone/set_mode_vel', Mode, queue_size=1)
         self.first_image_pub = rospy.Publisher("/pidrone/picamera/first_image", Image, queue_size=1, latch=True)
 
-        self.lr_pid = PIDaxis(5.0, 0.000, 1.0, midpoint=0, control_range=(-10.0, 10.0))
-        self.fb_pid = PIDaxis(5.0, 0.000, 1.0, midpoint=0, control_range=(-10.0, 10.0))
+        self.lr_pid = PIDaxis(10.0, 0.000, 1.0, midpoint=0, control_range=(-10.0, 10.0))
+        self.fb_pid = PIDaxis(10.0, 0.000, 1.0, midpoint=0, control_range=(-10.0, 10.0))
 
         self.detector = cv2.ORB(nfeatures=120, scoreType=cv2.ORB_FAST_SCORE)  # FAST_SCORE is a little faster to compute
         map_imgs = [cv2.imread('map1.jpg'), cv2.imread('map2.jpg'), cv2.imread('map3.jpg'), cv2.imread('map4.jpg')]
@@ -289,7 +289,6 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
 def main():
     rospy.init_node('flow_pub')
 
-    velpub = rospy.Publisher('/pidrone/plane_err', axes_err, queue_size=1)
     image_pub = rospy.Publisher("/pidrone/picamera/image_raw", Image, queue_size=1, tcp_nodelay=False)
     camera_info_pub = rospy.Publisher("/pidrone/picamera/camera_info", CameraInfo, queue_size=1, tcp_nodelay=False)
 
@@ -313,11 +312,7 @@ def main():
                 camera.start_recording(phase_analyzer, format='bgr', splitter_port=2)
                 last_time = None
                 while not rospy.is_shutdown():
-                    velocity.x.err = flow_analyzer.x_motion
-                    velocity.y.err = flow_analyzer.y_motion
-                    velocity.z.err = flow_analyzer.z_motion
                     camera.wait_recording(1 / 100.0)
-                    velpub.publish(velocity)
 
                     if phase_analyzer.prev_img is not None and phase_analyzer.prev_time != last_time:
                         image_message = bridge.cv2_to_imgmsg(phase_analyzer.prev_img, encoding="bgr8")

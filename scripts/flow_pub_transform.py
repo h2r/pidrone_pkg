@@ -340,11 +340,6 @@ def toggle_callback(data):
 
 def main():
     rospy.init_node('flow_pub')
-    velpub= rospy.Publisher('/pidrone/plane_err', axes_err, queue_size=1)
-
-
-
-
 
     first_image_pub = rospy.Publisher("/pidrone/picamera/first_image", Image, queue_size=1, latch=True)
     
@@ -387,11 +382,7 @@ def main():
             i = 0
             last_time = None
             while not rospy.is_shutdown():
-                velocity.x.err = flow_analyzer.x_motion 
-                velocity.y.err = flow_analyzer.y_motion
-                velocity.z.err = flow_analyzer.z_motion
                 camera.wait_recording(1/100.0)
-                velpub.publish(velocity)
 
 
                 if phase_analyzer.prev_img != None and phase_analyzer.prev_time != last_time:
