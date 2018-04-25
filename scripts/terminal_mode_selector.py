@@ -24,14 +24,7 @@ if __name__ == '__main__':
     print('Valid modes are DISARMED, ARMED, FLYING, and END')
     try:
         while not rospy.is_shutdown():
-            try:
-                raw_mode = raw_input('Type a mode and press enter:\t')
-            except KeyboardInterrupt as ex:
-                mode_msg.mode = 0
-                modepub.publish(mode_msg)
-                raise(ex)
-
-                
+            raw_mode = raw_input('Type a mode and press enter:\t')
             desired_mode = raw_mode.strip()
 
             # position commands take the form p <x> <y> <z> where x, y, and z are floats
