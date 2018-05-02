@@ -27,7 +27,7 @@ MAP_REAL_HEIGHT = 1.07
 METER_TO_PIXEL = (float(MAP_PIXEL_WIDTH) / MAP_REAL_WIDTH + float(MAP_PIXEL_HEIGHT) / MAP_REAL_HEIGHT) / 2.
 CAMERA_CENTER = np.float32([(CAMERA_WIDTH - 1) / 2., (CAMERA_HEIGHT - 1) / 2.]).reshape(-1, 1, 2)
 MAX_BAD_COUNT = -10
-NUM_PARTICLE = 50
+NUM_PARTICLE = 30
 
 
 class AnalyzePhase(picamera.array.PiMotionAnalysis):
