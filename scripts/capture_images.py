@@ -25,8 +25,8 @@ import camera_info_manager
 from h2rMultiWii import MultiWii
 
 
-CAMERA_WIDTH = 1024
-CAMERA_HEIGHT = 768
+CAMERA_WIDTH = 320
+CAMERA_HEIGHT = 240
 
 
 class AnalyzePhase(picamera.array.PiMotionAnalysis):
