@@ -38,7 +38,7 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
         rospy.Subscriber("/pidrone/reset_transform", Empty, self.reset_callback)
         rospy.Subscriber("/pidrone/toggle_transform", Empty, self.toggle_callback)
         rospy.Subscriber("/pidrone/infrared", Range, self.range_callback)
-        rospy.Subscriber('/pidrone/angle', Twist, self.angle_callback)
+        rospy.Subscriber('/pidrone/angle_and_velocity', Twist, self.angle_and_velocity_callback)
         self.pospub = rospy.Publisher('/pidrone/set_mode_vel', Mode, queue_size=1)
         self.first_image_pub = rospy.Publisher("/pidrone/picamera/first_image", Image, queue_size=1, latch=True)
 
@@ -113,8 +113,8 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
                     self.map_missing_counter = 0
 
                     self.pos = pos
-                    self.yaw_observed = yaw
-                    self.smoothed_yaw = yaw
+                    self.yaw_observed = -yaw    # take the opposite
+                    self.smoothed_yaw = -yaw    # take the opposite
                     self.target_pos = pos
 
                     self.first = False
@@ -250,7 +250,7 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
 
         return pos
 
-    def angle_callback(self, data):
+    def angle_and_velocity_callback(self, data):
         self.angle_x = data.angular.x
         self.angle_y = data.angular.y
 
