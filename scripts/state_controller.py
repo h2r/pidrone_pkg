@@ -14,6 +14,7 @@ from h2rMultiWii import MultiWii
 import time
 import sys
 import signal
+from geometry_msgs.msg import TwistStamped
 
 # stefie10: High-level comments: 1) Make a class 2) put everything
 # inside a main method and 3) no global variables.
@@ -348,8 +349,8 @@ def plane_callback(data):
     #print set_vel_x, set_vel_y
     #error.x.err = (data.x.err - mw_angle_comp_x) * min(ultra_z, 30.) + set_vel_x
     #error.y.err = (data.y.err + mw_angle_comp_y) * min(ultra_z, 30.) + set_vel_y
-    error.x.err = (data.x.err - mw_angle_comp_x) * ultra_z + set_vel_x
-    error.y.err = (data.y.err + mw_angle_comp_y) * ultra_z + set_vel_y
+    error.x.err = (data.twist.linear.x - mw_angle_comp_x) * ultra_z + set_vel_x
+    error.y.err = (data.twist.linear.y + mw_angle_comp_y) * ultra_z + set_vel_y
 
 #    alpha = 0.5
 #    error.x.err = error.x.err * alpha + (1. - alpha) * flow_x_old
@@ -371,7 +372,7 @@ if __name__ == '__main__':
     global mw_angle_comp_x, mw_angle_comp_y, mw_angle_coeff, mw_angle_alt_scale
     global current_mode
     rospy.init_node('state_controller')
-    rospy.Subscriber("/pidrone/plane_err", axes_err, plane_callback)
+    rospy.Subscriber("/pidrone/plane_err", TwistStamped, plane_callback)
     board = MultiWii("/dev/ttyUSB0")
     rospy.Subscriber("/pidrone/infrared", Range, ultra_callback)
     rospy.Subscriber("/pidrone/vrpn_pos", PoseStamped, vrpn_callback)
@@ -385,7 +386,7 @@ if __name__ == '__main__':
     markerpub = rospy.Publisher('/pidrone/imu_visualization_marker', Marker, queue_size=1, tcp_nodelay=False)
     markerarraypub = rospy.Publisher('/pidrone/imu_visualization_marker_array', MarkerArray, queue_size=1, tcp_nodelay=False)
     statepub = rospy.Publisher('/pidrone/state', State, queue_size=1, tcp_nodelay=False)
-    anglepub = rospy.Publisher('/pidrone/angle', Twist, queue_size=1, tcp_nodelay=False)
+    anglepub = rospy.Publisher('/pidrone/angle', TwistStamped, queue_size=1, tcp_nodelay=False)
     
     prev_angx = 0
     prev_angy = 0
@@ -403,7 +404,7 @@ if __name__ == '__main__':
     # as variable constants.
 
     mode_to_pub = Mode()
-    angle = Twist()
+    angle = TwistStamped()
 
     while not rospy.is_shutdown():
         mode_to_pub.mode = current_mode
@@ -423,15 +424,15 @@ if __name__ == '__main__':
                 new_angx = mw_data['angx']/180.0*np.pi
                 new_angy = mw_data['angy']/180.0*np.pi
 
-                angle.angular.x = new_angx
-                angle.angular.y = new_angy
+                # new added to pass angle of drone and correct velocity of drone
+                angle.twist.angular.x = new_angx  # it's the angle not the velocity
+                angle.twist.angular.y = new_angy  # it's the angle not the velocity
+                angle.header.stamp = rospy.get_rostime()
                 anglepub.publish(angle)
 
-                mw_angle_comp_x = np.tan((new_angx - prev_angx) * (new_angt - prev_angt)) * mw_angle_coeff
-                mw_angle_comp_y = np.tan((new_angy - prev_angy) * (new_angt - prev_angt)) * mw_angle_coeff
-                d_theta_x = new_angx - prev_angx
-                d_theta_y = new_angy - prev_angy
                 dt = new_angt - prev_angt
+                mw_angle_comp_x = np.tan((new_angx - prev_angx) * dt) * mw_angle_coeff
+                mw_angle_comp_y = np.tan((new_angy - prev_angy) * dt) * mw_angle_coeff
 
                 # angle_mag = np.arccos(np.cos(d_theta_x * dt) * np.cos(d_theta_y * dt))
 #               mw_angle_comp_x = np.sin(d_theta_x * dt) * angle_mag * mw_angle_coeff

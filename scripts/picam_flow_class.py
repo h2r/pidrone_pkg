@@ -1,10 +1,9 @@
 import numpy as np
-import picamera
 import picamera.array
 import cv2
 from h2rMultiWii import MultiWii
 import time
-from pidrone_pkg.msg import axes_err
+from geometry_msgs.msg import TwistStamped
 import rospy
   
 # RASPBERRY PI?
@@ -28,21 +27,22 @@ class AnalyzeFlow(picamera.array.PiMotionAnalysis):
         self.prev_time = curr_time
         
         self.x_motion = 0 - np.sum(x) * self.flow_coeff + np.arctan(self.ang_vx * diff_time) * self.ang_coefficient
-        self.y_motion = np.sum(y) * self.flow_coeff  + np.arctan(self.ang_vy * diff_time) * self.ang_coefficient
+        self.y_motion = np.sum(y) * self.flow_coeff + np.arctan(self.ang_vy * diff_time) * self.ang_coefficient
         self.z_motion = np.sum(np.multiply(x, self.z_filter_x)) + \
                 np.sum(np.multiply(y, self.z_filter_y))
         self.yaw_motion = np.sum(np.multiply(x, self.yaw_filter_x)) + \
                 np.sum(np.multiply(y, self.yaw_filter_y))
+        # yaw is negative if drone rotated to right
 
         # TODO smooth or not
-        self.velocity.x.err = self.x_motion
-        self.velocity.y.err = self.y_motion
-        self.velocity.z.err = self.z_motion
+        self.velocity.twist.linear.x = self.x_motion
+        self.velocity.twist.linear.y = self.y_motion
+        self.velocity.twist.linear.z = self.z_motion
+        self.velocity.twist.angular.z = self.yaw_motion
+        self.velocity.header.stamp = rospy.get_rostime()
         self.pub.publish(self.velocity)
-      
 #       print 'XYZyaw:\t{},\t{},\t{}\t{}\t\t\t{}'.format( \
 #               self.x_motion,self.y_motion,self.z_motion,self.yaw_motion,time.time() - start)
- 
 
     def set_angular_velocity(self, ang_vx, ang_vy):
         self.ang_vx = ang_vx
@@ -90,10 +90,10 @@ class AnalyzeFlow(picamera.array.PiMotionAnalysis):
         self.max_flow = camera_wh[0] / 16.0 * camera_wh[1] / 16.0 * 2**7
         self.norm_flow_to_cm = flow_scale # the conversion from flow units to cm
         self.flow_coeff = self.norm_flow_to_cm/self.max_flow
-        self.pub = rospy.Publisher('/pidrone/plane_err', axes_err, queue_size=1)
+        self.pub = rospy.Publisher('/pidrone/plane_err', TwistStamped, queue_size=1)
         self.alpha = 0.3
         if self.pub is not None:
-            self.velocity = axes_err() 
+            self.velocity = TwistStamped()
 
 if __name__ == '__main__':
     board = MultiWii("/dev/ttyACM0")
