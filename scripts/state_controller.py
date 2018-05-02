@@ -5,6 +5,7 @@ from geometry_msgs.msg import PoseStamped
 from std_msgs.msg import String
 from h2rMultiWii import MultiWii
 import signal
+import numpy as np
 
 
 
@@ -15,6 +16,8 @@ class Position():
         self.x = x
         self.y = y
         self.z = z
+    def __str__(self):
+        return "x: %f, y: %f, z: %f" % (self.x, self.y, self.z)
 
 
 def arm(board):
@@ -100,6 +103,7 @@ class PositionController(object):
         self.error_last = None
 
 
+
     def step(self, error):
         ''' Give flight controller outputs based on current and previous errors
         '''
@@ -118,7 +122,7 @@ class PositionController(object):
         roll_midpoint = 1500
         pitch_midpoint = 1500
         yaw_midpoint = 1500
-        thrust_midpoint = 1275
+        thrust_midpoint = 1350
 
 
         uc_integrated_error_x = self.integrated_error_x + error.x
@@ -141,23 +145,22 @@ class PositionController(object):
 
         self.error_last = error
 
-
-
-        kp_x = -10 # negative, because when (cmd - cur) < 0, we want to roll positively
-        kp_y = 0 # 
-        kp_z = 10
+        kp_x = 2
+        kp_y = 6
+        kp_z = 2
 
 
         ki_x = 0
-        ki_y = 0
+        ki_y = .01
         ki_z = 0
 
-        kd_x = 0
-        kd_y = 0
-        kd_z = 0
+        kd_x = 1
+        kd_y = 3
+        kd_z = 1
 
+        # negative, because when (cmd - cur) < 0, we want to roll positively
         # roll controls x (for now)
-        roll_factor = kp_x*error.x + ki_x*self.integrated_error_x + kd_x*d_err_x
+        roll_factor = -(kp_x*error.x + ki_x*self.integrated_error_x - kd_x*d_err_x)
 
         # Pitch controls z (for now)
         pitch_factor = kp_z*error.z + ki_z*self.integrated_error_z + kd_z*d_err_z
@@ -218,7 +221,7 @@ if __name__ == '__main__':
     
     # Subscribers
     #############
-    rospy.Subscriber('vrpn_client_node/aaron_pidrone/pose', PoseStamped, current_position_callback_vrpn)
+    rospy.Subscriber('vrpn_client_node/aarondrone/pose', PoseStamped, current_position_callback_vrpn)
     rospy.Subscriber('/pidrone/heartbeat', String, heartbeat_callback)
     rospy.Subscriber('/pidrone/commanded_position', PoseStamped, commanded_position_callback)
     rospy.Subscriber('/pidrone/commanded_mode', Mode, commanded_mode_callback)
@@ -226,6 +229,7 @@ if __name__ == '__main__':
     # Publishers
     ############
     error_publisher = rospy.Publisher('/pidrone/err', axes_err, queue_size=1)
+    intended_position_publisher = rospy.Publisher('/pidrone/intended_position', PoseStamped, queue_size=1)
 
     # This should be changed to a message type that is *actually* a Mode type
     current_mode_publisher = rospy.Publisher('/pidrone/current_mode', Mode, queue_size=1)
@@ -235,10 +239,18 @@ if __name__ == '__main__':
     ###############
     signal.signal(signal.SIGINT, ctrl_c_handler)
     board = MultiWii('/dev/ttyUSB0')
+    analog_data = board.getData(MultiWii.ANALOG)
+    y_schedule = np.linspace(0, .3, 600)
 
     loop_rate = rospy.Rate(100)
+    print_counter = 0
     try:
         while keep_going:
+            print_counter = print_counter + 1
+            if ((print_counter % 500) == 0):
+                board.getData(MultiWii.ANALOG)
+                print('Battery Voltage: %f' % (board.analog['vbat']*.1))
+
             if current_mode == DISARMED:
                 if commanded_mode == DISARMED:
                     # Self transition, do nothing
@@ -268,6 +280,7 @@ if __name__ == '__main__':
                         print('ARMED -> ARMED')
                 elif commanded_mode == FLYING:
                     current_mode = FLYING
+                    pos_index = 0
                     if verbose >= 3:
                         print('ARMED -> FLYING')
                 elif commanded_mode == DISARMED:
@@ -284,6 +297,12 @@ if __name__ == '__main__':
                     print('Cannot Transition from Mode %d to Mode %d' % (current_mode, commanded_mode) )
             elif current_mode == FLYING:
                 if commanded_mode == FLYING:
+                    cur_y_cmd = y_schedule[pos_index]
+                    if pos_index < (len(y_schedule) - 1):
+                        pos_index = pos_index + 1
+                    commanded_position.y = cur_y_cmd
+                    print('Updated commanded position to: ')
+                    print(commanded_position)
                     # Send command to flight controller based on PID output
                     # at current timestep
 
@@ -315,6 +334,11 @@ if __name__ == '__main__':
             mode_to_publish = Mode()
             mode_to_publish.mode = current_mode
             current_mode_publisher.publish(mode_to_publish)
+
+            intended_pose = PoseStamped()
+            intended_pose.pose.position.y = commanded_position.y
+            intended_pose.header.stamp = rospy.Time.now()
+            intended_position_publisher.publish(intended_pose)
 
             loop_rate.sleep()
 

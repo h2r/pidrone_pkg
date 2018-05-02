@@ -19,6 +19,13 @@ if __name__ == '__main__':
     modepub = rospy.Publisher('/pidrone/commanded_mode', Mode, queue_size=1)
     commanded_position_pub = rospy.Publisher('/pidrone/commanded_position', PoseStamped, queue_size=1)
 
+    cmd_pos_msg = PoseStamped()
+    cmd_pos_msg.pose.position.x = 0
+    cmd_pos_msg.pose.position.y = 0
+    cmd_pos_msg.pose.position.z = 0
+    commanded_position_pub.publish(cmd_pos_msg)
+
+
     signal.signal(signal.SIGINT, lambda x,y: ctrl_c_handler(x,y,modepub))
     mode_msg = Mode()
     print('Valid modes are DISARMED, ARMED, FLYING, and END')
@@ -42,8 +49,9 @@ if __name__ == '__main__':
 
             else:
                 # It's a mode command
-
-                if (desired_mode == 'DISARMED') or (desired_mode == 'D'):
+                if ('x' in desired_mode):
+                    mode_msg.mode = 0
+                elif (desired_mode == 'DISARMED') or (desired_mode == 'D'):
                     mode_msg.mode = 0
                 elif (desired_mode == 'ARMED') or (desired_mode == 'A'):
                     mode_msg.mode = 1
