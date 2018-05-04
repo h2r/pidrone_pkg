@@ -27,7 +27,7 @@ MAP_REAL_HEIGHT = 1.07
 METER_TO_PIXEL = (float(MAP_PIXEL_WIDTH) / MAP_REAL_WIDTH + float(MAP_PIXEL_HEIGHT) / MAP_REAL_HEIGHT) / 2.
 CAMERA_CENTER = np.float32([(CAMERA_WIDTH - 1) / 2., (CAMERA_HEIGHT - 1) / 2.]).reshape(-1, 1, 2)
 MAX_BAD_COUNT = -10
-NUM_PARTICLE = 30
+NUM_PARTICLE = 40
 
 
 class AnalyzePhase(picamera.array.PiMotionAnalysis):
@@ -44,8 +44,8 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
         self.pospub = rospy.Publisher('/pidrone/set_mode_vel', Mode, queue_size=1)
         self.first_image_pub = rospy.Publisher("/pidrone/picamera/first_image", Image, queue_size=1, latch=True)
 
-        self.lr_pid = PIDaxis(10.0, 0.000, 1.0, midpoint=0, control_range=(-10.0, 10.0))
-        self.fb_pid = PIDaxis(10.0, 0.000, 1.0, midpoint=0, control_range=(-10.0, 10.0))
+        self.lr_pid = PIDaxis(10.0, 0.000, 0.0, midpoint=0, control_range=(-5.0, 5.0))
+        self.fb_pid = PIDaxis(10.0, 0.000, 0.0, midpoint=0, control_range=(-5.0, 5.0))
 
         self.detector = cv2.ORB(nfeatures=100, scoreType=cv2.ORB_FAST_SCORE)  # FAST_SCORE is a little faster to compute
         map_grid_kp, map_grid_des = create_map('map.jpg')
@@ -71,12 +71,10 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
         self.mode = Mode()
         self.mode.mode = 5
         # constant
-        self.kp_yaw = 70.0
+        self.kp_yaw = 50.0
         self.ki_yaw = 0.1
-        self.alpha_yaw = 0.5  # perceived yaw smoothing alpha
-        self.hybrid_alpha = 0.5  # blend position with first frame and int
         self.alpha_yaw = 0.1  # perceived yaw smoothing alpha
-        self.hybrid_alpha = 0.2  # blend position with first frame and int
+        self.hybrid_alpha = 0.3  # blend position with first frame and int
         # angle
         self.angle_x = 0.0  # the hz of state_controller is different
         self.angle_y = 0.0
@@ -109,7 +107,7 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
                                 self.z]
                     self.yaw = self.alpha_yaw * particle.position[3] + (1.0 - self.alpha_yaw) * self.yaw
                     # print 'particle', particle
-                    print 'pose', self.pos, self.yaw
+                    print '--pose', self.pos[0], self.pos[1], self.yaw
 
                     # if all particles are not good estimations
                     if is_almost_equal(particle.weight, PROB_THRESHOLD):
@@ -118,12 +116,18 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
                         self.map_counter = 1
                     else:
                         self.map_counter = min(self.map_counter + 1, -MAX_BAD_COUNT)
-                    print 'count', self.map_counter
 
                     # if no particles are good estimations, we should restart
                     if self.map_counter < MAX_BAD_COUNT:
                         self.first_locate = True
+                        self.fb_pid._i = 0
+                        self.lr_pid._i = 0
+                        self.iacc_yaw = 0.0
                         self.map_counter = 0
+                        self.mode.x_velocity = 0
+                        self.mode.y_velocity = 0
+                        self.mode.yaw_velocity = 0
+                        self.pospub.publish(self.mode)
                         print 'Restart localization'
                     else:
                         if self.hold_position:
@@ -142,7 +146,9 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
                                 self.iacc_yaw += err_yaw * self.ki_yaw
                                 self.mode.yaw_velocity = err_yaw * self.kp_yaw + self.iacc_yaw
                                 self.pospub.publish(self.mode)
-                            print 'target', self.target_pos, self.target_yaw
+                            print '--target', self.target_pos[0], self.target_pos[1], self.target_yaw
+
+                    print 'count', self.map_counter
             else:
                 print "CANNOT FIND ANY FEATURES !!!!!"
 

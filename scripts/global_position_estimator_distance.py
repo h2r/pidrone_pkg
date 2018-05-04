@@ -44,7 +44,7 @@ MAP_REAL_WIDTH = 1.4  # in meter
 MAP_REAL_HEIGHT = 1.07
 METER_TO_PIXEL = (float(MAP_PIXEL_WIDTH) / MAP_REAL_WIDTH + float(MAP_PIXEL_HEIGHT) / MAP_REAL_HEIGHT) / 2.
 CAMERA_CENTER = np.float32([(CAMERA_WIDTH - 1) / 2., (CAMERA_HEIGHT - 1) / 2.]).reshape(-1, 1, 2)
-CAMERA_SCALE = 290.
+CAMERA_SCALE = 280.
 
 # ----- parameters for features -----
 ORB_GRID_SIZE_X = 4
@@ -111,7 +111,7 @@ class LocalizationParticleFilter:
         search_params = dict(checks=50)
         self.matcher = cv2.FlannBasedMatcher(index_params, search_params)
 
-    def sample_motion_model(self, transform, xt):
+    def sample_motion_model(self, x, y, yaw, xt):
         """
         Implement motion model from Equation 3 in PiDrone Slam with noise.
         """
@@ -122,10 +122,6 @@ class LocalizationParticleFilter:
         # xtp1 += np.random.normal(na.zeros(xt.shape), self.sigma)
         # return xtp1
 
-        x = -transform[0, 2] * self.z / CAMERA_SCALE
-        y = transform[1, 2] * self.z / CAMERA_SCALE
-        yaw = -np.arctan2(transform[1, 0], transform[0, 0])
-
         # add noise
         noisy_x_y_z_yaw = np.random.multivariate_normal([x, y, self.z, yaw], self.covariance_motion)
         # noisy_x_y_z_yaw = [x, y, self.z, yaw]
@@ -135,6 +131,12 @@ class LocalizationParticleFilter:
         xt.position[1] += (noisy_x_y_z_yaw[0] * np.sin(old_yaw) + noisy_x_y_z_yaw[1] * np.cos(old_yaw))
         xt.position[2] = self.z
         xt.position[3] += noisy_x_y_z_yaw[3]
+
+        # the range is (-pi, pi]
+        while xt.position[3] > math.pi:
+            xt.position[3] -= 2 * math.pi
+        while xt.position[3] <= -math.pi:
+            xt.position[3] += 2 * math.pi
 
     def measurement_model(self, kp, des, xt):
         """
@@ -179,14 +181,18 @@ class LocalizationParticleFilter:
             # add noise
             noisy_pose = [np.random.normal(pose[0], self.sigma_x), np.random.normal(pose[1], self.sigma_y), pose[2],
                           np.random.normal(pose[3], self.sigma_yaw)]
+            # keep in (-pi, pi]
+            while noisy_pose[3] > math.pi:
+                noisy_pose[3] -= 2 * math.pi
+            while noisy_pose[3] <= -math.pi:
+                noisy_pose[3] += 2 * math.pi
             # noisy_pose = pose
 
             yaw_difference = noisy_pose[3] - xt.position[3]
-            # keep in (-pi, pi]
             if yaw_difference > math.pi:
-                yaw_difference = 2 * math.pi - yaw_difference
+                yaw_difference = yaw_difference - 2 * math.pi
             elif yaw_difference <= -math.pi:
-                yaw_difference = 2 * math.pi + yaw_difference
+                yaw_difference = yaw_difference + 2 * math.pi
             # TODO the log and addition for bearing and velocity ?
             q = min(2., norm_pdf(noisy_pose[0] - xt.position[0], 0, self.sigma_x)) \
                 * min(2., norm_pdf(noisy_pose[1] - xt.position[1], 0, self.sigma_y)) \
@@ -225,11 +231,15 @@ class LocalizationParticleFilter:
         self.angle_y = angle_y
 
         transform = self.compute_transform(prev_kp, prev_des, kp, des)
+        if transform is not None:
+            x = -transform[0, 2] * self.z / CAMERA_SCALE
+            y = transform[1, 2] * self.z / CAMERA_SCALE
+            yaw = -np.arctan2(transform[1, 0], transform[0, 0])
 
         for p in self.particles:
             # update the position of each particle
             if transform is not None:
-                self.sample_motion_model(transform, p)
+                self.sample_motion_model(x, y, yaw, p)
             # update the weight of each particle
             if self.measure_count > MEASURE_WAIT_COUNT:
                 self.measurement_model(kp, des, p)
