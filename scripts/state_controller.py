@@ -446,7 +446,10 @@ if __name__ == '__main__':
         # end of main loop
         disarm(board)
     except Exception as ex:
-#        print('Error on line {}'.format(sys.exc_info()[-1].tb_lineno), type(ex).__name__, ex)
+        # This code prints the full exception trace, like errors in the standard
+        # python library do. Without this chunk of code, it is very difficult
+        # to determine exactly *where* an error occurred. The lack of this code
+        # Makes debugging and unknown error very difficult.
         exc_type, exc_value, exc_traceback = sys.exc_info() # most recent (if any) by default
 
 
