@@ -29,6 +29,8 @@ if __name__ == '__main__':
     signal.signal(signal.SIGINT, lambda x,y: ctrl_c_handler(x,y,modepub))
     mode_msg = Mode()
     print('Valid modes are DISARMED, ARMED, FLYING, and END')
+    print('Alternatively, D, A, F and E')
+    print('p <x> <y> <z> will command the drone to go to position (x, y, z)')
     try:
         while not rospy.is_shutdown():
             raw_mode = raw_input('Type a mode and press enter:\t')
@@ -38,14 +40,15 @@ if __name__ == '__main__':
             if desired_mode[0] == 'p':
                 # It's a position command
                 strs = desired_mode.split()
-                x = float(strs[1])
-                y = float(strs[2])
-                z = float(strs[3])
-                cmd_pos_msg = PoseStamped()
-                cmd_pos_msg.pose.position.x = x
-                cmd_pos_msg.pose.position.y = y
-                cmd_pos_msg.pose.position.z = z
-                commanded_position_pub.publish(cmd_pos_msg)
+                if len(strs) >= 4:
+                    x = float(strs[1])
+                    y = float(strs[2])
+                    z = float(strs[3])
+                    cmd_pos_msg = PoseStamped()
+                    cmd_pos_msg.pose.position.x = x
+                    cmd_pos_msg.pose.position.y = y
+                    cmd_pos_msg.pose.position.z = z
+                    commanded_position_pub.publish(cmd_pos_msg)
 
             else:
                 # It's a mode command
