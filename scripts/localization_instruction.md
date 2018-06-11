@@ -18,7 +18,12 @@ map.jpg don't works well with current setting).
 
 ## Fly
 1. arm, takeoff, when it stable, press r to start localization, then, press p to do 
-the position hold.
+the position hold (run picam_localization_distance.py instead of flow_pub_transform.py).
 2. control the drone by press i, j, k, l, each pressing will increase or decrease the target 
 pose by 0.1 meters
-3. If the estimated pose is not correct, change the CAMERA_SCALE
+3. If the estimated pose is not correct, change the CAMERA_SCALE.
+
+## Attention
+Before flying, you can run picam_localization_distance.py without state_controller.py, holding the 
+drone and move around to see the output in terminal.
+Due to battery or the code, it's not very stable.
