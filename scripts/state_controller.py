@@ -74,7 +74,7 @@ def idle():
 # flawed because it will interact in an unpredictable way with the
 # underlying rospy threading module.  It will only work if
 # multithreading is happening, and multithreading in Python is deeply
-# broken. 
+# broken.
 def takeoff():
     global set_z
     global current_mode
@@ -142,19 +142,26 @@ accZeroZ = means["az"] * accRawToMss
 
 
 def publishRos(board, imupub, markerpub, markerarraypub, statepub):
+    curr_time = rospy.Time.now()
     state = State()
+    state.header.stamp = curr_time
     state.vbat = board.analog['vbat'] * 0.10
     state.amperage = board.analog['amperage']
-    statepub.publish(state)
     
     imu = Imu()
     marker = Marker()
     roll = board.attitude['angx']
     pitch = board.attitude['angy']
     yaw = board.attitude['heading']
+    
+    state.roll = roll
+    state.pitch = pitch
+    statepub.publish(state)
+    
     quaternion = tf.transformations.quaternion_from_euler(roll * 2 * math.pi / 360, pitch * 2 * math.pi / 360, 0)
     # print(roll, pitch, yaw, quaternion)
     imu.header.frame_id = "base"
+    imu.header.stamp = curr_time
     imu.orientation.x = quaternion[0]
     imu.orientation.y = quaternion[1]
     imu.orientation.z = quaternion[2]
@@ -164,7 +171,7 @@ def publishRos(board, imupub, markerpub, markerarraypub, statepub):
     imu.linear_acceleration.z = board.rawIMU['az'] * accRawToMss - accZeroZ
     imupub.publish(imu)
 
-    marker.header.stamp = rospy.Time.now()
+    marker.header.stamp = curr_time
     marker.header.frame_id = "/base"
     marker.type = Marker.CUBE
     marker.action = 0
@@ -195,7 +202,7 @@ def disarm():
     print "disarming"
     current_mode = 4
     cmds = [1500, 1500, 1000, 900]
-    rospy.sleep(1)  
+    rospy.sleep(1)
 
     # stefie10: What are the sleeps for?  Almost always a bad idea in
     # something like this.  While you are sleeping you are not
@@ -245,7 +252,7 @@ def heartbeat_callback(msg):
 def mode_callback(data):
     global pid, reset_pid, pid_is, set_z, initial_set_z
     print 'GOT NEW MODE', data.mode
-    # stefie10: PLEASE use enums here.  
+    # stefie10: PLEASE use enums here.
     if data.mode == 0:
         reset_pid = True
         arm()
@@ -254,7 +261,7 @@ def mode_callback(data):
     elif data.mode == 2:
         if reset_pid:
             reset_pid = False
-            pid.reset()  
+            pid.reset()
 # stefie10: John and I refactored this to a method, but we thought
 # that set_z should possibly also be inside the PID controller and it
 # calls reset just once.  Then you could simply call pid.reset() and
@@ -271,7 +278,7 @@ def mode_callback(data):
             pid.reset()
             set_z = initial_set_z
         fly(data)
-#   elif data.mode == 6:        # DYNAMIC FLIGHT 
+#   elif data.mode == 6:        # DYNAMIC FLIGHT
 #       pid_is = pid.get_is()
 #       pid_is[0:3] = 0
 #       pid.set_is(pid_is)
@@ -408,12 +415,12 @@ if __name__ == '__main__':
         mw_data = board.getData(MultiWii.ATTITUDE)
         analog_data = board.getData(MultiWii.ANALOG)
 
-        publishRos(board, imupub, markerpub, markerarraypub, statepub)        
+        publishRos(board, imupub, markerpub, markerarraypub, statepub)
         
         if current_mode != 4: # stefie10: ENUM ENUM ENUM!
             # angle compensation calculations
             try:
-                # stefie10: Put this code inside of a method or several methods. 
+                # stefie10: Put this code inside of a method or several methods.
 
                 new_angt = time.time()
                 new_angx = mw_data['angx']/180.0*np.pi

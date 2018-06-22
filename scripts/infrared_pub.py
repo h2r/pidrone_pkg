@@ -45,7 +45,7 @@ if __name__ == "__main__":
     rnge.header.frame_id = "world"
     while not rospy.is_shutdown():
         r = rospy.Rate(100)
-        rnge.header.stamp = rospy.get_rostime()
+        rnge.header.stamp = rospy.Time.now()
         rnge.range = get_range()
         print rnge
         pub.publish(rnge)
