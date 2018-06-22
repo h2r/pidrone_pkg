@@ -54,6 +54,7 @@ def mode_callback(data):
     current_mode = data.mode
     if not phase_analyzer.transforming or data.mode == 4 or data.mode == 3:
         print "VELOCITY"
+        phase_analyzer.transforming = False
         phase_analyzer.pospub.publish(data)
     else:
         phase_analyzer.target_x = data.x_velocity * 4.
