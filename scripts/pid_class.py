@@ -183,12 +183,13 @@ class PID:
         self.throttle.mw_angle_alt_scale = 1.0
 
 
-    def reset(self, state_controller):
+    def reset(self, state_controller = None):
         self._t = None
         self.throttle_low._i = self.throttle_low.init_i
         self.throttle._i = self.throttle.init_i
 
-        state_controller.set_z = state_controller.initial_set_z
+        if state_controller != None:
+            state_controller.set_z = state_controller.initial_set_z
 
     def get_is(self):
         return [self.roll._i, self.pitch._i, self.yaw._i, self.throttle._i]

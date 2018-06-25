@@ -23,11 +23,11 @@ class StateController(object):
         self.ultra_z = 0
 
         self.error = axes_err()
+        self.pid = PID()
 
         self.set_vel_x = 0
         self.set_vel_y = 0
 
-        self.reset_pid = True
         self.last_heartbeat = None
 
         self.cmd_velocity = [0, 0]
@@ -114,68 +114,12 @@ class StateController(object):
         print "Caught ctrl-c! About to Disarm!"
         self.keep_going = False
 
-
-    def publishRos(self, board, imupub, markerpub, statepub):
-        state = State()
-        state.vbat = board.analog['vbat'] * 0.10
-        state.amperage = board.analog['amperage']
-        statepub.publish(state)
-
-        roll = board.attitude['angx']
-        pitch = board.attitude['angy']
-        yaw = board.attitude['heading']
-        quaternion = tf.transformations.quaternion_from_euler(roll * 2 * math.pi / 360, pitch * 2 * math.pi / 360, 0)
-
-        imu = Imu()
-        imu.header.frame_id = "base"
-        imu.orientation.x = quaternion[0]
-        imu.orientation.y = quaternion[1]
-        imu.orientation.z = quaternion[2]
-        imu.orientation.w = quaternion[3]
-
-        rospack = rospkg.RosPack()
-        path = rospack.get_path('pidrone_pkg')
-        f = open("%s/params/multiwii.yaml" % path)
-        means = yaml.load(f)
-        f.close()
-        accRawToMss = 9.8 / means["az"]
-        accZeroX = means["ax"] * accRawToMss
-        accZeroY = means["ay"] * accRawToMss
-        accZeroZ = means["az"] * accRawToMss
-
-        imu.linear_acceleration.x = board.rawIMU['ax'] * accRawToMss - accZeroX
-        imu.linear_acceleration.y = board.rawIMU['ay'] * accRawToMss - accZeroY
-        imu.linear_acceleration.z = board.rawIMU['az'] * accRawToMss - accZeroZ
-        imupub.publish(imu)
-
-        marker = Marker()
-        marker.header.stamp = rospy.Time.now()
-        marker.header.frame_id = "/base"
-        marker.type = Marker.CUBE
-        marker.action = 0
-        marker.pose.orientation = imu.orientation
-        marker.pose.position.x = imu.linear_acceleration.x * 0.1
-        marker.pose.position.y = imu.linear_acceleration.y * 0.1
-        marker.pose.position.z = imu.linear_acceleration.z * 0.1
-        marker.id = 0
-        marker.lifetime = rospy.Duration(10)
-        marker.scale.x = 0.1
-        marker.scale.y = 0.1
-        marker.scale.z = 0.1
-        marker.color.r = 1
-        marker.color.g = 1
-        marker.color.b = 1
-        marker.color.a = 1
-        markerpub.publish(marker)
-
 if __name__ == '__main__':
 
     rospy.init_node('state_controller')
 
     sc = StateController()
     sc.last_heartbeat = rospy.Time.now()
-
-    pid = PID()
 
     ARMED = 0
     DISARMED = 4
@@ -218,16 +162,15 @@ if __name__ == '__main__':
         mw_data = board.getData(MultiWii.ATTITUDE)
         analog_data = board.getData(MultiWii.ANALOG)
 
-        sc.publishRos(board, imupub, markerpub, statepub)
-
         try:
-            sc.calc_angle_comp_values(mw_data)
+            if not current_mode == DISARMED:
+                sc.calc_angle_comp_values(mw_data)
 
-            if sc.shouldIDisarm():
-                print "Disarming because a safety check failed."
-                break
+                if sc.shouldIDisarm():
+                    print "Disarming because a safety check failed."
+                    break
 
-            fly_cmd = pid.step(sc.error, sc.cmd_velocity, sc.cmd_yaw_velocity)
+            fly_cmd = sc.pid.step(sc.error, sc.cmd_velocity, sc.cmd_yaw_velocity)
 
             if current_mode == DISARMED:
                 if sc.commanded_mode == DISARMED:
@@ -246,7 +189,7 @@ if __name__ == '__main__':
                     print 'ARMED -> ARMED'
                 elif sc.commanded_mode == FLYING:
                     current_mode = FLYING
-                    pid.reset(sc)
+                    sc.pid.reset(sc)
                     print 'ARMED -> FLYING'
                 elif sc.commanded_mode == DISARMED:
                     sc.disarm(board)
@@ -257,19 +200,21 @@ if __name__ == '__main__':
 
             elif current_mode == FLYING:
                 if sc.commanded_mode == FLYING:
+                    r, p, y, t = fly_cmd
+                    print 'Fly Commands (r, p, y, t): %d, %d, %d, %d' % (r, p, y, t)
                     board.sendCMD(8, MultiWii.SET_RAW_RC, fly_cmd)
                     print 'FLYING -> FLYING'
                 elif sc.commanded_mode == DISARMED:
                     sc.disarm(board)
+                    current_mode = DISARMED
                     print 'FLYING -> DISARMED'
                 else:
                     print 'Cannot transition from Mode %d to Mode %d' % (current_mode, sc.commanded_mode)
         except:
             print "BOARD ERRORS!!!!!!!!!!!!!!"
             raise
-
+        
         board.receiveDataPacket()
-        time.sleep(0.01)
 
     sc.disarm(board)
     print "Shutdown Recieved"
