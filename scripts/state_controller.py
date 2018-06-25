@@ -324,7 +324,7 @@ def vrpn_callback(data):
     global cmds
     global current_mode
     # scale ultrasonic reading to get z accounting for tilt of the drone
-    ultra_z = data.pose.position.z
+    ultra_z = data.pose.position.y*100
     # print 'ultra_z', ultra_z
     try:
         if current_mode == 5:
@@ -334,7 +334,7 @@ def vrpn_callback(data):
             else:
                 error.z.err = init_z - ultra_z + set_z
                 # print "setting cmds"
-                cmds = pid.step(error)
+                cmds = pid.step(error, cmd_velocity, cmd_yaw_velocity)
     except Exception as e:
         land()
         raise
@@ -377,8 +377,8 @@ if __name__ == '__main__':
     rospy.init_node('state_controller')
     rospy.Subscriber("/pidrone/plane_err", axes_err, plane_callback)
     board = MultiWii("/dev/ttyUSB0")
-    rospy.Subscriber("/pidrone/infrared", Range, ultra_callback)
-    rospy.Subscriber("/pidrone/vrpn_pos", PoseStamped, vrpn_callback)
+    #rospy.Subscriber("/pidrone/infrared", Range, ultra_callback)
+    rospy.Subscriber("/vrpn_client_node/aarondrone/pose", PoseStamped, vrpn_callback)
     rospy.Subscriber("/pidrone/set_mode_vel", Mode, mode_callback)
     rospy.Subscriber("/pidrone/heartbeat", String, heartbeat_callback)
     global last_heartbeat

@@ -2,7 +2,7 @@
 
 # ROS imports
 import rospy
-import tf2
+import tf
 from sensor_msgs.msg import Imu, Range
 from pidrone_pkg.msg import Mode, State
 from geometry_msgs.msg import PoseStamped
@@ -91,15 +91,18 @@ def mocap_data_callback(data):
     '''
     Process the Motion Capture "ground truth" data
     '''
-    euler_angles = tf2.transformations.euler_from_quaternion(data.pose.orientation)
+    euler_angles = tf.transformations.euler_from_quaternion([data.pose.orientation.x,
+                                                            data.pose.orientation.y,
+                                                            data.pose.orientation.z,
+                                                            data.pose.orientation.w])
     roll = euler_angles[0]
     pitch = euler_angles[1]
     yaw = euler_angles[2]
     new_row = [data.header.stamp.secs,
                data.header.stamp.nsecs,
-               data.pose.position.x,
-               data.pose.position.y,
-               data.pose.position.z,
+               data.pose.position.z*100, # drone x
+               data.pose.position.x*100, # drone y
+               data.pose.position.y*100, # drone z
                roll,
                pitch,
                yaw]
