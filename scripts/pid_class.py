@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 from __future__ import division
-import rospy 
+import rospy
 from pidrone_pkg.msg import RC, ERR, axes_err
 from geometry_msgs.msg import Pose, PoseStamped
 import time
@@ -44,11 +44,11 @@ class PIDaxis():
 
     def step(self, err, time_elapsed, error = None, cmd_velocity=0, cmd_yaw_velocity=0):
 
-        if self._old_err is None: self._old_err = err # first time around prevent d term spike	
+        if self._old_err is None: self._old_err = err # first time around prevent d term spike
         # find the p,i,d components
         if self.kp_upper is not None and err < 0:
             self._p = err * self.kp_upper
-        else: 
+        else:
             self._p = err * self.kp
 
 
@@ -91,7 +91,7 @@ height_factor = 1.238
 battery_factor = 0.75
 
 class PID:
-    def __init__(self, 
+    def __init__(self,
 #               P   I   D
 #       roll = PIDaxis(8.0, 0.0, 0.4, control_range=(1400, 1600)),
 #       pitch = PIDaxis(8.0, 0.0, 0.4, control_range=(1400,
@@ -143,9 +143,9 @@ class PID:
         throttle_low = PIDaxis(1.0/height_factor * battery_factor, 0.05/height_factor * battery_factor, 2.0/height_factor * battery_factor, kp_upper = 1.0/height_factor * battery_factor, kpi = 0.00, kpi_max
         = 0.0, i_range=(0, 400),
         control_range=(1200,2000), d_range=(-40, 40), midpoint =
-        1250), 
+        1250),
         # kV 2300 motors
-        #1300), 
+        #1300),
         # kV 2550 motors
         #1250),
         
@@ -176,7 +176,7 @@ class PID:
         # safer presets
         #self.roll_low._i = 0.0
         #self.pitch_low._i = 0.0
-        self.throttle_low.init_i = 100
+        self.throttle_low.init_i = 40
         self.throttle.init_i = 0.0
         self.reset()
 
@@ -186,7 +186,7 @@ class PID:
     def reset(self):
         self._t = None
         self.throttle_low._i = self.throttle_low.init_i
-        self.throttle._i = self.throttle.init_i        
+        self.throttle._i = self.throttle.init_i
 
     def get_is(self):
         return [self.roll._i, self.pitch._i, self.yaw._i, self.throttle._i]
@@ -322,7 +322,7 @@ class PID:
         err_z = self.sp.pose.position.z - pos.pose.position.z
         err_yaw = sp_yaw - pos_yaw
         sp_angle = -np.arctan2(err_x, err_y) # the angle of the drone's pos relative to the setpoint
-        sp_norm = np.sqrt(err_x**2 + err_y**2) # the distance from the drone to the setpoint (in the plane) 
+        sp_norm = np.sqrt(err_x**2 + err_y**2) # the distance from the drone to the setpoint (in the plane)
         diff_angle = pos_yaw - sp_angle # the difference between the drone's yaw and its sp_angle
 
         err_fb = np.cos(diff_angle) * sp_norm

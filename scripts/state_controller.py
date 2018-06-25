@@ -377,8 +377,8 @@ if __name__ == '__main__':
     rospy.init_node('state_controller')
     rospy.Subscriber("/pidrone/plane_err", axes_err, plane_callback)
     board = MultiWii("/dev/ttyUSB0")
-    #rospy.Subscriber("/pidrone/infrared", Range, ultra_callback)
-    rospy.Subscriber("/vrpn_client_node/aarondrone/pose", PoseStamped, vrpn_callback)
+    rospy.Subscriber("/pidrone/infrared", Range, ultra_callback)
+    #rospy.Subscriber("/vrpn_client_node/aarondrone/pose", PoseStamped, vrpn_callback)
     rospy.Subscriber("/pidrone/set_mode_vel", Mode, mode_callback)
     rospy.Subscriber("/pidrone/heartbeat", String, heartbeat_callback)
     global last_heartbeat
