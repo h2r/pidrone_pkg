@@ -2,6 +2,7 @@
 
 # ROS imports
 import rospy
+import tf2
 from sensor_msgs.msg import Imu, Range
 from pidrone_pkg.msg import Mode, State
 from geometry_msgs.msg import PoseStamped
@@ -34,12 +35,13 @@ log_queue = Queue()
 
 time_header = ['Seconds', 'Nanoseconds']
 
-filenames = ['imu', 'x_y_yaw_velocity', 'ir', 'roll_pitch']
+filenames = ['imu', 'x_y_yaw_velocity', 'ir', 'roll_pitch', 'mocap']
 filenames_to_headers = {filenames[0] : ['Accel_x_body', 'Accel_y_body',
                                         'Accel_z_body'],
                         filenames[1] : ['Vel_x', 'Vel_y', 'Vel_yaw'],
                         filenames[2] : ['Range'],
-                        filenames[3] : ['Roll_(deg)', 'Pitch_(deg)']}
+                        filenames[3] : ['Roll_(deg)', 'Pitch_(deg)'],
+                        filenames[4] : ['x', 'y', 'z', 'Roll', 'Pitch', 'Yaw']} # TODO: Figure out units of MoCap data
 
 def imu_data_callback(data):
     '''
@@ -48,8 +50,8 @@ def imu_data_callback(data):
         - y linear acceleration
         - z linear acceleration
     '''
-    new_row = [data.stamp.secs,
-               data.stamp.nsecs,
+    new_row = [data.header.stamp.secs,
+               data.header.stamp.nsecs,
                data.linear_acceleration.x,
                data.linear_acceleration.y,
                data.linear_acceleration.z]
@@ -59,8 +61,8 @@ def x_y_yaw_velocity_data_callback(data):
     '''
     Process x velocity, y velocity, and yaw velocity data
     '''
-    new_row = [data.stamp.secs,
-               data.stamp.nsecs,
+    new_row = [data.header.stamp.secs,
+               data.header.stamp.nsecs,
                data.x_velocity,
                data.y_velocity,
                data.yaw_velocity]
@@ -70,8 +72,8 @@ def ir_data_callback(data):
     '''
     Process infrared range data
     '''
-    new_row = [data.stamp.secs,
-               data.stamp.nsecs,
+    new_row = [data.header.stamp.secs,
+               data.header.stamp.nsecs,
                data.range]
     log_queue.put([filenames[2], new_row])
 
@@ -79,8 +81,8 @@ def state_data_callback(data):
     '''
     Process roll and pitch data
     '''
-    new_row = [data.stamp.secs,
-               data.stamp.nsecs,
+    new_row = [data.header.stamp.secs,
+               data.header.stamp.nsecs,
                data.roll,
                data.pitch]
     log_queue.put([filenames[3], new_row])
@@ -89,7 +91,19 @@ def mocap_data_callback(data):
     '''
     Process the Motion Capture "ground truth" data
     '''
-    pass
+    euler_angles = tf2.transformations.euler_from_quaternion(data.pose.orientation)
+    roll = euler_angles[0]
+    pitch = euler_angles[1]
+    yaw = euler_angles[2]
+    new_row = [data.header.stamp.secs,
+               data.header.stamp.nsecs,
+               data.pose.position.x,
+               data.pose.position.y,
+               data.pose.position.z,
+               roll,
+               pitch,
+               yaw]
+    log_queue.put([filenames[4], new_row])
 
 def initialize_csv_files():
     '''
@@ -114,8 +128,8 @@ def listener():
     # Subscribe to topics to which the drone publishes in order to get data
     # about the drone's state
     rospy.Subscriber('/pidrone/imu', Imu, imu_data_callback)
-    rospy.Subscriber('/pidrone/set_mode_vel', Mode, x_y_yaw_velocity_data_callback)
-    rospy.Subscriber('/pidrone/infrared', Range, ir_data_callback)
+    rospy.Subscriber('/pidrone/set_mode_vel_raw', Mode, x_y_yaw_velocity_data_callback)
+    rospy.Subscriber('/pidrone/infrared_raw', Range, ir_data_callback)
     rospy.Subscriber('/pidrone/state', State, state_data_callback)
     
     # Subscribe to the topic to which the Motion Capture system publishes in

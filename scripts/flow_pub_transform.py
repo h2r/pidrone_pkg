@@ -106,7 +106,9 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
             corr_int = cv2.estimateRigidTransform(self.prev_img, curr_img, False)
             self.prev_img = curr_img
             mode = Mode()
+            mode_raw = Mode() # for data logging and analysis purposes
             mode.header.stamp(curr_time)
+            mode_raw.header.stamp(curr_time)
             if corr_first is not None:
                 self.last_first_time = curr_time
                 if curr_time - self.last_first_time > 2:
@@ -163,21 +165,28 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
                 #mode.y_velocity = 0
                 mode.x_velocity = cvc_vel * mode.x_i
                 mode.y_velocity = cvc_vel * mode.y_i
+                mode_raw.x_velocity = mode.x_velocity
+                mode_raw.y_velocity = mode.y_velocity
                 #mode.x_velocity = cvc_vel * mode.x_i / cvc_norm
                 #mode.y_velocity = cvc_vel * mode.y_i / cvc_norm
                 #mode.x_velocity = replan_vel_x
                 #mode.y_velocity = replan_vel_y
                 self.iacc_yaw += yaw * self.ki_yaw
+                self.iacc_yaw_raw += yaw_observed * self.ki_yaw
 
                 yaw_kpi_term = np.sign(yaw) * yaw * yaw * self.kpi_yaw
                 if abs(yaw_kpi_term) < self.kpi_max_yaw:
                     self.iacc_yaw += yaw_kpi_term
+                    self.iacc_yaw_raw += yaw_kpi_term
                 else:
                     self.iacc_yaw += np.sign(yaw) * self.kpi_max_yaw
+                    self.iacc_yaw_raw += np.sign(yaw_observed) * self.kpi_max_yaw
 
                 mode.yaw_velocity = yaw * self.kp_yaw + self.iacc_yaw
+                mode_raw.yaw_velocity = yaw_observed * self.kp_yaw + self.iacc_yaw_raw
                 print "yaw iacc: ", self.iacc_yaw
                 self.pospub.publish(mode)
+                self.pospub_raw.publish(mode_raw)
                 print "first", max_first_counter, first_counter
             elif corr_int is not None:
                 time_since_first = curr_time - self.last_first_time
@@ -222,6 +231,8 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
                 #cvc_vel = max(min(time_since_first * 0.1, 1.0), 0.0)
                 mode.x_velocity = cvc_vel * mode.x_i
                 mode.y_velocity = cvc_vel * mode.y_i
+                mode_raw.x_velocity = mode.x_velocity
+                mode_raw.y_velocity = mode.y_velocity
                 #mode.x_velocity = cvc_vel * mode.x_i / cvc_norm
                 #mode.y_velocity = cvc_vel * mode.y_i / cvc_norm
                 #mode.x_velocity = replan_vel_x
@@ -229,8 +240,10 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
                 #mode.yaw_velocity = yaw * self.kp_yaw
                 # yaw i term only
                 mode.yaw_velocity = self.iacc_yaw
+                mode_raw.yaw_velocity = self.iacc_yaw_raw
                 print "yaw iacc: ", self.iacc_yaw
                 self.pospub.publish(mode)
+                self.pospub_raw.publish(mode_raw)
             else:
                 print "LOST"
         else:
@@ -257,6 +270,7 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
         self.fb_err = ERR()
         self.prev_time = None
         self.pospub = rospy.Publisher('/pidrone/set_mode_vel', Mode, queue_size=1)
+        self.pospub_raw = rospy.Publisher('/pidrone/set_mode_vel_raw', Mode, queue_size=1)
         self.pos = [0, 0, 0]
 # -, -, 0.1
         #self.lr_pid = PIDaxis(0.100, -0.000100, 0.0050, midpoint=0, control_range=(-10.0, 10.0))
@@ -283,6 +297,7 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
         self.alpha_yaw = 0.1
         self.smoothed_yaw = 0.0
         self.iacc_yaw = 0.0
+        self.iacc_yaw_raw = 0.0
         self.transforming = False
         self.i = 0
         self.last_first_time = None

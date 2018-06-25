@@ -34,19 +34,28 @@ def get_range():
     smoothed_distance = (1.0 - alpha) * smoothed_distance + alpha * distance
     smoothed_distance = min(smoothed_distance, 55.0)
 
-    return smoothed_distance
+    return distance, smoothed_distance
 
 if __name__ == "__main__":
     rospy.init_node("infrared_pub")
+    raw_pub = rospy.Publisher('/pidrone/infrared_raw', Range, queue_size=1)
     pub = rospy.Publisher('/pidrone/infrared', Range, queue_size=1)
+    # Raw range message for data logging and analysis purposes
+    raw_rnge = Range()
     rnge = Range()
+    raw_rnge.max_range = 100
+    raw_rnge.min_range = 0
+    raw_rnge.header.frame_id = "world"
     rnge.max_range = 100
     rnge.min_range = 0
     rnge.header.frame_id = "world"
     while not rospy.is_shutdown():
         r = rospy.Rate(100)
-        rnge.header.stamp = rospy.Time.now()
-        rnge.range = get_range()
+        curr_time = rospy.Time.now()
+        raw_rnge.header.stamp = curr_time
+        rnge.header.stamp = curr_time
+        raw_rnge.range, rnge.range = get_range()
         print rnge
+        raw_pub.publish(raw_rnge)
         pub.publish(rnge)
         r.sleep()
