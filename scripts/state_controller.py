@@ -1,7 +1,3 @@
-from sensor_msgs.msg import Imu
-import tf
-import math
-from visualization_msgs.msg import Marker, MarkerArray
 from pid_class import PID
 from geometry_msgs.msg import PoseStamped
 from sensor_msgs.msg import Range
@@ -12,8 +8,7 @@ from pidrone_pkg.msg import axes_err, Mode, State
 from h2rMultiWii import MultiWii
 import time
 import signal
-import rospkg
-import yaml
+
 
 class StateController(object):
     
@@ -219,7 +214,7 @@ if __name__ == '__main__':
             raise
 
     sc.disarm(board)
-    print "Shutdown Recieved"
+    print "Shutdown Received"
 
 
 
