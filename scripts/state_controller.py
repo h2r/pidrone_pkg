@@ -16,6 +16,10 @@ import rospkg
 import yaml
 
 class StateController(object):
+    
+    ARMED = 0
+    DISARMED = 4
+    FLYING = 5
 
     def __init__(self):
         self.initial_set_z = 30.0
@@ -42,18 +46,21 @@ class StateController(object):
         self.mw_angle_alt_scale = 1.0
         self.mw_angle_coeff = 10.0
 
-        self.commanded_mode = 4
+        self.commanded_mode = self.DISARMED
+        self.current_mode = self.DISARMED
 
         self.keep_going = True
 
     def arm(self, board):
         arm_cmd = [1500, 1500, 2000, 900]
         board.sendCMD(8, MultiWii.SET_RAW_RC, arm_cmd)
+        board.receiveDataPacket()
         rospy.sleep(1)
 
     def disarm(self, board):
         disarm_cmd = [1500, 1500, 1000, 900]
         board.sendCMD(8, MultiWii.SET_RAW_RC, disarm_cmd)
+        board.receiveDataPacket()
         rospy.sleep(1)
 
     def fly(self, msg):
@@ -88,6 +95,9 @@ class StateController(object):
 
     def mode_callback(self, msg):
         self.commanded_mode = msg.mode
+        
+        if self.current_mode == self.FLYING:
+            self.fly(msg)
 
     def calc_angle_comp_values(self, mw_data):
         new_angt = time.time()
@@ -121,10 +131,6 @@ if __name__ == '__main__':
     sc = StateController()
     sc.last_heartbeat = rospy.Time.now()
 
-    ARMED = 0
-    DISARMED = 4
-    FLYING = 5
-
     # ROS Setup
     ###########
 
@@ -132,9 +138,6 @@ if __name__ == '__main__':
     ############
     errpub = rospy.Publisher('/pidrone/err', axes_err, queue_size=1)
     modepub = rospy.Publisher('/pidrone/mode', Mode, queue_size=1)
-    imupub = rospy.Publisher('/pidrone/imu', Imu, queue_size=1, tcp_nodelay=False)
-    markerpub = rospy.Publisher('/pidrone/imu_visualization_marker', Marker, queue_size=1, tcp_nodelay=False)
-    statepub = rospy.Publisher('/pidrone/state', State, queue_size=1, tcp_nodelay=False)
 
     # Subscribers
     #############
@@ -151,11 +154,10 @@ if __name__ == '__main__':
 
     sc.prev_angt = time.time()
 
-    current_mode = DISARMED
     mode_to_pub = Mode()
 
     while not rospy.is_shutdown() and sc.keep_going:
-        mode_to_pub.mode = current_mode
+        mode_to_pub.mode = sc.current_mode
         modepub.publish(mode_to_pub)
         errpub.publish(sc.error)
 
@@ -163,7 +165,7 @@ if __name__ == '__main__':
         analog_data = board.getData(MultiWii.ANALOG)
 
         try:
-            if not current_mode == DISARMED:
+            if not sc.current_mode == sc.DISARMED:
                 sc.calc_angle_comp_values(mw_data)
 
                 if sc.shouldIDisarm():
@@ -172,49 +174,49 @@ if __name__ == '__main__':
 
             fly_cmd = sc.pid.step(sc.error, sc.cmd_velocity, sc.cmd_yaw_velocity)
 
-            if current_mode == DISARMED:
-                if sc.commanded_mode == DISARMED:
+            if sc.current_mode == sc.DISARMED:
+                if sc.commanded_mode == sc.DISARMED:
                     print 'DISARMED -> DISARMED'
-                elif sc.commanded_mode == ARMED:
+                elif sc.commanded_mode == sc.ARMED:
                     sc.arm(board)
-                    current_mode = ARMED
+                    sc.current_mode = sc.ARMED
                     print 'DISARMED -> ARMED'
                 else:
-                    print 'Cannot transition from Mode %d to Mode %d' % (current_mode, sc.commanded_mode)
+                    print 'Cannot transition from Mode %d to Mode %d' % (sc.current_mode, sc.commanded_mode)
 
-            elif current_mode == ARMED:
-                if sc.commanded_mode == ARMED:
+            elif sc.current_mode == sc.ARMED:
+                if sc.commanded_mode == sc.ARMED:
                     idle_cmd = [1500, 1500, 1500, 1000]
                     board.sendCMD(8, MultiWii.SET_RAW_RC, idle_cmd)
+                    board.receiveDataPacket()
                     print 'ARMED -> ARMED'
-                elif sc.commanded_mode == FLYING:
-                    current_mode = FLYING
+                elif sc.commanded_mode == sc.FLYING:
+                    sc.current_mode = sc.FLYING
                     sc.pid.reset(sc)
                     print 'ARMED -> FLYING'
-                elif sc.commanded_mode == DISARMED:
+                elif sc.commanded_mode == sc.DISARMED:
                     sc.disarm(board)
-                    current_mode = DISARMED
+                    sc.current_mode = sc.DISARMED
                     print 'ARMED -> DISARMED'
                 else:
-                    print 'Cannot transition from Mode %d to Mode %d' % (current_mode, sc.commanded_mode)
+                    print 'Cannot transition from Mode %d to Mode %d' % (sc.current_mode, sc.commanded_mode)
 
-            elif current_mode == FLYING:
-                if sc.commanded_mode == FLYING:
+            elif sc.current_mode == sc.FLYING:
+                if sc.commanded_mode == sc.FLYING:
                     r, p, y, t = fly_cmd
                     print 'Fly Commands (r, p, y, t): %d, %d, %d, %d' % (r, p, y, t)
                     board.sendCMD(8, MultiWii.SET_RAW_RC, fly_cmd)
+                    board.receiveDataPacket()
                     print 'FLYING -> FLYING'
-                elif sc.commanded_mode == DISARMED:
+                elif sc.commanded_mode == sc.DISARMED:
                     sc.disarm(board)
-                    current_mode = DISARMED
+                    sc.current_mode = sc.DISARMED
                     print 'FLYING -> DISARMED'
                 else:
-                    print 'Cannot transition from Mode %d to Mode %d' % (current_mode, sc.commanded_mode)
+                    print 'Cannot transition from Mode %d to Mode %d' % (sc.current_mode, sc.commanded_mode)
         except:
             print "BOARD ERRORS!!!!!!!!!!!!!!"
             raise
-        
-        board.receiveDataPacket()
 
     sc.disarm(board)
     print "Shutdown Recieved"
