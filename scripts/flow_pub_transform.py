@@ -54,6 +54,7 @@ def mode_callback(data):
     current_mode = data.mode
     if not phase_analyzer.transforming or data.mode == 4 or data.mode == 3:
         print "VELOCITY"
+        phase_analyzer.transforming = False
         phase_analyzer.pospub.publish(data)
     else:
         phase_analyzer.target_x = data.x_velocity * 4.
@@ -78,7 +79,7 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
         img = np.reshape(np.fromstring(data, dtype=np.uint8), (240, 320, 3))
 #       cv2.imshow("img", img)
 #       cv2.waitKey(1)
-        curr_time = rospy.Time.now()
+        curr_time = rospy.get_time()
 
         shouldi_set_velocity = 1 #0
         if np.abs(curr_time - replan_last_reset) > replan_period:
@@ -102,13 +103,13 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
         elif self.transforming:
             #curr_img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
             curr_img = img
+            mode = Mode()
+            mode_raw = Mode() # for data logging and analysis purposes
+            mode.header.stamp = curr_time
+            mode_raw.header.stamp = curr_time
             corr_first = cv2.estimateRigidTransform(self.first_img, curr_img, False)
             corr_int = cv2.estimateRigidTransform(self.prev_img, curr_img, False)
             self.prev_img = curr_img
-            mode = Mode()
-            mode_raw = Mode() # for data logging and analysis purposes
-            mode.header.stamp(curr_time)
-            mode_raw.header.stamp(curr_time)
             if corr_first is not None:
                 self.last_first_time = curr_time
                 if curr_time - self.last_first_time > 2:

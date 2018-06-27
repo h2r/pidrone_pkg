@@ -9,7 +9,7 @@
 source ../../devel/setup.bash
 #export ROS_IP=192.168.42.1
 #export ROS_HOSTNAME=`hostname`
-export ROS_HOSTNAME=gdrone2
-export ROS_MASTER_URI=http://kalessin:11311
+export ROS_HOSTNAME=tdrone-blue
+#export ROS_MASTER_URI=http://kalessin:11311
 export PS1="\[\033[00;33m\][pidrone - ${ROS_MASTER_URI}]\[\033[00m\] $PS1"
 

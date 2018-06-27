@@ -41,11 +41,11 @@ acladd stefie10
 #stuff "unset STY"
 #stuff "screen"
 
-screen -t "free prompt"
-#screen -t " roscore"
-#stuff "source setup.sh"
-#stuff "roscore"
-#stuff ""
+#screen -t "free prompt"
+screen -t " roscore"
+stuff "source setup.sh"
+stuff "roscore"
+stuff ""
 
 screen -t " vim"
 stuff "source setup.sh"

@@ -41,7 +41,7 @@
 
 <script type="text/javascript">
   /**
-   * Setup all visualization elements when the page is loaded. 
+   * Setup all visualization elements when the page is loaded.
    */
   function empty(element) {
     while (element.firstChild) {
@@ -246,7 +246,7 @@
 <table summary="hostname" border="1" width=800>
 <tr>
   <td>Hostname: <input type="text" id="hostname" value="192.168.42.1" onchange="init()"/><input type="submit" value="Connect" name="submit" onclick="init()"/></td>
-<td>Connection status:  <div id="statusMessage">Initial value.</div>  
+<td>Connection status:  <div id="statusMessage">Initial value.</div>
     Battery Voltage:<div id="vbat">???</div></td>
 </tr>
 </table>
@@ -517,7 +517,7 @@ function keyPress() {
 }
 
 function keyDown() {
-  //console.log("Got key down: " + event.keyCode); 
+  //console.log("Got key down: " + event.keyCode);
   //printProperties(event);
   var char = String.fromCharCode(event.which || event.keyCode);
   //console.log("Key down: " + char);
