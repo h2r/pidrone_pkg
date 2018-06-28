@@ -8,6 +8,7 @@ from pidrone_pkg.msg import axes_err, Mode, State
 from h2rMultiWii import MultiWii
 import time
 import signal
+import sys
 
 
 class StateController(object):
@@ -19,7 +20,7 @@ class StateController(object):
     def __init__(self):
         self.initial_set_z = 30.0
         self.set_z = self.initial_set_z
-        self.ultra_z = 0
+        self.current_z = 0
 
         self.error = axes_err()
         self.pid = PID()
@@ -44,21 +45,30 @@ class StateController(object):
         self.commanded_mode = self.DISARMED
         self.current_mode = self.DISARMED
 
-        self.keep_going = True
+        self.board = MultiWii("/dev/ttyUSB0")
 
-    def arm(self, board):
+    def arm(self):
         arm_cmd = [1500, 1500, 2000, 900]
-        board.sendCMD(8, MultiWii.SET_RAW_RC, arm_cmd)
-        board.receiveDataPacket()
+        self.board.sendCMD(8, MultiWii.SET_RAW_RC, arm_cmd)
+        self.board.receiveDataPacket()
         rospy.sleep(1)
 
-    def disarm(self, board):
+    def disarm(self):
         disarm_cmd = [1500, 1500, 1000, 900]
-        board.sendCMD(8, MultiWii.SET_RAW_RC, disarm_cmd)
-        board.receiveDataPacket()
+        self.board.sendCMD(8, MultiWii.SET_RAW_RC, disarm_cmd)
+        self.board.receiveDataPacket()
         rospy.sleep(1)
 
-    def fly(self, msg):
+    def idle(self):
+        idle_cmd = [1500, 1500, 1500, 1000]
+        self.board.sendCMD(8, MultiWii.SET_RAW_RC, idle_cmd)
+        self.board.receiveDataPacket()
+
+    def fly(self, fly_cmd):
+        self.board.sendCMD(8, MultiWii.SET_RAW_RC, fly_cmd)
+        self.board.receiveDataPacket()
+
+    def update_fly_velocities(self, msg):
         if msg is not None:
             self.set_vel_x = msg.x_velocity
             self.set_vel_y = msg.y_velocity
@@ -73,26 +83,25 @@ class StateController(object):
     def heartbeat_callback(self, msg):
         self.last_heartbeat = rospy.Time.now()
 
-    def ultra_callback(self, msg):
-        if msg.range != -1:
-            # scale ultrasonic reading to get z accounting for tilt of the drone
-            self.ultra_z = msg.range * self.mw_angle_alt_scale
-            self.error.z.err = self.set_z - self.ultra_z
+    def infrared_callback(self, msg):
+        # scale infrared sensor reading to get z accounting for tilt of the drone
+        self.current_z = msg.range * self.mw_angle_alt_scale
+        self.error.z.err = self.set_z - self.current_z
 
     def vrpn_callback(self, msg):
         # mocap uses y-axis to represent the drone's z-axis motion
-        self.ultra_z = msg.pose.position.y
-        self.error.z.err = self.set_z - self.ultra_z
+        self.current_z = msg.pose.position.y
+        self.error.z.err = self.set_z - self.current_z
 
     def plane_callback(self, msg):
-        self.error.x.err = (msg.x.err - self.mw_angle_comp_x) * self.ultra_z + self.set_vel_x
-        self.error.y.err = (msg.y.err + self.mw_angle_comp_y) * self.ultra_z + self.set_vel_y
+        self.error.x.err = (msg.x.err - self.mw_angle_comp_x) * self.current_z + self.set_vel_x
+        self.error.y.err = (msg.y.err + self.mw_angle_comp_y) * self.current_z + self.set_vel_y
 
     def mode_callback(self, msg):
         self.commanded_mode = msg.mode
         
         if self.current_mode == self.FLYING:
-            self.fly(msg)
+            self.update_fly_velocities(msg)
 
     def calc_angle_comp_values(self, mw_data):
         new_angt = time.time()
@@ -117,7 +126,9 @@ class StateController(object):
 
     def ctrl_c_handler(self, signal, frame):
         print "Caught ctrl-c! About to Disarm!"
-        self.keep_going = False
+        self.disarm()
+        sys.exit()
+
 
 if __name__ == '__main__':
 
@@ -133,11 +144,12 @@ if __name__ == '__main__':
     ############
     errpub = rospy.Publisher('/pidrone/err', axes_err, queue_size=1)
     modepub = rospy.Publisher('/pidrone/mode', Mode, queue_size=1)
+    statepub = rospy.Publisher('/pidrone/state', State, queue_size=1, tcp_nodelay=False)
 
     # Subscribers
     #############
     rospy.Subscriber("/pidrone/plane_err", axes_err, sc.plane_callback)
-    rospy.Subscriber("/pidrone/infrared", Range, sc.ultra_callback)
+    rospy.Subscriber("/pidrone/infrared", Range, sc.infrared_callback)
     rospy.Subscriber("/pidrone/vrpn_pos", PoseStamped, sc.vrpn_callback)
     rospy.Subscriber("/pidrone/set_mode_vel", Mode, sc.mode_callback)
     rospy.Subscriber("/pidrone/heartbeat", String, sc.heartbeat_callback)
@@ -145,19 +157,23 @@ if __name__ == '__main__':
     # Non-ROS Setup
     ###############
     signal.signal(signal.SIGINT, sc.ctrl_c_handler)
-    board = MultiWii("/dev/ttyUSB0")
 
     sc.prev_angt = time.time()
 
     mode_to_pub = Mode()
+    state_to_pub = State()
 
-    while not rospy.is_shutdown() and sc.keep_going:
+    while not rospy.is_shutdown():
         mode_to_pub.mode = sc.current_mode
         modepub.publish(mode_to_pub)
         errpub.publish(sc.error)
 
-        mw_data = board.getData(MultiWii.ATTITUDE)
-        analog_data = board.getData(MultiWii.ANALOG)
+        mw_data = sc.board.getData(MultiWii.ATTITUDE)
+        analog_data = sc.board.getData(MultiWii.ANALOG)
+
+        state_to_pub.vbat = sc.board.analog['vbat'] * 0.10
+        state_to_pub.amperage = sc.board.analog['amperage']
+        statepub.publish(state_to_pub)
 
         try:
             if not sc.current_mode == sc.DISARMED:
@@ -173,7 +189,7 @@ if __name__ == '__main__':
                 if sc.commanded_mode == sc.DISARMED:
                     print 'DISARMED -> DISARMED'
                 elif sc.commanded_mode == sc.ARMED:
-                    sc.arm(board)
+                    sc.arm()
                     sc.current_mode = sc.ARMED
                     print 'DISARMED -> ARMED'
                 else:
@@ -181,16 +197,14 @@ if __name__ == '__main__':
 
             elif sc.current_mode == sc.ARMED:
                 if sc.commanded_mode == sc.ARMED:
-                    idle_cmd = [1500, 1500, 1500, 1000]
-                    board.sendCMD(8, MultiWii.SET_RAW_RC, idle_cmd)
-                    board.receiveDataPacket()
+                    sc.idle()
                     print 'ARMED -> ARMED'
                 elif sc.commanded_mode == sc.FLYING:
                     sc.current_mode = sc.FLYING
                     sc.pid.reset(sc)
                     print 'ARMED -> FLYING'
                 elif sc.commanded_mode == sc.DISARMED:
-                    sc.disarm(board)
+                    sc.disarm()
                     sc.current_mode = sc.DISARMED
                     print 'ARMED -> DISARMED'
                 else:
@@ -200,11 +214,10 @@ if __name__ == '__main__':
                 if sc.commanded_mode == sc.FLYING:
                     r, p, y, t = fly_cmd
                     print 'Fly Commands (r, p, y, t): %d, %d, %d, %d' % (r, p, y, t)
-                    board.sendCMD(8, MultiWii.SET_RAW_RC, fly_cmd)
-                    board.receiveDataPacket()
+                    sc.fly(fly_cmd)
                     print 'FLYING -> FLYING'
                 elif sc.commanded_mode == sc.DISARMED:
-                    sc.disarm(board)
+                    sc.disarm()
                     sc.current_mode = sc.DISARMED
                     print 'FLYING -> DISARMED'
                 else:
@@ -213,8 +226,7 @@ if __name__ == '__main__':
             print "BOARD ERRORS!!!!!!!!!!!!!!"
             raise
 
-    sc.disarm(board)
+    sc.disarm()
     print "Shutdown Received"
-
 
 
