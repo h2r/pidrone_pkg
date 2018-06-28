@@ -91,6 +91,7 @@ def load_and_serialize_data(csv_filename_list):
         del new_row[0:2]
         # Insert time with Seconds and Nanoseconds combined
         new_row.insert(0, next_time)
+        # Append a filename-data pair
         serialized_data.append((next_time_key, new_row))
     return serialized_data
     
@@ -98,17 +99,79 @@ def compute_UKF_data():
     '''
     Apply a UKF on raw data
     '''
-    # Create a drone state estimation object to be able to store state information
-    # and apply the UKF
+    # Create a drone state estimation object to be able to store state
+    # information and apply the UKF
     drone_state = DroneStateEstimation()
+    
+    # TODO: Try to implement this in the DroneStateEstimation class in
+    # ukf_state_estimation.py so as to keep UKF implementation code more
+    # together
+    
+    # TODO: Estimate yaw (is the best that we can do right now an accumulation
+    # of yaw velocities from camera data?)
     
     raw_data = load_raw_data()
     for data_type, data_contents in raw_data:
-        if data_type == 'imu_RAW':
-            drone_state.most_recent_control_input = (
+        if data_type == 'imu_RAW' and drone_state.got_roll_pitch():
+            # Raw IMU accelerometer data is treated as the control input
+            if drone_state.got_first_control_input:
+                # Compute the time interval since the last control input
+                drone_state.dt_control_input = (data_contents[0] -
+                                            drone_state.last_control_input_time)
+            # Set the current time at which we just received a control input to
+            # be the last control input time
+            drone_state.last_control_input_time = data_contents[0]
+            drone_state.last_control_input = (
                 np.array([[data_contents[1]],   # accel x
                           [data_contents[2]],   # accel y
                           [data_contents[3]]])) # accel z
-        # TODO: Store last time
+            if drone_state.got_first_control_input:
+                # Compute the prior in this prediction step
+                drone_state.ukf.predict(dt=drone_state.dt_control_input,
+                                        fx=drone_state.state_transition_function,
+                                        u=drone_state.last_control_input)
+                drone_state.computed_first_prior = True
+            else:
+                drone_state.got_first_control_input = True
+        elif data_type == 'ir_RAW' and drone_state.computed_first_prior:
+            # We have computed the first prior and have just received a
+            # measurement, so compute the measurement update step
+            if drone_state.got_first_measurement:
+                # Compute the time interval since the last control input
+                drone_state.dt_measurement = (data_contents[0] -
+                                              drone_state.last_measurement_time)
+            # Set the current time at which we just received a measurement to be
+            # the last measurement time
+            drone_state.last_measurement_time = data_contents[0]
+            # This last measurement will be stored in drone_state.ukf.z in the
+            # update step
+            if drone_state.got_first_measurement:
+                measurement_z = np.array(
+                                    [[0.0], # measured x velocity (none)
+                                     [0.0], # measured y velocity (none)
+                                     [0.0], # measured yaw velocity (none)
+                                     [data_contents[1]]]) # measured slant range
+                # In order to perform "sensor fusion", we must dynamically alter
+                # the UKF's measurement function that is to be used based on the
+                # measurement that has come in, be it IR range data or camera x
+                # velocity, y velocity, and yaw velocity
+                drone_state.ukf.update(measurement_z,
+                                       hx=drone_state.measurement_function_IR,
+                                       dt=drone_state.dt_measurement)
+
+        elif data_type == 'x_y_yaw_velocity_RAW':
+            # TODO: Implement a measurement update here
+            pass
+        
+        elif data_type == 'roll_pitch_RAW':
+            # For initial simplicity, we take roll and pitch from the IMU as
+            # ground truth, so update the drone's roll and pitch variables.
+            # These are important as they are used in the rotation matrix in the
+            # prediction step, along with a yaw estimate. We suspect that the
+            # IMU implements its own filter for roll and pitch. In a later
+            # iteration of this UKF, however, it may be worth including roll and
+            # pitch in the state vector
+            drone_state.roll = data_contents[1]
+            drone_state.pitch = data_contents[2]
 
 #def plot_state_vector(raw)

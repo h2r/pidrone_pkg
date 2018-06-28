@@ -41,9 +41,19 @@ class DroneStateEstimation(object):
         self.ukf.R = np.diag([0.1, 0.1, 0.2, 0.01])
         
         # Keep track of control input u
-        self.most_recent_control_input = np.array([[0.0],  # accel x
+        self.last_control_input = np.array([[0.0],  # accel x
                                                    [0.0],  # accel y
                                                    [0.0]]) # accel z
+        self.last_control_input_time = None
+        self.got_first_control_input = False
+        self.computed_first_prior = False
+        # Time in seconds between consecutive control inputs
+        self.dt_control_input = None
+        
+        self.last_measurement_time = None
+        self.got_first_measurement = False
+        # Time in seconds between consecutive measurements
+        self.dt_measurement = None
 
     def apply_rotation_matrix(self, original_matrix):
         '''
@@ -66,11 +76,11 @@ class DroneStateEstimation(object):
         # Apply the rotation matrix
         return np.dot(rotation_matrix, original_matrix)
 
-    def state_transition_function(self, x, u, dt):
+    def state_transition_function(self, x, dt, u):
         '''
         x : current state. A NumPy column vector
-        u : control inputs. A NumPy column vector
         dt : time step. A float
+        u : control inputs. A NumPy column vector
         '''
         x_output = np.empty_like(x)
         accelerations_global_frame = self.apply_rotation_matrix(u)
@@ -92,3 +102,30 @@ class DroneStateEstimation(object):
                        [0, 1, 0, 0],
                        [0, 0, 0, 1],
                        [0, 0, (dt/(np.cos(theta)*np.cos(phi))), 0]], x)
+                       
+    def measurement_function_IR(self, x, dt):
+        '''
+        Altered measurement function for just the IR slant range reading. This
+        must be done due to the fact that measurements from different sensors
+        come in at different rates, and in general we would like to perform
+        "sensor fusion" (although in this case the current sensors we have do
+        not really pertain to the same state variables)
+        x : current state. A NumPy column vector
+        dt : time step. A float
+        '''
+        # Convert Euler angles from degrees to radians
+        phi = np.deg2rad(self.roll)
+        theta = np.deg2rad(self.pitch)
+        return np.dot([[0, 0, 0, 0],
+                       [0, 0, 0, 0],
+                       [0, 0, 0, 0],
+                       [0, 0, (dt/(np.cos(theta)*np.cos(phi))), 0]], x)
+    
+    # TODO: Make measurement function for just camera data
+    
+    def got_roll_pitch(self):
+        '''
+        Return a boolean indicating whether or not we have received values for
+        roll and pitch
+        '''
+        return (self.roll is not None and self.pitch is not None)
