@@ -7,7 +7,7 @@ class DroneStateEstimation(object):
     
     def __init__(self):
         # TODO: Modify these sigma point parameters as necessary
-        sigma_points = MerweScaledSigmaPoints(n=3, alpha=0.1, beta=2., kappa=0.)
+        sigma_points = MerweScaledSigmaPoints(n=4, alpha=0.1, beta=2., kappa=0.)
         # Note that dt will get updated dynamically as sensor data comes in
         self.ukf = UnscentedKalmanFilter(dim_x=4, dim_z=4, dt=1.0,
                                          hx=self.measurement_function,
@@ -21,11 +21,8 @@ class DroneStateEstimation(object):
         # IMU that has a gyroscope with a magnetometer included for yaw sensing
         self.yaw = 0.0
         
-        # Initialize the state variables:
-        self.ukf.x = np.array([[0.0],  # x-velocity
-                               [0.0],  # y-velocity
-                               [0.0],  # z-velocity
-                               [0.0]]) # yaw-velocity
+        # Initialize the state variables [x_vel, y_vel, z_vel, yaw_vel]
+        self.ukf.x = np.array([0.0, 0.0, 0.0, 0.0])
         # Initialize state covariance matrix P:
         # TODO: Tune these initial values as necessary. Currently these are just
         #       guesses
@@ -40,10 +37,8 @@ class DroneStateEstimation(object):
         # TODO: Tune as necessary. Currently just a guess
         self.ukf.R = np.diag([0.1, 0.1, 0.2, 0.01])
         
-        # Keep track of control input u
-        self.last_control_input = np.array([[0.0],  # accel x
-                                                   [0.0],  # accel y
-                                                   [0.0]]) # accel z
+        # Keep track of control input u [accel_x, accel_y, accel_z]
+        self.last_control_input = np.array([0.0, 0.0, 0.0])
         self.last_control_input_time = None
         self.got_first_control_input = False
         self.computed_first_prior = False

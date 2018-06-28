@@ -149,9 +149,9 @@ class DataLogger(object):
         yaw = euler_angles[2]
         new_row = [data.header.stamp.secs,
                    data.header.stamp.nsecs,
-                   data.pose.position.z*100, # drone x
-                   data.pose.position.x*100, # drone y
-                   data.pose.position.y*100, # drone z
+                   data.pose.position.z*100, # initial drone x
+                   data.pose.position.x*100, # initial drone y
+                   data.pose.position.y*100, # initial drone z
                    roll,
                    pitch,
                    yaw]
