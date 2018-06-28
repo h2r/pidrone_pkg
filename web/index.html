@@ -448,7 +448,7 @@ function publishTranslateUp() {
   modeMsg.mode = 5
   modeMsg.x_velocity = 0
   modeMsg.y_velocity = 0
-  modeMsg.z_velocity = 0.05
+  modeMsg.z_velocity = 10
   modeMsg.yaw_velocity = 0
   modepub.publish(modeMsg);
 }
@@ -458,7 +458,7 @@ function publishTranslateDown() {
   modeMsg.mode = 5
   modeMsg.x_velocity = 0
   modeMsg.y_velocity = 0
-  modeMsg.z_velocity = -0.05
+  modeMsg.z_velocity = -10
   modeMsg.yaw_velocity = 0
   modepub.publish(modeMsg);
 }
