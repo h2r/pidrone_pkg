@@ -162,9 +162,9 @@ class StateAnalyzer(object):
                 # be the last control input time
                 drone_state.last_control_input_time = new_time
                 drone_state.last_control_input = (
-                    np.array([float(data_contents[1]),   # accel x
-                              float(data_contents[2]),   # accel y
-                              float(data_contents[3])])) # accel z
+                    np.array([float(data_contents[1])*100.,   # accel x (cm/s^2)
+                              float(data_contents[2])*100.,   # accel y (cm/s^2)
+                              float(data_contents[3])*100.])) # accel z (cm/s^2)
                 if drone_state.got_first_control_input:
                     # Compute the prior in this prediction step
                     drone_state.ukf.predict(dt=drone_state.dt_control_input,
@@ -239,11 +239,32 @@ class StateAnalyzer(object):
         plt.plot(mocap_times, mocap_altitudes, label='Mo-Cap altitude')
         plt.plot(ukf_times, ukf_altitudes, label='UKF altitude')
         
+        plt.xlabel('Time (seconds)')
+        plt.ylabel('Drone altitude (cm)')
+        plt.title('Comparison of Raw Data, EMA Filtered Data, Mo-Cap Ground '
+                  'Truth Data, and UKF Filtered Data for Estimating Drone Altitude')
+        
         plt.legend()
+        print 'Altitude plot created.'
+        plt.show()
+    
+    def plot_z_velocities(self):
+        plt.plot(self.raw_ir_times, self.raw_ir_vels, label='Raw IR velocity')
+        plt.plot(self.ema_times, self.ema_vels, label='EMA filtered IR velocity')
+        plt.plot(self.mocap_times, self.mocap_vels, label='Mo-Cap velocity')
+        plt.plot(self.ukf_times, self.ukf_z_velocities, label='UKF z-velocity')
+        
+        plt.xlabel('Time (seconds)')
+        plt.ylabel('Z-velocity (cm/s)')
+        plt.title('Comparison of Raw Data, EMA Filtered Data, Mo-Cap Ground '
+                  'Truth Data, and UKF Filtered Data for Estimating Drone Z-Velocity')
+        
+        plt.legend()
+        print 'Z-velocity plot created.'
         plt.show()
         
 
-    def main(self):
+    def compare_altitudes(self, do_plot=False):
         ukf_states, ukf_times, raw_ir_slant_ranges, raw_ir_slant_range_times = self.compute_UKF_data()
         ukf_times = [(t - self.earliest_time  + self.mocap_time_offset) for t in ukf_times]
         raw_ir_slant_range_times = [(t - self.earliest_time + self.mocap_time_offset) for t in raw_ir_slant_range_times]
@@ -260,25 +281,78 @@ class StateAnalyzer(object):
                 ukf_curr_altitude += dz
                 ukf_altitudes.append(ukf_curr_altitude)
         del ukf_times[0] # to fit dimensions of ukf_altitudes
+        
+        ema_ranges, ema_range_times = self.get_ir_ema_altitude_data()
+        mocap_altitudes, mocap_altitude_times = self.get_mocap_altitude_data()
+        
+        if do_plot:
+            self.plot_altitudes(raw_ir_slant_ranges, raw_ir_slant_range_times,
+                                ema_ranges, ema_range_times, mocap_altitudes,
+                                mocap_altitude_times, ukf_altitudes, ukf_times)
+                                
+    def compare_z_velocities(self, do_plot=False):
+        # Get UKF z-velocity data
+        ukf_states, ukf_times, raw_ir_slant_ranges, self.raw_ir_times = self.compute_UKF_data()
+        self.ukf_times = [(t - self.earliest_time  + self.mocap_time_offset) for t in ukf_times]
+        self.ukf_z_velocities = [row[3] for row in ukf_states]
+                
+        # Compute estimated velocities from raw IR sensor positions values
+        self.raw_ir_times = [(t - self.earliest_time + self.mocap_time_offset) for t in self.raw_ir_times]
+        self.raw_ir_vels = []
+        for num, position in enumerate(raw_ir_slant_ranges):
+            # Don't try to compute a velocity for the first position value
+            if num != 0:
+                dt = self.raw_ir_times[num] - self.raw_ir_times[num-1]
+                dz = position - raw_ir_slant_ranges[num-1]
+                dzdt = dz/dt
+                self.raw_ir_vels.append(dzdt)
+        del self.raw_ir_times[0] # to fit dimensions of raw_ir_vels
+        
+        # Compute estimated velocities from EMA smoothed positions
+        ema_ranges, self.ema_times = self.get_ir_ema_altitude_data()
+        self.ema_vels = []
+        for num, position in enumerate(ema_ranges):
+            if num != 0:
+                dt = self.ema_times[num] - self.ema_times[num-1]
+                dz = position - ema_ranges[num-1]
+                dzdt = dz/dt
+                self.ema_vels.append(dzdt)
+        del self.ema_times[0] # to fit dimensions of ema_vels
+                
+        # Compute estimated velocities from Mo-Cap positions
+        mocap_altitudes, self.mocap_times = self.get_mocap_altitude_data()
+        self.mocap_vels = []
+        for num, position in enumerate(mocap_altitudes):
+            if num != 0:
+                dt = self.mocap_times[num] - self.mocap_times[num-1]
+                dz = position - mocap_altitudes[num-1]
+                dzdt = dz/dt
+                self.mocap_vels.append(dzdt)
+        del self.mocap_times[0] # to fit dimensions of mocap_vels
+        if do_plot:
+            self.plot_z_velocities()
+
+    def get_ir_ema_altitude_data(self):
         ema_ir_data = self.load_EMA_data()
         ema_ranges = []
         ema_range_times = []
         for data_type, data_contents in ema_ir_data:
             ema_range_times.append(data_contents[0] - self.earliest_time + self.mocap_time_offset)
             ema_ranges.append(float(data_contents[1]))
+        return ema_ranges, ema_range_times
+
+    def get_mocap_altitude_data(self):
         mocap_data = self.load_mocap_data()
         mocap_altitudes = []
         mocap_altitude_times = []
         for data_type, data_contents in mocap_data:
             mocap_altitude_times.append(data_contents[0] - self.earliest_time)
             mocap_altitudes.append(float(data_contents[3]))
-        
-        self.plot_altitudes(raw_ir_slant_ranges, raw_ir_slant_range_times, ema_ranges,
-                        ema_range_times, mocap_altitudes, mocap_altitude_times,
-                        ukf_altitudes, ukf_times)
+        return mocap_altitudes, mocap_altitude_times
         
 
 if __name__ == '__main__':
     state_analyzer = StateAnalyzer()
-    state_analyzer.main()
+    #state_analyzer.compare_altitudes()
+    #state_analyzer.compare_z_velocities()
 

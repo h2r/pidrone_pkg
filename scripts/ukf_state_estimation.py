@@ -30,7 +30,10 @@ class DroneStateEstimation(object):
         
         # Initialize the process noise covariance matrix Q:
         # TODO: Tune as necessary. Currently just a guess
-        self.ukf.Q = np.eye(4)*0.05
+        # To consider: Changing scale factor by too much could lead to the
+        # following error:
+        # numpy.linalg.linalg.LinAlgError: 3-th leading minor not positive definite
+        self.ukf.Q = np.eye(4)*0.1
         
         # Initialize the measurement covariance matrix R:
         # Using np.diag makes the covariances 0
@@ -73,9 +76,9 @@ class DroneStateEstimation(object):
 
     def state_transition_function(self, x, dt, u):
         '''
-        x : current state. A NumPy column vector
+        x : current state. A NumPy array
         dt : time step. A float
-        u : control inputs. A NumPy column vector
+        u : control inputs. A NumPy array
         '''
         x_output = np.empty_like(x)
         accelerations_global_frame = self.apply_rotation_matrix(u)
@@ -87,7 +90,7 @@ class DroneStateEstimation(object):
         
     def measurement_function(self, x, dt):
         '''
-        x : current state. A NumPy column vector
+        x : current state. A NumPy array
         dt : time step. A float
         '''
         # Convert Euler angles from degrees to radians
@@ -105,7 +108,7 @@ class DroneStateEstimation(object):
         come in at different rates, and in general we would like to perform
         "sensor fusion" (although in this case the current sensors we have do
         not really pertain to the same state variables)
-        x : current state. A NumPy column vector
+        x : current state. A NumPy array
         dt : time step. A float
         '''
         # Convert Euler angles from degrees to radians
