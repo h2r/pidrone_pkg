@@ -70,6 +70,7 @@ class StateController(object):
         """Arms the drone by sending the arm command to the flight controller"""
         arm_cmd = [1500, 1500, 2000, 900]
         self.board.sendCMD(8, MultiWii.SET_RAW_RC, arm_cmd)
+        #rospy.sleep(0.01)
         self.board.receiveDataPacket()
         rospy.sleep(1)
 
@@ -77,6 +78,7 @@ class StateController(object):
         """Disarms the drone by sending the disarm command to the flight controller"""
         disarm_cmd = [1500, 1500, 1000, 900]
         self.board.sendCMD(8, MultiWii.SET_RAW_RC, disarm_cmd)
+        #rospy.sleep(0.01)
         self.board.receiveDataPacket()
         rospy.sleep(1)
 
@@ -84,12 +86,16 @@ class StateController(object):
         """Enables the drone to continue arming until commanded otherwise"""
         idle_cmd = [1500, 1500, 1500, 1000]
         self.board.sendCMD(8, MultiWii.SET_RAW_RC, idle_cmd)
+        #rospy.sleep(0.01)
         self.board.receiveDataPacket()
+        rospy.sleep(1)
 
     def fly(self, fly_cmd):
         """Enables flight by sending the calculated flight command to the flight controller"""
         self.board.sendCMD(8, MultiWii.SET_RAW_RC, fly_cmd)
+        #rospy.sleep(0.01)
         self.board.receiveDataPacket()
+        rospy.sleep(1)
 
     def update_fly_velocities(self, msg):
         """Updates the desired x, y, yaw velocities and z-position"""
@@ -257,7 +263,7 @@ if __name__ == '__main__':
                     break
 
             # Uses a PID controller to calculate the flight command: [roll, pitch, yaw, throttle]
-            fly_cmd = sc.pid.step(sc.error, sc.cmd_velocity, sc.cmd_yaw_velocity)
+            fly_cmd = sc.pid.step(sc.error, sc.cmd_yaw_velocity)
 
             # Finite state machine implementation of controlling the drone
             if sc.current_mode == sc.DISARMED:

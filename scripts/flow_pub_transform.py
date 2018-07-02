@@ -105,8 +105,9 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
             curr_img = img
             mode = Mode()
             mode_raw = Mode() # for data logging and analysis purposes
-            mode.header.stamp = curr_time
-            mode_raw.header.stamp = curr_time
+            curr_timestamp = rospy.Time.from_sec(curr_time)
+            mode.header.stamp = curr_timestamp
+            mode_raw.header.stamp = curr_timestamp
             corr_first = cv2.estimateRigidTransform(self.first_img, curr_img, False)
             corr_int = cv2.estimateRigidTransform(self.prev_img, curr_img, False)
             self.prev_img = curr_img
