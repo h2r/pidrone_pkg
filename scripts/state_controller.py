@@ -233,6 +233,9 @@ if __name__ == '__main__':
         state_to_pub.header.stamp = curr_time
         roll = sc.board.attitude['angx']
         pitch = sc.board.attitude['angy']
+        print 'ROLL:', roll
+        print 'PITCH:', pitch
+        print 'HDG:', sc.board.attitude['heading']
         state_to_pub.roll = roll
         state_to_pub.pitch = pitch
         
