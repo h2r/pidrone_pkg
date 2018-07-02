@@ -217,7 +217,7 @@ if __name__ == '__main__':
                     break
 
             # Uses a PID controller to calculate the flight command: [roll, pitch, yaw, throttle]
-            fly_cmd = sc.pid.step(sc.error, sc.cmd_velocity, sc.cmd_yaw_velocity)
+            fly_cmd = sc.pid.step(sc.error, sc.cmd_yaw_velocity)
 
             # Finite state machine implementation of controlling the drone
             if sc.current_mode == sc.DISARMED:
