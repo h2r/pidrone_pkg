@@ -26,6 +26,9 @@ Unscented Kalman Filter (UKF) before being directly implemented in the drone
 flight code. That way, by comparing logged state estimates from the drone and
 the Motion Capture system with filtered state estimates using a UKF, we will be
 able to test the performance of a UKF rapidly in simulation.
+
+2017-07-02 NOTE: This script may be unnecessary if one chooses to instead use
+rosbag for logging data on ROS topics.
 '''
 
 class DataLogger(object):
