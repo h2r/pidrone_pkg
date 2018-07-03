@@ -2,6 +2,13 @@
 
 For Stefanie Tellex's class
 
+## TODO list
+1. Camera calibration
+2. Get a better meter to pixel scale along with the height
+3. Run motion and measurement as two thread
+4. Run it off-board with larger number of features and resolution
+
+
 ## How to Connect to the Drone
 
 1. Plug in the battery or power supply to the drone
