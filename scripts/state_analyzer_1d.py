@@ -193,9 +193,9 @@ class StateAnalyzer1D(object):
         plt.show()
     
     def plot_z_velocities(self):
-        plt.plot(self.raw_ir_times, self.raw_ir_vels, label='Raw IR velocity')
-        plt.plot(self.ema_times, self.ema_vels, label='EMA filtered IR velocity')
-        plt.plot(self.mocap_times, self.mocap_vels, label='Mo-Cap velocity')
+        plt.plot(self.raw_ir_slant_range_times, self.raw_ir_vels, label='Raw IR velocity')
+        plt.plot(self.ema_range_times, self.ema_vels, label='EMA filtered IR velocity')
+        plt.plot(self.mocap_altitude_times, self.mocap_vels, label='Mo-Cap velocity')
         plt.plot(self.ukf_times, self.ukf_z_velocities, label='UKF z-velocity')
         
         plt.xlabel('Time (seconds)')
@@ -219,35 +219,34 @@ class StateAnalyzer1D(object):
         if do_plot:
             self.plot_altitudes()
     
-    # TODO: Modify for the new 1D UKF state vector (second state variable is the z velocity)
     def compare_z_velocities(self, do_plot=False):
         # Get UKF z-velocity data
-        ukf_states, ukf_times, self.raw_ir_slant_ranges, self.raw_ir_times = self.compute_UKF_data()
+        ukf_states, ukf_times = self.compute_UKF_data()
         self.ukf_times = [(t - self.earliest_time  + self.mocap_time_offset) for t in ukf_times]
-        self.ukf_z_velocities = [row[3] for row in ukf_states]
+        self.ukf_z_velocities = [row[1] for row in ukf_states]
                 
         # Compute estimated velocities from raw IR sensor positions values
-        self.raw_ir_times = [(t - self.earliest_time + self.mocap_time_offset) for t in self.raw_ir_times]
+        self.raw_ir_slant_range_times = [(t - self.earliest_time + self.mocap_time_offset) for t in self.raw_ir_slant_range_times]
         self.raw_ir_vels = []
         for num, position in enumerate(self.raw_ir_slant_ranges):
             # Don't try to compute a velocity for the first position value
             if num != 0:
-                dt = self.raw_ir_times[num] - self.raw_ir_times[num-1]
+                dt = self.raw_ir_slant_range_times[num] - self.raw_ir_slant_range_times[num-1]
                 dz = position - self.raw_ir_slant_ranges[num-1]
                 dzdt = dz/dt
                 self.raw_ir_vels.append(dzdt)
-        del self.raw_ir_times[0] # to fit dimensions of raw_ir_vels
+        del self.raw_ir_slant_range_times[0] # to fit dimensions of raw_ir_vels
         
         # Compute estimated velocities from EMA smoothed positions
         self.get_ir_ema_altitude_data()
         self.ema_vels = []
         for num, position in enumerate(self.ema_ranges):
             if num != 0:
-                dt = self.ema_times[num] - self.ema_times[num-1]
+                dt = self.ema_range_times[num] - self.ema_range_times[num-1]
                 dz = position - self.ema_ranges[num-1]
                 dzdt = dz/dt
                 self.ema_vels.append(dzdt)
-        del self.ema_times[0] # to fit dimensions of ema_vels
+        del self.ema_range_times[0] # to fit dimensions of ema_vels
                 
         # Compute estimated velocities from Mo-Cap positions
         self.get_mocap_altitude_data()
@@ -258,7 +257,7 @@ class StateAnalyzer1D(object):
                 dz = position - self.mocap_altitudes[num-1]
                 dzdt = dz/dt
                 self.mocap_vels.append(dzdt)
-        del self.mocap_times[0] # to fit dimensions of mocap_vels
+        del self.mocap_altitude_times[0] # to fit dimensions of mocap_vels
         if do_plot:
             self.plot_z_velocities()
 
@@ -282,5 +281,5 @@ class StateAnalyzer1D(object):
 if __name__ == '__main__':
     state_analyzer = StateAnalyzer1D()
     state_analyzer.compare_altitudes(do_plot=True)
-    #state_analyzer.compare_z_velocities()
+    #state_analyzer.compare_z_velocities(do_plot=True)
 

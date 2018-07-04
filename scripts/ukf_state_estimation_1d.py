@@ -17,22 +17,19 @@ class DroneStateEstimation1D(object):
         # Initialize the state variables [z, z_vel]
         self.ukf.x = np.array([0.0, 0.0])
         # Initialize state covariance matrix P:
-        # TODO: Tune these initial values as necessary. Currently these are just
+        # TODO: Tune these initial values as appropriate. Currently these are just
         #       guesses
         self.ukf.P = np.diag([0.1, 0.1])
         
         # Initialize the process noise covariance matrix Q:
-        # TODO: Tune as necessary. Currently just a guess
-        # To consider: Changing scale factor by too much could lead to the
-        # following error:
-        # numpy.linalg.linalg.LinAlgError: 3-th leading minor not positive definite
+        # TODO: Tune as appropriate. Currently just a guess
+        # TODO: Consider using Q_discrete_white_noise() from filterpy.common
         self.ukf.Q = np.eye(2)*0.1
         
         # Initialize the measurement covariance matrix R:
         # Using np.diag makes the covariances 0
-        # TODO: Tune as necessary. Currently just a guess
-        # TODO: Do we need to initialize this matrix?
-        #self.ukf.R = np.diag([0.1, 0.1])
+        # TODO: Tune as appropriate. Currently just a guess
+        self.ukf.R = np.array([[1.5]])
         
         self.last_measurement_time = None
         self.got_first_measurement = False

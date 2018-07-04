@@ -228,7 +228,6 @@ if __name__ == '__main__':
         state_to_pub.vbat = sc.board.analog['vbat'] * 0.10
         state_to_pub.amperage = sc.board.analog['amperage']
         
-        #<Theo's additions>
         curr_time = rospy.Time.now()
         state_to_pub.header.stamp = curr_time
         roll = sc.board.attitude['angx']
@@ -239,7 +238,6 @@ if __name__ == '__main__':
         state_to_pub.roll = roll
         state_to_pub.pitch = pitch
         
-        #<added from old code>
         imu = Imu()
         quaternion = tf.transformations.quaternion_from_euler(np.deg2rad(roll), np.deg2rad(pitch), 0.0)
         imu.header.frame_id = "base"
@@ -251,10 +249,7 @@ if __name__ == '__main__':
         imu.linear_acceleration.x = sc.board.rawIMU['ax'] * accRawToMss - accZeroX
         imu.linear_acceleration.y = sc.board.rawIMU['ay'] * accRawToMss - accZeroY
         imu.linear_acceleration.z = sc.board.rawIMU['az'] * accRawToMss - accZeroZ
-        imupub.publish(imu)
-        
-        #</Theo's additions>
-        
+        imupub.publish(imu)        
         statepub.publish(state_to_pub)
 
         try:

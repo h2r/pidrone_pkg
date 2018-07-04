@@ -6,10 +6,14 @@ import math
 class DroneStateEstimation(object):
     
     def __init__(self):
+        state_vector_dim = 12
+        measurement_vector_dim = 7
         # TODO: Modify these sigma point parameters as necessary
-        sigma_points = MerweScaledSigmaPoints(n=4, alpha=0.1, beta=2., kappa=0.)
+        sigma_points = MerweScaledSigmaPoints(n=state_vector_dim, alpha=0.1,
+                                              beta=2., kappa=0.)
         # Note that dt will get updated dynamically as sensor data comes in
-        self.ukf = UnscentedKalmanFilter(dim_x=4, dim_z=4, dt=1.0,
+        self.ukf = UnscentedKalmanFilter(dim_x=state_vector_dim,
+                                         dim_z=measurement_vector_dim, dt=1.0,
                                          hx=self.measurement_function,
                                          fx=self.state_transition_function,
                                          points=sigma_points)
@@ -21,32 +25,36 @@ class DroneStateEstimation(object):
         # IMU that has a gyroscope with a magnetometer included for yaw sensing
         self.yaw = 0.0
         
-        # Initialize the state variables [x_vel, y_vel, z_vel, yaw_vel]
-        self.ukf.x = np.array([0.0, 0.0, 0.0, 0.0])
+        # FilterPy initializes the state vector with zeros
+        # state = [[x],
+        #          [y],
+        #          [z],
+        #          [x_vel],
+        #          [y_vel],
+        #          [z_vel],
+        #          [roll],
+        #          [pitch],
+        #          [yaw],
+        #          [roll_vel],
+        #          [pitch_vel],
+        #          [yaw_vel]]
+
         # Initialize state covariance matrix P:
         # TODO: Tune these initial values as necessary. Currently these are just
         #       guesses
-        self.ukf.P = np.diag([0.1, 0.1, 0.1, 0.2])
+        self.ukf.P = np.diag([0.1, 0.1, 0.1, 0.2, 0.2, 0.2, 1, 1, 1, 1, 1, 1])
         
         # Initialize the process noise covariance matrix Q:
         # TODO: Tune as necessary. Currently just a guess
         # To consider: Changing scale factor by too much could lead to the
         # following error:
         # numpy.linalg.linalg.LinAlgError: 3-th leading minor not positive definite
-        self.ukf.Q = np.eye(4)*0.1
+        self.ukf.Q = np.eye(state_vector_dim)*0.1
         
         # Initialize the measurement covariance matrix R:
         # Using np.diag makes the covariances 0
         # TODO: Tune as necessary. Currently just a guess
-        self.ukf.R = np.diag([0.1, 0.1, 0.2, 0.01])
-        
-        # Keep track of control input u [accel_x, accel_y, accel_z]
-        self.last_control_input = np.array([0.0, 0.0, 0.0])
-        self.last_control_input_time = None
-        self.got_first_control_input = False
-        self.computed_first_prior = False
-        # Time in seconds between consecutive control inputs
-        self.dt_control_input = None
+        self.ukf.R = np.diag([0.1, 0.1, 0.1, 0.2, 0.2, 0.2, 1, 1, 1, 1, 1, 1])
         
         self.last_measurement_time = None
         self.got_first_measurement = False
@@ -58,9 +66,9 @@ class DroneStateEstimation(object):
         Rotate a matrix from the drone's body frame to the global frame
         '''
         # Convert Euler angles from degrees to radians
-        phi = np.deg2rad(self.roll)
-        theta = np.deg2rad(self.pitch)
-        psi = np.deg2rad(self.yaw)
+        phi = np.deg2rad(self.ukf.x[6])     # roll
+        theta = np.deg2rad(self.ukf.x[7])   # pitch
+        psi = np.deg2rad(self.ukf.x[8])     # yaw
         # Set up the rotation matrix
         rotation_matrix = np.array([[np.cos(theta)*np.cos(psi),
                                     np.sin(phi)*np.sin(theta)*np.cos(psi)-np.cos(phi)*np.sin(psi),
@@ -74,56 +82,44 @@ class DroneStateEstimation(object):
         # Apply the rotation matrix
         return np.dot(rotation_matrix, original_matrix)
 
-    def state_transition_function(self, x, dt, u):
+    def state_transition_function(self, x, dt):
         '''
         x : current state. A NumPy array
         dt : time step. A float
-        u : control inputs. A NumPy array
         '''
-        x_output = np.empty_like(x)
-        accelerations_global_frame = self.apply_rotation_matrix(u)
-        velocities_global_frame = accelerations_global_frame * dt
-        for i in range(3):
-            x_output[i] = x[i] + velocities_global_frame[i]
-        x_output[3] = x[3]
+        F = np.eye(12)
+        F[0, 3] = dt
+        F[1, 4] = dt
+        F[2, 5] = dt
+        F[6, 9] = dt
+        F[7, 10] = dt
+        F[8, 11] = dt
+        x_output = np.dot(F, x)
+        print x_output
         return x_output
         
-    def measurement_function(self, x, dt):
+    def measurement_function(self, x):
         '''
         x : current state. A NumPy array
-        dt : time step. A float
         '''
+        # TODO: Should the roll and pitch values from the prior state estimate be used, rather than the raw measurement?
+        roll_deg = x[6]
+        pitch_deg = x[7]
         # Convert Euler angles from degrees to radians
-        phi = np.deg2rad(self.roll)
-        theta = np.deg2rad(self.pitch)
-        return np.dot([[1, 0, 0, 0],
-                       [0, 1, 0, 0],
-                       [0, 0, 0, 1],
-                       [0, 0, (dt/(np.cos(theta)*np.cos(phi))), 0]], x)
-                       
-    def measurement_function_IR(self, x, dt):
-        '''
-        Altered measurement function for just the IR slant range reading. This
-        must be done due to the fact that measurements from different sensors
-        come in at different rates, and in general we would like to perform
-        "sensor fusion" (although in this case the current sensors we have do
-        not really pertain to the same state variables)
-        x : current state. A NumPy array
-        dt : time step. A float
-        '''
-        # Convert Euler angles from degrees to radians
-        phi = np.deg2rad(self.roll)
-        theta = np.deg2rad(self.pitch)
-        return np.dot([[0, 0, 0, 0],
-                       [0, 0, 0, 0],
-                       [0, 0, 0, 0],
-                       [0, 0, (dt/(np.cos(theta)*np.cos(phi))), 0]], x)
-    
-    # TODO: Make measurement function for just camera data
-    
-    def got_roll_pitch(self):
-        '''
-        Return a boolean indicating whether or not we have received values for
-        roll and pitch
-        '''
-        return (self.roll is not None and self.pitch is not None)
+        phi = np.deg2rad(roll_deg)
+        theta = np.deg2rad(pitch_deg)
+        H = np.array([[0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0],
+                      [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
+                      [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                      [0, 0, (1/(np.cos(theta)*np.cos(phi))), 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                      [0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
+                      [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
+                      [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0]])
+        hx_output = np.dot(H, x)
+        print hx_output
+        return hx_output
+        
+    # TODO: Implement "sensor fusion" for data coming in at different rates,
+    # which might involve modifying the measurement function dynamically. There
+    # might be specific measurement functions for the IR sensor and for the
+    # camera data
