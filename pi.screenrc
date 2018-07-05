@@ -49,12 +49,12 @@ stuff ""
 screen -t " vim"
 stuff "source setup.sh"
 stuff "cd $(rospack find pidrone_pkg)/scripts"
-stuff "vim -p flow_pub_transform.py state_controller.py pid_class.py"
+stuff "vim -p flow_pub_transform.py state_controller.py pid_class.py"
 
 screen -t " emacs"
 stuff "source setup.sh"
 stuff "cd $(rospack find pidrone_pkg)/scripts"
-stuff "emacs"
+stuff "emacs"
 
 screen -t " flight"
 stuff "source setup.sh"
