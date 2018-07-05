@@ -27,9 +27,13 @@ files in pidrone_pkg/logs. This script creates plots to visualize:
 
 class StateAnalyzer1D(object):
     
-    def __init__(self):
+    def __init__(self, include_ema=False, include_mocap=False, unit='meters'):
+        self.include_ema = include_ema
+        self.include_mocap = include_mocap
+        self.unit = unit
 
         self.log_file_dir = '../logs/2018-06-26_test1_ir_control'
+        self.log_file_dir = '../logs'
         self.filenames = ['ir_RAW', 'ir_EMA', 'mocap']
         self.raw_data_filenames = ['ir_RAW']
         self.ema_data_filenames = ['ir_EMA']
@@ -179,14 +183,15 @@ class StateAnalyzer1D(object):
         # should be a state variable in the state vector)
         
         plt.plot(self.raw_ir_slant_range_times, self.raw_ir_slant_ranges, label='Raw IR range')
-        plt.plot(self.ema_range_times, self.ema_ranges, label='EMA filtered IR range')
-        plt.plot(self.mocap_altitude_times, self.mocap_altitudes, label='Mo-Cap altitude')
+        if self.include_ema:
+            plt.plot(self.ema_range_times, self.ema_ranges, label='EMA filtered IR range')
+        if self.include_mocap:
+            plt.plot(self.mocap_altitude_times, self.mocap_altitudes, label='Mo-Cap altitude')
         plt.plot(self.ukf_times, self.ukf_altitudes, label='UKF altitude')
         
         plt.xlabel('Time (seconds)')
-        plt.ylabel('Drone altitude (cm)')
-        plt.title('Comparison of Raw Data, EMA Filtered Data, Mo-Cap Ground '
-                  'Truth Data, and UKF Filtered Data for Estimating Drone Altitude')
+        plt.ylabel('Drone altitude ({})'.format(self.unit))
+        plt.title('Comparison of Drone Altitude Estimates')
         
         plt.legend()
         print 'Altitude plot created.'
@@ -194,14 +199,15 @@ class StateAnalyzer1D(object):
     
     def plot_z_velocities(self):
         plt.plot(self.raw_ir_slant_range_times, self.raw_ir_vels, label='Raw IR velocity')
-        plt.plot(self.ema_range_times, self.ema_vels, label='EMA filtered IR velocity')
-        plt.plot(self.mocap_altitude_times, self.mocap_vels, label='Mo-Cap velocity')
+        if self.include_ema:
+            plt.plot(self.ema_range_times, self.ema_vels, label='EMA filtered IR velocity')
+        if self.include_mocap:
+            plt.plot(self.mocap_altitude_times, self.mocap_vels, label='Mo-Cap velocity')
         plt.plot(self.ukf_times, self.ukf_z_velocities, label='UKF z-velocity')
         
         plt.xlabel('Time (seconds)')
-        plt.ylabel('Z-velocity (cm/s)')
-        plt.title('Comparison of Raw Data, EMA Filtered Data, Mo-Cap Ground '
-                  'Truth Data, and UKF Filtered Data for Estimating Drone Z-Velocity')
+        plt.ylabel('Z-velocity ({}/second)'.format(self.unit))
+        plt.title('Comparison of Drone Z-Velocity Estimates')
         
         plt.legend()
         print 'Z-velocity plot created.'
@@ -213,8 +219,10 @@ class StateAnalyzer1D(object):
         self.ukf_times = [(t - self.earliest_time  + self.mocap_time_offset) for t in ukf_times]
         self.raw_ir_slant_range_times = [(t - self.earliest_time + self.mocap_time_offset) for t in self.raw_ir_slant_range_times]
         self.ukf_altitudes = [row[0] for row in ukf_states]
-        self.get_ir_ema_altitude_data()
-        self.get_mocap_altitude_data()
+        if self.include_ema:
+            self.get_ir_ema_altitude_data()
+        if self.include_mocap:
+            self.get_mocap_altitude_data()
         
         if do_plot:
             self.plot_altitudes()
@@ -237,27 +245,30 @@ class StateAnalyzer1D(object):
                 self.raw_ir_vels.append(dzdt)
         del self.raw_ir_slant_range_times[0] # to fit dimensions of raw_ir_vels
         
-        # Compute estimated velocities from EMA smoothed positions
-        self.get_ir_ema_altitude_data()
-        self.ema_vels = []
-        for num, position in enumerate(self.ema_ranges):
-            if num != 0:
-                dt = self.ema_range_times[num] - self.ema_range_times[num-1]
-                dz = position - self.ema_ranges[num-1]
-                dzdt = dz/dt
-                self.ema_vels.append(dzdt)
-        del self.ema_range_times[0] # to fit dimensions of ema_vels
+        if self.include_ema:
+            # Compute estimated velocities from EMA smoothed positions
+            self.get_ir_ema_altitude_data()
+            self.ema_vels = []
+            for num, position in enumerate(self.ema_ranges):
+                if num != 0:
+                    dt = self.ema_range_times[num] - self.ema_range_times[num-1]
+                    dz = position - self.ema_ranges[num-1]
+                    dzdt = dz/dt
+                    self.ema_vels.append(dzdt)
+            del self.ema_range_times[0] # to fit dimensions of ema_vels
                 
-        # Compute estimated velocities from Mo-Cap positions
-        self.get_mocap_altitude_data()
-        self.mocap_vels = []
-        for num, position in enumerate(self.mocap_altitudes):
-            if num != 0:
-                dt = self.mocap_altitude_times[num] - self.mocap_altitude_times[num-1]
-                dz = position - self.mocap_altitudes[num-1]
-                dzdt = dz/dt
-                self.mocap_vels.append(dzdt)
-        del self.mocap_altitude_times[0] # to fit dimensions of mocap_vels
+        if self.include_mocap:
+            # Compute estimated velocities from Mo-Cap positions
+            self.get_mocap_altitude_data()
+            self.mocap_vels = []
+            for num, position in enumerate(self.mocap_altitudes):
+                if num != 0:
+                    dt = self.mocap_altitude_times[num] - self.mocap_altitude_times[num-1]
+                    dz = position - self.mocap_altitudes[num-1]
+                    dzdt = dz/dt
+                    self.mocap_vels.append(dzdt)
+            del self.mocap_altitude_times[0] # to fit dimensions of mocap_vels
+            
         if do_plot:
             self.plot_z_velocities()
 

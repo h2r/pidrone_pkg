@@ -31,16 +31,16 @@ class StateAnalyzer(object):
 
         self.log_file_dir = '../logs/2018-06-26_test1_ir_control'
         self.filenames = ['imu_RAW',
-                     #'x_y_yaw_velocity_RAW', # TODO: Uncomment if file has data
+                     'x_y_yaw_velocity_RAW', # TODO: Uncomment if file has data
                      #'x_y_yaw_velocity_EMA', # TODO: Uncomment if file has data
                      'ir_RAW',
                      'ir_EMA',
-                     'roll_pitch_RAW',
+                     'roll_pitch_yaw_RAW',
                      'mocap']
-        self.raw_data_filenames = ['imu_RAW',
-                     #'x_y_yaw_velocity_RAW', # TODO: Uncomment if file has data
+        self.raw_data_filenames = [#'imu_RAW',
+                     'x_y_yaw_velocity_RAW', # TODO: Uncomment if file has data
                      'ir_RAW',
-                     'roll_pitch_RAW']
+                     'roll_pitch_yaw_RAW']
         self.ema_data_filenames = ['ir_EMA']
                      #'x_y_yaw_velocity_EMA', # TODO: Add to list if file has data
                      
@@ -207,7 +207,7 @@ class StateAnalyzer(object):
                 # TODO: Implement a measurement update here
                 pass
             
-            elif data_type == 'roll_pitch_RAW':
+            elif data_type == 'roll_pitch_yaw_RAW':
                 # For initial simplicity, we take roll and pitch from the IMU as
                 # ground truth, so update the drone's roll and pitch variables.
                 # These are important as they are used in the rotation matrix in the

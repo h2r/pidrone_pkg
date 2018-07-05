@@ -12,4 +12,5 @@ CMakeFiles/
 *.out
 *.sv?
 *.sv?
+logs/*.csv
 
