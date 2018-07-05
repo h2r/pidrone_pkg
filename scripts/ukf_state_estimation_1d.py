@@ -24,7 +24,7 @@ class DroneStateEstimation1D(object):
         # Initialize the process noise covariance matrix Q:
         # TODO: Tune as appropriate. Currently just a guess
         # TODO: Consider using Q_discrete_white_noise() from filterpy.common
-        self.ukf.Q = np.eye(2)*0.1
+        self.ukf.Q = np.eye(2)*0.01
         
         # Initialize the measurement covariance matrix R:
         # Using np.diag makes the covariances 0

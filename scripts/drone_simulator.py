@@ -6,8 +6,16 @@ import csv
 
 class DroneSimulator(object):
     '''
-    This class is intended to simulate the drone's raw sensor outputs to aid in the
-    development of an Unscented Kalman Filter.
+    This class is intended to simulate the drone's raw sensor outputs to aid in
+    the development of an Unscented Kalman Filter (UKF).
+    
+    Currently, this script outputs data to .csv files to interface with the
+    state_analyzer.py and state_analyzer_1d.py scripts, which use the
+    ukf_state_estimation.py and ukf_state_estimation_1d.py scripts,
+    respectively.
+    
+    In later stages, this class could also publish data in real-time to the
+    relevant ROS topics, if the need arises.
     '''
     
     def __init__(self, publish_ros=False, save_to_csv=False):
@@ -26,8 +34,8 @@ class DroneSimulator(object):
             self.time_header = ['Seconds', 'Nanoseconds']
             self.filenames = ['ir_RAW', 'x_y_yaw_velocity_RAW', 'roll_pitch_yaw_RAW']
             self.filenames_to_headers = {
-                self.filenames[0] : ['Range'],
-                self.filenames[1] : ['Vel_x', 'Vel_y', 'Vel_yaw'],
+                self.filenames[0] : ['Range_(meters)'],
+                self.filenames[1] : ['Vel_x_(m/s)', 'Vel_y_(m/s)', 'Vel_yaw_(deg/s)'],
                 self.filenames[2] : ['Roll_(deg)', 'Pitch_(deg)', 'Yaw_(deg)']}
 
         # Approximate samples/second of each sensor output
@@ -70,14 +78,17 @@ class DroneSimulator(object):
         # Generate sample times
         for data_time_list, data_hz in self.times:
             curr_time = 0.0
-            while curr_time < duration:
+            while curr_time <= duration:
                 curr_time += 1/(time_std_dev * randn() + data_hz)
                 curr_sec = int(curr_time)
                 curr_nsec = int((curr_time - curr_sec)*(1e9))
                 data_time_list.append([curr_sec, curr_nsec])
+            del data_time_list[-1] # to keep times less than or equal to duration
                 
         # Generate sample data:
         self.generate_ir_data()
+        self.generate_roll_pitch_yaw_data()
+        self.generate_x_y_yaw_velocity_data()
             
     def generate_ir_data(self):
         # Assume a model with small accelerations, with some noise
@@ -86,11 +97,11 @@ class DroneSimulator(object):
         z_pos_std_dev = 0.005 # meters. Estimated standard deviation of 5 mm
         # Start the drone in the air
         curr_pos = 0.4 # current position along the z-axis (meters)
+        self.ir_data.append([curr_pos])
         next_ir_time = self.ir_times[0][0] + self.ir_times[0][1]*1e-9
         for i in range(len(self.ir_times) - 1):
-            self.ir_data.append([curr_pos])
             curr_ir_time = next_ir_time
-            next_ir_time_pair = self.ir_times[i+1]
+            next_ir_time_pair = self.ir_times[i+1] # sec and nsec pair
             next_ir_time = next_ir_time_pair[0] + next_ir_time_pair[1]*1e-9
             time_step = next_ir_time - curr_ir_time
             z_vel += (z_accel_std_dev * randn()) * time_step
@@ -99,8 +110,40 @@ class DroneSimulator(object):
             # Don't allow drone to go below 9 centimeters off of the ground
             if curr_pos < 0.09:
                 curr_pos = 0.09
+            self.ir_data.append([curr_pos])
         if self.save_to_csv:
-            self.write_to_csv(filename='ir_RAW', times=self.ir_times, data_list=self.ir_data)
+            self.write_to_csv(filename='ir_RAW', times=self.ir_times,
+                              data_list=self.ir_data)
+            
+    def generate_roll_pitch_yaw_data(self):
+        # Estimated standard deviations (degrees)
+        roll_std_dev = 0.5
+        pitch_std_dev = 0.5
+        yaw_std_dev = 1.0
+        for _ in self.imu_times:
+            roll = roll_std_dev * randn()
+            pitch = pitch_std_dev * randn()
+            yaw = yaw_std_dev * randn()
+            self.imu_data.append([roll, pitch, yaw])
+        if self.save_to_csv:
+            self.write_to_csv(filename='roll_pitch_yaw_RAW',
+                              times=self.imu_times, data_list=self.imu_data)
+                              
+    def generate_x_y_yaw_velocity_data(self):
+        # Assume a model with small accelerations in x and y, with some noise
+        # Estimates standard deviations
+        x_vel_std_dev = 0.02 # meters/second
+        y_vel_std_dev = 0.02 # meters/second
+        yaw_vel_std_dev = 2.0 # degrees/second
+        for _ in self.camera_times:
+            x_vel = x_vel_std_dev * randn()
+            y_vel = y_vel_std_dev * randn()
+            yaw_vel = yaw_vel_std_dev * randn()
+            self.camera_data.append([x_vel, y_vel, yaw_vel])
+        if self.save_to_csv:
+            self.write_to_csv(filename='x_y_yaw_velocity_RAW',
+                              times=self.camera_times,
+                              data_list=self.camera_data)
     
     def write_to_csv(self, filename, times, data_list):
         with open(os.path.join(self.log_basename, filename+'.csv'), 'a') as csv_file:

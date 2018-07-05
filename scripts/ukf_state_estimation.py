@@ -17,13 +17,6 @@ class DroneStateEstimation(object):
                                          hx=self.measurement_function,
                                          fx=self.state_transition_function,
                                          points=sigma_points)
-        # Trust IMU roll and pitch measurements
-        # TODO: Implement reading of the IMU roll and pitch (given in degrees)
-        self.roll = None
-        self.pitch = None
-        # TODO: Incorporate camera data to estimate yaw, if possible. Or, get an
-        # IMU that has a gyroscope with a magnetometer included for yaw sensing
-        self.yaw = 0.0
         
         # FilterPy initializes the state vector with zeros
         # state = [[x],
@@ -58,7 +51,7 @@ class DroneStateEstimation(object):
         
         self.last_measurement_time = None
         self.got_first_measurement = False
-        # Time in seconds between consecutive measurements
+        # Time in seconds between consecutive measurements / control inputs
         self.dt_measurement = None
 
     def apply_rotation_matrix(self, original_matrix):
@@ -82,7 +75,7 @@ class DroneStateEstimation(object):
         # Apply the rotation matrix
         return np.dot(rotation_matrix, original_matrix)
 
-    def state_transition_function(self, x, dt):
+    def state_transition_function(self, x, dt, u):
         '''
         x : current state. A NumPy array
         dt : time step. A float
@@ -94,7 +87,23 @@ class DroneStateEstimation(object):
         F[6, 9] = dt
         F[7, 10] = dt
         F[8, 11] = dt
-        x_output = np.dot(F, x)
+        
+        # Compute the change from the control input
+        accelerations_global_frame = self.apply_rotation_matrix(u)
+        velocities_global_frame = accelerations_global_frame * dt
+        change_from_control_input = np.array([[0],
+                                             [0],
+                                             [0],
+                                             velocities_global_frame[0],
+                                             velocities_global_frame[1],
+                                             velocities_global_frame[2],
+                                             [0],
+                                             [0],
+                                             [0],
+                                             [0],
+                                             [0],
+                                             [0]])
+        x_output = np.dot(F, x) + change_from_control_input
         print x_output
         return x_output
         
