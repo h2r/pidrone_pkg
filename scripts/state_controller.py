@@ -115,7 +115,7 @@ class StateController(object):
     def vrpn_callback(self, msg):
         """Updates the current z-position of the drone as measured by the motion capture rig"""
         # Mocap uses y-axis to represent the drone's z-axis motion
-        self.current_z = msg.pose.position.y
+        self.current_z = msg.pose.position.y * 100
         self.error.z.err = self.set_z - self.current_z
 
     def plane_callback(self, msg):
