@@ -39,8 +39,6 @@ class StateController(object):
         # Time of last heartbeat from the web interface
         self.last_heartbeat = None
 
-        # Commanded x, y velocity of the drone
-        self.cmd_velocity = [0, 0]
         # Commanded yaw velocity of the drone
         self.cmd_yaw_velocity = 0
 
@@ -95,7 +93,6 @@ class StateController(object):
             self.set_vel_x = msg.x_velocity
             self.set_vel_y = msg.y_velocity
 
-            self.cmd_velocity = [msg.x_i, msg.y_i]
             self.cmd_yaw_velocity = msg.yaw_velocity
 
             new_set_z = self.set_z + msg.z_velocity
