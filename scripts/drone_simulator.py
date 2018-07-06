@@ -32,11 +32,12 @@ class DroneSimulator(object):
         if self.save_to_csv:
             self.log_basename = '../logs'
             self.time_header = ['Seconds', 'Nanoseconds']
-            self.filenames = ['ir_RAW', 'x_y_yaw_velocity_RAW', 'roll_pitch_yaw_RAW']
+            self.filenames = ['ir_RAW', 'x_y_yaw_velocity_RAW', 'roll_pitch_yaw_RAW', 'imu_RAW']
             self.filenames_to_headers = {
                 self.filenames[0] : ['Range_(meters)'],
                 self.filenames[1] : ['Vel_x_(m/s)', 'Vel_y_(m/s)', 'Vel_yaw_(deg/s)'],
-                self.filenames[2] : ['Roll_(deg)', 'Pitch_(deg)', 'Yaw_(deg)']}
+                self.filenames[2] : ['Roll_(deg)', 'Pitch_(deg)', 'Yaw_(deg)'],
+                self.filenames[3] : ['Accel_x_body', 'Accel_y_body', 'Accel_z_body']}
 
         # Approximate samples/second of each sensor output
         self.ir_hz = 57
@@ -63,7 +64,8 @@ class DroneSimulator(object):
         self.ir_data = []
         
         self.imu_times = []
-        self.imu_data = []
+        self.imu_rpy_data = []
+        self.imu_accel_data = []
         
         self.camera_times = []
         self.camera_data = []
@@ -89,6 +91,7 @@ class DroneSimulator(object):
         self.generate_ir_data()
         self.generate_roll_pitch_yaw_data()
         self.generate_x_y_yaw_velocity_data()
+        self.generate_linear_acceleration_imu_data()
             
     def generate_ir_data(self):
         # Assume a model with small accelerations, with some noise
@@ -124,10 +127,10 @@ class DroneSimulator(object):
             roll = roll_std_dev * randn()
             pitch = pitch_std_dev * randn()
             yaw = yaw_std_dev * randn()
-            self.imu_data.append([roll, pitch, yaw])
+            self.imu_rpy_data.append([roll, pitch, yaw])
         if self.save_to_csv:
             self.write_to_csv(filename='roll_pitch_yaw_RAW',
-                              times=self.imu_times, data_list=self.imu_data)
+                              times=self.imu_times, data_list=self.imu_rpy_data)
                               
     def generate_x_y_yaw_velocity_data(self):
         # Assume a model with small accelerations in x and y, with some noise
@@ -144,6 +147,20 @@ class DroneSimulator(object):
             self.write_to_csv(filename='x_y_yaw_velocity_RAW',
                               times=self.camera_times,
                               data_list=self.camera_data)
+                              
+    def generate_linear_acceleration_imu_data(self):
+        # Estimated standard deviations (m/s^2)
+        x_accel_std_dev = 0.5
+        y_accel_std_dev = 0.5
+        z_accel_std_dev = 0.5
+        for _ in self.imu_times:
+            x_accel = x_accel_std_dev * randn()
+            y_accel = y_accel_std_dev * randn()
+            z_accel = z_accel_std_dev * randn()
+            self.imu_accel_data.append([x_accel, y_accel, z_accel])
+        if self.save_to_csv:
+            self.write_to_csv(filename='imu_RAW',
+                              times=self.imu_times, data_list=self.imu_accel_data)
     
     def write_to_csv(self, filename, times, data_list):
         with open(os.path.join(self.log_basename, filename+'.csv'), 'a') as csv_file:
