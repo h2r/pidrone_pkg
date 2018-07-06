@@ -220,17 +220,24 @@
     // Create the main viewer.
 //    var imageviewer = new MJPEGCANVAS.Viewer({
 //      divID : 'camera',
-//      host : '10.42.0.24',
+//      host : '192.168.42.1',
 //      width : 320,
 //      height : 240,
 //      topic : '/pidrone/picamera/image_raw'
 //    });
+
+
+
     imageStream();
   }
 
   function imageStream() {
     var image = document.getElementById('cameraImage');
     image.src = "http://" + document.getElementById('hostname').value + ":8080/stream?topic=/pidrone/picamera/image_raw&quality=70";
+
+    var firstImage = document.getElementById('firstImage');
+    firstImage.src = "http://" + document.getElementById('hostname').value + ":8080/stream?topic=/pidrone/picamera/first_image&quality=70";
+
   }
 
   function markerUpdate() {
@@ -295,7 +302,7 @@ var irChart = new Chart(ctx, {
                 ticks: {
                     beginAtZero:true,
                     min: 0,
-                    max: 60,
+                    max: 1,
                 }
             }],
             xAxes: [{
@@ -551,7 +558,15 @@ function keyDown() {
 
 <tr>
 <td><div id="imu"></div></td>
-<td><img id="cameraImage" alt="Camera image" src="nocamera.jpg" width=400/></td>
+<td>
+
+<!--<div id="camera"></div>-->
+
+  <img id="cameraImage" alt="Camera image" src="nocamera.jpg" width=320/>
+  <img id="firstImage" alt="First camera image" src="nocamera.jpg" width=320/>
+
+
+</td>
 </tr>
 
 <tr><td>IMU
@@ -559,7 +574,7 @@ Topic: <input type="text" id="imutopic" value="/pidrone/imu_visualization_marker
 </td>
     <td>Camera.  Make sure you run <pre>rosrun web_video_server web_video_server</pre> and the image stream.
 <br/>
-Topic: <input type="text" id="imagetopic" value="/pidrone/picamrea/image_raw" onchange="imageStream()"/>
+Topic: <input type="text" id="imagetopic" value="/pidrone/picamera/image_raw" onchange="imageStream()"/>
 </td>
 </tr>
 </table>
