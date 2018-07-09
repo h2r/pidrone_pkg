@@ -44,15 +44,35 @@ class DroneStateEstimation(object):
         # numpy.linalg.linalg.LinAlgError: 3-th leading minor not positive definite
         self.ukf.Q = np.eye(state_vector_dim)*0.1
         
-        # Initialize the measurement covariance matrix R:
+        # Initialize the measurement covariance matrix R for each discrete
+        # asynchronous measurement input:
         # Using np.diag makes the covariances 0
         # TODO: Tune as necessary. Currently just a guess
-        self.ukf.R = np.diag([0.1, 0.1, 0.1, 0.2, 0.2, 0.2, 1, 1, 1, 1, 1, 1])
+        #self.ukf.R = np.diag([0.1, 0.1, 0.1, 0.2, 0.2, 0.2, 1, 1, 1, 1, 1, 1])
+        #self.R_complete = np.diag([0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1])
+        #self.ukf.R = self.R_complete.copy()
         
-        self.last_measurement_time = None
-        self.got_first_measurement = False
-        # Time in seconds between consecutive measurements / control inputs
-        self.dt_measurement = None
+        # IR slant range variance:
+        self.measurement_cov_ir = np.array([0.1])
+        # Optical flow variance:
+        self.measurement_cov_optical_flow = np.diag([0.1, 0.1, 0.1])
+        # Roll-Pitch-Yaw variance:
+        self.measurement_cov_rpy = np.diag([0.1, 0.1, 0.1])
+        
+        # The last time that we received a measurement input or a control input
+        self.last_input_time = None
+        
+        # Time in seconds between consecutive measurements (updates) or control
+        # inputs (predictions)
+        self.dt = None
+        
+        # FilterPy requires the predict() method to be called before the first
+        # call to update(), so ensure that we have computed the first prior
+        #self.computed_first_prior = False
+        
+        # Initialize the last control input as 0 m/s^2 along each axis in the
+        # body frame
+        self.last_control_input = np.array([[0], [0], [0]])
 
     def apply_rotation_matrix(self, original_matrix):
         '''
@@ -87,31 +107,33 @@ class DroneStateEstimation(object):
         F[6, 9] = dt
         F[7, 10] = dt
         F[8, 11] = dt
-        
+                
         # Compute the change from the control input
         accelerations_global_frame = self.apply_rotation_matrix(u)
         velocities_global_frame = accelerations_global_frame * dt
-        change_from_control_input = np.array([[0],
-                                             [0],
-                                             [0],
-                                             velocities_global_frame[0],
-                                             velocities_global_frame[1],
-                                             velocities_global_frame[2],
-                                             [0],
-                                             [0],
-                                             [0],
-                                             [0],
-                                             [0],
-                                             [0]])
+        change_from_control_input = np.array([0,
+                                              0,
+                                              0,
+                                              velocities_global_frame[0],
+                                              velocities_global_frame[1],
+                                              velocities_global_frame[2],
+                                              0,
+                                              0,
+                                              0,
+                                              0,
+                                              0,
+                                              0])
         x_output = np.dot(F, x) + change_from_control_input
-        print x_output
         return x_output
         
     def measurement_function(self, x):
         '''
+        The "complete" measurement function if the measurement vector z were to
+        be comprised of all measurement variables at any given timestep
+        
         x : current state. A NumPy array
         '''
-        # TODO: Should the roll and pitch values from the prior state estimate be used, rather than the raw measurement?
+        # Roll and pitch values from the prior state estimate
         roll_deg = x[6]
         pitch_deg = x[7]
         # Convert Euler angles from degrees to radians
@@ -125,7 +147,49 @@ class DroneStateEstimation(object):
                       [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
                       [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0]])
         hx_output = np.dot(H, x)
-        print hx_output
+        return hx_output
+        
+    def measurement_function_ir(self, x):
+        '''
+        For use when the measurement vector z is just the slant range reading
+        from the IR sensor
+        
+        x : current state. A NumPy array
+        '''
+        # Roll and pitch values from the prior state estimate
+        roll_deg = x[6]
+        pitch_deg = x[7]
+        # Convert Euler angles from degrees to radians
+        phi = np.deg2rad(roll_deg)
+        theta = np.deg2rad(pitch_deg)
+        H = np.array([[0, 0, (1/(np.cos(theta)*np.cos(phi))), 0, 0, 0, 0, 0, 0, 0, 0, 0]])
+        hx_output = np.dot(H, x)
+        return hx_output
+        
+    def measurement_function_optical_flow(self, x):
+        '''
+        For use when the measurement vector z is comprised of x-velocity,
+        y-velocity, and yaw velocity from the camera's optical flow
+        
+        x : current state. A NumPy array
+        '''
+        H = np.array([[0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0],
+                      [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
+                      [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]])
+        hx_output = np.dot(H, x)
+        return hx_output
+        
+    def measurement_function_rpy(self, x):
+        '''
+        For use when the measurement vector z is comprised of roll, pitch, and
+        yaw readings from the IMU
+        
+        x : current state. A NumPy array
+        '''
+        H = np.array([[0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
+                      [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
+                      [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0]])
+        hx_output = np.dot(H, x)
         return hx_output
         
     # TODO: Implement "sensor fusion" for data coming in at different rates,
