@@ -30,7 +30,7 @@ MAP_GRID_SIZE_Y = ORB_GRID_SIZE_Y * 3
 CELL_X = float(MAP_PIXEL_WIDTH) / MAP_GRID_SIZE_X
 CELL_Y = float(MAP_PIXEL_HEIGHT) / MAP_GRID_SIZE_Y
 PROB_THRESHOLD = 0.001
-MEASURE_WAIT_COUNT = 3
+MEASURE_WAIT_COUNT = 5
 MAP_FEATURES = 600
 
 
@@ -79,8 +79,8 @@ class LocalizationParticleFilter:
         self.map_kp = map_kp
         self.map_des = map_des
 
-        self.measure_count = 0
         self.particles = None
+        self.measure_count = 0
 
         index_params = dict(algorithm=6, table_number=6, key_size=12, multi_probe_level=1)
         search_params = dict(checks=50)
