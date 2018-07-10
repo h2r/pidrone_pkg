@@ -166,6 +166,10 @@ class StateAnalyzer(object):
         self.raw_yaw_vel = []
         self.raw_camera_times = []
         
+        # List to store IMU z-accelerations
+        self.raw_imu_z_accel = []
+        self.raw_imu_z_accel_times = []
+        
         raw_data = self.load_raw_data()
         
         ready_to_filter = False
@@ -209,11 +213,16 @@ class StateAnalyzer(object):
             
             if data_type == 'imu_RAW':
                 # Raw IMU accelerometer data is treated as the control input
-                # TODO: Keep everything in meters instead of cm
+                x_accel = float(data_contents[1]) # (m/s^2)
+                y_accel = float(data_contents[2]) # (m/s^2)
+                z_accel = float(data_contents[3]) # (m/s^2)
+                
+                self.raw_imu_z_accel.append(z_accel)
+                self.raw_imu_z_accel_times.append(new_time)
                 self.drone_state.last_control_input = (
-                    np.array([float(data_contents[1])*100.,   # accel x (cm/s^2)
-                              float(data_contents[2])*100.,   # accel y (cm/s^2)
-                              float(data_contents[3])*100.])) # accel z (cm/s^2)
+                    np.array([x_accel,
+                              y_accel,
+                              z_accel]))
             
             # Compute the prior whether or not we received a new control input.
             # If we did not receive a new control input, then the prediction
