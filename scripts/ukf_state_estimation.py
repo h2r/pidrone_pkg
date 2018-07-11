@@ -59,16 +59,16 @@ class DroneStateEstimation(object):
         # Roll-Pitch-Yaw variance:
         self.measurement_cov_rpy = np.diag([0.1, 0.1, 0.1])
         
-        # The last time that we received a measurement input or a control input
-        self.last_input_time = None
+        # The last time that we received a control input
+        self.last_state_transition_time = None
         
-        # Time in seconds between consecutive measurements (updates) or control
-        # inputs (predictions)
+        # Time in seconds between consecutive state transitions, dictated by
+        # when the control inputs come in
         self.dt = None
         
         # FilterPy requires the predict() method to be called before the first
         # call to update(), so ensure that we have computed the first prior
-        #self.computed_first_prior = False
+        self.computed_first_prior = False
         
         # Initialize the last control input as 0 m/s^2 along each axis in the
         # body frame

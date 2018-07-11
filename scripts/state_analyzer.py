@@ -31,6 +31,8 @@ class StateAnalyzer(object):
         self.include_ema = include_ema
         self.include_mocap = include_mocap
         self.unit = unit
+        
+        self.computed_ukf = False
 
         self.log_file_dir = '../logs/2018-06-26_test1_ir_control'
         self.log_file_dir = '../logs'
@@ -175,12 +177,15 @@ class StateAnalyzer(object):
         ready_to_filter = False
         got_ir = False
         got_rpy = False
+        got_imu = False
         while not ready_to_filter:
             # Get initial measurements in order to be able to initialize the
-            # filter's state vector x and covariance matrix P
+            # filter's state vector x and covariance matrix P.
+            # Also, get first control inputs from IMU to be able to initialize
+            # a start time to compute a dt between between control inputs, to be
+            # used in the prediction step with the state transition function
             
             data_type, data_contents = raw_data.pop(0)
-            self.drone_state.last_input_time = data_contents[0]
             if data_type == 'ir_RAW':
                 # Got a raw slant range reading, so update the initial state
                 # vector of the UKF
@@ -198,43 +203,63 @@ class StateAnalyzer(object):
                 self.drone_state.ukf.P[7, 7] = self.drone_state.ukf.R[5, 5]
                 self.drone_state.ukf.P[8, 8] = self.drone_state.ukf.R[6, 6]
                 got_rpy = True
+            elif data_type == 'imu_RAW':
+                self.drone_state.last_state_transition_time = data_contents[0]
+                got_imu = True
                 
-            if got_ir and got_rpy:
+            if got_ir and got_rpy and got_imu:
                 ready_to_filter = True
         
-        # Now we are ready to filter the data
+        # Now we are ready to filter the data. Note that the FilterPy library's
+        # UnscentedKalmanFilter class requires that the predict() method be
+        # called at least once before the first call to update() is made
+        just_did_update = False
         for data_type, data_contents in raw_data:
             new_time = data_contents[0]
-            # Compute the time interval since the last input
-            self.drone_state.dt = new_time - self.drone_state.last_input_time
-            # Set the current time at which we just received an input to be the
-            # last input time
-            self.drone_state.last_input_time = new_time
+            #print self.drone_state.ukf.P
+            # TODO: Get rid of the following code block
+            # # -----
+            # # Check for positive semidefinite matrix P, borrowed from https://stackoverflow.com/questions/5563743/check-for-positive-definiteness-or-positive-semidefiniteness/17265664#17265664
+            # import scipy
+            # def isPSD(A, tol=1e-8):
+            #     E,V = scipy.linalg.eigh(A)
+            #     return np.all(E > -tol)
+            # print isPSD(self.drone_state.ukf.P)
+            # # -----
             
             if data_type == 'imu_RAW':
                 # Raw IMU accelerometer data is treated as the control input
+                # Compute the time interval since the last state transition /
+                # control input
+                self.drone_state.dt = new_time - self.drone_state.last_state_transition_time
+                # Set the current time at which we just received a control input
+                # to be the last input time
+                self.drone_state.last_state_transition_time = new_time
+                
                 x_accel = float(data_contents[1]) # (m/s^2)
                 y_accel = float(data_contents[2]) # (m/s^2)
                 z_accel = float(data_contents[3]) # (m/s^2)
                 
                 self.raw_imu_z_accel.append(z_accel)
                 self.raw_imu_z_accel_times.append(new_time)
-                self.drone_state.last_control_input = (
-                    np.array([x_accel,
-                              y_accel,
-                              z_accel]))
-            
-            # Compute the prior whether or not we received a new control input.
-            # If we did not receive a new control input, then the prediction
-            # step will use the most recent control input before calling the
-            # update step on whatever measurement input we have just received
-            self.drone_state.ukf.predict(dt=self.drone_state.dt,
-                                    fx=self.drone_state.state_transition_function,
-                                    u=self.drone_state.last_control_input)
-            if data_type == 'ir_RAW':
+                self.drone_state.last_control_input = np.array([x_accel,
+                                                                y_accel,
+                                                                z_accel])
+                # Compute the prior
+                self.drone_state.ukf.predict(dt=self.drone_state.dt,
+                                  fx=self.drone_state.state_transition_function,
+                                  u=self.drone_state.last_control_input)
+                self.drone_state.computed_first_prior = True
+                just_did_update = False
+                
+            if data_type == 'ir_RAW' and self.drone_state.computed_first_prior:
                 # We have just received a measurement, so compute the
                 # measurement update step after having computed the new prior in
                 # the prediction step
+                
+                # TODO: Figure out how to compute process sigmas, with a correct dt?
+                if just_did_update:
+                    self.drone_state.ukf.compute_process_sigmas(dt=self.drone_state.dt, u=np.array([0, 0, 0]))
 
                 # This last measurement will be stored in self.drone_state.ukf.z
                 # in the update step
@@ -246,14 +271,17 @@ class StateAnalyzer(object):
                 # z dynamically changes size. As a result, we must also
                 # dynamically alter the UKF's measurement function hx
                 
-                # BUG: For some reason, this first call to update changes the
-                # shape of self.drone_state.ukf.x from (12,) to (12, 12). Verify
-                # with 'print np.shape(self.drone_state.ukf.x)'
                 self.drone_state.ukf.update(measurement_z,
                                     hx=self.drone_state.measurement_function_ir,
                                     R=self.drone_state.measurement_cov_ir)
+                just_did_update = True
 
-            elif data_type == 'x_y_yaw_velocity_RAW':
+            elif data_type == 'x_y_yaw_velocity_RAW' and self.drone_state.computed_first_prior:
+                
+                # TODO: Figure out how to compute process sigmas, with a correct dt?
+                if just_did_update:
+                    self.drone_state.ukf.compute_process_sigmas(dt=self.drone_state.dt, u=np.array([0, 0, 0]))
+                    
                 x_vel = float(data_contents[1])
                 y_vel = float(data_contents[2])
                 yaw_vel = float(data_contents[3]) # TODO: express in rad/s
@@ -267,8 +295,14 @@ class StateAnalyzer(object):
                 self.drone_state.ukf.update(measurement_z,
                           hx=self.drone_state.measurement_function_optical_flow,
                           R=self.drone_state.measurement_cov_optical_flow)
+                just_did_update = True
             
-            elif data_type == 'roll_pitch_yaw_RAW':
+            elif data_type == 'roll_pitch_yaw_RAW' and self.drone_state.computed_first_prior:
+                
+                # TODO: Figure out how to compute process sigmas, with a correct dt?
+                if just_did_update:
+                    self.drone_state.ukf.compute_process_sigmas(dt=self.drone_state.dt, u=np.array([0, 0, 0]))
+                    
                 roll_raw = float(data_contents[1])
                 pitch_raw = float(data_contents[2])
                 yaw_raw = float(data_contents[3])
@@ -282,9 +316,11 @@ class StateAnalyzer(object):
                 self.drone_state.ukf.update(measurement_z,
                                    hx=self.drone_state.measurement_function_rpy,
                                    R=self.drone_state.measurement_cov_rpy)
+                just_did_update = True
             
             states_x.append(self.drone_state.ukf.x)
             times_t.append(new_time)
+        self.computed_ukf = True
         return states_x, times_t
 
     def plot_altitudes(self):
@@ -296,6 +332,7 @@ class StateAnalyzer(object):
         # correct way to attain altitude values in a UKF... instead, z position
         # should be a state variable in the state vector)
         
+        plt.figure()
         plt.plot(self.raw_ir_slant_range_times, self.raw_ir_slant_ranges, label='Raw IR range')
         if self.include_ema:
             plt.plot(self.ema_range_times, self.ema_ranges, label='EMA filtered IR range')
@@ -309,28 +346,53 @@ class StateAnalyzer(object):
         
         plt.legend()
         print 'Altitude plot created.'
-        plt.show()
-    
+        plt.show(block=False)
+        #plt.draw()
+        
     def plot_z_velocities(self):
-        plt.plot(self.raw_ir_times, self.raw_ir_vels, label='Raw IR velocity')
-        plt.plot(self.ema_times, self.ema_vels, label='EMA filtered IR velocity')
-        plt.plot(self.mocap_times, self.mocap_vels, label='Mo-Cap velocity')
+        plt.figure()
+        plt.plot(self.raw_ir_slant_range_times, self.raw_ir_vels, label='Raw IR velocity')
+        if self.include_ema:
+            plt.plot(self.ema_range_times, self.ema_vels, label='EMA filtered IR velocity')
+        if self.include_mocap:
+            plt.plot(self.mocap_altitude_times, self.mocap_vels, label='Mo-Cap velocity')
         plt.plot(self.ukf_times, self.ukf_z_velocities, label='UKF z-velocity')
         
         plt.xlabel('Time (seconds)')
-        plt.ylabel('Z-velocity (cm/s)')
-        plt.title('Comparison of Raw Data, EMA Filtered Data, Mo-Cap Ground '
-                  'Truth Data, and UKF Filtered Data for Estimating Drone Z-Velocity')
+        plt.ylabel('Z-velocity ({}/second)'.format(self.unit))
+        plt.title('Comparison of Drone Z-Velocity Estimates')
         
         plt.legend()
         print 'Z-velocity plot created.'
-        plt.show()
+        plt.show(block=False)
+        #plt.draw()
+        
+    def plot_yaw_vel(self):
+        plt.figure()
+        plt.plot(self.raw_camera_times, self.raw_yaw_vel, label='Raw yaw velocity from camera')
+        
+        # TODO: Implement these plotting options
+        if self.include_ema:
+            pass
+        if self.include_mocap:
+            pass
+        
+        plt.plot(self.ukf_times, self.ukf_yaw_vel, label='UKF yaw velocity')
+        
+        plt.xlabel('Time (seconds)')
+        plt.ylabel('Yaw Velocity (degrees/second)') # TODO: Is it degrees? Make into radians
+        plt.title('Comparison of Drone Yaw Velocity Estimates')
+        
+        plt.legend()
+        print 'Yaw velocity plot created.'
+        plt.show(block=False)
                                 
     def compare_altitudes(self, do_plot=False):
-        ukf_states, ukf_times = self.compute_UKF_data()
-        self.ukf_times = [(t - self.earliest_time  + self.mocap_time_offset) for t in ukf_times]
+        if not self.computed_ukf:
+            self.ukf_states, self.ukf_times = self.compute_UKF_data()
+            self.ukf_times = [(t - self.earliest_time  + self.mocap_time_offset) for t in self.ukf_times]
         self.raw_ir_slant_range_times = [(t - self.earliest_time + self.mocap_time_offset) for t in self.raw_ir_slant_range_times]
-        self.ukf_altitudes = [row[2] for row in ukf_states]
+        self.ukf_altitudes = [row[2] for row in self.ukf_states]
         if self.include_ema:
             self.get_ir_ema_altitude_data()
         if self.include_mocap:
@@ -342,9 +404,10 @@ class StateAnalyzer(object):
     # TODO: Test this method
     def compare_z_velocities(self, do_plot=False):
         # Get UKF z-velocity data
-        ukf_states, ukf_times = self.compute_UKF_data()
-        self.ukf_times = [(t - self.earliest_time  + self.mocap_time_offset) for t in ukf_times]
-        self.ukf_z_velocities = [row[5] for row in ukf_states]
+        if not self.computed_ukf:
+            self.ukf_states, self.ukf_times = self.compute_UKF_data()
+            self.ukf_times = [(t - self.earliest_time  + self.mocap_time_offset) for t in self.ukf_times]
+        self.ukf_z_velocities = [row[5] for row in self.ukf_states]
                 
         # Compute estimated velocities from raw IR sensor positions values
         self.raw_ir_slant_range_times = [(t - self.earliest_time + self.mocap_time_offset) for t in self.raw_ir_slant_range_times]
@@ -384,6 +447,22 @@ class StateAnalyzer(object):
             
         if do_plot:
             self.plot_z_velocities()
+            
+    def compare_yaw_vel(self, do_plot=False):
+        if not self.computed_ukf:
+            self.ukf_states, self.ukf_times = self.compute_UKF_data()
+            self.ukf_times = [(t - self.earliest_time  + self.mocap_time_offset) for t in self.ukf_times]
+        self.raw_camera_times = [(t - self.earliest_time + self.mocap_time_offset) for t in self.raw_camera_times]
+        self.ukf_yaw_vel = [row[11] for row in self.ukf_states]
+        
+        # TODO: Implement this plotting
+        if self.include_ema:
+            pass
+        if self.include_mocap:
+            pass
+        
+        if do_plot:
+            self.plot_yaw_vel()
 
     def get_ir_ema_altitude_data(self):
         ema_ir_data = self.load_EMA_data()
@@ -405,5 +484,7 @@ class StateAnalyzer(object):
 if __name__ == '__main__':
     state_analyzer = StateAnalyzer()
     state_analyzer.compare_altitudes(do_plot=True)
-    #state_analyzer.compare_z_velocities()
+    #state_analyzer.compare_z_velocities(do_plot=True)
+    #state_analyzer.compare_yaw_vel(do_plot=True)
+    plt.show() # to have plot window(s) stay open
 
