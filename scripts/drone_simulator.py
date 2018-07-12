@@ -113,8 +113,10 @@ class DroneSimulator(object):
         z_accel_std_dev = 0.01 # meters/second^2
         z_pos_std_dev = 0.005 # meters. Estimated standard deviation of 5 mm
         # Start the drone in the air
-        curr_pos = 0.4 # current position along the z-axis (meters)
-        self.ir_data.append([curr_pos])
+        curr_pos_actual = 0.4 # current position along the z-axis (meters)
+        curr_pos_measured = z_pos_std_dev * randn() + curr_pos_actual
+        z_accel_actual = 0.0
+        self.ir_data.append([curr_pos_measured])
         if self.correlate_z_pos_and_accel:
             self.ir_z_accels = []
         next_ir_time = self.ir_times[0][0] + self.ir_times[0][1]*1e-9
@@ -123,16 +125,17 @@ class DroneSimulator(object):
             next_ir_time_pair = self.ir_times[i+1] # sec and nsec pair
             next_ir_time = next_ir_time_pair[0] + next_ir_time_pair[1]*1e-9
             time_step = next_ir_time - curr_ir_time
-            z_accel = z_accel_std_dev * randn()
+            z_accel_actual = z_accel_std_dev * randn()
+            z_accel_measured = z_accel_std_dev * randn() + z_accel_actual
             if self.correlate_z_pos_and_accel:
-                self.ir_z_accels.append(z_accel)
-            z_vel += z_accel * time_step
-            curr_pos += z_vel * time_step
-            curr_pos = z_pos_std_dev * randn() + curr_pos
+                self.ir_z_accels.append(z_accel_measured)
+            z_vel += z_accel_actual * time_step
+            curr_pos_actual += z_vel * time_step
+            curr_pos_measured = z_pos_std_dev * randn() + curr_pos_actual
             # Don't allow drone to go below 9 centimeters off of the ground
-            if curr_pos < 0.09:
-                curr_pos = 0.09
-            self.ir_data.append([curr_pos])
+            if curr_pos_measured < 0.09:
+                curr_pos_measured = 0.09
+            self.ir_data.append([curr_pos_measured])
         if self.save_to_csv:
             self.write_to_csv(filename='ir_RAW', times=self.ir_times,
                               data_list=self.ir_data)
@@ -172,7 +175,9 @@ class DroneSimulator(object):
         x_accel_std_dev = 0.5
         y_accel_std_dev = 0.5
         z_accel_std_dev = 0.5
-        self.ir_z_accels.insert(0, 0.0) # insert a 0.0 acceleration to match dimension of these IMU data
+        if self.correlate_z_pos_and_accel:
+            #self.ir_z_accels.insert(0, 0.0) # insert a 0.0 acceleration to match dimension of these IMU data
+            self.ir_z_accels.append(0.0)
         # if self.correlate_z_pos_and_accel:
         #     while len(self.ir_z_accels) < len(self.imu_times):
         #         self.ir_z_accels.insert(0, 0.0) # insert a 0.0 acceleration to match dimension of these IMU data

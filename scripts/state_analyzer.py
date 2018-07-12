@@ -216,25 +216,19 @@ class StateAnalyzer(object):
         just_did_update = False
         for data_type, data_contents in raw_data:
             new_time = data_contents[0]
-            #print self.drone_state.ukf.P
-            # TODO: Get rid of the following code block
-            # # -----
-            # # Check for positive semidefinite matrix P, borrowed from https://stackoverflow.com/questions/5563743/check-for-positive-definiteness-or-positive-semidefiniteness/17265664#17265664
-            # import scipy
-            # def isPSD(A, tol=1e-8):
-            #     E,V = scipy.linalg.eigh(A)
-            #     return np.all(E > -tol)
-            # print isPSD(self.drone_state.ukf.P)
-            # # -----
             
+            self.drone_state.dt = new_time - self.drone_state.last_state_transition_time
+            # Set the current time at which we just received an input
+            # to be the last input time
+            self.drone_state.last_state_transition_time = new_time
             if data_type == 'imu_RAW':
-                # Raw IMU accelerometer data is treated as the control input
-                # Compute the time interval since the last state transition /
-                # control input
-                self.drone_state.dt = new_time - self.drone_state.last_state_transition_time
-                # Set the current time at which we just received a control input
-                # to be the last input time
-                self.drone_state.last_state_transition_time = new_time
+                # # Raw IMU accelerometer data is treated as the control input
+                # # Compute the time interval since the last state transition /
+                # # control input
+                # self.drone_state.dt = new_time - self.drone_state.last_state_transition_time
+                # # Set the current time at which we just received a control input
+                # # to be the last input time
+                # self.drone_state.last_state_transition_time = new_time
                 
                 x_accel = float(data_contents[1]) # (m/s^2)
                 y_accel = float(data_contents[2]) # (m/s^2)
