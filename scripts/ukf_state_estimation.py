@@ -1,7 +1,6 @@
 from filterpy.kalman import UnscentedKalmanFilter
 from filterpy.kalman import MerweScaledSigmaPoints
 import numpy as np
-import math
 
 class DroneStateEstimation(object):
     
@@ -53,7 +52,7 @@ class DroneStateEstimation(object):
         #self.ukf.R = self.R_complete.copy()
         
         # IR slant range variance:
-        self.measurement_cov_ir = np.array([0.0025])
+        self.measurement_cov_ir = np.array([0.1])
         # Optical flow variance:
         self.measurement_cov_optical_flow = np.diag([0.1, 0.1, 0.1])
         # Roll-Pitch-Yaw variance:

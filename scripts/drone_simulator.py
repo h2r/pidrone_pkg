@@ -111,8 +111,8 @@ class DroneSimulator(object):
     def generate_ir_data(self):
         # Assume a model with small accelerations, with some noise
         z_vel = 0.0 # meters/second
-        z_accel_measured_std_dev = 0.1 # meters/second^2
-        z_accel_actual_std_dev = 0.01 # meters/second^2 # to simulate random real-world disturbances
+        z_accel_measured_std_dev = 0.001 # meters/second^2
+        z_accel_actual_std_dev = 0.0001 # meters/second^2 # to simulate random real-world disturbances
         z_pos_std_dev = 0.005 # meters. Estimated standard deviation of 5 mm
         # Start the drone in the air
         curr_pos_actual = 0.4 # current position along the z-axis (meters)
