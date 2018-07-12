@@ -217,18 +217,18 @@ class StateAnalyzer(object):
         for data_type, data_contents in raw_data:
             new_time = data_contents[0]
             
-            self.drone_state.dt = new_time - self.drone_state.last_state_transition_time
-            # Set the current time at which we just received an input
-            # to be the last input time
-            self.drone_state.last_state_transition_time = new_time
+            # self.drone_state.dt = new_time - self.drone_state.last_state_transition_time
+            # # Set the current time at which we just received an input
+            # # to be the last input time
+            # self.drone_state.last_state_transition_time = new_time
             if data_type == 'imu_RAW':
-                # # Raw IMU accelerometer data is treated as the control input
-                # # Compute the time interval since the last state transition /
-                # # control input
-                # self.drone_state.dt = new_time - self.drone_state.last_state_transition_time
-                # # Set the current time at which we just received a control input
-                # # to be the last input time
-                # self.drone_state.last_state_transition_time = new_time
+                # Raw IMU accelerometer data is treated as the control input
+                # Compute the time interval since the last state transition /
+                # control input
+                self.drone_state.dt = new_time - self.drone_state.last_state_transition_time
+                # Set the current time at which we just received a control input
+                # to be the last input time
+                self.drone_state.last_state_transition_time = new_time
                 
                 x_accel = float(data_contents[1]) # (m/s^2)
                 y_accel = float(data_contents[2]) # (m/s^2)
@@ -239,12 +239,12 @@ class StateAnalyzer(object):
                 self.drone_state.last_control_input = np.array([x_accel,
                                                                 y_accel,
                                                                 z_accel])
-            # Compute the prior
-            self.drone_state.ukf.predict(dt=self.drone_state.dt,
-                              fx=self.drone_state.state_transition_function,
-                              u=self.drone_state.last_control_input)
-            self.drone_state.computed_first_prior = True
-            just_did_update = False
+                # Compute the prior
+                self.drone_state.ukf.predict(dt=self.drone_state.dt,
+                                  fx=self.drone_state.state_transition_function,
+                                  u=self.drone_state.last_control_input)
+                self.drone_state.computed_first_prior = True
+                just_did_update = False
                 
             if data_type == 'ir_RAW' and self.drone_state.computed_first_prior:
                 # We have just received a measurement, so compute the
@@ -268,7 +268,7 @@ class StateAnalyzer(object):
                 self.drone_state.ukf.update(measurement_z,
                                     hx=self.drone_state.measurement_function_ir,
                                     R=self.drone_state.measurement_cov_ir)
-                #just_did_update = True
+                just_did_update = True
 
             elif data_type == 'x_y_yaw_velocity_RAW' and self.drone_state.computed_first_prior:
                 
@@ -289,7 +289,7 @@ class StateAnalyzer(object):
                 self.drone_state.ukf.update(measurement_z,
                           hx=self.drone_state.measurement_function_optical_flow,
                           R=self.drone_state.measurement_cov_optical_flow)
-                #just_did_update = True
+                just_did_update = True
             
             elif data_type == 'roll_pitch_yaw_RAW' and self.drone_state.computed_first_prior:
                 
@@ -310,7 +310,7 @@ class StateAnalyzer(object):
                 self.drone_state.ukf.update(measurement_z,
                                    hx=self.drone_state.measurement_function_rpy,
                                    R=self.drone_state.measurement_cov_rpy)
-                #just_did_update = True
+                just_did_update = True
             
             states_x.append(self.drone_state.ukf.x)
             times_t.append(new_time)

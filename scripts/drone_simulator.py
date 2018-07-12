@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 from numpy.random import randn # to generate some random Gaussian noise
+import numpy as np
 import os
 import csv
 
@@ -110,7 +111,8 @@ class DroneSimulator(object):
     def generate_ir_data(self):
         # Assume a model with small accelerations, with some noise
         z_vel = 0.0 # meters/second
-        z_accel_std_dev = 0.01 # meters/second^2
+        z_accel_measured_std_dev = 0.1 # meters/second^2
+        z_accel_actual_std_dev = 0.01 # meters/second^2 # to simulate random real-world disturbances
         z_pos_std_dev = 0.005 # meters. Estimated standard deviation of 5 mm
         # Start the drone in the air
         curr_pos_actual = 0.4 # current position along the z-axis (meters)
@@ -125,16 +127,17 @@ class DroneSimulator(object):
             next_ir_time_pair = self.ir_times[i+1] # sec and nsec pair
             next_ir_time = next_ir_time_pair[0] + next_ir_time_pair[1]*1e-9
             time_step = next_ir_time - curr_ir_time
-            z_accel_actual = z_accel_std_dev * randn()
-            z_accel_measured = z_accel_std_dev * randn() + z_accel_actual
+            # Simulating a near-zero acceleration model
+            z_accel_actual = z_accel_actual_std_dev * randn()
+            z_accel_measured = z_accel_measured_std_dev * randn() + z_accel_actual
             if self.correlate_z_pos_and_accel:
                 self.ir_z_accels.append(z_accel_measured)
             z_vel += z_accel_actual * time_step
             curr_pos_actual += z_vel * time_step
             curr_pos_measured = z_pos_std_dev * randn() + curr_pos_actual
             # Don't allow drone to go below 9 centimeters off of the ground
-            if curr_pos_measured < 0.09:
-                curr_pos_measured = 0.09
+            if curr_pos_actual < 0.09:
+                curr_pos_actual = 0.09
             self.ir_data.append([curr_pos_measured])
         if self.save_to_csv:
             self.write_to_csv(filename='ir_RAW', times=self.ir_times,
