@@ -42,7 +42,7 @@ class DroneStateEstimation(object):
         # To consider: Changing scale factor by too much could lead to the
         # following error:
         # numpy.linalg.linalg.LinAlgError: 3-th leading minor not positive definite
-        self.ukf.Q = np.eye(state_vector_dim)*0.1
+        self.ukf.Q = np.eye(state_vector_dim)*0.001
         
         # Initialize the measurement covariance matrix R for each discrete
         # asynchronous measurement input:

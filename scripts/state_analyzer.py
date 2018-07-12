@@ -245,12 +245,12 @@ class StateAnalyzer(object):
                 self.drone_state.last_control_input = np.array([x_accel,
                                                                 y_accel,
                                                                 z_accel])
-                # Compute the prior
-                self.drone_state.ukf.predict(dt=self.drone_state.dt,
-                                  fx=self.drone_state.state_transition_function,
-                                  u=self.drone_state.last_control_input)
-                self.drone_state.computed_first_prior = True
-                just_did_update = False
+            # Compute the prior
+            self.drone_state.ukf.predict(dt=self.drone_state.dt,
+                              fx=self.drone_state.state_transition_function,
+                              u=self.drone_state.last_control_input)
+            self.drone_state.computed_first_prior = True
+            just_did_update = False
                 
             if data_type == 'ir_RAW' and self.drone_state.computed_first_prior:
                 # We have just received a measurement, so compute the
@@ -274,7 +274,7 @@ class StateAnalyzer(object):
                 self.drone_state.ukf.update(measurement_z,
                                     hx=self.drone_state.measurement_function_ir,
                                     R=self.drone_state.measurement_cov_ir)
-                just_did_update = True
+                #just_did_update = True
 
             elif data_type == 'x_y_yaw_velocity_RAW' and self.drone_state.computed_first_prior:
                 
@@ -295,7 +295,7 @@ class StateAnalyzer(object):
                 self.drone_state.ukf.update(measurement_z,
                           hx=self.drone_state.measurement_function_optical_flow,
                           R=self.drone_state.measurement_cov_optical_flow)
-                just_did_update = True
+                #just_did_update = True
             
             elif data_type == 'roll_pitch_yaw_RAW' and self.drone_state.computed_first_prior:
                 
@@ -316,7 +316,7 @@ class StateAnalyzer(object):
                 self.drone_state.ukf.update(measurement_z,
                                    hx=self.drone_state.measurement_function_rpy,
                                    R=self.drone_state.measurement_cov_rpy)
-                just_did_update = True
+                #just_did_update = True
             
             states_x.append(self.drone_state.ukf.x)
             times_t.append(new_time)

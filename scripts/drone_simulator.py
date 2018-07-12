@@ -21,6 +21,7 @@ class DroneSimulator(object):
     def __init__(self, publish_ros=False, save_to_csv=False):
         self.publish_ros = publish_ros
         self.save_to_csv = save_to_csv
+        self.correlate_z_pos_and_accel = True
         # NOTE: Live playback of simulated data on ROS topics may be unnecessary,
         # as in the future we could just use rosbag to collect real data and then
         # play it back.
@@ -41,7 +42,10 @@ class DroneSimulator(object):
 
         # Approximate samples/second of each sensor output
         self.ir_hz = 57
-        self.imu_hz = 26 # RPY info published on /pidrone/state
+        if self.correlate_z_pos_and_accel:
+            self.imu_hz = self.ir_hz
+        else:
+            self.imu_hz = 26 # RPY info published on /pidrone/state
         self.camera_hz = 20 # just a guess
                 
     def initialize_csv_files(self):
@@ -70,13 +74,29 @@ class DroneSimulator(object):
         self.camera_times = []
         self.camera_data = []
         
-        self.times = ((self.ir_times, self.ir_hz),
-                      (self.imu_times, self.imu_hz),
-                      (self.camera_times, self.camera_hz))
-        
         # For info on how to use numpy.random.randn:
         # https://docs.scipy.org/doc/numpy-1.14.0/reference/generated/numpy.random.randn.html#numpy.random.randn
         
+        if not self.correlate_z_pos_and_accel:
+            self.times = ((self.ir_times, self.ir_hz),
+                          (self.imu_times, self.imu_hz),
+                          (self.camera_times, self.camera_hz))
+            self.generate_times(duration, time_std_dev)
+        else:
+            # Don't generate separate times for IR
+            self.times = ((self.imu_times, self.imu_hz),
+                          (self.camera_times, self.camera_hz))
+            self.generate_times(duration, time_std_dev)
+            # Instead, set equal to the randomly generated IMU times
+            self.ir_times = self.imu_times
+                
+        # Generate sample data:
+        self.generate_ir_data()
+        self.generate_roll_pitch_yaw_data()
+        self.generate_x_y_yaw_velocity_data()
+        self.generate_linear_acceleration_imu_data()
+        
+    def generate_times(self, duration, time_std_dev):
         # Generate sample times
         for data_time_list, data_hz in self.times:
             curr_time = 0.0
@@ -86,12 +106,6 @@ class DroneSimulator(object):
                 curr_nsec = int((curr_time - curr_sec)*(1e9))
                 data_time_list.append([curr_sec, curr_nsec])
             del data_time_list[-1] # to keep times less than or equal to duration
-                
-        # Generate sample data:
-        self.generate_ir_data()
-        self.generate_roll_pitch_yaw_data()
-        self.generate_x_y_yaw_velocity_data()
-        self.generate_linear_acceleration_imu_data()
             
     def generate_ir_data(self):
         # Assume a model with small accelerations, with some noise
@@ -101,13 +115,18 @@ class DroneSimulator(object):
         # Start the drone in the air
         curr_pos = 0.4 # current position along the z-axis (meters)
         self.ir_data.append([curr_pos])
+        if self.correlate_z_pos_and_accel:
+            self.ir_z_accels = []
         next_ir_time = self.ir_times[0][0] + self.ir_times[0][1]*1e-9
         for i in range(len(self.ir_times) - 1):
             curr_ir_time = next_ir_time
             next_ir_time_pair = self.ir_times[i+1] # sec and nsec pair
             next_ir_time = next_ir_time_pair[0] + next_ir_time_pair[1]*1e-9
             time_step = next_ir_time - curr_ir_time
-            z_vel += (z_accel_std_dev * randn()) * time_step
+            z_accel = z_accel_std_dev * randn()
+            if self.correlate_z_pos_and_accel:
+                self.ir_z_accels.append(z_accel)
+            z_vel += z_accel * time_step
             curr_pos += z_vel * time_step
             curr_pos = z_pos_std_dev * randn() + curr_pos
             # Don't allow drone to go below 9 centimeters off of the ground
@@ -153,10 +172,19 @@ class DroneSimulator(object):
         x_accel_std_dev = 0.5
         y_accel_std_dev = 0.5
         z_accel_std_dev = 0.5
-        for _ in self.imu_times:
+        self.ir_z_accels.insert(0, 0.0) # insert a 0.0 acceleration to match dimension of these IMU data
+        # if self.correlate_z_pos_and_accel:
+        #     while len(self.ir_z_accels) < len(self.imu_times):
+        #         self.ir_z_accels.insert(0, 0.0) # insert a 0.0 acceleration to match dimension of these IMU data
+        #     while len(self.ir_z_accels) > len(self.imu_times):
+        #         del self.ir_z_accels[0]
+        for num, _ in enumerate(self.imu_times):
             x_accel = x_accel_std_dev * randn()
             y_accel = y_accel_std_dev * randn()
-            z_accel = z_accel_std_dev * randn()
+            if self.correlate_z_pos_and_accel:
+                z_accel = self.ir_z_accels[num]
+            else:
+                z_accel = z_accel_std_dev * randn()
             self.imu_accel_data.append([x_accel, y_accel, z_accel])
         if self.save_to_csv:
             self.write_to_csv(filename='imu_RAW',
@@ -174,7 +202,7 @@ class DroneSimulator(object):
         '''
         if self.save_to_csv:
             self.initialize_csv_files()
-        self.generate_data(duration=duration, time_std_dev=1.0)
+        self.generate_data(duration=duration, time_std_dev=0.3)
         
         
 if __name__ == '__main__':
