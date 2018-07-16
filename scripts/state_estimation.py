@@ -193,6 +193,8 @@ class StateEstimation(object):
         measurement_z = np.array([roll,
                                   pitch,
                                   yaw])
+        # Ensure that we are computing the residual for angles
+        self.ukf.residual_z = self.angle_residual
         self.ukf.update(measurement_z,
                         hx=self.measurement_function_rpy,
                         R=self.measurement_cov_rpy)
@@ -218,6 +220,8 @@ class StateEstimation(object):
         measurement_z = np.array([data.x_velocity,
                                   data.y_velocity,
                                   data.yaw_velocity])
+        # Ensure that we are using subtraction to compute the residual
+        self.ukf.residual_z = np.subtract
         self.ukf.update(measurement_z,
                         hx=self.measurement_function_optical_flow,
                         R=self.measurement_cov_optical_flow)
@@ -235,6 +239,8 @@ class StateEstimation(object):
         # estimate to the same point in time as the measurement, perform a
         # measurement update with the slant range reading
         measurement_z = np.array([data.range])
+        # Ensure that we are using subtraction to compute the residual
+        self.ukf.residual_z = np.subtract
         self.ukf.update(measurement_z,
                         hx=self.measurement_function_ir,
                         R=self.measurement_cov_ir)
@@ -285,10 +291,9 @@ class StateEstimation(object):
         '''
         # TODO: See about using tf and potentially applying rotations with
         #       quaternions
-        # Convert Euler angles from degrees to radians
-        phi = np.deg2rad(self.ukf.x[6])     # roll
-        theta = np.deg2rad(self.ukf.x[7])   # pitch
-        psi = np.deg2rad(self.ukf.x[8])     # yaw
+        phi = self.ukf.x[6]     # roll in radians
+        theta = self.ukf.x[7]   # pitch in radians
+        psi = self.ukf.x[8]     # yaw in radians
         # Set up the rotation matrix
         rotation_matrix = np.array(
                [[np.cos(theta)*np.cos(psi),
@@ -335,7 +340,41 @@ class StateEstimation(object):
                                               0,
                                               0])
         x_output = np.dot(F, x) + change_from_control_input
+        x_output = self.correct_fringe_angles(x_output)
         return x_output
+        
+    def angle_residual(self, a, b):
+        '''
+        Compute the residual for the measurement update step that includes only
+        angles (roll, pitch, and yaw). Handle the fringe angle case. For
+        example, 358 degrees - 3 degrees should give out -5 degrees and not
+        355 degrees. (Example given in degrees, but in the implementation angles
+        are given in radians)
+        '''
+        output_residual = np.empty_like(a)
+        for num, angle1 in enumerate(a):
+            angle2 = b[num]
+            residual = angle1 - angle2
+            if residual > np.pi:
+                residual -= 2*np.pi
+            elif residual < -np.pi:
+                residual += 2*np.pi
+            output_residual[num] = residual
+        return output_residual
+        
+    def correct_fringe_angles(self, x_in_transition):
+        '''
+        Check if the state transition involves fringe angles, i.e., if an
+        orientation angle transitions from 359 degrees to 362 degrees, then the
+        new angle should read 2 degrees. Likewise, a transition from 2 degrees
+        to -3 degrees should read 357 degrees. (Examples given in degrees, but
+        in the implementation angles are given in radians) This is just a matter
+        of applying the modulo operator to each transitioned angle.
+        '''
+        x_in_transition[6] = np.mod(x_in_transition[6], 2*np.pi) # roll angle
+        x_in_transition[7] = np.mod(x_in_transition[7], 2*np.pi) # pitch angle
+        x_in_transition[8] = np.mod(x_in_transition[8], 2*np.pi) # yaw angle
+        return x_in_transition
         
     def measurement_function(self, x):
         '''
@@ -348,11 +387,8 @@ class StateEstimation(object):
         x : current state. A NumPy array
         '''
         # Roll and pitch values from the prior state estimate
-        roll_deg = x[6]
-        pitch_deg = x[7]
-        # Convert Euler angles from degrees to radians
-        phi = np.deg2rad(roll_deg)
-        theta = np.deg2rad(pitch_deg)
+        phi = x[6] # roll in radians
+        theta = x[7] # pitch in radians
         # Conversion from altitude (alt) to slant range (r)
         alt_to_r = 1/(np.cos(theta)*np.cos(phi))
         H = np.array([[0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -373,11 +409,8 @@ class StateEstimation(object):
         x : current state. A NumPy array
         '''
         # Roll and pitch values from the prior state estimate
-        roll_deg = x[6]
-        pitch_deg = x[7]
-        # Convert Euler angles from degrees to radians
-        phi = np.deg2rad(roll_deg)
-        theta = np.deg2rad(pitch_deg)
+        phi = x[6] # roll in radians
+        theta = x[7] # pitch in radians
         # Conversion from altitude (alt) to slant range (r)
         alt_to_r = 1/(np.cos(theta)*np.cos(phi))
         H = np.array([[0, 0, alt_to_r, 0, 0, 0, 0, 0, 0, 0, 0, 0]])
