@@ -1,6 +1,2 @@
-Header header
-float32 vbat
-float32 amperage
-float32 roll
-float32 pitch
-
+PoseWithCovarianceStamped pose_with_covariance_stamped
+TwistWithCovarianceStamped twist_with_covariance_stamped

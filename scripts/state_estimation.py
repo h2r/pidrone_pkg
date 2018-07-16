@@ -54,8 +54,13 @@ class StateEstimation(object):
         # Subscribe to topics to which the drone publishes in order to get raw
         # data from sensors, which we can then filter
         rospy.Subscriber('/pidrone/imu', Imu, self.imu_data_callback)
-        rospy.Subscriber('/pidrone/set_mode_vel', Mode, self.optical_flow_data_callback)
+        rospy.Subscriber('/pidrone/set_mode_vel', Mode,
+                         self.optical_flow_data_callback)
         rospy.Subscriber('/pidrone/infrared', Range, self.ir_data_callback)
+        
+        # Create the publisher to publish state estimates
+        self.statepub = rospy.Publisher('/pidrone/state', State, queue_size=1,
+                                        tcp_nodelay=False)
         
     def initialize_ukf(self):
         '''
@@ -118,7 +123,7 @@ class StateEstimation(object):
         # Initialize state covariance matrix P:
         # TODO: Tune these initial values appropriately. Currently these are
         #       just guesses
-        self.ukf.P = np.diag([0.1, 0.1, 0.1, 0.2, 0.2, 0.2, 1, 1, 1, 1, 1, 1])
+        self.ukf.P = np.diag([0.1, 0.1, 0.1, 0.2, 0.2, 0.2, 0.05, 0.05, 0.05, 0.1, 0.1, 0.1])
         
         # Initialize the process noise covariance matrix Q:
         # TODO: Tune appropriately. Currently just a guess
@@ -198,6 +203,7 @@ class StateEstimation(object):
         self.ukf.update(measurement_z,
                         hx=self.measurement_function_rpy,
                         R=self.measurement_cov_rpy)
+        self.publish_current_state()
                         
     def optical_flow_data_callback(self, data):
         '''
@@ -225,6 +231,7 @@ class StateEstimation(object):
         self.ukf.update(measurement_z,
                         hx=self.measurement_function_optical_flow,
                         R=self.measurement_cov_optical_flow)
+        self.publish_current_state()
                         
     def ir_data_callback(self, data):
         '''
@@ -244,6 +251,7 @@ class StateEstimation(object):
         self.ukf.update(measurement_z,
                         hx=self.measurement_function_ir,
                         R=self.measurement_cov_ir)
+        self.publish_current_state()
                         
     def publish_current_state(self):
         '''
@@ -255,6 +263,7 @@ class StateEstimation(object):
         header = Header()
         header.stamp.secs = self.last_time_secs
         header.stamp.nsecs = self.last_time_nsecs
+        header.frame_id = 'global'
         
         pose_with_cov = PoseWithCovarianceStamped()
         twist_with_cov = TwistWithCovarianceStamped()
@@ -278,12 +287,29 @@ class StateEstimation(object):
         pose_with_cov.pose.pose.orientation.w = quaternion[3]
         
         # TODO: Look into RPY velocities versus angular velocities about x, y, z axes?
-        twist_with_cov.twist.twist.angular.x = self.ukf.x[9]
-        twist_with_cov.twist.twist.angular.y = self.ukf.x[10]
-        twist_with_cov.twist.twist.angular.z = self.ukf.x[11]
+        # For the time being, using Euler rates:
+        twist_with_cov.twist.twist.angular.x = self.ukf.x[9]    # roll rate
+        twist_with_cov.twist.twist.angular.y = self.ukf.x[10]   # pitch rate
+        twist_with_cov.twist.twist.angular.z = self.ukf.x[11]   # yaw rate
         
-        # TODO: Include covariances, publish, and then call this method in each
-        #       callback
+        # Extract the relevant covariances from self.ukf.P
+        pose_cov = np.concatenate(
+                    (np.concatenate((self.ukf.P[0:3, 0:3],
+                                     self.ukf.P[0:3, 6:9]), axis=1),
+                     np.concatenate((self.ukf.P[6:9, 0:3],
+                                     self.ukf.P[6:9, 6:9]), axis=1)), axis=0)
+        twist_cov = np.concatenate(
+                     (np.concatenate((self.ukf.P[3:6, 3:6],
+                                      self.ukf.P[3:6, 9:12]), axis=1),
+                      np.concatenate((self.ukf.P[9:12, 3:6],
+                                      self.ukf.P[9:12, 9:12]), axis=1)), axis=0)
+        pose_with_cov.pose.covariance = pose_cov
+        twist_with_cov.twist.cov = twist_cov
+        
+        state_msg = State()
+        state_msg.pose_with_covariance_stamped = pose_with_cov
+        state_msg.twist_with_covariance_stamped = twist_with_cov
+        self.state_pub.publish(state_msg)
 
     def apply_rotation_matrix(self, original_matrix):
         '''
