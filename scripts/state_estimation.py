@@ -136,10 +136,12 @@ class StateEstimation(object):
         # Initialize the measurement covariance matrix R for each discrete
         # asynchronous measurement input:
         # Using np.diag makes the covariances 0
-        # TODO: Tune appropriately. Currently just guesses
         
-        # IR slant range variance:
-        self.measurement_cov_ir = np.array([0.1])
+        # IR slant range variance (m^2), determined experimentally in a static
+        # setup with mean range around 0.335 m:
+        self.measurement_cov_ir = np.array([2.2221e-05])
+        # TODO: Tune the following variances appropriately. Currently just
+        #       guesses
         # Optical flow variance:
         self.measurement_cov_optical_flow = np.diag([0.1, 0.1, 0.1])
         # Roll-Pitch-Yaw variance:
