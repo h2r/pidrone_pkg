@@ -38,6 +38,7 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
         self.bridge = bridge
         self.br = tf.TransformBroadcaster()
 
+        rospy.Subscriber("/pidrone/desired_vel", Velocity, self.vel_callback)
         rospy.Subscriber("/pidrone/reset_transform", Empty, self.reset_callback)
         rospy.Subscriber("/pidrone/toggle_transform", Empty, self.toggle_callback)
         rospy.Subscriber("/pidrone/infrared", Range, self.range_callback)
