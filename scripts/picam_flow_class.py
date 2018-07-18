@@ -5,10 +5,10 @@ from h2rMultiWii import MultiWii
 import time
 from geometry_msgs.msg import TwistStamped
 import rospy
-  
+
 # RASPBERRY PI?
-camera_matrix = np.array([[ 253.70549591,    0.,          162.39457585], 
-                        [ 0.,          251.25243215,  126.5400089], 
+camera_matrix = np.array([[ 253.70549591,    0.,          162.39457585],
+                        [ 0.,          251.25243215,  126.5400089],
                         [   0.,            0., 1.        ]])
 dist_coeffs = np.array([ 0.20462996, -0.41924085,  0.00484044,  0.00776978,
                         0.27998478])
@@ -25,7 +25,7 @@ class AnalyzeFlow(picamera.array.PiMotionAnalysis):
         curr_time = time.time()
         diff_time = curr_time - self.prev_time
         self.prev_time = curr_time
-        
+
         self.x_motion = 0 - np.sum(x) * self.flow_coeff + np.arctan(self.ang_vx * diff_time) * self.ang_coefficient
         self.y_motion = np.sum(y) * self.flow_coeff + np.arctan(self.ang_vy * diff_time) * self.ang_coefficient
         self.z_motion = np.sum(np.multiply(x, self.z_filter_x)) + \
@@ -52,7 +52,7 @@ class AnalyzeFlow(picamera.array.PiMotionAnalysis):
         # computes a divergence filter to estimate z component of flow
         assert width%16 == 0 and height%16 == 0
         num_rows = height/16
-        num_cols = width/16 
+        num_cols = width/16
         mid_row = (num_rows - 1)/2.0
         mid_col = (num_cols - 1)/2.0
         # the picamera motion vectors have a buffer column each frame
@@ -67,11 +67,11 @@ class AnalyzeFlow(picamera.array.PiMotionAnalysis):
                 # r = np.sqrt(x**2 + y**2)
                 # theta = np.arctan(y/x)
                 # print x,y,theta
-                # z_filter_x[j,i] = r * np.cos(theta) 
+                # z_filter_x[j,i] = r * np.cos(theta)
                 # z_filter_y[j,i] = r * np.sin(theta)
         self.z_filter_x /= np.linalg.norm(self.z_filter_x)
         self.z_filter_y /= np.linalg.norm(self.z_filter_y)
-    
+
     def get_yaw_filter(self, (width, height)):
         self.yaw_filter_x = self.z_filter_y
         self.yaw_filter_y = -1 * self.z_filter_x
@@ -97,7 +97,7 @@ class AnalyzeFlow(picamera.array.PiMotionAnalysis):
 
 if __name__ == '__main__':
     board = MultiWii("/dev/ttyACM0")
-    
+
     with picamera.PiCamera(framerate=90) as camera:
         with AnalyzeFlow(camera) as flow_analyzer:
             rate = rospy.Rate(90)
@@ -105,7 +105,7 @@ if __name__ == '__main__':
             flow_analyzer.setup(camera.resolution)
             output = SplitFrames(width, height)
             camera.start_recording('/dev/null', format='h264', motion_output=flow_analyzer)
-            
+
             prev_angx = 0
             prev_angy = 0
             prev_time = time.time()

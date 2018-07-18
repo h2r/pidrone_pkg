@@ -11,11 +11,13 @@ m = 181818.18181818182 * 1.238 # 1.3 / 1.05
 b = -8.3 + 7.5
 #b = -8.3 + 7.5 - 17.0
 smoothed_distance = 0
+distance = 0
 alpha = 0.2
 
 
 def get_range():
     global smoothed_distance
+    global distance
 
     voltage = adc.read_adc(0, gain=GAIN)
     if voltage <= 0:
@@ -25,7 +27,7 @@ def get_range():
     smoothed_distance = (1.0 - alpha) * smoothed_distance + alpha * distance
     smoothed_distance = min(smoothed_distance, 0.55)
 
-    return smoothed_distance
+    return distance, smoothed_distance
 
 
 def main():
@@ -35,13 +37,21 @@ def main():
     rnge.max_range = 0.8
     rnge.min_range = 0
     rnge.header.frame_id = "base"
+    rawpub = rospy.Publisher('/pidrone/raw_infrared', Range, queue_size=1)
+    rawrnge = Range()
+    rawrnge.max_range = 0.8
+    rawrnge.min_range = 0
+    rawrnge.header.frame_id = "base"
     r = rospy.Rate(100)
     print "publishing IR"
     while not rospy.is_shutdown():
         rnge.header.stamp = rospy.get_rostime()
         rnge.header.frame_id = "ir_link"
-        rnge.range = get_range()
+        rawrnge.range, rnge.range = get_range()
         pub.publish(rnge)
+        rawrnge.header.stamp = rospy.get_rostime()
+        rawrnge.header.frame_id = "ir_link"
+        rawpub.publish(rawrnge)
         r.sleep()
 
 

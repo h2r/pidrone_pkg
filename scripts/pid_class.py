@@ -36,7 +36,7 @@ class PIDaxis():
         # Find the p component
         if self.kp_upper is not None and err < 0:
             self._p = err * self.kp_upper
-        else: 
+        else:
             self._p = err * self.kp
 
         # Find the i component
@@ -49,7 +49,7 @@ class PIDaxis():
         if self.d_range is not None:
             self._d = max(self.d_range[0], min(self._d, self.d_range[1]))
         self._old_err = err
- 
+
         # Smooth over the last three d terms
         if self.smoothing:
             self._d = (self._d * 8.0 + self._dd * 5.0 + self._ddd * 2.0)/15.0
@@ -71,7 +71,7 @@ class PIDaxis():
 
 class PID:
 
-    height_factor = 1.238   
+    height_factor = 1.238
     battery_factor = 0.75
 
     def __init__(self,
@@ -114,8 +114,8 @@ class PID:
         self._t = None
 
         # Steve005 presets
-        self.roll_low._i = 15 
-        self.pitch_low._i = 8 
+        self.roll_low._i = 15
+        self.pitch_low._i = 8
 
         self.throttle_low.init_i = 130
         self.throttle.init_i = 0.0

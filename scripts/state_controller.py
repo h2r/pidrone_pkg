@@ -1,160 +1,107 @@
-from pid_class import PID
 from geometry_msgs.msg import PoseStamped, TwistStamped
-from sensor_msgs.msg import Range
+from sensor_msgs.msg import Range, Imu
 from std_msgs.msg import String
+from serial import SerialException
 import rospy
 import numpy as np
-from pidrone_pkg.msg import axes_err, Mode, State
-from h2rMultiWii import MultiWii
-import time
+from pidrone_pkg.msg import axes_err, Mode, Battery, RC, FC_command
 import signal
 import sys
-
+import tf
+import command_values as cmds
 
 class StateController(object):
 
-    # Possible modes
-    ARMED = 0
-    DISARMED = 4
-    FLYING = 5
+    def __init__(self, cmdpub):
 
-    def __init__(self):
-        # Initial setpoint for the z-position of the drone
-        self.initial_set_z = 30.0
-        # Setpoint for the z-position of the drone
-        self.set_z = self.initial_set_z
-        # Current z-position of the drone according to sensor data
-        self.current_z = 0
+        # Desired,current, and previous modes of the drone
+        self.desired_mode = 'DISARMED'
+        self.curr_mode = 'DISARMED'
+        self.prev_mode = 'DISARMED'
 
-        # Tracks x, y velocity error and z-position error
-        self.error = axes_err()
-        # PID controller
-        self.pid = PID()
+        # Battery values
+        self.vbat = None
+        self.amperage = None
+        # Adjust this based on how low the battery should discharge
+        self.minimum_voltage = 8
 
-        # Setpoint for the x-velocity of the drone
-        self.set_vel_x = 0
-        # Setpoint for the y-velocity of the drone
-        self.set_vel_y = 0
+        # Fly command values from controller (initialize with disarm values)
+        self.fly_cmd = cmds.disarm_cmd
 
-        # Time of last heartbeat from the web interface
-        self.last_heartbeat = None
+        # Publisher for flight controller commands
+        self.cmdpub = cmdpub
 
-        # Commanded yaw velocity of the drone
-        self.cmd_yaw_velocity = 0
-
-        # Tracks previous drone attitude
-        self.prev_angx = 0
-        self.prev_angy = 0
-        # Time of previous attitude measurement
-        self.prev_angt = None
-
-        # Angle compensation values (to account for tilt of drone)
-        self.mw_angle_comp_x = 0
-        self.mw_angle_comp_y = 0
-        self.mw_angle_alt_scale = 1.0
-        self.mw_angle_coeff = 10.0
-        self.angle = TwistStamped()
-
-        # Desired and current mode of the drone
-        self.commanded_mode = self.DISARMED
-        self.current_mode = self.DISARMED
-
-        # Flight controller that receives commands to control motion of the drone
-        self.board = MultiWii("/dev/ttyUSB0")
-
+    # Mode Transition Methods
+    ###########################
     def arm(self):
-        """Arms the drone by sending the arm command to the flight controller"""
-        arm_cmd = [1500, 1500, 2000, 900]
-        self.board.sendCMD(8, MultiWii.SET_RAW_RC, arm_cmd)
-        self.board.receiveDataPacket()
-        rospy.sleep(1)
+        """Arms the drone by publishing the arm command values"""
+        self.publish_cmd("ARMED", cmds.arm_cmd)
 
     def disarm(self):
-        """Disarms the drone by sending the disarm command to the flight controller"""
-        disarm_cmd = [1500, 1500, 1000, 900]
-        self.board.sendCMD(8, MultiWii.SET_RAW_RC, disarm_cmd)
-        self.board.receiveDataPacket()
-        rospy.sleep(1)
+        """Disarms the drone by publishing the disarm command values"""
+        self.publish_cmd("DISARMED", cmds.disarm_cmd)
 
     def idle(self):
         """Enables the drone to continue arming until commanded otherwise"""
-        idle_cmd = [1500, 1500, 1500, 1000]
-        self.board.sendCMD(8, MultiWii.SET_RAW_RC, idle_cmd)
-        self.board.receiveDataPacket()
+        self.publish_cmd("ARMED", cmds.idle_cmd)
 
-    def fly(self, fly_cmd):
-        """Enables flight by sending the calculated flight command to the flight controller"""
-        self.board.sendCMD(8, MultiWii.SET_RAW_RC, fly_cmd)
-        self.board.receiveDataPacket()
+    def fly(self):
+        """Enables flight by publishing the calculated flight
+        commands to the flight controller
+        """
+        self.publish_cmd("FLYING", self.fly_cmd)
 
-    def update_fly_velocities(self, msg):
-        """Updates the desired x, y, yaw velocities and z-position"""
-        if msg is not None:
-            self.set_vel_x = msg.x_velocity
-            self.set_vel_y = msg.y_velocity
-
-            self.cmd_yaw_velocity = msg.yaw_velocity
-
-            new_set_z = self.set_z + msg.z_velocity
-            if 0.0 < new_set_z < 49.0:
-                self.set_z = new_set_z
-
+    # ROS Callback Methods
+    ######################
     def heartbeat_callback(self, msg):
         """Updates the time of the most recent heartbeat sent from the web interface"""
         self.last_heartbeat = rospy.Time.now()
 
-    def infrared_callback(self, msg):
-        """Updates the current z-position of the drone as measured by the infrared sensor"""
-        # Scales infrared sensor reading to get z accounting for tilt of the drone
-        self.current_z = msg.range * self.mw_angle_alt_scale * 100
-        self.error.z.err = self.set_z - self.current_z
-
-    def vrpn_callback(self, msg):
-        """Updates the current z-position of the drone as measured by the motion capture rig"""
-        # Mocap uses y-axis to represent the drone's z-axis motion
-        self.current_z = msg.pose.position.y * 100
-        self.error.z.err = self.set_z - self.current_z
-
-    def plane_callback(self, msg):
-        """Calculates error for x, y planar motion of the drone"""
-        self.error.x.err = (msg.twist.linear.x - self.mw_angle_comp_x) * self.current_z + self.set_vel_x
-        self.error.y.err = (msg.twist.linear.y + self.mw_angle_comp_y) * self.current_z + self.set_vel_y
-
     def mode_callback(self, msg):
-        """Updates commanded mode of the drone and updates targeted velocities if the drone is flying"""
-        self.commanded_mode = msg.mode
-        
-        if self.current_mode == self.FLYING:
-            self.update_fly_velocities(msg)
+        """Update the current mode of the drone"""
+        self.prev_mode = self.curr_mode
+        self.curr_mode = msg.mode
+        if self.prev_mode != self.curr_mode:
+            print self.curr_mode
 
-    def calc_angle_comp_values(self, mw_data):
-        """Calculates angle compensation values to account for the tilt of the drone"""
-        new_angt = time.time()
-        new_angx = mw_data['angx'] / 180.0 * np.pi
-        new_angy = mw_data['angy'] / 180.0 * np.pi
+    def desired_mode_callback(self, msg):
+        """Update the current mode of the drone"""
+        self.desired_mode = msg.mode
 
-        # Passes angle of drone and correct velocity of drone
-        self.angle.twist.angular.x = new_angx
-        self.angle.twist.angular.y = new_angy
-        self.angle.header.stamp = rospy.get_rostime()
+    def battery_callback(self, msg):
+        """Updates the current vbat and amperage values"""
+        self.vbat = msg.vbat
+        self.amperage = msg.amperage
 
-        dt = new_angt - self.prev_angt
-        self.mw_angle_comp_x = np.tan((new_angx - self.prev_angx) * dt) * self.mw_angle_coeff
-        self.mw_angle_comp_y = np.tan((new_angy - self.prev_angy) * dt) * self.mw_angle_coeff
+    def controller_callback(self, msg):
+        """Update the fly_cmd from the controller"""
+        r = msg.roll
+        p = msg.pitch
+        y = msg.yaw
+        t = msg.throttle
+        self.fly_cmd = [r,p,y,t]
 
-        self.mw_angle_alt_scale = np.cos(new_angx) * np.cos(new_angy)
-        self.pid.throttle.mw_angle_alt_scale = self.mw_angle_alt_scale
-
-        self.prev_angx = new_angx
-        self.prev_angy = new_angy
-        self.prev_angt = new_angt
+    # Helper Methods
+    ################
+    def publish_cmd(self, mode, cmd):
+        """Publish the commands to the flight controller"""
+        msg = FC_command()
+        msg.mode = mode
+        msg.ctrls.roll = cmd[0]
+        msg.ctrls.pitch = cmd[1]
+        msg.ctrls.yaw = cmd[2]
+        msg.ctrls.throttle = cmd[3]
+        self.cmdpub.publish(msg)
 
     def shouldIDisarm(self):
-        """Disarms the drone if it has not received a heartbeat in the last five seconds"""
+        """Disarm the drone if the battery values are too low or
+        if it has not received a heartbeat in the last five seconds
+        """
+        if sc.vbat < sc.minimum_voltage:
+            print 'Safety Failure: low battery'
         if rospy.Time.now() - self.last_heartbeat > rospy.Duration.from_sec(5):
-            return True
-        else:
-            return False
+            print 'Safety Failure: no heartbeat'
+        return (sc.vbat < sc.minimum_voltage or rospy.Time.now() - self.last_heartbeat > rospy.Duration.from_sec(5))
 
     def ctrl_c_handler(self, signal, frame):
         """Disarms the drone and exits the program if ctrl-c is pressed"""
@@ -162,111 +109,96 @@ class StateController(object):
         self.disarm()
         sys.exit()
 
-
 if __name__ == '__main__':
-
-    rospy.init_node('state_controller')
-
-    sc = StateController()
-    sc.last_heartbeat = rospy.Time.now()
 
     # ROS Setup
     ###########
+    rospy.init_node('state_controller')
 
     # Publishers
     ############
-    errpub = rospy.Publisher('/pidrone/err', axes_err, queue_size=1)
-    modepub = rospy.Publisher('/pidrone/mode', Mode, queue_size=1)
-    statepub = rospy.Publisher('/pidrone/state', State, queue_size=1, tcp_nodelay=False)
-    anglepub = rospy.Publisher('/pidrone/angle', TwistStamped, queue_size=1, tcp_nodelay=False)
+    cmdpub = rospy.Publisher('/pidrone/command', FC_command, queue_size=1)
+
+    # create StateController object
+    sc = StateController(cmdpub)
+    sc.last_heartbeat = rospy.Time.now()
 
     # Subscribers
     #############
-    rospy.Subscriber("/pidrone/plane_err", TwistStamped, sc.plane_callback)
-    rospy.Subscriber("/pidrone/infrared", Range, sc.infrared_callback)
-    rospy.Subscriber("/pidrone/vrpn_pos", PoseStamped, sc.vrpn_callback)
-    rospy.Subscriber("/pidrone/set_mode_vel", Mode, sc.mode_callback)
     rospy.Subscriber("/pidrone/heartbeat", String, sc.heartbeat_callback)
+    rospy.Subscriber("/pidrone/battery", Battery, sc.battery_callback)
+    rospy.Subscriber("/pidrone/mode", Mode, sc.mode_callback)
+    rospy.Subscriber("/pidrone/desired_mode", Mode, sc.desired_mode_callback)
+    rospy.Subscriber("/pidrone/controller", RC, sc.controller_callback)
 
     # Non-ROS Setup
     ###############
     signal.signal(signal.SIGINT, sc.ctrl_c_handler)
 
-    sc.prev_angt = time.time()
+    # Variables and method used to check connection with flight controller node
+    sc.same_cmd_counter = 0
+    sc.last_cmd = 'dsm'
+    sc.curr_cmd = 'dsm'
+    def same_cmd_counter_update(cmd, ):
+        sc.last_cmd = sc.curr_cmd
+        sc.curr_cmd = cmd
+        if sc.last_cmd == sc.curr_cmd:
+            sc.same_cmd_counter = sc.same_cmd_counter + 1
 
-    mode_to_pub = Mode()
-    state_to_pub = State()
-
+    print 'Controlling State'
+    r = rospy.Rate(30) # 30hz
     while not rospy.is_shutdown():
-        # Publishes current mode message
-        mode_to_pub.mode = sc.current_mode
-        modepub.publish(mode_to_pub)
-        # Publishes current error message
-        errpub.publish(sc.error)
+        if sc.same_cmd_counter > 5:
+            print ('\n\nThere was an error communicating with the flight controller.'
+                   '\nCheck if the flight controller node is active.\n\n')
+            break
+        if not sc.curr_mode == 'DISARMED':
+            if sc.shouldIDisarm():
+                break
 
-        # Obtains data from the flight controller
-        mw_data = sc.board.getData(MultiWii.ATTITUDE)
-        analog_data = sc.board.getData(MultiWii.ANALOG)
+        # Finite State Machine
+        ######################
+        if sc.curr_mode == 'DISARMED':
+            if sc.desired_mode == 'DISARMED':
+                pass
+            elif sc.desired_mode == 'ARMED':
+                print 'sending ARM command'
+                sc.arm()
+                rospy.sleep(1)
+                same_cmd_counter_update('arm')
+            else:
+                print 'Cannot transition from Mode %s to Mode %s' % (sc.curr_mode, sc.desired_mode)
 
-        # Publishes current battery voltage levels to display on the web interface
-        state_to_pub.vbat = sc.board.analog['vbat'] * 0.10
-        state_to_pub.amperage = sc.board.analog['amperage']
-        statepub.publish(state_to_pub)
+        elif sc.curr_mode == 'ARMED':
+            if sc.desired_mode == 'ARMED':
+                sc.idle()
+# XXX: test this sleep value
+                rospy.sleep(1)
+            elif sc.desired_mode == 'FLYING':
+                print 'sending FLYING command'
+                sc.fly()
+            elif sc.desired_mode == 'DISARMED':
+                print 'sending DISARM command'
+                sc.disarm()
+                rospy.sleep(1)
+                same_cmd_counter_update('dsm')
+            else:
+                print 'Cannot transition from Mode %s to Mode %s' % (sc.curr_mode, sc.desired_mode)
 
-        try:
-            if not sc.current_mode == sc.DISARMED:
-                # Calculates angle compensation values
-                sc.calc_angle_comp_values(mw_data)
-                anglepub.publish(sc.angle)
+        elif sc.curr_mode == 'FLYING':
+            if sc.desired_mode == 'FLYING':
+                sc.fly()
+                rospy.sleep(0.01)
+# XXX: test this sleep value
+            elif sc.desired_mode == 'DISARMED':
+                print 'sending DISARM command'
+                sc.disarm()
+                rospy.sleep(1)
+            else:
+                print 'Cannot transition from Mode %s to Mode %s' % (sc.curr_mode, sc.desired_mode)
 
-                # Checks heartbeat from web interface
-                if sc.shouldIDisarm():
-                    print "Disarming because a safety check failed."
-                    break
-
-            # Uses a PID controller to calculate the flight command: [roll, pitch, yaw, throttle]
-            fly_cmd = sc.pid.step(sc.error, sc.cmd_yaw_velocity)
-
-            # Finite state machine implementation of controlling the drone
-            if sc.current_mode == sc.DISARMED:
-                if sc.commanded_mode == sc.DISARMED:
-                    print 'DISARMED -> DISARMED'
-                elif sc.commanded_mode == sc.ARMED:
-                    sc.arm()
-                    sc.current_mode = sc.ARMED
-                    print 'DISARMED -> ARMED'
-                else:
-                    print 'Cannot transition from Mode %d to Mode %d' % (sc.current_mode, sc.commanded_mode)
-
-            elif sc.current_mode == sc.ARMED:
-                if sc.commanded_mode == sc.ARMED:
-                    sc.idle()
-                    print 'ARMED -> ARMED'
-                elif sc.commanded_mode == sc.FLYING:
-                    sc.current_mode = sc.FLYING
-                    sc.pid.reset(sc)
-                    print 'ARMED -> FLYING'
-                elif sc.commanded_mode == sc.DISARMED:
-                    sc.disarm()
-                    sc.current_mode = sc.DISARMED
-                    print 'ARMED -> DISARMED'
-                else:
-                    print 'Cannot transition from Mode %d to Mode %d' % (sc.current_mode, sc.commanded_mode)
-
-            elif sc.current_mode == sc.FLYING:
-                if sc.commanded_mode == sc.FLYING:
-                    sc.fly(fly_cmd)
-                    print 'FLYING -> FLYING'
-                elif sc.commanded_mode == sc.DISARMED:
-                    sc.disarm()
-                    sc.current_mode = sc.DISARMED
-                    print 'FLYING -> DISARMED'
-                else:
-                    print 'Cannot transition from Mode %d to Mode %d' % (sc.current_mode, sc.commanded_mode)
-        except:
-            raise
+        r.sleep()
 
     sc.disarm()
-    print "Shutdown Received"
-
-
+    print 'Shutdown Received'
+    print 'Sending DISARM command'

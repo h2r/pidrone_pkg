@@ -50,8 +50,9 @@ add_message_files(
   ERR.msg
   axes_err.msg
   Mode.msg
-  State.msg
-
+  Battery.msg
+  FC_command.msg
+  Velocity.msg
 )
 
 ## Generate services in the 'srv' folder
