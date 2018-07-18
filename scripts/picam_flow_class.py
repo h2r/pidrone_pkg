@@ -76,11 +76,27 @@ class AnalyzeFlow(picamera.array.PiMotionAnalysis):
         self.yaw_filter_x = self.z_filter_y
         self.yaw_filter_y = -1 * self.z_filter_x
 
+    def imu_callback(self, msg):
+        """Calculates angle compensation values to account for the tilt of the drone"""
+        # Convert the quaternion to euler angles
+        # store the orientation quaternion
+        oq = msg.orientation
+        orientation_list = [oq.x, oq.y, oq.z, oq.w]
+        (new_angx, new_angy, new_angz) = tf.transformations.euler_from_quaternion(orientation_list)
+        self.prev_angx = curr_angx
+        self.prev_angy = curr_angy
+        self.curr_angx = new_angx
+        self.curr_angy = new_angy
+
     def setup(self, camera_wh = (320,240), pub=None, flow_scale=16.5):
         self.get_z_filter(camera_wh)
         self.get_yaw_filter(camera_wh)
         self.ang_vx = 0
         self.ang_vy = 0
+        self.curr_angx = 0
+        self.curr_angy = 0
+        self.prev_angx = 0
+        self.prev_angy = 0
         self.prev_time = time.time()
         self.ang_coefficient = 1.0 # the amount that roll rate factors in
         self.x_motion = 0
@@ -96,8 +112,6 @@ class AnalyzeFlow(picamera.array.PiMotionAnalysis):
             self.velocity = TwistStamped()
 
 if __name__ == '__main__':
-    board = MultiWii("/dev/ttyACM0")
-
     with picamera.PiCamera(framerate=90) as camera:
         with AnalyzeFlow(camera) as flow_analyzer:
             rate = rospy.Rate(90)
@@ -106,19 +120,12 @@ if __name__ == '__main__':
             output = SplitFrames(width, height)
             camera.start_recording('/dev/null', format='h264', motion_output=flow_analyzer)
 
-            prev_angx = 0
-            prev_angy = 0
             prev_time = time.time()
             while not rospy.is_shutdown():
-                mw_data = board.getData(MultiWii.ATTITUDE)
-                curr_angx = mw_data['angx'] / 180.0 * np.pi
-                curr_angy = mw_data['angy'] / 180.0 * np.pi
                 curr_time = time.time()
                 flow_analyzer.set_angular_velocity(
-                        (curr_angx - prev_angx)/(curr_time - prev_time),
-                        (curr_angy - prev_angy)/(curr_time - prev_time))
-                prev_angx = curr_angx
-                prev_angy = curr_angy
+                        (flow_analyzer.curr_angx - flow_analyzer.prev_angx)/(curr_time - prev_time),
+                        (flow_analyzer.curr_angy - flow_analyzer.prev_angy)/(curr_time - prev_time))
                 prev_time = curr_time
                 camera.wait_recording(0)
                 if len(output.images) == 0:
