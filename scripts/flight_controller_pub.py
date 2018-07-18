@@ -11,6 +11,7 @@ from h2rMultiWii import MultiWii
 import sys
 import signal
 
+
 class FlightController(object):
     """A class that sends the current [r,p,y,t] commands to the flight
     controller board and then reads and publishes all of the data received
@@ -26,6 +27,7 @@ class FlightController(object):
     """
 
     def getBoard(self):
+        """Connect to the flight controller board"""
         # (if the flight cotroll usb is unplugged and plugged back in,
         #  it becomes .../USB1)
         try:
@@ -58,7 +60,7 @@ class FlightController(object):
 
     def ctrl_c_handler(self, signal, frame):
         """Disarms the drone and quits the flight controller node"""
-        print "Caught ctrl-c! About to Disarm!"
+        print "\nCaught ctrl-c! About to Disarm!"
         self.board.sendCMD(8, MultiWii.SET_RAW_RC, cmds.disarm_cmd)
         self.board.receiveDataPacket()
         rospy.sleep(1)

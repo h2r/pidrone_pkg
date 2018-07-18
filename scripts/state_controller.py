@@ -105,7 +105,7 @@ class StateController(object):
 
     def ctrl_c_handler(self, signal, frame):
         """Disarms the drone and exits the program if ctrl-c is pressed"""
-        print "Caught ctrl-c! About to Disarm!"
+        print "\nCaught ctrl-c! About to Disarm!"
         self.disarm()
         sys.exit()
 

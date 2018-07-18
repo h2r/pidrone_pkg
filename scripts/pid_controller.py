@@ -57,32 +57,12 @@ class PIDController(object):
         self.prev_mode = "DISARMED"
         self.curr_mode = "DISARMED"
 
-
+    # ROS Subscriber Callback Methods
+    #################################
     def mode_callback(self, msg):
         """Update the prev and curr mode variables"""
         self.prev_mode = self.curr_mode
         self.curr_mode = msg.mode
-
-    def publish_ctrl(self, ctrl):
-        """Publish the controls to /pidrone/controller"""
-        msg = RC()
-        msg.roll = ctrl[0]
-        msg.pitch = ctrl[1]
-        msg.yaw = ctrl[2]
-        msg.throttle = ctrl[3]
-        self.ctrlpub.publish(msg)
-
-    def update_fly_velocities(self, msg):
-        """Updates the desired x, y, yaw velocities and z-position"""
-        if msg is not None:
-            self.set_vel_x = msg.x_velocity
-            self.set_vel_y = msg.y_velocity
-
-            self.cmd_yaw_velocity = msg.yaw_velocity
-
-            new_set_z = self.set_z + msg.z_velocity
-            if 0.0 < new_set_z < 49.0:
-                self.set_z = new_set_z
 
     def infrared_callback(self, msg):
         """Updates the current z-position of the drone as measured by the infrared sensor"""
@@ -131,9 +111,32 @@ class PIDController(object):
         if self.curr_mode == 'FLYING':
             self.update_fly_velocities(msg)
 
+    # Helper Methods
+    ################
+    def publish_ctrl(self, ctrl):
+        """Publish the controls to /pidrone/controller"""
+        msg = RC()
+        msg.roll = ctrl[0]
+        msg.pitch = ctrl[1]
+        msg.yaw = ctrl[2]
+        msg.throttle = ctrl[3]
+        self.ctrlpub.publish(msg)
+
+    def update_fly_velocities(self, msg):
+        """Updates the desired x, y, yaw velocities and z-position"""
+        if msg is not None:
+            self.set_vel_x = msg.x_velocity
+            self.set_vel_y = msg.y_velocity
+
+            self.cmd_yaw_velocity = msg.yaw_velocity
+
+            new_set_z = self.set_z + msg.z_velocity
+            if 0.0 < new_set_z < 49.0:
+                self.set_z = new_set_z
+
     def ctrl_c_handler(self, signal, frame):
         """Stops the controller"""
-        print "Caught ctrl-c! Stopping PIDController!"
+        print "\nCaught ctrl-c! Stopping PIDController!"
         sys.exit()
 
 def main():
