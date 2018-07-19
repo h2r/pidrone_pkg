@@ -42,6 +42,10 @@ class StateEstimation(object):
         self.got_optical_flow = False
         self.got_ir = False
         
+        self.num_complete_ir = 0
+        self.num_complete_imu = 0
+        self.num_complete_optical_flow = 0
+        
         self.initialize_ros()
         # TODO: Consider handling issue of callbacks referring to objects not
         #       yet initialized, such as self.ukf?
@@ -61,7 +65,7 @@ class StateEstimation(object):
         
         # Initialize the last control input as 0 m/s^2 along each axis in the
         # body frame
-        self.last_control_input = np.array([0, 0, 0])
+        self.last_control_input = np.array([0.0, 0.0, 0.0])
         
     def initialize_ros(self):
         '''
@@ -234,6 +238,7 @@ class StateEstimation(object):
                                                 data.linear_acceleration.y,
                                                 data.linear_acceleration.z])
             #self.ukf.P = (self.ukf.P + self.ukf.P.T)/2.0 # TODO: Look into
+            print 'Predicting in IMU'
             self.ukf_predict()
             
             # Now that a prediction has been formed, perform a measurement
@@ -244,9 +249,11 @@ class StateEstimation(object):
             # Ensure that we are computing the residual for angles
             self.ukf.residual_z = self.angle_residual
             #self.ukf.P = (self.ukf.P + self.ukf.P.T)/2.0 # TODO: Look into
+            print 'Updating in IMU'
             self.ukf.update(measurement_z,
                             hx=self.measurement_function_rpy,
                             R=self.measurement_cov_rpy)
+            print 'Done updating in IMU'
             self.publish_current_state()
         else:
             self.initialize_input_time(data)
@@ -265,6 +272,8 @@ class StateEstimation(object):
             self.ukf.P[8, 8] = self.measurement_cov_rpy[2, 2]
             self.got_imu = True
             self.check_if_ready_to_filter()
+        self.num_complete_imu += 1
+        print '--IMU:', self.num_complete_imu
                         
     def optical_flow_data_callback(self, data):
         '''
@@ -280,6 +289,7 @@ class StateEstimation(object):
             self.print_notice_if_first()
             self.update_input_time(data)
             #self.ukf.P = (self.ukf.P + self.ukf.P.T)/2.0 # TODO: Look into
+            print 'Predicting in optical flow'
             self.ukf_predict()
             
             # Now that a prediction has been formed to bring the current prior
@@ -294,9 +304,11 @@ class StateEstimation(object):
             # Ensure that we are using subtraction to compute the residual
             self.ukf.residual_z = np.subtract
             #self.ukf.P = (self.ukf.P + self.ukf.P.T)/2.0 # TODO: Look into
+            print 'Updating in optical flow'
             self.ukf.update(measurement_z,
                             hx=self.measurement_function_optical_flow,
                             R=self.measurement_cov_optical_flow)
+            print 'Done updating in optical flow'
             self.publish_current_state()
         else:
             self.initialize_input_time(data)
@@ -315,6 +327,8 @@ class StateEstimation(object):
             self.ukf.P[11, 11] = self.measurement_cov_optical_flow[2, 2]
             self.got_optical_flow = True
             self.check_if_ready_to_filter()
+        self.num_complete_optical_flow += 1
+        print '--OPTICAL FLOW:', self.num_complete_optical_flow
                         
     def ir_data_callback(self, data):
         '''
@@ -326,6 +340,7 @@ class StateEstimation(object):
             self.print_notice_if_first()
             self.update_input_time(data)
             #self.ukf.P = (self.ukf.P + self.ukf.P.T)/2.0 # TODO: Look into
+            print 'Predicting in IR'
             self.ukf_predict()
             
             # Now that a prediction has been formed to bring the current prior
@@ -335,9 +350,11 @@ class StateEstimation(object):
             # Ensure that we are using subtraction to compute the residual
             self.ukf.residual_z = np.subtract
             #self.ukf.P = (self.ukf.P + self.ukf.P.T)/2.0 # TODO: Look into
+            print 'Updating in IR'
             self.ukf.update(measurement_z,
                             hx=self.measurement_function_ir,
                             R=self.measurement_cov_ir)
+            print 'Done updating in IR'
             self.publish_current_state()
         else:
             self.initialize_input_time(data)
@@ -351,6 +368,8 @@ class StateEstimation(object):
             self.ukf.P[2, 2] = self.measurement_cov_ir[0]
             self.got_ir = True
             self.check_if_ready_to_filter()
+        self.num_complete_ir += 1
+        print '--IR:', self.num_complete_ir
             
     def check_if_ready_to_filter(self):
         self.ready_to_filter = (self.got_imu and self.got_optical_flow and

@@ -23,10 +23,11 @@ class DroneSimulator(object):
     relevant ROS topics, if the need arises.
     '''
     
-    def __init__(self, publish_ros=False, save_to_csv=False, correlate_z_pos_and_accel=False):
+    def __init__(self, publish_ros=False, save_to_csv=False, correlate_z_pos_and_accel=False, delay_rate=1.0):
         self.publish_ros = publish_ros
         self.save_to_csv = save_to_csv
         self.correlate_z_pos_and_accel = correlate_z_pos_and_accel
+        self.delay_rate = delay_rate
         # NOTE: Live playback of simulated data on ROS topics may be unnecessary,
         # as in the future we could just use rosbag to collect real data and then
         # play it back.
@@ -152,7 +153,7 @@ class DroneSimulator(object):
                 # Naively sleep for a certain amount of time, not taking into
                 # account the amount of time required to carry out operations in
                 # this loop
-                rospy.sleep(t1-t0)
+                rospy.sleep(self.delay_rate*(t1-t0))
             if next_sample_id == self.IR:
                 if on_first_ir:
                     on_first_ir = False
@@ -321,7 +322,9 @@ class DroneSimulator(object):
 if __name__ == '__main__':
     print 'Starting simulation...'
     drone_sim = DroneSimulator(publish_ros=True)
+    #drone_sim = DroneSimulator(publish_ros=True, delay_rate=100)
     #drone_sim = DroneSimulator(save_to_csv=True)
     # Run the drone for 50 seconds
     drone_sim.run_drone(duration=50)
+    #drone_sim.run_drone(duration=0.5)
     print 'Simulation complete.'
