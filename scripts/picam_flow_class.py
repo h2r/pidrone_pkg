@@ -1,14 +1,14 @@
 import numpy as np
-import picamera
 import picamera.array
 import cv2
 from h2rMultiWii import MultiWii
 import time
-from pidrone_pkg.msg import axes_err
+from geometry_msgs.msg import TwistStamped
+import rospy
   
 # RASPBERRY PI?
-camera_matrix = np.array([[ 253.70549591,    0.,          162.39457585], 
-                        [ 0.,          251.25243215,  126.5400089], 
+camera_matrix = np.array([[ 253.70549591,    0.,          162.39457585],
+                        [ 0.,          251.25243215,  126.5400089],
                         [   0.,            0., 1.        ]])
 dist_coeffs = np.array([ 0.20462996, -0.41924085,  0.00484044,  0.00776978,
                         0.27998478])
@@ -26,23 +26,23 @@ class AnalyzeFlow(picamera.array.PiMotionAnalysis):
         diff_time = curr_time - self.prev_time
         self.prev_time = curr_time
         
-        self.x_motion = 0 - np.sum(x) * self.flow_coeff + np.arctan(self.ang_vx * diff_time) * self.ang_coefficient
-        self.y_motion = np.sum(y) * self.flow_coeff  + np.arctan(self.ang_vy * diff_time) * self.ang_coefficient
-        self.z_motion = np.sum(np.multiply(x, self.z_filter_x)) + \
-                np.sum(np.multiply(y, self.z_filter_y))
-        self.yaw_motion = np.sum(np.multiply(x, self.yaw_filter_x)) + \
-                np.sum(np.multiply(y, self.yaw_filter_y))
-       
-        if self.pub is not None:
-#           print 'PUBLISHING\t', 
-            self.velocity.x.err = (1.0 - self.alpha) * self.velocity.x.err + self.alpha * self.x_motion 
-            self.velocity.y.err = (1.0 - self.alpha) * self.velocity.y.err + self.alpha * self.y_motion 
-            self.velocity.z.err = self.z_motion
-            self.pub.publish(self.velocity)
-      
+        self.x_motion = (0 - np.sum(x) * self.flow_coeff + np.arctan(self.ang_vx * diff_time) * self.ang_coefficient)/100.0
+        self.y_motion = (np.sum(y) * self.flow_coeff + np.arctan(self.ang_vy * diff_time) * self.ang_coefficient)/100.0
+        self.z_motion = ((np.sum(np.multiply(x, self.z_filter_x)) +
+                np.sum(np.multiply(y, self.z_filter_y)))/100.0)
+        self.yaw_motion = (np.sum(np.multiply(x, self.yaw_filter_x)) +
+                np.sum(np.multiply(y, self.yaw_filter_y)))
+        # yaw is negative if drone rotated to right
+
+        # TODO smooth or not
+        self.velocity.twist.linear.x = self.x_motion
+        self.velocity.twist.linear.y = self.y_motion
+        self.velocity.twist.linear.z = self.z_motion
+        self.velocity.twist.angular.z = self.yaw_motion
+        self.velocity.header.stamp = rospy.get_rostime()
+        self.pub.publish(self.velocity)
 #       print 'XYZyaw:\t{},\t{},\t{}\t{}\t\t\t{}'.format( \
 #               self.x_motion,self.y_motion,self.z_motion,self.yaw_motion,time.time() - start)
- 
 
     def set_angular_velocity(self, ang_vx, ang_vy):
         self.ang_vx = ang_vx
@@ -52,7 +52,7 @@ class AnalyzeFlow(picamera.array.PiMotionAnalysis):
         # computes a divergence filter to estimate z component of flow
         assert width%16 == 0 and height%16 == 0
         num_rows = height/16
-        num_cols = width/16 
+        num_cols = width/16
         mid_row = (num_rows - 1)/2.0
         mid_col = (num_cols - 1)/2.0
         # the picamera motion vectors have a buffer column each frame
@@ -67,7 +67,7 @@ class AnalyzeFlow(picamera.array.PiMotionAnalysis):
                 # r = np.sqrt(x**2 + y**2)
                 # theta = np.arctan(y/x)
                 # print x,y,theta
-                # z_filter_x[j,i] = r * np.cos(theta) 
+                # z_filter_x[j,i] = r * np.cos(theta)
                 # z_filter_y[j,i] = r * np.sin(theta)
         self.z_filter_x /= np.linalg.norm(self.z_filter_x)
         self.z_filter_y /= np.linalg.norm(self.z_filter_y)
@@ -76,7 +76,7 @@ class AnalyzeFlow(picamera.array.PiMotionAnalysis):
         self.yaw_filter_x = self.z_filter_y
         self.yaw_filter_y = -1 * self.z_filter_x
 
-    def setup(self, camera_wh = (320,240), pub=None, flow_scale = 16.5):
+    def setup(self, camera_wh = (320,240), pub=None, flow_scale=16.5):
         self.get_z_filter(camera_wh)
         self.get_yaw_filter(camera_wh)
         self.ang_vx = 0
@@ -90,10 +90,10 @@ class AnalyzeFlow(picamera.array.PiMotionAnalysis):
         self.max_flow = camera_wh[0] / 16.0 * camera_wh[1] / 16.0 * 2**7
         self.norm_flow_to_cm = flow_scale # the conversion from flow units to cm
         self.flow_coeff = self.norm_flow_to_cm/self.max_flow
-        self.pub = pub
+        self.pub = rospy.Publisher('/pidrone/plane_err', TwistStamped, queue_size=1)
         self.alpha = 0.3
         if self.pub is not None:
-            self.velocity = axes_err() 
+            self.velocity = TwistStamped()
 
 if __name__ == '__main__':
     board = MultiWii("/dev/ttyACM0")

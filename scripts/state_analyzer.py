@@ -4,6 +4,8 @@
 #import matplotlib
 #matplotlib.use('TkAgg')
 
+import matplotlib
+matplotlib.use('Pdf')
 import matplotlib.pyplot as plt
 import csv
 from ukf_state_estimation import DroneStateEstimation
@@ -27,10 +29,11 @@ files in pidrone_pkg/logs. This script creates plots to visualize:
 
 class StateAnalyzer(object):
     
-    def __init__(self, include_ema=False, include_mocap=False, unit='meters'):
+    def __init__(self, include_ema=False, include_mocap=False, unit='meters', stop_after=None):
         self.include_ema = include_ema
         self.include_mocap = include_mocap
         self.unit = unit
+        self.stop_after = stop_after
         
         self.computed_ukf = False
 
@@ -216,6 +219,11 @@ class StateAnalyzer(object):
         just_did_update = False
         for data_type, data_contents in raw_data:
             new_time = data_contents[0]
+            print new_time
+            if self.stop_after is not None:
+                if new_time >= self.stop_after:
+                    # Stop
+                    break
             
             # Compute the time interval since the last state transition / input
             self.drone_state.dt = new_time - self.drone_state.last_state_transition_time
@@ -471,8 +479,8 @@ class StateAnalyzer(object):
         
 
 if __name__ == '__main__':
-    state_analyzer = StateAnalyzer()
-    state_analyzer.compare_altitudes(do_plot=True)
+    state_analyzer = StateAnalyzer(stop_after=5)
+    state_analyzer.compare_altitudes()
     #state_analyzer.compare_z_velocities(do_plot=True)
     #state_analyzer.compare_yaw_vel(do_plot=True)
     plt.show() # to have plot window(s) stay open

@@ -4,8 +4,8 @@
 import rospy
 import tf
 from sensor_msgs.msg import Imu, Range
-from pidrone_pkg.msg import Mode, State
-from geometry_msgs.msg import PoseWithCovarianceStamped, TwistWithCovarianceStamped
+from pidrone_pkg.msg import State
+from geometry_msgs.msg import PoseWithCovarianceStamped, TwistWithCovarianceStamped, TwistStamped
 from std_msgs.msg import Header
 
 # UKF imports
@@ -43,6 +43,8 @@ class StateEstimation(object):
         self.got_ir = False
         
         self.initialize_ros()
+        # TODO: Consider handling issue of callbacks referring to objects not
+        #       yet initialized, such as self.ukf?
         self.initialize_ukf()
         
         # The last time that we received an input and formed a prediction with
@@ -55,7 +57,7 @@ class StateEstimation(object):
         
         # FilterPy requires the predict() method to be called before the first
         # call to update(), so ensure that we have computed the first prior
-        self.computed_first_prior = False
+        #self.computed_first_prior = False
         
         # Initialize the last control input as 0 m/s^2 along each axis in the
         # body frame
@@ -71,12 +73,12 @@ class StateEstimation(object):
         # Subscribe to topics to which the drone publishes in order to get raw
         # data from sensors, which we can then filter
         rospy.Subscriber('/pidrone/imu', Imu, self.imu_data_callback)
-        rospy.Subscriber('/pidrone/set_mode_vel', Mode,
+        rospy.Subscriber('/pidrone/plane_err', TwistStamped,
                          self.optical_flow_data_callback)
-        rospy.Subscriber('/pidrone/infrared', Range, self.ir_data_callback)
+        rospy.Subscriber('/pidrone/infrared', Range, self.ir_data_callback) # TODO: infrared or raw_infrared?
         
         # Create the publisher to publish state estimates
-        self.statepub = rospy.Publisher('/pidrone/state', State, queue_size=1,
+        self.state_pub = rospy.Publisher('/pidrone/state', State, queue_size=1,
                                         tcp_nodelay=False)
         
     def initialize_ukf(self):
@@ -118,8 +120,8 @@ class StateEstimation(object):
         #       just guesses
         sigma_points = MerweScaledSigmaPoints(n=self.state_vector_dim,
                                               alpha=0.1,
-                                              beta=2.,
-                                              kappa=0.)
+                                              beta=2.0,
+                                              kappa=-9.0)
         
         # Create the UKF object
         # Note that dt will get updated dynamically as sensor data comes in,
@@ -160,7 +162,7 @@ class StateEstimation(object):
         # TODO: Tune the following variances appropriately. Currently just
         #       guesses
         # Optical flow variance:
-        self.measurement_cov_optical_flow = np.diag([0.1, 0.1, 0.1])
+        self.measurement_cov_optical_flow = np.diag([0.25, 0.25, 100.0])
         # Roll-Pitch-Yaw variance:
         self.measurement_cov_rpy = np.diag([0.1, 0.1, 0.1])
         
@@ -202,7 +204,7 @@ class StateEstimation(object):
         input, and a time step.
         '''
         self.ukf.predict(dt=self.dt, u=self.last_control_input)
-        self.computed_first_prior = True
+        #self.computed_first_prior = True
         
     def print_notice_if_first(self):
         if not self.printed_filter_start_notice:
@@ -231,6 +233,7 @@ class StateEstimation(object):
             self.last_control_input = np.array([data.linear_acceleration.x,
                                                 data.linear_acceleration.y,
                                                 data.linear_acceleration.z])
+            #self.ukf.P = (self.ukf.P + self.ukf.P.T)/2.0 # TODO: Look into
             self.ukf_predict()
             
             # Now that a prediction has been formed, perform a measurement
@@ -240,6 +243,7 @@ class StateEstimation(object):
                                       yaw])
             # Ensure that we are computing the residual for angles
             self.ukf.residual_z = self.angle_residual
+            #self.ukf.P = (self.ukf.P + self.ukf.P.T)/2.0 # TODO: Look into
             self.ukf.update(measurement_z,
                             hx=self.measurement_function_rpy,
                             R=self.measurement_cov_rpy)
@@ -264,7 +268,7 @@ class StateEstimation(object):
                         
     def optical_flow_data_callback(self, data):
         '''
-        Handle the receipt of a Mode message from optical flow.
+        Handle the receipt of a TwistStamped message from optical flow.
         The message includes:
             - x velocity (m/s)
             - y velocity (m/s)
@@ -275,19 +279,21 @@ class StateEstimation(object):
         if self.ready_to_filter:
             self.print_notice_if_first()
             self.update_input_time(data)
+            #self.ukf.P = (self.ukf.P + self.ukf.P.T)/2.0 # TODO: Look into
             self.ukf_predict()
             
             # Now that a prediction has been formed to bring the current prior
             # state estimate to the same point in time as the measurement,
             # perform a measurement update with x velocity, y velocity, and yaw
-            # velocity data in the Mode message
+            # velocity data in the TwistStamped message
             # TODO: Verify the units of these velocities that are being
             #       published
-            measurement_z = np.array([data.x_velocity,
-                                      data.y_velocity,
-                                      data.yaw_velocity])
+            measurement_z = np.array([data.twist.linear.x, # x velocity
+                                      data.twist.linear.y, # y velocity
+                                      data.twist.angular.z]) # yaw velocity
             # Ensure that we are using subtraction to compute the residual
             self.ukf.residual_z = np.subtract
+            #self.ukf.P = (self.ukf.P + self.ukf.P.T)/2.0 # TODO: Look into
             self.ukf.update(measurement_z,
                             hx=self.measurement_function_optical_flow,
                             R=self.measurement_cov_optical_flow)
@@ -295,9 +301,9 @@ class StateEstimation(object):
         else:
             self.initialize_input_time(data)
             # Update the initial state vector of the UKF
-            self.ukf.x[3] = data.x_velocity
-            self.ukf.x[4] = data.y_velocity
-            self.ukf.x[11] = data.yaw_velocity
+            self.ukf.x[3] = data.twist.linear.x # x velocity
+            self.ukf.x[4] = data.twist.linear.y # y velocity
+            self.ukf.x[11] = data.twist.angular.z # yaw velocity
             # Update the state covariance matrix to reflect estimated
             # measurement error. Variance of the measurement -> variance of
             # the corresponding state variable
@@ -319,6 +325,7 @@ class StateEstimation(object):
         if self.ready_to_filter:
             self.print_notice_if_first()
             self.update_input_time(data)
+            #self.ukf.P = (self.ukf.P + self.ukf.P.T)/2.0 # TODO: Look into
             self.ukf_predict()
             
             # Now that a prediction has been formed to bring the current prior
@@ -327,6 +334,7 @@ class StateEstimation(object):
             measurement_z = np.array([data.range])
             # Ensure that we are using subtraction to compute the residual
             self.ukf.residual_z = np.subtract
+            #self.ukf.P = (self.ukf.P + self.ukf.P.T)/2.0 # TODO: Look into
             self.ukf.update(measurement_z,
                             hx=self.measurement_function_ir,
                             R=self.measurement_cov_ir)
@@ -393,7 +401,7 @@ class StateEstimation(object):
                                       self.ukf.P[0:3, 6:9]), axis=1),
                       np.concatenate((self.ukf.P[6:9, 0:3],
                                       self.ukf.P[6:9, 6:9]), axis=1)), axis=0)
-        twist_with_cov.twist.cov = np.concatenate(
+        twist_with_cov.twist.covariance = np.concatenate(
                      (np.concatenate((self.ukf.P[3:6, 3:6],
                                       self.ukf.P[3:6, 9:12]), axis=1),
                       np.concatenate((self.ukf.P[9:12, 3:6],
@@ -572,6 +580,8 @@ def main():
         print 'State estimation node terminating.'
         print 'Most recent state vector:'
         print se.ukf.x
+        # print 'Most recent state covariance matrix:'
+        # print se.ukf.P
         
 if __name__ == '__main__':
     main()
