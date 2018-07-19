@@ -44,10 +44,6 @@ class AnalyzeFlow(picamera.array.PiMotionAnalysis):
 #       print 'XYZyaw:\t{},\t{},\t{}\t{}\t\t\t{}'.format( \
 #               self.x_motion,self.y_motion,self.z_motion,self.yaw_motion,time.time() - start)
 
-    def set_angular_velocity(self, ang_vx, ang_vy):
-        self.ang_vx = ang_vx
-        self.ang_vy = ang_vy
-
     def get_z_filter(self, (width, height)):
         # computes a divergence filter to estimate z component of flow
         assert width%16 == 0 and height%16 == 0
@@ -83,20 +79,29 @@ class AnalyzeFlow(picamera.array.PiMotionAnalysis):
         oq = msg.orientation
         orientation_list = [oq.x, oq.y, oq.z, oq.w]
         (new_angx, new_angy, new_angz) = tf.transformations.euler_from_quaternion(orientation_list)
-        self.prev_angx = curr_angx
-        self.prev_angy = curr_angy
-        self.curr_angx = new_angx
-        self.curr_angy = new_angy
+        curr_time = msg.header.time
+        # if previous data has been stored, update ang_vx and ang_vy
+        if self.prev_imu_time != 0:
+            self.ang_vx = (new_angx - self.prev_angx)/(curr_time - self.imu_time)
+            self.ang_vy = (new_angy - self.prev_angy)/(curr_time - self.imu_time)
+
+            self.prev_angx = new_angx
+            self.prev_angy = new_angy
+            self.imu_time = curr_time
+        # if previous data has not been stored, just store the data
+        else:
+            self.prev_angx = new_angx
+            self.prev_angy = new_angy
+            self.imu_time = curr_time
 
     def setup(self, camera_wh = (320,240), pub=None, flow_scale=16.5):
         self.get_z_filter(camera_wh)
         self.get_yaw_filter(camera_wh)
         self.ang_vx = 0
         self.ang_vy = 0
-        self.curr_angx = 0
-        self.curr_angy = 0
         self.prev_angx = 0
         self.prev_angy = 0
+        self.prev_imu_time = 0
         self.prev_time = time.time()
         self.ang_coefficient = 1.0 # the amount that roll rate factors in
         self.x_motion = 0
@@ -120,13 +125,7 @@ if __name__ == '__main__':
             output = SplitFrames(width, height)
             camera.start_recording('/dev/null', format='h264', motion_output=flow_analyzer)
 
-            prev_time = time.time()
             while not rospy.is_shutdown():
-                curr_time = time.time()
-                flow_analyzer.set_angular_velocity(
-                        (flow_analyzer.curr_angx - flow_analyzer.prev_angx)/(curr_time - prev_time),
-                        (flow_analyzer.curr_angy - flow_analyzer.prev_angy)/(curr_time - prev_time))
-                prev_time = curr_time
                 camera.wait_recording(0)
                 if len(output.images) == 0:
                     continue
