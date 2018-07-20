@@ -130,13 +130,15 @@ def main():
         fc.board.getData(MultiWii.RAW_IMU)
 
         # Calculate values for Imu message
-        roll = fc.board.attitude['angx']
-        pitch = fc.board.attitude['angy']
-        heading = fc.board.attitude['heading']
+        roll = np.deg2rad(fc.board.attitude['angx'])
+        pitch = np.deg2rad(fc.board.attitude['angy'])
+        heading = np.deg2rad(fc.board.attitude['heading'])
+        # transform heading to standard math conventions
+        heading = ((np.pi / 2) - heading) % (2 * np.pi)
         lin_acc_x = fc.board.rawIMU['ax'] * accRawToMss - accZeroX
         lin_acc_y = fc.board.rawIMU['ay'] * accRawToMss - accZeroY
         lin_acc_z = fc.board.rawIMU['az'] * accRawToMss - accZeroZ
-        quaternion = tf.transformations.quaternion_from_euler(np.deg2rad(roll), np.deg2rad(pitch), np.deg2rad(heading))
+        quaternion = tf.transformations.quaternion_from_euler(roll, pitch, heading)
 
         # Prepare Imu message
 # XXX:  should the quaternion be normalized???????
