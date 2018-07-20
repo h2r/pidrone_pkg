@@ -145,6 +145,7 @@ class DroneSimulator(object):
             next_sample_id, next_time_pair = self.serialized_times.pop(0)
             if self.publish_ros and len(self.serialized_times) > 0:
                 t0 = next_time_pair[0] + next_time_pair[1]*1e-9
+                print 'Duration: {0} / {1}\r'.format(round(t0, 4), duration),
                 t1 = self.serialized_times[0][1][0] + self.serialized_times[0][1][1]*1e-9
                 # It might not be valid to keep updating the Rate like so and
                 # expect ROS to sleep the correct amount each time
@@ -327,4 +328,4 @@ if __name__ == '__main__':
     # Run the drone for 50 seconds
     drone_sim.run_drone(duration=50)
     #drone_sim.run_drone(duration=0.5)
-    print 'Simulation complete.'
+    print '\nSimulation complete.'

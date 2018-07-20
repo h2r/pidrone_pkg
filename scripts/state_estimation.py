@@ -136,7 +136,8 @@ class StateEstimation(object):
                                          dt=1.0,
                                          hx=self.measurement_function,
                                          fx=self.state_transition_function,
-                                         points=sigma_points)
+                                         points=sigma_points,
+                                         residual_x=self.residual_x_account_for_angles)
         self.initialize_ukf_matrices()
 
     def initialize_ukf_matrices(self):
@@ -238,7 +239,6 @@ class StateEstimation(object):
                                                 data.linear_acceleration.y,
                                                 data.linear_acceleration.z])
             #self.ukf.P = (self.ukf.P + self.ukf.P.T)/2.0 # TODO: Look into
-            print 'Predicting in IMU'
             self.ukf_predict()
             
             # Now that a prediction has been formed, perform a measurement
@@ -249,11 +249,9 @@ class StateEstimation(object):
             # Ensure that we are computing the residual for angles
             self.ukf.residual_z = self.angle_residual
             #self.ukf.P = (self.ukf.P + self.ukf.P.T)/2.0 # TODO: Look into
-            print 'Updating in IMU'
             self.ukf.update(measurement_z,
                             hx=self.measurement_function_rpy,
                             R=self.measurement_cov_rpy)
-            print 'Done updating in IMU'
             self.publish_current_state()
         else:
             self.initialize_input_time(data)
@@ -289,7 +287,6 @@ class StateEstimation(object):
             self.print_notice_if_first()
             self.update_input_time(data)
             #self.ukf.P = (self.ukf.P + self.ukf.P.T)/2.0 # TODO: Look into
-            print 'Predicting in optical flow'
             self.ukf_predict()
             
             # Now that a prediction has been formed to bring the current prior
@@ -304,11 +301,9 @@ class StateEstimation(object):
             # Ensure that we are using subtraction to compute the residual
             self.ukf.residual_z = np.subtract
             #self.ukf.P = (self.ukf.P + self.ukf.P.T)/2.0 # TODO: Look into
-            print 'Updating in optical flow'
             self.ukf.update(measurement_z,
                             hx=self.measurement_function_optical_flow,
                             R=self.measurement_cov_optical_flow)
-            print 'Done updating in optical flow'
             self.publish_current_state()
         else:
             self.initialize_input_time(data)
@@ -336,25 +331,32 @@ class StateEstimation(object):
         
         This method PREDICTS with the most recent control input and UPDATES.
         '''
+        #print 'P diag:', np.diagonal(self.ukf.P)
         if self.ready_to_filter:
+            print 'x before predict:', self.ukf.x
             self.print_notice_if_first()
             self.update_input_time(data)
             #self.ukf.P = (self.ukf.P + self.ukf.P.T)/2.0 # TODO: Look into
-            print 'Predicting in IR'
             self.ukf_predict()
             
             # Now that a prediction has been formed to bring the current prior
             # state estimate to the same point in time as the measurement,
             # perform a measurement update with the slant range reading
             measurement_z = np.array([data.range])
+            print 'z raw:', measurement_z
             # Ensure that we are using subtraction to compute the residual
             self.ukf.residual_z = np.subtract
             #self.ukf.P = (self.ukf.P + self.ukf.P.T)/2.0 # TODO: Look into
-            print 'Updating in IR'
+            print 'x after predict:', self.ukf.x
+            print 'RPY:', self.ukf.x[6], self.ukf.x[7], self.ukf.x[8]
+            print '---'
+            print 'BEFORE UPDATE Z:', self.ukf.x[2]
+            print 'BEFORE UPDATE VEL Z:', self.ukf.x[5]
             self.ukf.update(measurement_z,
                             hx=self.measurement_function_ir,
                             R=self.measurement_cov_ir)
-            print 'Done updating in IR'
+            print 'AFTER UPDATE Z:', self.ukf.x[2]
+            print 'AFTER UPDATE VEL Z:', self.ukf.x[5]
             self.publish_current_state()
         else:
             self.initialize_input_time(data)
@@ -370,6 +372,7 @@ class StateEstimation(object):
             self.check_if_ready_to_filter()
         self.num_complete_ir += 1
         print '--IR:', self.num_complete_ir
+        print
             
     def check_if_ready_to_filter(self):
         self.ready_to_filter = (self.got_imu and self.got_optical_flow and
@@ -437,6 +440,8 @@ class StateEstimation(object):
         '''
         # TODO: See about using tf and potentially applying rotations with
         #       quaternions
+        # TODO: Should we use the raw roll, pitch, and yaw values that come in
+        #       at the same time step as the linear accelerations?
         phi = self.ukf.x[6]     # roll in radians
         theta = self.ukf.x[7]   # pitch in radians
         psi = self.ukf.x[8]     # yaw in radians
@@ -496,6 +501,11 @@ class StateEstimation(object):
         example, 358 degrees - 3 degrees should give out -5 degrees and not
         355 degrees. (Example given in degrees, but in the implementation angles
         are given in radians)
+        
+        a : a NumPy array with shape (3,), the shape of the measurement vector
+            with just roll, pitch, and yaw
+        b : a NumPy array with shape (3,), the shape of the measurement vector
+            with just roll, pitch, and yaw
         '''
         output_residual = np.empty_like(a)
         for num, angle1 in enumerate(a):
@@ -505,6 +515,27 @@ class StateEstimation(object):
                 residual -= 2*np.pi
             elif residual < -np.pi:
                 residual += 2*np.pi
+            output_residual[num] = residual
+        return output_residual
+        
+    def residual_x_account_for_angles(self, a, b):
+        '''
+        Compute the residual for the state vector x. For example, this is used
+        in the unscented transform.
+        
+        a : a NumPy array with shape (12,), the shape of the state vector
+        b : a NumPy array with shape (12,), the shape of the state vector
+        '''
+        output_residual = np.empty_like(a)
+        for num, state_var1 in enumerate(a):
+            state_var2 = b[num]
+            residual = state_var1 - state_var2
+            if 6 <= num <= 8:
+                # Then the current state variable is an angle
+                if residual > np.pi:
+                    residual -= 2*np.pi
+                elif residual < -np.pi:
+                    residual += 2*np.pi
             output_residual[num] = residual
         return output_residual
         
