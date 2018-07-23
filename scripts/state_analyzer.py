@@ -4,8 +4,8 @@
 #import matplotlib
 #matplotlib.use('TkAgg')
 
-import matplotlib
-matplotlib.use('Pdf')
+# import matplotlib
+# matplotlib.use('Pdf')
 import matplotlib.pyplot as plt
 import csv
 from ukf_state_estimation import DroneStateEstimation
@@ -219,7 +219,6 @@ class StateAnalyzer(object):
         just_did_update = False
         for data_type, data_contents in raw_data:
             new_time = data_contents[0]
-            print new_time
             if self.stop_after is not None:
                 if new_time >= self.stop_after:
                     # Stop
@@ -268,6 +267,8 @@ class StateAnalyzer(object):
                 # z dynamically changes size. As a result, we must also
                 # dynamically alter the UKF's measurement function hx
                 
+                # Ensure that we are using subtraction to compute the residual
+                self.drone_state.ukf.residual_z = np.subtract
                 self.drone_state.ukf.update(measurement_z,
                                     hx=self.drone_state.measurement_function_ir,
                                     R=self.drone_state.measurement_cov_ir)
@@ -289,6 +290,8 @@ class StateAnalyzer(object):
                 measurement_z = np.array([x_vel,
                                           y_vel,
                                           yaw_vel])
+                # Ensure that we are using subtraction to compute the residual
+                self.drone_state.ukf.residual_z = np.subtract
                 self.drone_state.ukf.update(measurement_z,
                           hx=self.drone_state.measurement_function_optical_flow,
                           R=self.drone_state.measurement_cov_optical_flow)
@@ -310,6 +313,8 @@ class StateAnalyzer(object):
                 measurement_z = np.array([roll_raw,
                                           pitch_raw,
                                           yaw_raw])
+                # Ensure that we are computing the residual for angles
+                #self.drone_state.ukf.residual_z = self.drone_state.angle_residual
                 self.drone_state.ukf.update(measurement_z,
                                    hx=self.drone_state.measurement_function_rpy,
                                    R=self.drone_state.measurement_cov_rpy)
@@ -377,11 +382,24 @@ class StateAnalyzer(object):
         plt.plot(self.ukf_times, self.ukf_yaw_vel, label='UKF yaw velocity')
         
         plt.xlabel('Time (seconds)')
-        plt.ylabel('Yaw Velocity (degrees/second)') # TODO: Is it degrees? Make into radians
+        plt.ylabel('Yaw Velocity (radians/second)')
         plt.title('Comparison of Drone Yaw Velocity Estimates')
         
         plt.legend()
         print 'Yaw velocity plot created.'
+        plt.show(block=False)
+        
+    def plot_roll(self):
+        plt.figure()
+        plt.plot(self.raw_roll_times, self.raw_roll, label='Raw roll from IMU')
+        plt.plot(self.ukf_times, self.ukf_roll, label='UKF roll')
+        
+        plt.xlabel('Time (seconds)')
+        plt.ylabel('Roll (radians)')
+        plt.title('Comparison of Drone Roll Estimates')
+        
+        plt.legend()
+        print 'Roll plot created.'
         plt.show(block=False)
                                 
     def compare_altitudes(self, do_plot=False):
@@ -460,6 +478,16 @@ class StateAnalyzer(object):
         
         if do_plot:
             self.plot_yaw_vel()
+            
+    def analyze_roll(self, do_plot=False):
+        if not self.computed_ukf:
+            self.ukf_states, self.ukf_times = self.compute_UKF_data()
+            self.ukf_times = [(t - self.earliest_time  + self.mocap_time_offset) for t in self.ukf_times]
+        self.raw_roll_times = [(t - self.earliest_time + self.mocap_time_offset) for t in self.raw_imu_times]
+        self.ukf_roll = [row[6] for row in self.ukf_states]
+        
+        if do_plot:
+            self.plot_roll()
 
     def get_ir_ema_altitude_data(self):
         ema_ir_data = self.load_EMA_data()
@@ -479,9 +507,11 @@ class StateAnalyzer(object):
         
 
 if __name__ == '__main__':
-    state_analyzer = StateAnalyzer(stop_after=5)
-    state_analyzer.compare_altitudes()
+    #state_analyzer = StateAnalyzer(stop_after=5)
+    state_analyzer = StateAnalyzer()
+    #state_analyzer.compare_altitudes(do_plot=True)
     #state_analyzer.compare_z_velocities(do_plot=True)
     #state_analyzer.compare_yaw_vel(do_plot=True)
+    state_analyzer.analyze_roll(do_plot=True)
     plt.show() # to have plot window(s) stay open
 

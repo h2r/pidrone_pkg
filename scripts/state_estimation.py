@@ -136,8 +136,8 @@ class StateEstimation(object):
                                          dt=1.0,
                                          hx=self.measurement_function,
                                          fx=self.state_transition_function,
-                                         points=sigma_points,
-                                         residual_x=self.residual_x_account_for_angles)
+                                         points=sigma_points)
+                                         #residual_x=self.residual_x_account_for_angles)
         self.initialize_ukf_matrices()
 
     def initialize_ukf_matrices(self):
@@ -247,7 +247,13 @@ class StateEstimation(object):
                                       pitch,
                                       yaw])
             # Ensure that we are computing the residual for angles
-            self.ukf.residual_z = self.angle_residual
+            #self.ukf.residual_z = self.angle_residual
+            # Actually, looks like euler_from_quaternion can return negative
+            # angles in radians
+            self.ukf.residual_z = np.subtract
+            # TODO: Look into the range of angles returned by
+            #       euler_from_quaternion. As there are negatives, it would seem
+            #       possible that the range be between -pi and pi radians...
             #self.ukf.P = (self.ukf.P + self.ukf.P.T)/2.0 # TODO: Look into
             self.ukf.update(measurement_z,
                             hx=self.measurement_function_rpy,
@@ -262,9 +268,6 @@ class StateEstimation(object):
             # Update the state covariance matrix to reflect estimated
             # measurement error. Variance of the measurement -> variance of
             # the corresponding state variable
-            # self.ukf.P[6, 6] = self.ukf.R[6, 6]
-            # self.ukf.P[7, 7] = self.ukf.R[7, 7]
-            # self.ukf.P[8, 8] = self.ukf.R[8, 8]
             self.ukf.P[6, 6] = self.measurement_cov_rpy[0, 0]
             self.ukf.P[7, 7] = self.measurement_cov_rpy[1, 1]
             self.ukf.P[8, 8] = self.measurement_cov_rpy[2, 2]
@@ -314,9 +317,6 @@ class StateEstimation(object):
             # Update the state covariance matrix to reflect estimated
             # measurement error. Variance of the measurement -> variance of
             # the corresponding state variable
-            # self.ukf.P[3, 3] = self.ukf.R[3, 3]
-            # self.ukf.P[4, 4] = self.ukf.R[4, 4]
-            # self.ukf.P[11, 11] = self.ukf.R[11, 11]
             self.ukf.P[3, 3] = self.measurement_cov_optical_flow[0, 0]
             self.ukf.P[4, 4] = self.measurement_cov_optical_flow[1, 1]
             self.ukf.P[11, 11] = self.measurement_cov_optical_flow[2, 2]
@@ -366,7 +366,6 @@ class StateEstimation(object):
             # Update the state covariance matrix to reflect estimated
             # measurement error. Variance of the measurement -> variance of
             # the corresponding state variable
-            #self.ukf.P[2, 2] = self.ukf.R[2, 2]
             self.ukf.P[2, 2] = self.measurement_cov_ir[0]
             self.got_ir = True
             self.check_if_ready_to_filter()
@@ -491,7 +490,7 @@ class StateEstimation(object):
                                               0,
                                               0])
         x_output = np.dot(F, x) + change_from_control_input
-        x_output = self.correct_fringe_angles(x_output)
+        #x_output = self.correct_fringe_angles(x_output)
         return x_output
         
     def angle_residual(self, a, b):

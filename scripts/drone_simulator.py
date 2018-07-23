@@ -4,10 +4,10 @@ from numpy.random import randn # to generate some random Gaussian noise
 import numpy as np
 import os
 import csv
-import rospy
-from sensor_msgs.msg import Imu, Range
-from geometry_msgs.msg import TwistStamped
-import tf
+# import rospy
+# from sensor_msgs.msg import Imu, Range
+# from geometry_msgs.msg import TwistStamped
+# import tf
 
 class DroneSimulator(object):
     '''
@@ -131,10 +131,12 @@ class DroneSimulator(object):
             self.times = ((self.imu_times, self.imu_hz),
                           (self.camera_times, self.camera_hz))
             self.generate_times(duration, time_std_dev)
-            # Instead, set equal to the randomly generated IMU times
-            self.ir_times = self.imu_times
+            # Instead, set equal to a copy of the randomly generated IMU times
+            self.ir_times = list(self.imu_times)
         self.times_lists_copies = (list(self.ir_times), list(self.imu_times), list(self.camera_times))
-            
+        self.times = ((self.ir_times, self.ir_hz),
+                      (self.imu_times, self.imu_hz),
+                      (self.camera_times, self.camera_hz))
         self.serialize_times()
         
         on_first_ir = True
@@ -179,7 +181,7 @@ class DroneSimulator(object):
                 self.step_x_y_yaw_velocity_data()
                 if self.publish_ros:
                     self.publish_x_y_yaw_vel()
-                
+                                            
         if self.save_to_csv:
             self.write_to_csv(filename='ir_RAW', times=self.times_lists_copies[0],
                               data_list=self.ir_data)
@@ -243,10 +245,10 @@ class DroneSimulator(object):
         self.ir_pub.publish(range_msg)
         
     def init_rpy_data(self):
-        # Estimated standard deviations (degrees)
-        self.roll_std_dev = 0.5
-        self.pitch_std_dev = 0.5
-        self.yaw_std_dev = 1.0
+        # Estimated standard deviations (radians)
+        self.roll_std_dev = np.deg2rad(0.5)
+        self.pitch_std_dev = np.deg2rad(0.5)
+        self.yaw_std_dev = np.deg2rad(1.0)
         
     def step_rpy_data(self):
         self.roll = self.roll_std_dev * randn()
@@ -266,7 +268,8 @@ class DroneSimulator(object):
         self.x_accel = self.x_accel_std_dev * randn()
         self.y_accel = self.y_accel_std_dev * randn()
         if self.correlate_z_pos_and_accel:
-            self.z_accel = self.ir_z_accels[num]
+            # Get most recent z accel from IR
+            self.z_accel = self.ir_z_accels[-1]
         else:
             self.z_accel = self.z_accel_std_dev * randn()
         self.imu_accel_data.append([self.x_accel, self.y_accel, self.z_accel])
@@ -286,10 +289,10 @@ class DroneSimulator(object):
                               
     def init_x_y_yaw_velocity_data(self):
         # Assume a model with small accelerations in x and y, with some noise
-        # Estimates standard deviations
+        # Estimated standard deviations
         self.x_vel_std_dev = 0.02 # meters/second
         self.y_vel_std_dev = 0.02 # meters/second
-        self.yaw_vel_std_dev = 2.0 # degrees/second
+        self.yaw_vel_std_dev = np.deg2rad(2.0) # radians/second
         
     def step_x_y_yaw_velocity_data(self):
         self.x_vel = self.x_vel_std_dev * randn()
@@ -322,9 +325,9 @@ class DroneSimulator(object):
         
 if __name__ == '__main__':
     print 'Starting simulation...'
-    drone_sim = DroneSimulator(publish_ros=True)
+    #drone_sim = DroneSimulator(publish_ros=True)
     #drone_sim = DroneSimulator(publish_ros=True, delay_rate=100)
-    #drone_sim = DroneSimulator(save_to_csv=True)
+    drone_sim = DroneSimulator(save_to_csv=True, correlate_z_pos_and_accel=True)
     # Run the drone for 50 seconds
     drone_sim.run_drone(duration=50)
     #drone_sim.run_drone(duration=0.5)
