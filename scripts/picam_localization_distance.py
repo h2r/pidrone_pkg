@@ -21,10 +21,10 @@ import camera_info_manager
 from geometry_msgs.msg import TwistStamped
 from global_position_estimator_distance import LocalizationParticleFilter, create_map, PROB_THRESHOLD
 
-MAP_PIXEL_WIDTH = 2048  # in pixel
-MAP_PIXEL_HEIGHT = 1616
-MAP_REAL_WIDTH = 1.4  # in meter
-MAP_REAL_HEIGHT = 1.07
+MAP_PIXEL_WIDTH = 1942  # in pixel
+MAP_PIXEL_HEIGHT = 1915
+MAP_REAL_WIDTH = 2.4  # in meter
+MAP_REAL_HEIGHT = 2.27
 
 CAMERA_WIDTH = 320
 CAMERA_HEIGHT = 240
@@ -56,7 +56,7 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
         self.fb_pid = PIDaxis(10.0, 0.000, 0.0, midpoint=0, control_range=(-5.0, 5.0))
 
         self.detector = cv2.ORB(nfeatures=NUM_FEATURES, scoreType=cv2.ORB_FAST_SCORE)  # FAST_SCORE is a little faster to compute
-        map_grid_kp, map_grid_des = create_map('map.jpg')
+        map_grid_kp, map_grid_des = create_map('pano.jpg')
         self.estimator = LocalizationParticleFilter(map_grid_kp, map_grid_des)
 
         self.first_locate = True
