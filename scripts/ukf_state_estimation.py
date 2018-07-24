@@ -8,8 +8,10 @@ class DroneStateEstimation(object):
         state_vector_dim = 12
         measurement_vector_dim = 7
         # TODO: Modify these sigma point parameters as necessary
-        sigma_points = MerweScaledSigmaPoints(n=state_vector_dim, alpha=0.1,
-                                              beta=2., kappa=0.)
+        sigma_points = MerweScaledSigmaPoints(n=state_vector_dim,
+                                              alpha=0.1,
+                                              beta=2.0,
+                                              kappa=-9.0)
         # Note that dt will get updated dynamically as sensor data comes in
         self.ukf = UnscentedKalmanFilter(dim_x=state_vector_dim,
                                          dim_z=measurement_vector_dim,
@@ -43,7 +45,7 @@ class DroneStateEstimation(object):
         # To consider: Changing scale factor by too much could lead to the
         # following error:
         # numpy.linalg.linalg.LinAlgError: 3-th leading minor not positive definite
-        self.ukf.Q = np.eye(state_vector_dim)*0.001
+        self.ukf.Q = np.eye(state_vector_dim)*0.00001
         
         # Initialize the measurement covariance matrix R for each discrete
         # asynchronous measurement input:

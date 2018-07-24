@@ -36,6 +36,7 @@ class StateEstimation(object):
         # self.ready_to_filter is False until we get initial measurements in
         # order to be able to initialize the filter's state vector x and
         # covariance matrix P.
+        self.num_bad_updates = 0
         self.ready_to_filter = False
         self.printed_filter_start_notice = False
         self.got_imu = False
@@ -155,7 +156,8 @@ class StateEstimation(object):
         # following error:
         #   "numpy.linalg.linalg.LinAlgError: 3-th leading minor not positive
         #    definite"
-        self.ukf.Q = np.eye(self.state_vector_dim)*0.001
+        self.ukf.Q = np.eye(self.state_vector_dim)*0.0001
+        #self.ukf.Q = np.diag([0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0])*0.001
         
         # Initialize the measurement covariance matrix R for each discrete
         # asynchronous measurement input:
@@ -167,7 +169,7 @@ class StateEstimation(object):
         # TODO: Tune the following variances appropriately. Currently just
         #       guesses
         # Optical flow variance:
-        self.measurement_cov_optical_flow = np.diag([0.25, 0.25, 100.0])
+        self.measurement_cov_optical_flow = np.diag([0.01, 0.01, 0.01])
         # Roll-Pitch-Yaw variance:
         self.measurement_cov_rpy = np.diag([0.1, 0.1, 0.1])
         
@@ -333,30 +335,37 @@ class StateEstimation(object):
         '''
         #print 'P diag:', np.diagonal(self.ukf.P)
         if self.ready_to_filter:
-            print 'x before predict:', self.ukf.x
             self.print_notice_if_first()
             self.update_input_time(data)
             #self.ukf.P = (self.ukf.P + self.ukf.P.T)/2.0 # TODO: Look into
+            print 'BEFORE PREDICT Z:', self.ukf.x[2]
+            #print 'BEFORE PREDICT Z VEL:', self.ukf.x[5]
             self.ukf_predict()
-            
+                        
             # Now that a prediction has been formed to bring the current prior
             # state estimate to the same point in time as the measurement,
             # perform a measurement update with the slant range reading
             measurement_z = np.array([data.range])
-            print 'z raw:', measurement_z
             # Ensure that we are using subtraction to compute the residual
             self.ukf.residual_z = np.subtract
             #self.ukf.P = (self.ukf.P + self.ukf.P.T)/2.0 # TODO: Look into
-            print 'x after predict:', self.ukf.x
-            print 'RPY:', self.ukf.x[6], self.ukf.x[7], self.ukf.x[8]
-            print '---'
             print 'BEFORE UPDATE Z:', self.ukf.x[2]
-            print 'BEFORE UPDATE VEL Z:', self.ukf.x[5]
+            #print 'BEFORE UPDATE Z VEL:', self.ukf.x[5]
+            print 'Raw slant range:', measurement_z[0]
             self.ukf.update(measurement_z,
                             hx=self.measurement_function_ir,
                             R=self.measurement_cov_ir)
             print 'AFTER UPDATE Z:', self.ukf.x[2]
-            print 'AFTER UPDATE VEL Z:', self.ukf.x[5]
+            #print 'AFTER UPDATE Z VEL:', self.ukf.x[5]
+            #print 'Z-Z_vel COVARIANCE:', self.ukf.P[2, 5]
+            print 'KALMAN GAIN:', self.ukf.K
+            print 'RESIDUAL:', self.ukf.y
+            print 'KALMAN GAIN DOT RESIDUAL:', np.dot(self.ukf.K, self.ukf.y)
+            print
+            if not ((measurement_z[0] <= self.ukf.x[2] <= self.ukf.x_prior[2]) or
+                    (measurement_z[0] >= self.ukf.x[2] >= self.ukf.x_prior[2])):
+                self.num_bad_updates += 1
+                print self.num_bad_updates, 'BAD UPDATE...\n\n\n\n\n\n\n'
             self.publish_current_state()
         else:
             self.initialize_input_time(data)
@@ -629,6 +638,7 @@ def main():
         print 'State estimation node terminating.'
         print 'Most recent state vector:'
         print se.ukf.x
+        print 'NUM BAD UPDATES:', se.num_bad_updates
         # print 'Most recent state covariance matrix:'
         # print se.ukf.P
         

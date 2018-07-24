@@ -196,15 +196,15 @@ class StateAnalyzer(object):
                 # Update the state covariance matrix to reflect estimated
                 # measurement error. Variance of the measurement -> variance of
                 # the corresponding state variable
-                self.drone_state.ukf.P[2, 2] = self.drone_state.ukf.R[2, 2]
+                self.drone_state.ukf.P[2, 2] = self.drone_state.measurement_cov_ir[0]
                 got_ir = True
             elif data_type == 'roll_pitch_yaw_RAW':
                 self.drone_state.ukf.x[6] = float(data_contents[1]) # roll
                 self.drone_state.ukf.x[7] = float(data_contents[2]) # pitch
                 self.drone_state.ukf.x[8] = float(data_contents[3]) # yaw
-                self.drone_state.ukf.P[6, 6] = self.drone_state.ukf.R[4, 4]
-                self.drone_state.ukf.P[7, 7] = self.drone_state.ukf.R[5, 5]
-                self.drone_state.ukf.P[8, 8] = self.drone_state.ukf.R[6, 6]
+                self.drone_state.ukf.P[6, 6] = self.drone_state.measurement_cov_rpy[0, 0]
+                self.drone_state.ukf.P[7, 7] = self.drone_state.measurement_cov_rpy[1, 1]
+                self.drone_state.ukf.P[8, 8] = self.drone_state.measurement_cov_rpy[2, 2]
                 got_rpy = True
             elif data_type == 'imu_RAW':
                 self.drone_state.last_state_transition_time = data_contents[0]
@@ -217,6 +217,7 @@ class StateAnalyzer(object):
         # UnscentedKalmanFilter class requires that the predict() method be
         # called at least once before the first call to update() is made
         just_did_update = False
+        num_bad_updates = 0
         for data_type, data_contents in raw_data:
             new_time = data_contents[0]
             if self.stop_after is not None:
@@ -241,6 +242,7 @@ class StateAnalyzer(object):
                 self.drone_state.last_control_input = np.array([x_accel,
                                                                 y_accel,
                                                                 z_accel])
+            print 'BEFORE PREDICT Z:', self.drone_state.ukf.x[2]
             # Compute the prior
             self.drone_state.ukf.predict(dt=self.drone_state.dt,
                               fx=self.drone_state.state_transition_function,
@@ -269,9 +271,20 @@ class StateAnalyzer(object):
                 
                 # Ensure that we are using subtraction to compute the residual
                 self.drone_state.ukf.residual_z = np.subtract
+                print 'BEFORE UPDATE Z:', self.drone_state.ukf.x[2]
+                print 'Raw slant range:', measurement_z[0]
                 self.drone_state.ukf.update(measurement_z,
                                     hx=self.drone_state.measurement_function_ir,
                                     R=self.drone_state.measurement_cov_ir)
+                print 'AFTER UPDATE Z:', self.drone_state.ukf.x[2]
+                print 'KALMAN GAIN:', self.drone_state.ukf.K
+                print 'RESIDUAL:', self.drone_state.ukf.y
+                print 'KALMAN GAIN DOT RESIDUAL:', np.dot(self.drone_state.ukf.K, self.drone_state.ukf.y)
+                print
+                if not ((measurement_z[0] <= self.drone_state.ukf.x[2] <= self.drone_state.ukf.x_prior[2]) or
+                        (measurement_z[0] >= self.drone_state.ukf.x[2] >= self.drone_state.ukf.x_prior[2])):
+                    num_bad_updates += 1
+                    print num_bad_updates, 'BAD UPDATE...'
                 #just_did_update = True
 
             elif data_type == 'x_y_yaw_velocity_RAW' and self.drone_state.computed_first_prior:
@@ -323,6 +336,7 @@ class StateAnalyzer(object):
             states_x.append(self.drone_state.ukf.x)
             times_t.append(new_time)
         self.computed_ukf = True
+        print 'NUM BAD UPDATES:', num_bad_updates
         return states_x, times_t
 
     def plot_altitudes(self):

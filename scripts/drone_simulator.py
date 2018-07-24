@@ -327,6 +327,7 @@ if __name__ == '__main__':
     print 'Starting simulation...'
     #drone_sim = DroneSimulator(publish_ros=True)
     #drone_sim = DroneSimulator(publish_ros=True, delay_rate=100)
+    #drone_sim = DroneSimulator(publish_ros=True, correlate_z_pos_and_accel=True)
     drone_sim = DroneSimulator(save_to_csv=True, correlate_z_pos_and_accel=True)
     # Run the drone for 50 seconds
     drone_sim.run_drone(duration=50)
