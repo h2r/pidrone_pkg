@@ -66,6 +66,7 @@ class FastSLAM:
     def __init__(self):
         self.particles = None
         self.num_particles = None
+        self.weight = None
 
         self.z = 0
         # distance from center of frame to ede of frame,
@@ -111,6 +112,8 @@ class FastSLAM:
         if DEBUG:
             print 'RUN'
 
+        print len(self.particles[0].landmarks)
+
         self.z = z
         self.angle_x = angle_x
         self.angle_y = angle_y
@@ -130,7 +133,6 @@ class FastSLAM:
             # reflect that more motion causes more uncertainty and vice versa
             self.update_motion_covariance(x, y, yaw)
 
-            print len(self.particles[0].landmarks)
             # update poses with optical flow data
             for p in self.particles:
                 self.predict_particle(p, x, y, yaw)
@@ -151,9 +153,9 @@ class FastSLAM:
                         for p in self.particles:
                             self.update_map(p, kp, des)
 
-                        self.resample_particles()
+                            self.weight = self.get_average_weight()
 
-                        # set the new keyframe to this frame
+                        self.resample_particles()
                         self.key_kp, self.key_des = kp, des
 
             # there is no previous keyframe
@@ -161,9 +163,12 @@ class FastSLAM:
                 for p in self.particles:
                     self.update_map(p, kp, des)
 
+                    self.weight = self.get_average_weight()
+
                 self.resample_particles()
                 self.key_kp, self.key_des = kp, des
-        return self.estimate_pose()
+
+        return self.estimate_pose(), self.weight
 
     def predict_particle(self, particle, x, y, yaw):
         """"
@@ -180,9 +185,6 @@ class FastSLAM:
             print 'PREDICT'
 
         noisy_x_y_z_yaw = np.random.multivariate_normal([x, y, self.z, yaw], self.covariance_motion)
-
-        print 'raw x: ', x
-        print 'noisy x: ', noisy_x_y_z_yaw[0]
 
         old_yaw = particle.pose[3]
         # I know this works but it seems like it would move the drone in the opposite direction...
@@ -369,6 +371,7 @@ class FastSLAM:
                                    abs(utils.normal(math.pi, 0.01))) for _ in range(num_particles)]
 
         self.num_particles = num_particles
+        self.key_kp, self.key_des = None, None
 
         return self.estimate_pose()
 
@@ -404,7 +407,13 @@ class FastSLAM:
         yaw = utils.adjust_angle(yaw)
 
         # return the "average" pose and weight
-        return [x, y, z, yaw], weight_sum / float(self.num_particles)
+        return [x, y, z, yaw]
+
+    def get_average_weight(self):
+        """""
+        the average weight of all the particles
+        """""
+        return np.sum([p.weight for p in self.particles]) / float(self.num_particles)
 
     def compute_transform(self, kp1, des1, kp2, des2):
         """""
@@ -457,7 +466,7 @@ class FastSLAM:
         computes the perceptual range of the drone: the distance from the center of the frame to the
         width-wise border of the frame
         """""
-        return self.pixel_to_meter(CAMERA_WIDTH / 2)
+        self.perceptual_range = self.pixel_to_meter(CAMERA_WIDTH / 2)
 
     def update_motion_covariance(self, dx, dy, dyaw):
         """""

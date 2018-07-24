@@ -15,13 +15,14 @@ from cv_bridge import CvBridge, CvBridgeError
 from pid_class import PIDaxis
 from geometry_msgs.msg import TwistStamped
 from slam_helper import FastSLAM, PROB_THRESHOLD
+import math
 
 
 CAMERA_WIDTH = 320
 CAMERA_HEIGHT = 240
 # assume a pixel in x and y has the same length
 CAMERA_CENTER = np.float32([(CAMERA_WIDTH - 1) / 2., (CAMERA_HEIGHT - 1) / 2.]).reshape(-1, 1, 2)
-MAX_BAD_COUNT = -100
+MAX_BAD_COUNT = -1000
 NUM_PARTICLE = 10
 NUM_FEATURES = 50
 
@@ -87,7 +88,7 @@ class AnalyzePhase:
             if curr_kp is not None and curr_kp is not None:
                 # generate particles for the first time
                 if self.first_locate:
-                    pose, weight = self.estimator.generate_particles(NUM_PARTICLE)
+                    pose = self.estimator.generate_particles(NUM_PARTICLE)
                     self.first_locate = False
                     self.pos = pose
                     self.yaw = pose[3]
@@ -107,7 +108,7 @@ class AnalyzePhase:
                     print '--weight', weight
 
                     # if all particles are not good estimations
-                    if is_almost_equal(weight, PROB_THRESHOLD):
+                    if is_almost_equal(weight, NUM_FEATURES*math.log(PROB_THRESHOLD)):
                         self.map_counter = self.map_counter - 1
                     elif self.map_counter <= 0:
                         self.map_counter = 1
@@ -197,8 +198,12 @@ class AnalyzePhase:
             print "Target position", self.target_pos
 
 
-def is_almost_equal(x, y, epsilon=1*10**(-8)):
-    return abs(x-y) <= epsilon
+def is_almost_equal(x, y):
+    """""
+    Is the difference between average weight and the lower bound on weight within 25% of the lower bound?
+    """""
+    epsilon = 0.25 * y
+    return abs(x-y) <= abs(epsilon)
 
 
 def main():
