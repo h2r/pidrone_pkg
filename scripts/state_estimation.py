@@ -21,6 +21,8 @@ from filterpy.kalman import MerweScaledSigmaPoints
 
 # Other imports
 import numpy as np
+import os
+import csv
 
 
 class StateEstimation(object):
@@ -36,6 +38,18 @@ class StateEstimation(object):
         # self.ready_to_filter is False until we get initial measurements in
         # order to be able to initialize the filter's state vector x and
         # covariance matrix P.
+        self.log_file_dir = '../logs'
+        self.filenames = ['imu_RAW',
+                     'x_y_yaw_velocity_RAW',
+                     #'x_y_yaw_velocity_EMA', # TODO: Uncomment if file has data
+                     'ir_RAW',
+                     'ir_EMA',
+                     'roll_pitch_yaw_RAW',
+                     'mocap']
+        self.raw_data_filenames = ['imu_RAW',
+                     'x_y_yaw_velocity_RAW',
+                     'ir_RAW',
+                     'roll_pitch_yaw_RAW']
         self.num_bad_updates = 0
         self.ready_to_filter = False
         self.printed_filter_start_notice = False
@@ -628,11 +642,215 @@ class StateEstimation(object):
         hx_output = np.dot(H, x)
         return hx_output
         
+    ############# NOTE: TESTING ON CSV
+    def load_and_serialize_data(self, csv_filename_list):
+        '''
+        Load data from a list of files and order the data chronologically
+        '''
+        loaded_data = {} # key is the filename, value is the data in the file
+        for filename in csv_filename_list:
+            with open(os.path.join(self.log_file_dir, filename+'.csv'), 'r') as csv_file:
+                rows_list = []
+                loaded_data[filename] = rows_list
+                csv_reader = csv.reader(csv_file, delimiter=' ')
+                is_header = True # TODO: Check this
+                for row in csv_reader:
+                    if not is_header:
+                        rows_list.append(row)
+                    else:
+                        is_header = False
+
+        sorted_all_data = False
+        serialized_data = []
+        on_first_rows = True
+        while not sorted_all_data:
+            first_key = True
+            got_nonempty_file = False
+            for key in loaded_data:
+                if loaded_data[key]:
+                    # List representing a row of data is not empty
+                    got_nonempty_file = True
+                    next_surveyed_time_sec = float(loaded_data[key][0][0])
+                    next_surveyed_time_nsec = float(loaded_data[key][0][1])
+                    next_surveyed_time = next_surveyed_time_sec + next_surveyed_time_nsec*1e-9
+                    if first_key or next_surveyed_time < next_time:
+                        # Found a new minimum that is the next most recent time
+                        first_key = False
+                        next_time = next_surveyed_time
+                        next_time_key = key
+            if not got_nonempty_file:
+                # All loaded datasets are empty, so it must all be sorted
+                sorted_all_data = True
+            
+            if not sorted_all_data:
+                # Get and remove the most recent row of data
+                new_row = loaded_data[next_time_key].pop(0)
+                # Delete Seconds and Nanoseconds
+                del new_row[0:2]
+                # Insert time with Seconds and Nanoseconds combined
+                new_row.insert(0, next_time)
+                # Append a filename-data pair
+                serialized_data.append((next_time_key, new_row))
+            if on_first_rows:
+                on_first_rows = False
+        return serialized_data
+    
+    def load_raw_data(self):
+        '''
+        Load raw data from .csv and order the data chronologically
+        '''
+        return self.load_and_serialize_data(self.raw_data_filenames)
+        
+    def compute_UKF_data(self):
+        '''
+        Apply a UKF on raw data
+        '''
+        print 'In compute_UKF_data'
+        raw_data = self.load_raw_data()
+        
+        ready_to_filter = False
+        got_ir = False
+        got_rpy = False
+        got_imu = False
+        while not ready_to_filter:
+            # Get initial measurements in order to be able to initialize the
+            # filter's state vector x and covariance matrix P.
+            # Also, get first control inputs from IMU to be able to initialize
+            # a start time to compute a dt between between control inputs, to be
+            # used in the prediction step with the state transition function
+            
+            data_type, data_contents = raw_data.pop(0)
+            if data_type == 'ir_RAW':
+                # Got a raw slant range reading, so update the initial state
+                # vector of the UKF
+                self.ukf.x[2] = float(data_contents[1])
+                # Update the state covariance matrix to reflect estimated
+                # measurement error. Variance of the measurement -> variance of
+                # the corresponding state variable
+                self.ukf.P[2, 2] = self.measurement_cov_ir[0]
+                got_ir = True
+            elif data_type == 'roll_pitch_yaw_RAW':
+                self.ukf.x[6] = float(data_contents[1]) # roll
+                self.ukf.x[7] = float(data_contents[2]) # pitch
+                self.ukf.x[8] = float(data_contents[3]) # yaw
+                self.ukf.P[6, 6] = self.measurement_cov_rpy[0, 0]
+                self.ukf.P[7, 7] = self.measurement_cov_rpy[1, 1]
+                self.ukf.P[8, 8] = self.measurement_cov_rpy[2, 2]
+                got_rpy = True
+            elif data_type == 'imu_RAW':
+                self.last_state_transition_time = data_contents[0]
+                got_imu = True
+                
+            if got_ir and got_rpy and got_imu:
+                ready_to_filter = True
+        
+        # Now we are ready to filter the data. Note that the FilterPy library's
+        # UnscentedKalmanFilter class requires that the predict() method be
+        # called at least once before the first call to update() is made
+        just_did_update = False
+        num_bad_updates = 0
+        for data_type, data_contents in raw_data:
+            new_time = data_contents[0]
+            # Compute the time interval since the last state transition / input
+            self.dt = new_time - self.last_state_transition_time
+            # Set the current time at which we just received an input
+            # to be the last input time
+            self.last_state_transition_time = new_time
+            if data_type == 'imu_RAW':
+                # Raw IMU accelerometer data is treated as the control input
+                
+                x_accel = float(data_contents[1]) # (m/s^2)
+                y_accel = float(data_contents[2]) # (m/s^2)
+                z_accel = float(data_contents[3]) # (m/s^2)
+
+                self.last_control_input = np.array([x_accel,
+                                                                y_accel,
+                                                                z_accel])
+            print 'BEFORE PREDICT Z:', self.ukf.x[2]
+            # Compute the prior
+            self.ukf.predict(dt=self.dt,
+                              fx=self.state_transition_function,
+                              u=self.last_control_input)
+            just_did_update = False
+                
+            if data_type == 'ir_RAW':
+                # We have just received a measurement, so compute the
+                # measurement update step after having computed the new prior in
+                # the prediction step
+                
+                # TODO: Figure out how to compute process sigmas, with a correct dt?
+                if just_did_update:
+                    self.ukf.compute_process_sigmas(dt=self.dt, u=np.array([0, 0, 0]))
+
+                # This last measurement will be stored in self.drone_state.ukf.z
+                # in the update step
+                slant_range = float(data_contents[1])
+                measurement_z = np.array([slant_range])
+                # Due to asynchronous measurement inputs, the measurement vector
+                # z dynamically changes size. As a result, we must also
+                # dynamically alter the UKF's measurement function hx
+                
+                # Ensure that we are using subtraction to compute the residual
+                self.ukf.residual_z = np.subtract
+                print 'BEFORE UPDATE Z:', self.ukf.x[2]
+                print 'Raw slant range:', measurement_z[0]
+                self.ukf.update(measurement_z,
+                                    hx=self.measurement_function_ir,
+                                    R=self.measurement_cov_ir)
+                print 'AFTER UPDATE Z:', self.ukf.x[2]
+                print 'KALMAN GAIN:', self.ukf.K
+                print 'RESIDUAL:', self.ukf.y
+                print 'KALMAN GAIN DOT RESIDUAL:', np.dot(self.ukf.K, self.ukf.y)
+                print
+                if not ((measurement_z[0] <= self.ukf.x[2] <= self.ukf.x_prior[2]) or
+                        (measurement_z[0] >= self.ukf.x[2] >= self.ukf.x_prior[2])):
+                    print 'BAD UPDATE...'
+                #just_did_update = True
+
+            elif data_type == 'x_y_yaw_velocity_RAW':
+                
+                # TODO: Figure out how to compute process sigmas, with a correct dt?
+                if just_did_update:
+                    self.ukf.compute_process_sigmas(dt=self.dt, u=np.array([0, 0, 0]))
+                    
+                x_vel = float(data_contents[1])
+                y_vel = float(data_contents[2])
+                yaw_vel = float(data_contents[3]) # TODO: express in rad/s
+                measurement_z = np.array([x_vel,
+                                          y_vel,
+                                          yaw_vel])
+                # Ensure that we are using subtraction to compute the residual
+                self.ukf.residual_z = np.subtract
+                self.ukf.update(measurement_z,
+                          hx=self.measurement_function_optical_flow,
+                          R=self.measurement_cov_optical_flow)
+                #just_did_update = True
+            
+            elif data_type == 'roll_pitch_yaw_RAW':
+                
+                # TODO: Figure out how to compute process sigmas, with a correct dt?
+                if just_did_update:
+                    self.ukf.compute_process_sigmas(dt=self.dt, u=np.array([0, 0, 0]))
+                    
+                roll_raw = float(data_contents[1])
+                pitch_raw = float(data_contents[2])
+                yaw_raw = float(data_contents[3])
+                measurement_z = np.array([roll_raw,
+                                          pitch_raw,
+                                          yaw_raw])
+                # Ensure that we are computing the residual for angles
+                #self.drone_state.ukf.residual_z = self.drone_state.angle_residual
+                self.ukf.update(measurement_z,
+                                   hx=self.measurement_function_rpy,
+                                   R=self.measurement_cov_rpy)
+                #just_did_update = True
+        
 def main():
     se = StateEstimation()
     try:
         # Wait until node is halted
         rospy.spin()
+        #se.compute_UKF_data()
     finally:
         # Upon termination of this script, print out a helpful message
         print 'State estimation node terminating.'
