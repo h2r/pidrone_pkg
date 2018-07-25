@@ -49,7 +49,7 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
         rospy.Subscriber("/pidrone/infrared", Range, self.range_callback)
         rospy.Subscriber('/pidrone/angle', TwistStamped, self.angle_callback)
         rospy.Subscriber('/pidrone/plane_err', TwistStamped, self.picam_velocity_callback)
-        self.pospub = rospy.Publisher('/pidrone/set_mode_vel', Mode, queue_size=1)
+        self.pospub = rospy.Publisher('/pidrone/set_vel', Mode, queue_size=1)
         self.first_image_pub = rospy.Publisher("/pidrone/picamera/first_image", Image, queue_size=1, latch=True)
 
         self.lr_pid = PIDaxis(20.0, 0.000, 2.0, midpoint=0, control_range=(-10.0, 10.0))
