@@ -1,3 +1,3 @@
-You run image_pub on the pi and offboard_slam.py on the offboard computer
+Run offboard: put utils, offboard_slam, and slam_helper on the offboard computer and run offboard_slam
 
-Put utils and slam_helper on the offboard computer
+Run onboard: put utils, slam, and slam helper on the pi and run slam in window 4

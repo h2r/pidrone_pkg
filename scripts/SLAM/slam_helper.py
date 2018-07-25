@@ -235,6 +235,7 @@ class FastSLAM:
                     self.update_landmark(particle, old_index, kp, des)
                     matched_landmarks[old_index] = True
 
+            removed = []
             for i, match in enumerate(matched_landmarks):
                 lm = particle.landmarks[i]
                 if match:
@@ -243,7 +244,10 @@ class FastSLAM:
                 elif utils.distance(lm.x, lm.y, particle.pose[0], particle.pose[1]) < self.perceptual_range:
                     lm.counter -= 1
                     if lm.counter < 0:
-                        particle.landmarks.remove(lm)
+                        removed.append(lm)
+
+            for rm in removed:
+                particle.landmarks.remove(rm)
 
     def add_landmark(self, particle, kp, des):
         """"
@@ -335,15 +339,14 @@ class FastSLAM:
 
         weight_sum = 0.0
         new_particles = []
-        normal_weights = []
+        normal_weights = np.array([])
 
         for p in self.particles:
             w = min(math.exp(p.weight), utils.max_float)
+            normal_weights = np.append(normal_weights, w)
             weight_sum += w
 
-        for p in self.particles:
-            w = min(math.exp(p.weight), utils.max_float)
-            normal_weights.append(w / weight_sum)
+        normal_weights /= weight_sum
 
         samples = np.random.multinomial(self.num_particles, normal_weights)
         for i, count in enumerate(samples):
@@ -383,15 +386,14 @@ class FastSLAM:
         some mathematical motivation E[X] = sum over all x in X: p(x) * x
         """""
         weight_sum = 0.0
-        normal_weights = []
+        normal_weights = np.array([])
 
         for p in self.particles:
             w = min(math.exp(p.weight), utils.max_float)
+            normal_weights = np.append(normal_weights, w)
             weight_sum += w
 
-        for p in self.particles:
-            w = min(math.exp(p.weight), utils.max_float)
-            normal_weights.append(w / weight_sum)
+        normal_weights /= weight_sum
 
         x = 0.0
         y = 0
