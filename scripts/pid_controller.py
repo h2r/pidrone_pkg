@@ -49,7 +49,7 @@ class PIDController(object):
         # Control Publisher
         self.ctrlpub = ctrlpub
 
-        # Control values (initialize ot disarmed values)
+        # Control values (initialize to disarmed values)
         self.ctrl_vals = command_values.disarm_cmd
 
 
@@ -147,7 +147,6 @@ def main():
 
     # Publishers
     ############
-    errpub = rospy.Publisher('/pidrone/err', axes_err, queue_size=1)
     anglepub = rospy.Publisher('/pidrone/angle', TwistStamped, queue_size=1)
     ctrlpub = rospy.Publisher('/pidrone/controller', RC, queue_size=1)
 
@@ -161,7 +160,7 @@ def main():
     rospy.Subscriber("/pidrone/vrpn_pos", PoseStamped, pid_ctrlr.vrpn_callback)
     rospy.Subscriber("/pidrone/set_vel", Velocity, pid_ctrlr.set_vel_callback)
     rospy.Subscriber("/pidrone/imu", Imu, pid_ctrlr.imu_callback)
-    rospy.Subscriber("/pidrone/mode", Mode, pid_ctrlr.mode_callback)
+    rospy.Subscriber("/pidrone/desired_mode", Mode, pid_ctrlr.mode_callback)
 
     # Non-ROS Setup
     ###############
@@ -171,8 +170,6 @@ def main():
 
     print 'PID controller started'
     while not rospy.is_shutdown():
-        # Publishes current error message
-        errpub.publish(pid_ctrlr.error)
         if not pid_ctrlr.curr_mode == 'DISARMED':
             anglepub.publish(pid_ctrlr.angle)
 
