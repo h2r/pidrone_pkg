@@ -16,7 +16,6 @@
     display: inline-block;
     border-bottom: 1px black; /* If you want dots under the hoverable text */
 }
-
 /* Tooltip text */
 .tooltip .tooltiptext {
     visibility: hidden;
@@ -26,12 +25,11 @@
     text-align: left;
     padding: 5px 0;
     border-radius: 6px;
- 
+
     /* Position the tooltip text - see examples below! */
     position: absolute;
     z-index: 1;
 }
-
 /* Show the tooltip text when you mouse over the tooltip container */
 .tooltip:hover .tooltiptext {
     transition-delay: 1s;
@@ -41,7 +39,7 @@
 
 <script type="text/javascript">
   /**
-   * Setup all visualization elements when the page is loaded. 
+   * Setup all visualization elements when the page is loaded.
    */
   function empty(element) {
     while (element.firstChild) {
@@ -53,14 +51,12 @@
       console.log(propt + ': ' + obj[propt]);
     }
   }
-
     function myround(number, precision) {
       var factor = Math.pow(10, precision);
       var tempNumber = number * factor;
       var roundedTempNumber = Math.round(tempNumber);
       return roundedTempNumber / factor;
     };
-
   var markerClient;
   var ros;
   var modepub;
@@ -72,75 +68,57 @@
     ros = new ROSLIB.Ros({
       url : url
     });
-
     function closeSession(){
       console.log("Closing connections.");
       ros.disconnect();
       return false;
     }
     window.onbeforeunload = closeSession;
-
   ros.on('error', function(error) {
       console.log('ROS Master:  Error, check console.');
       //printProperties(error);
       document.getElementById('statusMessage').innerHTML='<p>Error detected; check console.</p>';
   });
-
   ros.on('connection', function() {
       console.log('ROS Master:  Connected.');
       //printProperties(error);
       document.getElementById('statusMessage').innerHTML="<p style='color:green'>Connected!</p>";
   });
-
   ros.on('close', function() {
       console.log('ROS Master:  Connection closed.');
       //printProperties(error);
       document.getElementById('statusMessage').innerHTML="<p style='color:red'>Connection closed.</p>";
   });
-
     modepub = new ROSLIB.Topic({
       ros : ros,
       name : '/pidrone/set_mode',
       messageType : 'pidrone_pkg/Mode'
     });
-
     modeMsg = new ROSLIB.Message({
       mode: 0,
      });
-
     emptyMsg = new ROSLIB.Message({
      });
-
-
     heartbeatPub = new ROSLIB.Topic({
       ros : ros,
       name : '/pidrone/heartbeat',
       messageType : 'std_msgs/String'
     });
     heartbeatpubmsg = new ROSLIB.Message({data: "Javascript API"})
-
-
-
-
-
     setInterval(function(){
       heartbeatPub.publish(heartbeatpubmsg);
       //console.log("heartbeat");
     }, 1000);
-
     resetpub = new ROSLIB.Topic({
       ros : ros,
       name : '/pidrone/reset_transform',
       messageType : 'std_msgs/Empty'
     });
-
     togglepub = new ROSLIB.Topic({
       ros : ros,
       name : '/pidrone/toggle_transform',
       messageType : 'std_msgs/Empty'
     });
-
-
     statesub = new ROSLIB.Topic({
       ros : ros,
       name : '/pidrone/state',
@@ -157,10 +135,7 @@
       } else {
         document.getElementById('vbat').innerHTML=mynumber;
       }
-
     });
-
-
     irsub = new ROSLIB.Topic({
       ros : ros,
       name : '/pidrone/infrared',
@@ -182,13 +157,10 @@
       count = count % irChart.data.datasets[0].data.length;
       irChart.update();
       //console.log("Data: " + irChart.data.datasets[0].data);
-
     });
 
-  
     var imu = document.getElementById("imu");
     empty(imu);
-
     // Create the main viewer.
     var imuviewer = new ROS3D.Viewer({
       divID : 'imu',
@@ -196,8 +168,6 @@
       height : 240,
       antialias : true
     });
-
-
     // Setup a client to listen to TFs.
     var tfClient = new ROSLIB.TFClient({
       ros : ros,
@@ -206,7 +176,6 @@
       rate : 5.0,
       fixedFrame : '/base'
     });
-
     // Setup the marker client.
     markerClient = new ROS3D.MarkerClient({
       ros : ros,
@@ -215,24 +184,22 @@
       rate : 5.0,
       rootObject : imuviewer.scene
     });
-
-
     // Create the main viewer.
 //    var imageviewer = new MJPEGCANVAS.Viewer({
 //      divID : 'camera',
-//      host : '10.42.0.24',
+//      host : '192.168.42.1',
 //      width : 320,
 //      height : 240,
 //      topic : '/pidrone/picamera/image_raw'
 //    });
     imageStream();
   }
-
   function imageStream() {
     var image = document.getElementById('cameraImage');
     image.src = "http://" + document.getElementById('hostname').value + ":8080/stream?topic=/pidrone/picamera/image_raw&quality=70";
+    var firstImage = document.getElementById('firstImage');
+    firstImage.src = "http://" + document.getElementById('hostname').value + ":8080/stream?topic=/pidrone/picamera/first_image&quality=70";
   }
-
   function markerUpdate() {
     markerClient.topicName = document.getElementById('imutopic').value;
     markerClient.subscribe();
@@ -246,7 +213,7 @@
 <table summary="hostname" border="1" width=800>
 <tr>
   <td>Hostname: <input type="text" id="hostname" value="192.168.42.1" onchange="init()"/><input type="submit" value="Connect" name="submit" onclick="init()"/></td>
-<td>Connection status:  <div id="statusMessage">Initial value.</div>  
+<td>Connection status:  <div id="statusMessage">Initial value.</div>
     Battery Voltage:<div id="vbat">???</div></td>
 </tr>
 </table>
@@ -295,7 +262,7 @@ var irChart = new Chart(ctx, {
                 ticks: {
                     beginAtZero:true,
                     min: 0,
-                    max: 60,
+                    max: 1,
                 }
             }],
             xAxes: [{
@@ -312,7 +279,6 @@ for (i = 0; i < irChart.data.datasets[0].data.length; i++) {
   irChart.data.labels[i] = i;
   irChart.data.datasets[1].data[i] = 0;
 }
-
 </script>
 </div>
 </td>
@@ -348,7 +314,6 @@ Keyboard Control (with focus in the input box)
 <input type="text" name="keyboardCtrl" value="" onkeydown="keyDown()" onkeyup="keyUp()" onkeypress="keyPress()" />
 </div>
 <script type="text/javascript">
-
 function publishArm() {
   console.log("arm");
   modeMsg.mode = 0
@@ -362,13 +327,10 @@ function publishResetTransform() {
   console.log("reset transform");
   resetpub.publish(emptyMsg);
 }
-
 function publishToggleTransform() {
   console.log("toggle transform");
   togglepub.publish(emptyMsg);
 }
-
-
 function publishDisarm() {
   console.log("disarm");
   modeMsg.mode = 4
@@ -378,7 +340,6 @@ function publishDisarm() {
   modeMsg.yaw_velocity = 0
   modepub.publish(modeMsg);
 }
-
 function publishZeroVelocity() {
   console.log("zero velocity");
   modeMsg.mode = 5
@@ -388,8 +349,6 @@ function publishZeroVelocity() {
   modeMsg.yaw_velocity = 0
   modepub.publish(modeMsg);
 }
-
-
 function publishTakeoff() {
   console.log("takeoff");
   modeMsg.mode = 5
@@ -399,8 +358,6 @@ function publishTakeoff() {
   modeMsg.yaw_velocity = 0
   modepub.publish(modeMsg);
 }
-
-
 function publishTranslateLeft() {
   console.log("translate left");
   modeMsg.mode = 5
@@ -410,7 +367,6 @@ function publishTranslateLeft() {
   modeMsg.yaw_velocity = 0
   modepub.publish(modeMsg);
 }
-
 function publishTranslateRight() {
   console.log("translate right");
   modeMsg.mode = 5
@@ -420,7 +376,6 @@ function publishTranslateRight() {
   modeMsg.yaw_velocity = 0
   modepub.publish(modeMsg);
 }
-
 function publishTranslateForward() {
   console.log("translate forward");
   modeMsg.mode = 5
@@ -429,9 +384,7 @@ function publishTranslateForward() {
   modeMsg.z_velocity = 0
   modeMsg.yaw_velocity = 0
   modepub.publish(modeMsg);
-
 }
-
 function publishTranslateBackward() {
   console.log("translate backward");
   modeMsg.mode = 5
@@ -441,8 +394,6 @@ function publishTranslateBackward() {
   modeMsg.yaw_velocity = 0
   modepub.publish(modeMsg);
 }
-
-
 function publishTranslateUp() {
   console.log("translate up");
   modeMsg.mode = 5
@@ -452,7 +403,6 @@ function publishTranslateUp() {
   modeMsg.yaw_velocity = 0
   modepub.publish(modeMsg);
 }
-
 function publishTranslateDown() {
   console.log("translate down");
   modeMsg.mode = 5
@@ -462,8 +412,6 @@ function publishTranslateDown() {
   modeMsg.yaw_velocity = 0
   modepub.publish(modeMsg);
 }
-
-
 function publishYawLeft() {
   console.log("yaw left");
   modeMsg.mode = 5
@@ -473,7 +421,6 @@ function publishYawLeft() {
   modeMsg.yaw_velocity = -50
   modepub.publish(modeMsg);
 }
-
 function publishYawRight() {
   console.log("yaw right");
   modeMsg.mode = 5
@@ -483,18 +430,13 @@ function publishYawRight() {
   modeMsg.yaw_velocity = 50
   modepub.publish(modeMsg);
 }
-
-
-
 function keyUp() {
-
   var char = String.fromCharCode(event.which || event.keyCode);
   //console.log("key up: " + char);
   if (char == "J" || char == "L" || char == "K" || char == "I" || char == "W" || char == "S" || char == "A" || char == "D") {
     publishZeroVelocity();
   }
 }
-
 function keyPress() {
   var char = String.fromCharCode(event.which || event.keyCode);
   console.log("key pressed: " + char);
@@ -511,13 +453,11 @@ function keyPress() {
   } else if (char == 'p') {
     publishToggleTransform();
   }
-
   event.preventDefault();
   return false;
 }
-
 function keyDown() {
-  //console.log("Got key down: " + event.keyCode); 
+  //console.log("Got key down: " + event.keyCode);
   //printProperties(event);
   var char = String.fromCharCode(event.which || event.keyCode);
   //console.log("Key down: " + char);
@@ -541,7 +481,6 @@ function keyDown() {
     //console.log('undefined key: ' + event.keyCode);
   }
 }
-
 </script>
 
 </td>
@@ -551,7 +490,15 @@ function keyDown() {
 
 <tr>
 <td><div id="imu"></div></td>
-<td><img id="cameraImage" alt="Camera image" src="nocamera.jpg" width=400/></td>
+<td>
+
+<!--<div id="camera"></div>-->
+
+  <img id="cameraImage" alt="Camera image" src="nocamera.jpg" width=320/>
+  <img id="firstImage" alt="First camera image" src="nocamera.jpg" width=320/>
+
+
+</td>
 </tr>
 
 <tr><td>IMU
@@ -559,7 +506,7 @@ Topic: <input type="text" id="imutopic" value="/pidrone/imu_visualization_marker
 </td>
     <td>Camera.  Make sure you run <pre>rosrun web_video_server web_video_server</pre> and the image stream.
 <br/>
-Topic: <input type="text" id="imagetopic" value="/pidrone/picamrea/image_raw" onchange="imageStream()"/>
+Topic: <input type="text" id="imagetopic" value="/pidrone/picamera/image_raw" onchange="imageStream()"/>
 </td>
 </tr>
 </table>

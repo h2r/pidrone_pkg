@@ -199,7 +199,7 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
 
     # this is the default mode ie velocity control
     def mode_callback(self, data):
-	self.mode.mode = data.mode
+        self.mode.mode = data.mode
         if not self.hold_position or data.mode == 4 or data.mode == 3:
             print "VELOCITY"
             # TODO scale is not consistent, check index.html and pid_class.py
@@ -211,7 +211,7 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
             print "Target position", self.target_pos
 
 
-def is_almost_equal(x,y, epsilon=1*10**(-8)):
+def is_almost_equal(x,y, epsilon=1*f10**(-8)):
     return abs(x-y) <= epsilon
 
 
@@ -251,8 +251,8 @@ def main():
                         camera_info_pub.publish(cim.getCameraInfo())
 
 		print 'camera told to stop'
-                camera.stop_recording(splitter_port=1)
-                camera.stop_recording(splitter_port=2)
+        camera.stop_recording(splitter_port=1)
+        camera.stop_recording(splitter_port=2)
         print "Shutdown Received"
         sys.exit()
     except Exception as e:

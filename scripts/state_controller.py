@@ -21,7 +21,7 @@ class StateController(object):
     def __init__(self):
         # Initial setpoint for the z-position of the drone
         self.initial_set_z = 30.0
-        # Setpoint for the z-position of the drone
+        # Setpoint for the z-posiftion of the drone
         self.set_z = self.initial_set_z
         # Current z-position of the drone according to sensor data
         self.current_z = 0

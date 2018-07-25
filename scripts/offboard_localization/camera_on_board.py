@@ -1,18 +1,12 @@
 import numpy as np
 import picamera
 import picamera.array
-import cv2
 from scripts.picam_flow_class import AnalyzeFlow
-from pidrone_pkg.msg import axes_err, Mode, ERR
 from sensor_msgs.msg import Image, Range, CameraInfo
-from std_msgs.msg import Empty
 import rospy
-import tf
 from cv_bridge import CvBridge, CvBridgeError
 import sys
-from scripts.pid_class import PIDaxis
 import camera_info_manager
-from geometry_msgs.msg import TwistStamped
 
 CAMERA_WIDTH = 320
 CAMERA_HEIGHT = 240
@@ -36,7 +30,7 @@ class CameraTransmitter(picamera.array.PiMotionAnalysis):
 def main():
     rospy.init_node('camera_on_board')
 
-    image_pub = rospy.Publisher("/pidrone/picamera/image_raw", Image, queue_size=1, tcp_nodelay=False)\
+    image_pub = rospy.Publisher("/pidrone/picamera/image_raw", Image, queue_size=1, tcp_nodelay=False)
     camera_info_pub = rospy.Publisher("/pidrone/picamera/camera_info", CameraInfo, queue_size=1, tcp_nodelay=False)
 
     cim = camera_info_manager.CameraInfoManager("picamera", "package://pidrone_pkg/params/picamera.yaml")
