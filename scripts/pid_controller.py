@@ -52,16 +52,13 @@ class PIDController(object):
         # Control values (initialize to disarmed values)
         self.ctrl_vals = command_values.disarm_cmd
 
-
-        # Store the current and previous mode of the drone
-        self.prev_mode = "DISARMED"
+        # Store the current mode of the drone
         self.curr_mode = "DISARMED"
 
     # ROS Subscriber Callback Methods
     #################################
     def mode_callback(self, msg):
         """Update the prev and curr mode variables"""
-        self.prev_mode = self.curr_mode
         self.curr_mode = msg.mode
 
     def infrared_callback(self, msg):
@@ -160,7 +157,7 @@ def main():
     rospy.Subscriber("/pidrone/vrpn_pos", PoseStamped, pid_ctrlr.vrpn_callback)
     rospy.Subscriber("/pidrone/set_vel", Velocity, pid_ctrlr.set_vel_callback)
     rospy.Subscriber("/pidrone/imu", Imu, pid_ctrlr.imu_callback)
-    rospy.Subscriber("/pidrone/desired_mode", Mode, pid_ctrlr.mode_callback)
+    rospy.Subscriber("/pidrone/mode", Mode, pid_ctrlr.mode_callback)
 
     # Non-ROS Setup
     ###############
@@ -177,9 +174,8 @@ def main():
         fly_ctrl = pid_ctrlr.pid.step(pid_ctrlr.error, pid_ctrlr.cmd_yaw_velocity)
 
         if pid_ctrlr.curr_mode == 'FLYING':
-            if pid_ctrlr.prev_mode == 'FLYING':
-                pid_ctrlr.publish_ctrl(fly_ctrl)
-            if pid_ctrlr.prev_mode == 'ARMED':
+            pid_ctrlr.publish_ctrl(fly_ctrl)
+        elif pid_ctrlr.curr_mode == 'ARMED':
                 pid_ctrlr.pid.reset(pid_ctrlr)
 
     print 'Stopping PID controller'
