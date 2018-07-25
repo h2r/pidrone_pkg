@@ -43,6 +43,8 @@ class StateEstimation(object):
         self.got_optical_flow = False
         self.got_ir = False
         
+        self.in_callback = False
+        
         self.num_complete_ir = 0
         self.num_complete_imu = 0
         self.num_complete_optical_flow = 0
@@ -124,9 +126,10 @@ class StateEstimation(object):
         # TODO: Modify these sigma point parameters appropriately. Currently
         #       just guesses
         sigma_points = MerweScaledSigmaPoints(n=self.state_vector_dim,
-                                              alpha=0.1,
+                                              alpha=0.3,
                                               beta=2.0,
                                               kappa=-9.0)
+        print 'WEIGHTS:', sigma_points.Wm
         
         # Create the UKF object
         # Note that dt will get updated dynamically as sensor data comes in,
@@ -156,7 +159,7 @@ class StateEstimation(object):
         # following error:
         #   "numpy.linalg.linalg.LinAlgError: 3-th leading minor not positive
         #    definite"
-        self.ukf.Q = np.eye(self.state_vector_dim)*0.0001
+        self.ukf.Q = np.eye(self.state_vector_dim)*0.1
         #self.ukf.Q = np.diag([0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0])*0.001
         
         # Initialize the measurement covariance matrix R for each discrete
@@ -226,6 +229,9 @@ class StateEstimation(object):
         
         This method PREDICTS with a control input and UPDATES.
         '''
+        if self.in_callback:
+            return
+        self.in_callback = True
         euler_angles = tf.transformations.euler_from_quaternion(
                                                            [data.orientation.x,
                                                             data.orientation.y,
@@ -252,7 +258,7 @@ class StateEstimation(object):
             #self.ukf.residual_z = self.angle_residual
             # Actually, looks like euler_from_quaternion can return negative
             # angles in radians
-            self.ukf.residual_z = np.subtract
+            #self.ukf.residual_z = np.subtract
             # TODO: Look into the range of angles returned by
             #       euler_from_quaternion. As there are negatives, it would seem
             #       possible that the range be between -pi and pi radians...
@@ -277,6 +283,7 @@ class StateEstimation(object):
             self.check_if_ready_to_filter()
         self.num_complete_imu += 1
         print '--IMU:', self.num_complete_imu
+        self.in_callback = False
                         
     def optical_flow_data_callback(self, data):
         '''
@@ -288,6 +295,9 @@ class StateEstimation(object):
         
         This method PREDICTS with the most recent control input and UPDATES.
         '''
+        if self.in_callback:
+            return
+        self.in_callback = True
         if self.ready_to_filter:
             self.print_notice_if_first()
             self.update_input_time(data)
@@ -304,7 +314,7 @@ class StateEstimation(object):
                                       data.twist.linear.y, # y velocity
                                       data.twist.angular.z]) # yaw velocity
             # Ensure that we are using subtraction to compute the residual
-            self.ukf.residual_z = np.subtract
+            #self.ukf.residual_z = np.subtract
             #self.ukf.P = (self.ukf.P + self.ukf.P.T)/2.0 # TODO: Look into
             self.ukf.update(measurement_z,
                             hx=self.measurement_function_optical_flow,
@@ -326,6 +336,7 @@ class StateEstimation(object):
             self.check_if_ready_to_filter()
         self.num_complete_optical_flow += 1
         print '--OPTICAL FLOW:', self.num_complete_optical_flow
+        self.in_callback = False
                         
     def ir_data_callback(self, data):
         '''
@@ -333,7 +344,9 @@ class StateEstimation(object):
         
         This method PREDICTS with the most recent control input and UPDATES.
         '''
-        #print 'P diag:', np.diagonal(self.ukf.P)
+        if self.in_callback:
+            return
+        self.in_callback = True
         if self.ready_to_filter:
             self.print_notice_if_first()
             self.update_input_time(data)
@@ -347,11 +360,14 @@ class StateEstimation(object):
             # perform a measurement update with the slant range reading
             measurement_z = np.array([data.range])
             # Ensure that we are using subtraction to compute the residual
-            self.ukf.residual_z = np.subtract
+            #self.ukf.residual_z = np.subtract
             #self.ukf.P = (self.ukf.P + self.ukf.P.T)/2.0 # TODO: Look into
             print 'BEFORE UPDATE Z:', self.ukf.x[2]
             #print 'BEFORE UPDATE Z VEL:', self.ukf.x[5]
-            print 'Raw slant range:', measurement_z[0]
+            # Multiply slant range by cos(roll)*cos(pitch) to get altitude estimate
+            raw_slant_range_as_altitude = measurement_z[0]*np.cos(self.ukf.x[6])*np.cos(self.ukf.x[7])
+            #print 'Raw slant range transformed to altitude:', raw_slant_range_as_altitude
+            print 'Raw range:', measurement_z[0]
             self.ukf.update(measurement_z,
                             hx=self.measurement_function_ir,
                             R=self.measurement_cov_ir)
@@ -362,8 +378,8 @@ class StateEstimation(object):
             print 'RESIDUAL:', self.ukf.y
             print 'KALMAN GAIN DOT RESIDUAL:', np.dot(self.ukf.K, self.ukf.y)
             print
-            if not ((measurement_z[0] <= self.ukf.x[2] <= self.ukf.x_prior[2]) or
-                    (measurement_z[0] >= self.ukf.x[2] >= self.ukf.x_prior[2])):
+            if not ((raw_slant_range_as_altitude <= self.ukf.x[2] <= self.ukf.x_prior[2]) or
+                    (raw_slant_range_as_altitude >= self.ukf.x[2] >= self.ukf.x_prior[2])):
                 self.num_bad_updates += 1
                 print self.num_bad_updates, 'BAD UPDATE...\n\n\n\n\n\n\n'
             self.publish_current_state()
@@ -381,6 +397,7 @@ class StateEstimation(object):
         self.num_complete_ir += 1
         print '--IR:', self.num_complete_ir
         print
+        self.in_callback = False
             
     def check_if_ready_to_filter(self):
         self.ready_to_filter = (self.got_imu and self.got_optical_flow and
@@ -485,6 +502,8 @@ class StateEstimation(object):
                 
         # Compute the change from the control input
         accelerations_global_frame = self.apply_rotation_matrix(u)
+        # TODO: Perhaps control inputs are messing up predictions if rotation
+        #       matrix is incorrect
         velocities_global_frame = accelerations_global_frame * dt
         change_from_control_input = np.array([0,
                                               0,
@@ -600,6 +619,7 @@ class StateEstimation(object):
         alt_to_r = 1/(np.cos(theta)*np.cos(phi))
         H = np.array([[0, 0, alt_to_r, 0, 0, 0, 0, 0, 0, 0, 0, 0]])
         hx_output = np.dot(H, x)
+        print 'hx_output:', hx_output
         return hx_output
         
     def measurement_function_optical_flow(self, x):

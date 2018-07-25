@@ -4,10 +4,10 @@ from numpy.random import randn # to generate some random Gaussian noise
 import numpy as np
 import os
 import csv
-# import rospy
-# from sensor_msgs.msg import Imu, Range
-# from geometry_msgs.msg import TwistStamped
-# import tf
+import rospy
+from sensor_msgs.msg import Imu, Range
+from geometry_msgs.msg import TwistStamped
+import tf
 
 class DroneSimulator(object):
     '''
@@ -327,9 +327,9 @@ if __name__ == '__main__':
     print 'Starting simulation...'
     #drone_sim = DroneSimulator(publish_ros=True)
     #drone_sim = DroneSimulator(publish_ros=True, delay_rate=100)
-    #drone_sim = DroneSimulator(publish_ros=True, correlate_z_pos_and_accel=True)
-    drone_sim = DroneSimulator(save_to_csv=True, correlate_z_pos_and_accel=True)
+    drone_sim = DroneSimulator(publish_ros=True, correlate_z_pos_and_accel=True)
+    #drone_sim = DroneSimulator(save_to_csv=True, correlate_z_pos_and_accel=True)
     # Run the drone for 50 seconds
-    drone_sim.run_drone(duration=50)
+    drone_sim.run_drone(duration=10)
     #drone_sim.run_drone(duration=0.5)
     print '\nSimulation complete.'
