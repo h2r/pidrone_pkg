@@ -309,39 +309,43 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
 
 def main():
 
-    # camera = picamera.PiCamera(framerate=40, sensor_mode=4)
-    camera = picamera.PiCamera(framerate=90)
-    # Create the AnalyzePhase object
-    phase_analyzer = AnalyzePhase(camera)
-
+    # ROS setup
+    ###########
     rospy.init_node('flow_pub')
 
+    # Publishers:
+    #############
     first_image_pub = rospy.Publisher("/pidrone/picamera/first_image", Image, queue_size=1, latch=True)
-
     image_pub = rospy.Publisher("/pidrone/picamera/image_raw", Image, queue_size=1, tcp_nodelay=False)
     #image_mono_pub = rospy.Publisher("/pidrone/picamera/image_mono",Image, queue_size=1, tcp_nodelay=False)
     camera_info_pub = rospy.Publisher("/pidrone/picamera/camera_info", CameraInfo, queue_size=1, tcp_nodelay=False)
 
-
+    # camera = picamera.PiCamera(framerate=40, sensor_mode=4)
+    camera = picamera.PiCamera(framerate=90)
+    bridge = CvBridge()
     cim = camera_info_manager.CameraInfoManager("picamera", "package://pidrone_pkg/params/picamera.yaml")
     cim.loadCameraInfo()
     if not cim.isCalibrated():
         rospy.logerr("warning, could not find calibration for the camera.")
 
-    bridge = CvBridge()
+    # Create the AnalyzePhase object
+    phase_analyzer = AnalyzePhase(camera)
+    phase_analyzer.setup()
+    phase_analyzer.bridge = bridge
+    phase_analyzer.first_image_pub = first_image_pub
 
     # Create AnaylzeFlow object
     flow_analyzer = AnalyzeFlow(camera)
     flow_analyzer.bridge = bridge
     camera.resolution = (320, 240)
     flow_analyzer.setup(camera.resolution)
-    phase_analyzer.setup()
+
+    # Subscribers:
+    ##############
     rospy.Subscriber("/pidrone/reset_transform", Empty, phase_analyzer.reset_callback)
     rospy.Subscriber("/pidrone/toggle_transform", Empty, phase_analyzer.toggle_callback)
     rospy.Subscriber("/pidrone/infrared", Range, phase_analyzer.range_callback)
     rospy.Subscriber("/pidrone/desired_vel", Velocity, phase_analyzer.velocity_callback)
-    phase_analyzer.bridge = bridge
-    phase_analyzer.first_image_pub = first_image_pub
 
     camera.start_recording("/dev/null", format='h264', splitter_port=1, motion_output=flow_analyzer)
     print "Starting Flow"
