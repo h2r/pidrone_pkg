@@ -14,7 +14,7 @@ class StateController(object):
 
     def __init__(self, cmdpub):
 
-        # Desired,current, and previous modes of the drone
+        # Desired, current, and previous modes of the drone
         self.desired_mode = 'DISARMED'
         self.curr_mode = 'DISARMED'
         self.prev_mode = 'DISARMED'
@@ -139,7 +139,9 @@ if __name__ == '__main__':
     sc.same_cmd_counter = 0
     sc.last_cmd = 'dsm'
     sc.curr_cmd = 'dsm'
-    def same_cmd_counter_update(cmd, ):
+    def same_cmd_counter_update(cmd):
+        """Count the number of times sc has published the same command. This is
+        used to check if the flight_controller is receiving commands"""
         sc.last_cmd = sc.curr_cmd
         sc.curr_cmd = cmd
         if sc.last_cmd == sc.curr_cmd:
@@ -148,55 +150,58 @@ if __name__ == '__main__':
     print 'Controlling State'
     r = rospy.Rate(30) # 30hz
     while not rospy.is_shutdown():
-        if sc.same_cmd_counter > 5:
-            print ('\n\nThere was an error communicating with the flight controller.'
-                   '\nCheck if the flight controller node is active.\n\n')
-            break
-        if not sc.curr_mode == 'DISARMED':
-            if sc.shouldIDisarm():
+        try:
+            # Break the loop if the flight controller isn't updating /pidrone/mode
+            if sc.same_cmd_counter > 5:
+                print ('\n\nThere was an error communicating with the flight controller.'
+                       '\nCheck if the flight controller node is active.\n\n')
                 break
+            # Break the loop if a safety check has failed
+            if not sc.curr_mode == 'DISARMED':
+                if sc.shouldIDisarm():
+                    break
 
-        # Finite State Machine
-        ######################
-        if sc.curr_mode == 'DISARMED':
-            if sc.desired_mode == 'DISARMED':
-                pass
-            elif sc.desired_mode == 'ARMED':
-                print 'sending ARM command'
-                sc.arm()
-                rospy.sleep(1)
-                same_cmd_counter_update('arm')
-            else:
-                print 'Cannot transition from Mode %s to Mode %s' % (sc.curr_mode, sc.desired_mode)
+            # Finite State Machine
+            ######################
+            if sc.curr_mode == 'DISARMED':
+                if sc.desired_mode == 'DISARMED':
+                    pass
+                elif sc.desired_mode == 'ARMED':
+                    print 'sending ARM command'
+                    sc.arm()
+                    rospy.sleep(1)
+                    same_cmd_counter_update('arm')
+                else:
+                    print 'Cannot transition from Mode %s to Mode %s' % (sc.curr_mode, sc.desired_mode)
 
-        elif sc.curr_mode == 'ARMED':
-            if sc.desired_mode == 'ARMED':
-                sc.idle()
-# XXX: test this sleep value
-                rospy.sleep(1)
-            elif sc.desired_mode == 'FLYING':
-                print 'sending FLYING command'
-                sc.fly()
-            elif sc.desired_mode == 'DISARMED':
-                print 'sending DISARM command'
-                sc.disarm()
-                rospy.sleep(1)
-                same_cmd_counter_update('dsm')
-            else:
-                print 'Cannot transition from Mode %s to Mode %s' % (sc.curr_mode, sc.desired_mode)
+            elif sc.curr_mode == 'ARMED':
+                if sc.desired_mode == 'ARMED':
+                    sc.idle()
+                    rospy.sleep(1)
+                elif sc.desired_mode == 'FLYING':
+                    print 'sending FLYING command'
+                    sc.fly()
+                elif sc.desired_mode == 'DISARMED':
+                    print 'sending DISARM command'
+                    sc.disarm()
+                    rospy.sleep(1)
+                    same_cmd_counter_update('dsm')
+                else:
+                    print 'Cannot transition from Mode %s to Mode %s' % (sc.curr_mode, sc.desired_mode)
 
-        elif sc.curr_mode == 'FLYING':
-            if sc.desired_mode == 'FLYING':
-                sc.fly()
-                rospy.sleep(0.01)
-# XXX: test this sleep value
-            elif sc.desired_mode == 'DISARMED':
-                print 'sending DISARM command'
-                sc.disarm()
-                rospy.sleep(1)
-            else:
-                print 'Cannot transition from Mode %s to Mode %s' % (sc.curr_mode, sc.desired_mode)
-
+            elif sc.curr_mode == 'FLYING':
+                if sc.desired_mode == 'FLYING':
+                    sc.fly()
+                    rospy.sleep(0.01)
+    # XXX: test this sleep value
+                elif sc.desired_mode == 'DISARMED':
+                    print 'sending DISARM command'
+                    sc.disarm()
+                    rospy.sleep(1)
+                else:
+                    print 'Cannot transition from Mode %s to Mode %s' % (sc.curr_mode, sc.desired_mode)
+        except:
+                raise
         r.sleep()
 
     sc.disarm()
