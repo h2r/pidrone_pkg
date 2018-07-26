@@ -11,10 +11,10 @@ import cv2
 # ----- parameters are same as picam_localization -----
 CAMERA_WIDTH = 320
 CAMERA_HEIGHT = 240
-MAP_PIXEL_WIDTH = 1942  # in pixel
-MAP_PIXEL_HEIGHT = 1915
-MAP_REAL_WIDTH = 2.4  # in meter
-MAP_REAL_HEIGHT = 2.27
+MAP_PIXEL_WIDTH = 2048  # in pixel
+MAP_PIXEL_HEIGHT = 1616
+MAP_REAL_WIDTH = 1.4  # in meter
+MAP_REAL_HEIGHT = 1.07
 
 METER_TO_PIXEL = (float(MAP_PIXEL_WIDTH) / MAP_REAL_WIDTH + float(MAP_PIXEL_HEIGHT) / MAP_REAL_HEIGHT) / 2.
 CAMERA_CENTER = np.float32([(CAMERA_WIDTH - 1) / 2., (CAMERA_HEIGHT - 1) / 2.]).reshape(-1, 1, 2)
@@ -30,9 +30,7 @@ MAP_GRID_SIZE_Y = ORB_GRID_SIZE_Y * 3
 CELL_X = float(MAP_PIXEL_WIDTH) / MAP_GRID_SIZE_X
 CELL_Y = float(MAP_PIXEL_HEIGHT) / MAP_GRID_SIZE_Y
 PROB_THRESHOLD = 0.001
-MEASURE_WAIT_COUNT = 10
-KEYFRAME_DIST = 0.2
-KEYFRAME_YAW = 0.35
+MEASURE_WAIT_COUNT = 5
 MAP_FEATURES = 600
 
 
@@ -177,12 +175,12 @@ class LocalizationParticleFilter:
 
         transform = self.compute_transform(prev_kp, prev_des, kp, des)
         if transform is not None:
+            # these are the differences, not global
             x = -transform[0, 2] * self.z / CAMERA_SCALE
             y = transform[1, 2] * self.z / CAMERA_SCALE
             yaw = -np.arctan2(transform[1, 0], transform[0, 0])
             self.sample_motion_model(x, y, yaw)
 
-        # only do measurement model if this is a keyframe, or it's been a while since a keyframe (error)
         if self.measure_count > MEASURE_WAIT_COUNT:
             self.measurement_model(kp, des)
             self.measure_count = 0
@@ -336,10 +334,6 @@ class LocalizationParticleFilter:
         return transform
 
 
-def dist(x, y):
-    return math.sqrt(math.pow(x, 2) + math.pow(y, 2))
-
-
 def adjustAngle(angle):
     """""
     keeps angle within -pi to pi
@@ -350,7 +344,6 @@ def adjustAngle(angle):
         angle += 2 * math.pi
 
     return angle
-
 
 def create_map(file_name):
     """
