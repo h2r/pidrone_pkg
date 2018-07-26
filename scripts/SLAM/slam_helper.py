@@ -21,7 +21,7 @@ CAMERA_HEIGHT = 240.
 DES_MATCH_THRESHOLD = 55.
 # the height of the camera frame is the shortest distance you could move and have all new features in frame, include
 # some overlap for safety
-KEYFRAME_DIST_THRESHOLD = CAMERA_HEIGHT - 20
+KEYFRAME_DIST_THRESHOLD = CAMERA_HEIGHT
 KEYFRAME_YAW_THRESHOLD = 0.175
 
 # TODO throw away frames when the drone is not level or use stack overflow suggestion
@@ -92,10 +92,10 @@ class FastSLAM:
         # observation noise
         self.sigma_observation = np.array([[self.sigma_d ** 2, 0], [0, self.sigma_p ** 2]])
 
-        sigma_vx = 0.01
-        sigma_vy = 0.01
+        sigma_vx = 0.0001
+        sigma_vy = 0.0001
         sigma_vz = 0.0
-        sigma_yaw = 0.01
+        sigma_yaw = 0.0001
         self.covariance_motion = np.array([[sigma_vx ** 2, 0, 0, 0],
                                            [0, sigma_vy ** 2, 0, 0],
                                            [0, 0, sigma_vz ** 2, 0],
@@ -133,7 +133,7 @@ class FastSLAM:
             # reflect that more motion causes more uncertainty and vice versa
             self.update_motion_covariance(x, y, yaw)
 
-            # update poses with optical flow data
+            # update poses with motion prediction
             for p in self.particles:
                 self.predict_particle(p, x, y, yaw)
 
@@ -147,28 +147,31 @@ class FastSLAM:
                     x = -transform[0, 2]
                     y = transform[1, 2]
                     yaw = -np.arctan2(transform[1, 0], transform[0, 0])
-
                     # if we've moved an entire camera frame distance since the last keyframe (or yawed 10 degrees)
                     if utils.distance(x, y, 0, 0) > KEYFRAME_DIST_THRESHOLD or yaw > KEYFRAME_YAW_THRESHOLD:
-                        for p in self.particles:
-                            self.update_map(p, kp, des)
-
-                            self.weight = self.get_average_weight()
-
-                        self.resample_particles()
-                        self.key_kp, self.key_des = kp, des
-
+                        self.keyframe_update(kp, des)
+                else:
+                    # moved too far to transform from last keyframe, so set a new one
+                    self.keyframe_update(kp, des)
             # there is no previous keyframe
             else:
-                for p in self.particles:
-                    self.update_map(p, kp, des)
-
-                    self.weight = self.get_average_weight()
-
-                self.resample_particles()
-                self.key_kp, self.key_des = kp, des
+                self.keyframe_update(kp, des)
 
         return self.estimate_pose(), self.weight
+
+    def keyframe_update(self, kp, des):
+        """""
+        updates the map, gets the average weight of the particles, then resamples the particles
+        args:
+            kp, des: the current keypoints and descriptors
+        """""
+        for p in self.particles:
+            self.update_map(p, kp, des)
+
+        self.weight = self.get_average_weight()
+
+        self.resample_particles()
+        self.key_kp, self.key_des = kp, des
 
     def predict_particle(self, particle, x, y, yaw):
         """"
@@ -187,7 +190,7 @@ class FastSLAM:
         noisy_x_y_z_yaw = np.random.multivariate_normal([x, y, self.z, yaw], self.covariance_motion)
 
         old_yaw = particle.pose[3]
-        # I know this works but it seems like it would move the drone in the opposite direction...
+        # TODO: is this what causes the drone to move in the opposite direction?
         particle.pose[0] += (noisy_x_y_z_yaw[0] * np.cos(old_yaw) + noisy_x_y_z_yaw[1] * np.sin(old_yaw))
         particle.pose[1] += (noisy_x_y_z_yaw[0] * np.sin(old_yaw) + noisy_x_y_z_yaw[1] * np.cos(old_yaw))
         particle.pose[2] = self.z
@@ -231,8 +234,8 @@ class FastSLAM:
                     # get the index of the matched landmark in the old particle
                     old_index = match[0].trainIdx
 
-                    particle.weight += math.log(scale_weight(match[0].distance))
                     self.update_landmark(particle, old_index, kp, des)
+                    particle.weight += math.log(scale_weight(match[0].distance))
                     matched_landmarks[old_index] = True
 
             removed = []
@@ -240,9 +243,10 @@ class FastSLAM:
                 lm = particle.landmarks[i]
                 if match:
                     lm.counter += 1
-                # this landmark was not matched to, but is within sight of the drone
-                elif utils.distance(lm.x, lm.y, particle.pose[0], particle.pose[1]) < self.perceptual_range:
+                # this landmark was not matched to, but is within sight of this particle
+                elif utils.distance(lm.x, lm.y, particle.pose[0], particle.pose[1]) <= self.perceptual_range:
                     lm.counter -= 1
+                    # particle.weight += math.log(PROB_THRESHOLD)
                     if lm.counter < 0:
                         removed.append(lm)
 
@@ -485,8 +489,8 @@ class FastSLAM:
         # a yaw of more than 0.34 or less than -0.34 radian is always 0.1 variance
         # linear scale for all values in between
 
-        vx = self.pixel_to_meter(dx)
-        vy = self.pixel_to_meter(dy)
+        vx = abs(dx)
+        vy = abs(dy)
         vyaw = abs(dyaw)
 
         if vx > 0.1: vx = 0.1
@@ -498,10 +502,10 @@ class FastSLAM:
             # linear scale from [0,0.34] to [0,0.1]
             vyaw *= 0.294
 
-        # motion matrix [y][x] from top left so vx is 0,0 vy is 1,1 and vyaw is 3,3
-        self.covariance_motion[0][0] = vx
-        self.covariance_motion[1][1] = vy
-        self.covariance_motion[3][3] = vyaw
+        # squish them down a lot more because they need to be small
+        self.covariance_motion[0][0] = vx * 0.01
+        self.covariance_motion[1][1] = vy * 0.01
+        self.covariance_motion[3][3] = vyaw * 0.01
 
 
 def scale_weight(w):
