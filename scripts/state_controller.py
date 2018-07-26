@@ -223,6 +223,7 @@ if __name__ == '__main__':
                 if sc.shouldIDisarm():
                     print "Disarming because a safety check failed."
                     break
+
             # Uses a PID controller to calculate the flight command: [roll, pitch, yaw, throttle]
             fly_cmd = sc.pid.step(sc.error, sc.cmd_yaw_velocity)
 
@@ -263,6 +264,7 @@ if __name__ == '__main__':
                 else:
                     print 'Cannot transition from Mode %d to Mode %d' % (sc.current_mode, sc.commanded_mode)
         except:
+            print "BOARD ERRORS!!"
             raise
 
     sc.disarm()
