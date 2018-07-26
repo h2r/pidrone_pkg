@@ -81,7 +81,7 @@ class MultiWii:
         self.elapsed = 0
         self.PRINT = 1
 
-        self.ser = serial.Serial(serPort, 
+        self.ser = serial.Serial(serPort,
                                  baudrate=115200,
                                  bytesize=serial.EIGHTBITS,
                                  parity=serial.PARITY_NONE,
@@ -95,6 +95,11 @@ class MultiWii:
 
     """Function for sending a command to the board."""
     def sendCMD(self, data_length, code, data):
+
+        #NOTICE: the order of the yaw and thrust is switched to correspond to
+        # cleanflight's standard AETR channel order
+        [r,p,y,t] = data
+        data = [r,p,t,y]
 
         dl = len(data)
         if dl == 0:
@@ -110,7 +115,7 @@ class MultiWii:
         b = np.frombuffer(dataString, dtype=np.uint8)
         checksum = np.bitwise_xor.accumulate(b)[-1]
         footerString = MultiWii.footerS.pack(checksum)
-        
+
         self.ser.write(MultiWii.emptyString.join((MultiWii.headerString, dataString, footerString, "\n")))
         # return self.receiveDataPacket()
 
@@ -122,7 +127,7 @@ class MultiWii:
 
     case MSP_SET_RAW_RC:
       s_struct_w((uint8_t*)&rcSerial,16);
-      rcSerialCount = 50; // 1s transition 
+      rcSerialCount = 50; // 1s transition
       s_struct((uint8_t*)&att,6);
       break;
 
@@ -160,7 +165,7 @@ class MultiWii:
         for c, args in cmds:
             result.append(self.receiveDataPacket())
         return result
-            
+
 
     def receiveDataPacket(self):
         start = time.time()
@@ -308,13 +313,13 @@ class MultiWii:
 
 
     """
-    Calibrate the IMU and write outputs to a config file. 
+    Calibrate the IMU and write outputs to a config file.
     """
     def calibrate(self, fname):
         self.sendCMD(0, MultiWii.ACC_CALIBRATION, [])
         print self.receiveDataPacket()
 
-        # ignore the first 200 because it takes a while to settle. 
+        # ignore the first 200 because it takes a while to settle.
         for i in range(200):
             raw_imu = self.getData(MultiWii.RAW_IMU)
             time.sleep(0.01)
