@@ -93,7 +93,7 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
         curr_time = curr_rostime.to_sec()
 
         # start MCL localization
-        if True:
+        if self.locate_position:
             curr_kp, curr_des = self.detector.detectAndCompute(curr_img, None)
 
             if curr_kp is not None and curr_kp is not None:
