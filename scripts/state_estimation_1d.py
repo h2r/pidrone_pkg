@@ -2,10 +2,9 @@
 
 # ROS imports
 import rospy
-import tf
 from sensor_msgs.msg import Imu, Range
 from pidrone_pkg.msg import State
-from geometry_msgs.msg import PoseWithCovarianceStamped, TwistWithCovarianceStamped, TwistStamped
+from geometry_msgs.msg import PoseWithCovarianceStamped, TwistWithCovarianceStamped
 from std_msgs.msg import Header
 
 # UKF imports
@@ -15,7 +14,6 @@ from std_msgs.msg import Header
 # through ssh)
 import matplotlib
 matplotlib.use('Pdf')
-import matplotlib.pyplot as plt
 from filterpy.kalman import UnscentedKalmanFilter
 from filterpy.kalman import MerweScaledSigmaPoints
 
@@ -66,8 +64,9 @@ class StateEstimation1D(object):
         '''
         Initialize ROS-related objects, e.g., the node, subscribers, etc.
         '''
-        print 'Initializing state_estimation node...'
-        rospy.init_node('state_estimation')
+        node_name = 'state_estimation'
+        print 'Initializing {} node...'.format(node_name)
+        rospy.init_node(node_name)
         
         # Subscribe to topics to which the drone publishes in order to get raw
         # data from sensors, which we can then filter

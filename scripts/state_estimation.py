@@ -15,7 +15,6 @@ from std_msgs.msg import Header
 # through ssh)
 import matplotlib
 matplotlib.use('Pdf')
-import matplotlib.pyplot as plt
 from filterpy.kalman import UnscentedKalmanFilter
 from filterpy.kalman import MerweScaledSigmaPoints
 
