@@ -1,5 +1,10 @@
 #!/bin/bash
 
+# credit goes to @pete-otaqui for initial gist:
+# https://gist.github.com/pete-otaqui/4188238
+
+# original version modified for pidrone_pkg releases
+
 # works with a file called VERSION in the current directory,
 # the contents of which should be a semantic version number
 # such as "1.2.3"
