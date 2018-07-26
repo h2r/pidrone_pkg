@@ -21,10 +21,10 @@ import camera_info_manager
 from geometry_msgs.msg import TwistStamped
 from global_position_estimator_distance import LocalizationParticleFilter, create_map, PROB_THRESHOLD
 
-MAP_PIXEL_WIDTH = 1942  # in pixel
-MAP_PIXEL_HEIGHT = 1915
-MAP_REAL_WIDTH = 2.4  # in meter
-MAP_REAL_HEIGHT = 2.27
+MAP_PIXEL_WIDTH = 2048  # in pixel
+MAP_PIXEL_HEIGHT = 1616
+MAP_REAL_WIDTH = 1.4  # in meter
+MAP_REAL_HEIGHT = 1.07
 
 CAMERA_WIDTH = 320
 CAMERA_HEIGHT = 240
@@ -56,7 +56,7 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
         self.fb_pid = PIDaxis(10.0, 0.000, 0.0, midpoint=0, control_range=(-5.0, 5.0))
 
         self.detector = cv2.ORB(nfeatures=NUM_FEATURES, scoreType=cv2.ORB_FAST_SCORE)  # FAST_SCORE is a little faster to compute
-        map_grid_kp, map_grid_des = create_map('pano.jpg')
+        map_grid_kp, map_grid_des = create_map('map.jpg')
         self.estimator = LocalizationParticleFilter(map_grid_kp, map_grid_des)
 
         self.first_locate = True
@@ -72,7 +72,7 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
         self.z = 0.075
         self.iacc_yaw = 0.0
         self.hold_position = False
-        self.target_pos = [0, 0, 0]
+        self.target_pos = [0, 0, 0, 0]
         self.target_yaw = 0.0
         self.map_counter = 0
         self.max_map_counter = 0
@@ -93,7 +93,7 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
         curr_time = curr_rostime.to_sec()
 
         # start MCL localization
-        if self.locate_position:
+        if True:
             curr_kp, curr_des = self.detector.detectAndCompute(curr_img, None)
 
             if curr_kp is not None and curr_kp is not None:
@@ -217,6 +217,7 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
 def is_almost_equal(x, y):
     epsilon = 1*10**(-8)
     return abs(x-y) <= epsilon
+
 
 def main():
     rospy.init_node('localization')
