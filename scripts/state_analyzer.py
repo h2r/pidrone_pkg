@@ -523,9 +523,9 @@ class StateAnalyzer(object):
 if __name__ == '__main__':
     #state_analyzer = StateAnalyzer(stop_after=5)
     state_analyzer = StateAnalyzer()
-    #state_analyzer.compare_altitudes(do_plot=True)
+    state_analyzer.compare_altitudes(do_plot=True)
     #state_analyzer.compare_z_velocities(do_plot=True)
     #state_analyzer.compare_yaw_vel(do_plot=True)
-    state_analyzer.analyze_roll(do_plot=True)
+    #state_analyzer.analyze_roll(do_plot=True)
     plt.show() # to have plot window(s) stay open
 

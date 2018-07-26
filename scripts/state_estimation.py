@@ -126,9 +126,10 @@ class StateEstimation(object):
         # TODO: Modify these sigma point parameters appropriately. Currently
         #       just guesses
         sigma_points = MerweScaledSigmaPoints(n=self.state_vector_dim,
-                                              alpha=0.3,
+                                              alpha=0.9,
                                               beta=2.0,
-                                              kappa=-9.0)
+                                              #kappa=(3.0-self.state_vector_dim))
+                                              kappa=0.0)
         print 'WEIGHTS:', sigma_points.Wm
         
         # Create the UKF object
@@ -371,12 +372,17 @@ class StateEstimation(object):
             self.ukf.update(measurement_z,
                             hx=self.measurement_function_ir,
                             R=self.measurement_cov_ir)
+                            
+            # For testing, don't use the unscented transform for residual computation
+            # temp_residual = measurement_z - self.ukf.sigmas_h[0]
+            # print 'TEMP RESIDUAL:', temp_residual
+            # self.ukf.x = self.ukf.x_prior + np.dot(self.ukf.K, temp_residual)
+            
             print 'AFTER UPDATE Z:', self.ukf.x[2]
             #print 'AFTER UPDATE Z VEL:', self.ukf.x[5]
             #print 'Z-Z_vel COVARIANCE:', self.ukf.P[2, 5]
-            print 'KALMAN GAIN:', self.ukf.K
+            print 'KALMAN GAIN Z:', self.ukf.K[2]
             print 'RESIDUAL:', self.ukf.y
-            print 'KALMAN GAIN DOT RESIDUAL:', np.dot(self.ukf.K, self.ukf.y)
             print
             if not ((raw_slant_range_as_altitude <= self.ukf.x[2] <= self.ukf.x_prior[2]) or
                     (raw_slant_range_as_altitude >= self.ukf.x[2] >= self.ukf.x_prior[2])):
