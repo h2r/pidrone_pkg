@@ -3,28 +3,69 @@
 <head>
 <title>Javascript Interface to the PiDrone</title>
 
-<script type="text/javascript" src="three.js"></script>
-<script type="text/javascript" src="eventemitter2.min.js"></script>
-<script type="text/javascript" src="roslib.js"></script>
-<script type="text/javascript" src="ros3d.js"></script>
-<script type="text/javascript" src="Chart.bundle.min.js"></script>
-<script type="text/javascript" src="mjpegcanvas.js"></script>
-<script type="text/javascript" src="jquery-3.3.1.min.js"></script>
-<script type="text/javascript" src="main.js"></script>
-<link rel="stylesheet" href="main.css">
+<link rel="stylesheet" href="css/bootstrap.css">
+<link rel="stylesheet" href="css/main.css">
+
+<script type="text/javascript" src="js/three.js"></script>
+<script type="text/javascript" src="js/eventemitter2.min.js"></script>
+<script type="text/javascript" src="js/roslib.js"></script>
+<script type="text/javascript" src="js/ros3d.js"></script>
+<script type="text/javascript" src="js/Chart.bundle.min.js"></script>
+<script type="text/javascript" src="js/mjpegcanvas.js"></script>
+<script type="text/javascript" src="js/jquery-3.3.1.min.js"></script>
+<script type="text/javascript" src="js/bootstrap.js"></script>
+
+<script type="text/javascript" src="js/main.js"></script>
 
 
 </head>
 
 <body>
-  <h2>PiDrone Web Interface</h2>
-<table summary="hostname" border="1" width=800>
-<tr>
-  <td>Hostname: <input type="text" id="hostname" value="192.168.42.1"><input type="submit" value="Connect" name="submit" onclick="init()"/></td>
-<td>Connection status:  <div id="statusMessage">Initial value.</div>  
-    Battery Voltage:<div id="vbat">???</div></td>
-</tr>
-</table>
+    <div class="container-fluid">
+        <nav class="navbar navbar-expand-lg navbar-light bg-light">
+          <div class="navbar-brand" href="#">PiDrone Web Interface</div>
+          <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+          </button>
+
+          <div class="collapse navbar-collapse" id="navbarSupportedContent">
+              <ul class="navbar-nav mr-auto">
+                  <li class="nav-item">
+                      <p class="nav-link">
+                          Connection Status
+                      </p>
+                      <div class="alert alert-primary" id="statusMessage">
+                          Initial Value
+                      </div>
+                  </li>
+                  <li class="nav-item">
+                      <p class="nav-link">
+                          Battery Voltage
+                      </p>
+                      <div class="alert alert-success" id="vbat">
+                          ???
+                      </div>
+                  </li>
+              </ul>
+            <div class="form-inline my-2 my-lg-0">
+              <div class="form-group">
+                  <label for="hostname">Hostname</label>
+                  <input type="text" class="form-control mr-sm-2" id="hostname" value="192.168.42.1">
+              </div>
+              <input class="btn btn-primary my-2 my-sm-0" type="submit" value="Connect" name="submit" onclick="init()"/>
+            </div>
+          </div>
+        </nav> 
+        <div class="row">
+            <div class="col-sm">
+            </div>
+            <div class="col-sm">
+                Connection status:  <div id="statusMessage">Initial value.</div>  
+            </div>
+            <div class="col-sm">
+                Battery Voltage:<div id="vbat">???</div>
+            </div>
+        </div>
 
 <table summary="camera">
 
@@ -61,9 +102,6 @@ Keyboard Control
 
 </ul>
 <br/>
-<input type="submit" name="arm" value="Arm" onclick="publishArm()"/>
-<input type="submit" name="disarm" value="Disarm" onclick="publishDisarm()"/>
-
 </td>
 
 </tr>
@@ -91,6 +129,7 @@ Topic: <input type="text" id="imagetopic" value="/pidrone/picamera/image_raw" on
 </td>
 </tr>
 </table>
+    </div>
 
 </body>
 </html>
