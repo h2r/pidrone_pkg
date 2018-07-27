@@ -57,79 +57,80 @@
           </div>
         </nav> 
         <div class="row">
-            <div class="col-sm">
+            <div class="col-sm text-center">
+                <div id="irchart">
+                    <h4>IR Readings</h4>
+                    <canvas id="irChart" width="400" height="100"></canvas>
+                </div>
             </div>
-            <div class="col-sm">
-                Connection status:  <div id="statusMessage">Initial value.</div>  
+            <div class="col-sm text-center">
+                <h4>Camera Image</h4>
+                <img id="cameraImage" alt="Camera image" src="nocamera.jpg" width=320/>
             </div>
-            <div class="col-sm">
-                Battery Voltage:<div id="vbat">???</div>
+            <div class="col-sm text-center">
+                <h4>First Camera Image</h4>
+                <img id="firstImage" alt="First camera image" src="nocamera.jpg" width=320/>
             </div>
         </div>
-
-<table summary="camera">
-
-
-
-<tr>
-<td>
-
-<div id="irchart">
-IR Readings
-<canvas id="irChart" width="400" height="100"></canvas>
-</div>
-</td>
-
-<td>
-Keyboard Control
-<br/>
-<ul>
-<li>;: Arm</li>
-<li>space bar: Disarm</li>
-<li>t: Takeoff</li>
-<li>a: Yaw left</li>
-<li>d: Yaw right</li>
-<li>w: up</li>
-<li>s: down</li>
-<li>j: left</li>
-<li>l: right</li>
-<li>i: forward</li>
-<li>k: backward</li>
-<li>h: zero velocity</li>
-<li>h: hover</li>
-<li>r: set or reset the image/transform used for position hold</li>
-<li>p: toggle whether to perform position hold or velocity zero</li>
-
-</ul>
-<br/>
-</td>
-
-</tr>
-
-
-<tr>
-<td><div id="imu"></div></td>
-<td>
-
-<!--<div id="camera"></div>-->
-
-  <img id="cameraImage" alt="Camera image" src="nocamera.jpg" width=320/>
-  <img id="firstImage" alt="First camera image" src="nocamera.jpg" width=320/>
-
-
-</td>
-</tr>
-
-<tr><td>IMU
-Topic: <input type="text" id="imutopic" value="/pidrone/imu_visualization_marker" onchange="markerUpdate()"/>
-</td>
-    <td>Camera.  Make sure you run <pre>rosrun web_video_server web_video_server</pre> and the image stream.
-<br/>
-Topic: <input type="text" id="imagetopic" value="/pidrone/picamera/image_raw" onchange="imageStream()"/>
-</td>
-</tr>
-</table>
-    </div>
-
+        <div class="row">
+            <div class="col-sm text-center">
+                <h4>IMU Visualization</h4>
+                <div id="imu"></div>
+            </div>
+            <div class="col-sm text-center">
+                <h4>Topics</h4>
+                <div class="form-group">
+                    <label for="imutopic">IMU Topic</label>
+                    <input type="text" id="imutopic" value="/pidrone/imu_visualization_marker" onchange="markerUpdate()"/>
+                </div>
+                <div class="form-group">
+                    <label for="imagetopic">Camera Topic</label>
+                    <input type="text" id="imagetopic" value="/pidrone/picamera/image_raw" onchange="imageStream()"/>
+                    <small id="imagetopicHelp" class="form-text text-muted">Make sure you run <code>rosrun web_video_server web_video_server</code> and the image stream.</small>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-sm">
+                <table class="table table-bordered">
+                    <tbody>
+                      <tr>
+                        <th scope="col">Action</th>
+                        <td>;</td>
+                        <td>Space Bar</td>
+                        <td>T</td>
+                        <td>A</td>
+                        <td>D</td>
+                        <td>W</td>
+                        <td>S</td>
+                        <td>J</td>
+                        <td>L</td>
+                        <td>I</td>
+                        <td>K</td>
+                        <td>H</td>
+                        <td>R</td>
+                        <td>P</td>
+                      </tr>
+                      <tr>
+                        <th scope="col">Key</th>
+                        <td>Arm</td>
+                        <td>Disarm</td>
+                        <td>Takeoff</td>
+                        <td>Yaw Left</td>
+                        <td>Yaw Right</tD>
+                        <td>Up</td>
+                        <td>Down</td>
+                        <td>Left</td>
+                        <td>Right</td>
+                        <td>Forward</td>
+                        <td>Backward</td>
+                        <td>Zero Velocity/Hover</td>
+                        <td>Reset position hold</td>
+                        <td>Toggle Position Hold</td>
+                      </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
 </body>
 </html>
