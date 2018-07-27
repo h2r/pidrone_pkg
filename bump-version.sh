@@ -24,6 +24,9 @@ if [ -f VERSION ]; then
     V_MAJOR=${BASE_LIST[0]}
     V_MINOR=${BASE_LIST[1]}
     echo "Current version : $BASE_STRING"
+    if [ $V_MINOR -eq 5 ]; then
+        V_MINOR=0
+    fi
     V_MAJOR=$((V_MAJOR + 1))
     SUGGESTED_VERSION="$V_MAJOR.$V_MINOR"
     read -p "Enter a version number [$SUGGESTED_VERSION]: " INPUT_STRING
