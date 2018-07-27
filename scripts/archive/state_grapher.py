@@ -9,6 +9,8 @@ from std_msgs.msg import Header
 
 # Other imports
 import numpy as np
+import matplotlib
+matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 from Queue import Queue
 
@@ -45,7 +47,7 @@ class StateGrapher(object):
         # TODO: Later, add Imu and TwistStamped (optical flow) data support
         
     def setup_plots(self):
-        #self.fig, self.axes = plt.subplots(1, 2)
+        plt.ion()
         self.fig = plt.figure()
         self.ax = self.fig.add_subplot(111)
         self.time_range = 10 # seconds to show on the x-axis
@@ -104,12 +106,14 @@ class StateGrapher(object):
         self.update_plot(self.ir_times[0], x_max)
         
     def update_plot(self, x_min, x_max):
+        print 'Updating plot'
         # Plot the data
         self.ax.plot(self.ir_times, self.ir_data)
         self.ax.plot(self.state_times, self.state_data)
         self.ax.set_xlim(x_min, x_max)
-        #self.ax.draw()
-        self.fig.canvas.draw_idle()
+        self.fig.canvas.draw()
+        self.fig.canvas.flush_events()
+        #self.fig.canvas.draw_idle()
         
     def run(self):
         r = rospy.Rate(30) # Hz

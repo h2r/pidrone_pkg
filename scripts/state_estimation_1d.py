@@ -268,9 +268,9 @@ class StateEstimation1D(object):
         pose_cov_mat[2, 2] = self.ukf.P[0, 0] # z variance
         twist_cov_mat[2, 2] = self.ukf.P[1, 1] # z velocity variance
         
-        # Extract the relevant covariances from self.ukf.P
-        pose_with_cov.pose.covariance = pose_cov_mat
-        twist_with_cov.twist.covariance = twist_cov_mat
+        # TODO: Add covariances to message
+        # pose_with_cov.pose.covariance = list(pose_cov_mat)
+        # twist_with_cov.twist.covariance = list(twist_cov_mat)
         
         state_msg = State()
         state_msg.pose_with_covariance_stamped = pose_with_cov
