@@ -198,6 +198,185 @@
     markerClient.subscribe();
   }
 
+function publishArm() {
+  console.log("arm");
+  modeMsg.mode = 0
+  modeMsg.x_velocity = 0
+  modeMsg.y_velocity = 0
+  modeMsg.z_velocity = 0
+  modeMsg.yaw_velocity = 0
+  modepub.publish(modeMsg);
+}
+function publishResetTransform() {
+  console.log("reset transform");
+  resetpub.publish(emptyMsg);
+}
+
+function publishToggleTransform() {
+  console.log("toggle transform");
+  togglepub.publish(emptyMsg);
+}
+
+
+function publishDisarm() {
+  console.log("disarm");
+  modeMsg.mode = 4
+  modeMsg.x_velocity = 0
+  modeMsg.y_velocity = 0
+  modeMsg.z_velocity = 0
+  modeMsg.yaw_velocity = 0
+  modepub.publish(modeMsg);
+}
+
+function publishZeroVelocity() {
+  console.log("zero velocity");
+  modeMsg.mode = 5
+  modeMsg.x_velocity = 0
+  modeMsg.y_velocity = 0
+  modeMsg.z_velocity = 0
+  modeMsg.yaw_velocity = 0
+  modepub.publish(modeMsg);
+}
+
+
+function publishTakeoff() {
+  console.log("takeoff");
+  modeMsg.mode = 5
+  modeMsg.x_velocity = 0
+  modeMsg.y_velocity = 0
+  modeMsg.z_velocity = 0
+  modeMsg.yaw_velocity = 0
+  modepub.publish(modeMsg);
+}
+
+
+function publishTranslateLeft() {
+  console.log("translate left");
+  modeMsg.mode = 5
+  modeMsg.x_velocity = -10
+  modeMsg.y_velocity = 0
+  modeMsg.z_velocity = 0
+  modeMsg.yaw_velocity = 0
+  modepub.publish(modeMsg);
+}
+
+function publishTranslateRight() {
+  console.log("translate right");
+  modeMsg.mode = 5
+  modeMsg.x_velocity = 10
+  modeMsg.y_velocity = 0
+  modeMsg.z_velocity = 0
+  modeMsg.yaw_velocity = 0
+  modepub.publish(modeMsg);
+}
+
+function publishTranslateForward() {
+  console.log("translate forward");
+  modeMsg.mode = 5
+  modeMsg.x_velocity = 0
+  modeMsg.y_velocity = 10
+  modeMsg.z_velocity = 0
+  modeMsg.yaw_velocity = 0
+  modepub.publish(modeMsg);
+
+}
+
+function publishTranslateBackward() {
+  console.log("translate backward");
+  modeMsg.mode = 5
+  modeMsg.x_velocity = 0
+  modeMsg.y_velocity = -10
+  modeMsg.z_velocity = 0
+  modeMsg.yaw_velocity = 0
+  modepub.publish(modeMsg);
+}
+
+
+function publishTranslateUp() {
+  console.log("translate up");
+  modeMsg.mode = 5
+  modeMsg.x_velocity = 0
+  modeMsg.y_velocity = 0
+  modeMsg.z_velocity = 0.05
+  modeMsg.yaw_velocity = 0
+  modepub.publish(modeMsg);
+}
+
+function publishTranslateDown() {
+  console.log("translate down");
+  modeMsg.mode = 5
+  modeMsg.x_velocity = 0
+  modeMsg.y_velocity = 0
+  modeMsg.z_velocity = -0.05
+  modeMsg.yaw_velocity = 0
+  modepub.publish(modeMsg);
+}
+
+
+function publishYawLeft() {
+  console.log("yaw left");
+  modeMsg.mode = 5
+  modeMsg.x_velocity = 0
+  modeMsg.y_velocity = 0
+  modeMsg.z_velocity = 0
+  modeMsg.yaw_velocity = -50
+  modepub.publish(modeMsg);
+}
+
+function publishYawRight() {
+  console.log("yaw right");
+  modeMsg.mode = 5
+  modeMsg.x_velocity = 0
+  modeMsg.y_velocity = 0
+  modeMsg.z_velocity = 0
+  modeMsg.yaw_velocity = 50
+  modepub.publish(modeMsg);
+}
+
+$(document).keydown(function(event){
+  var char = String.fromCharCode(event.which || event.keyCode);
+  // console.log("Key down: " + char);
+  if (char == 'J') {
+    publishTranslateLeft();
+  } else if (char == 'L') {
+    publishTranslateRight();
+  } else if (char == "K") {
+    publishTranslateBackward();
+  } else if (char == "I") {
+    publishTranslateForward();
+  } else if (char == "W") {
+    publishTranslateUp();
+  } else if (char == "S") {
+    publishTranslateDown();
+  } else if (char == "A") {
+    publishYawLeft();
+  } else if (char == "D") {
+    publishYawRight();
+  } else {
+    //console.log('undefined key: ' + event.keyCode);
+  }
+});
+
+$(document).keyup(function(event){
+  var char = String.fromCharCode(event.which || event.keyCode);
+  if (char == "J" || char == "L" || char == "K" || char == "I" || char == "W" || char == "S" || char == "A" || char == "D") {
+    publishZeroVelocity();
+  }
+});
+
 $(document).keypress(function(event){
-  alert(String.fromCharCode(event.which));
+  var char = String.fromCharCode(event.which || event.keyCode);
+  if (char == ';') {
+    publishArm();
+  } else if (char == ' ') {
+    publishDisarm();
+  } else if (char == 'h') {
+    publishZeroVelocity();
+  } else if (char == 'r') {
+    publishResetTransform();
+  } else if (char == 't') {
+    publishTakeoff();
+  } else if (char == 'p') {
+    publishToggleTransform();
+  }
 });
