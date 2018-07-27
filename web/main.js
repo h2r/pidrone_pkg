@@ -1,42 +1,42 @@
-  /**
-   * Setup all visualization elements when the page is loaded. 
-   */
-  function empty(element) {
-    while (element.firstChild) {
-      element.removeChild(element.firstChild);
-    }
-  }
-  function printProperties(obj) {
-    for(var propt in obj){
-      console.log(propt + ': ' + obj[propt]);
-    }
-  }
+/**
+* Setup all visualization elements when the page is loaded. 
+*/
+function empty(element) {
+while (element.firstChild) {
+  element.removeChild(element.firstChild);
+}
+}
+function printProperties(obj) {
+for(var propt in obj){
+  console.log(propt + ': ' + obj[propt]);
+}
+}
 
-    function myround(number, precision) {
-      var factor = Math.pow(10, precision);
-      var tempNumber = number * factor;
-      var roundedTempNumber = Math.round(tempNumber);
-      return roundedTempNumber / factor;
-    };
+function myround(number, precision) {
+  var factor = Math.pow(10, precision);
+  var tempNumber = number * factor;
+  var roundedTempNumber = Math.round(tempNumber);
+  return roundedTempNumber / factor;
+};
 
-  var markerClient;
-  var ros;
-  var modepub;
-  var modeMsg;
-  var heartbeatPub;
-  function init() {
+var markerClient;
+var ros;
+var modepub;
+var modeMsg;
+var heartbeatPub;
+
+function closeSession(){
+  console.log("Closing connections.");
+  ros.disconnect();
+  return false;
+}
+
+function init() {
     // Connect to ROS.
     var url = 'ws://' + document.getElementById('hostname').value + ':9090'
     ros = new ROSLIB.Ros({
-      url : url
+        url : url
     });
-
-    function closeSession(){
-      console.log("Closing connections.");
-      ros.disconnect();
-      return false;
-    }
-    window.onbeforeunload = closeSession;
 
   ros.on('error', function(error) {
       console.log('ROS Master:  Error, check console.');
@@ -408,7 +408,13 @@ $(document).ready(function() {
       irChart.data.labels[i] = i;
       irChart.data.datasets[1].data[i] = 0;
     }
+    init();
 });
+
+$(window).on("beforeunload", function(e) {
+    closeSession();
+});
+
 
 $(document).keyup(function(event){
   var char = String.fromCharCode(event.which || event.keyCode);

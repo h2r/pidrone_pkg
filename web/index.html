@@ -16,11 +16,11 @@
 
 </head>
 
-<body onload="init()">
+<body>
   <h2>PiDrone Web Interface</h2>
 <table summary="hostname" border="1" width=800>
 <tr>
-  <td>Hostname: <input type="text" id="hostname" value="192.168.42.1" onchange="init()"/><input type="submit" value="Connect" name="submit" onclick="init()"/></td>
+  <td>Hostname: <input type="text" id="hostname" value="192.168.42.1"><input type="submit" value="Connect" name="submit" onclick="init()"/></td>
 <td>Connection status:  <div id="statusMessage">Initial value.</div>  
     Battery Voltage:<div id="vbat">???</div></td>
 </tr>
@@ -40,10 +40,8 @@ IR Readings
 </td>
 
 <td>
-Keyboard Control (with focus in the input box)
+Keyboard Control
 <br/>
-<div class="tooltip">
-<span class="tooltiptext">
 <ul>
 <li>;: Arm</li>
 <li>space bar: Disarm</li>
@@ -62,13 +60,9 @@ Keyboard Control (with focus in the input box)
 <li>p: toggle whether to perform position hold or velocity zero</li>
 
 </ul>
-</span>
 <br/>
 <input type="submit" name="arm" value="Arm" onclick="publishArm()"/>
 <input type="submit" name="disarm" value="Disarm" onclick="publishDisarm()"/>
-
-<input type="text" name="keyboardCtrl" value="" />
-</div>
 
 </td>
 
