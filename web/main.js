@@ -357,6 +357,59 @@ $(document).keydown(function(event){
   }
 });
 
+$(document).ready(function() {
+    var ctx = document.getElementById("irChart").getContext('2d');
+    var count = 0;
+    var windowSize = 500;
+    var irChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: Array(windowSize),
+            datasets: [
+              {
+                label: 'IR Readings',
+                data: Array(windowSize),
+                borderWidth: 1,
+                pointRadius: 0,
+                //borderColor: 'rgba(0, 255, 0, 1)'
+              },
+              {
+                label: 'Window',
+                data: Array(windowSize),
+                borderWidth: 1,
+                pointRadius: 0,
+                borderColor: 'rgba(255, 0, 0, 1)'
+              },
+            ]
+        },
+        options: {
+            animation: {
+               duration: 0,
+            },
+            scales: {
+                yAxes: [{
+                    ticks: {
+                        beginAtZero:true,
+                        min: 0,
+                        max: 1,
+                    }
+                }],
+                xAxes: [{
+                    display: false
+                }]
+            },
+            legend: {
+              display: false
+            },
+        }
+    });
+    for (i = 0; i < irChart.data.datasets[0].data.length; i++) {
+      irChart.data.datasets[0].data[i] = 0;
+      irChart.data.labels[i] = i;
+      irChart.data.datasets[1].data[i] = 0;
+    }
+});
+
 $(document).keyup(function(event){
   var char = String.fromCharCode(event.which || event.keyCode);
   if (char == "J" || char == "L" || char == "K" || char == "I" || char == "W" || char == "S" || char == "A" || char == "D") {
