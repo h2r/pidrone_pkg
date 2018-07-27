@@ -41,19 +41,22 @@ function init() {
   ros.on('error', function(error) {
       console.log('ROS Master:  Error, check console.');
       //printProperties(error);
-      document.getElementById('statusMessage').innerHTML='<p>Error detected; check console.</p>';
+      document.getElementById('statusMessage').innerHTML='Error detected; check console.';
+      $('#statusMessage').addClass('alert-danger').removeClass('alert-success');
   });
 
   ros.on('connection', function() {
       console.log('ROS Master:  Connected.');
       //printProperties(error);
-      document.getElementById('statusMessage').innerHTML="<p style='color:green'>Connected!</p>";
+      document.getElementById('statusMessage').innerHTML="Connected";
+      $('#statusMessage').addClass('alert-success').removeClass('alert-danger');
   });
 
   ros.on('close', function() {
       console.log('ROS Master:  Connection closed.');
       //printProperties(error);
-      document.getElementById('statusMessage').innerHTML="<p style='color:red'>Connection closed.</p>";
+      document.getElementById('statusMessage').innerHTML="Disconnected";
+      $('#statusMessage').addClass('alert-danger').removeClass('alert-success');
   });
 
     modepub = new ROSLIB.Topic({
@@ -107,8 +110,10 @@ function init() {
       document.getElementById('vbat').innerHTML=mynumber
       if (message.vbat <= 11.3) {
         document.getElementById('vbat').innerHTML=mynumber + " EMPTY!";
+        $('#vbat').addClass('alert-danger').removeClass('alert-success');
       } else {
         document.getElementById('vbat').innerHTML=mynumber;
+        $('#vbat').addClass('alert-success').removeClass('alert-danger');
       }
 
     });
