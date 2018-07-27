@@ -1,44 +1,53 @@
 """""
 global_position_estimator_distance
 
-Localization helper code for picam_localization_distance
+Implements Monte-Carlo Localization for the PiDrone
 """""
 
 import math
 import numpy as np
 import cv2
 
-# ----- parameters are same as picam_localization -----
-CAMERA_WIDTH = 320
-CAMERA_HEIGHT = 240
+
+# ---------- map parameters ----------- #
 MAP_PIXEL_WIDTH = 2048  # in pixel
 MAP_PIXEL_HEIGHT = 1616
 MAP_REAL_WIDTH = 1.4  # in meter
 MAP_REAL_HEIGHT = 1.07
+# -------------------------- #
 
-METER_TO_PIXEL = (float(MAP_PIXEL_WIDTH) / MAP_REAL_WIDTH + float(MAP_PIXEL_HEIGHT) / MAP_REAL_HEIGHT) / 2.
+# ----- camera parameters DO NOT EDIT ----- #
+CAMERA_WIDTH = 320
+CAMERA_HEIGHT = 240
 CAMERA_CENTER = np.float32([(CAMERA_WIDTH - 1) / 2., (CAMERA_HEIGHT - 1) / 2.]).reshape(-1, 1, 2)
-CAMERA_SCALE = 280.
+CAMERA_SCALE = 290.
+METER_TO_PIXEL = (float(MAP_PIXEL_WIDTH) / MAP_REAL_WIDTH + float(MAP_PIXEL_HEIGHT) / MAP_REAL_HEIGHT) / 2.
+# ----------------------------- #
 
-# ----- parameters for features -----
+# ----- keyframe parameters ----- #
+KEYFRAME_DIST_THRESHOLD = CAMERA_HEIGHT - 40
+KEYFRAME_YAW_THRESHOLD = 0.175 # 10 degrees
+# -------------------------- #
+
+# ----- feature parameters DO NOT EDIT ----- #
 ORB_GRID_SIZE_X = 4
 ORB_GRID_SIZE_Y = 3
-MATCH_RATIO = 0.7  # can be tuned, taken from opencv tutorial
-MIN_MATCH_COUNT = 10  # can be tuned, taken from opencv tutorial
+MATCH_RATIO = 0.7
+MIN_MATCH_COUNT = 10
 MAP_GRID_SIZE_X = ORB_GRID_SIZE_X * 3
 MAP_GRID_SIZE_Y = ORB_GRID_SIZE_Y * 3
 CELL_X = float(MAP_PIXEL_WIDTH) / MAP_GRID_SIZE_X
 CELL_Y = float(MAP_PIXEL_HEIGHT) / MAP_GRID_SIZE_Y
 PROB_THRESHOLD = 0.001
-MEASURE_WAIT_COUNT = 5
 MAP_FEATURES = 600
+# -------------------------- #
 
 
 class Particle(object):
-    """
+    """"
     each particle holds poses and weights of all particles
     z is currently not used
-    """
+    """""
 
     def __init__(self, i, poses, weights):
         self.i = i
@@ -88,12 +97,12 @@ class LocalizationParticleFilter:
 
         self.previous_time = None
 
+        self.key_kp = None
+        self.key_des = None
+
         self.z = 0.0
         self.angle_x = 0.0
         self.angle_y = 0.0
-
-        # parameters - noise on sensor
-        # TODO check the parameters and covariance matrix is proper
 
         self.sigma_x = 0.05
         self.sigma_y = 0.05
@@ -107,6 +116,54 @@ class LocalizationParticleFilter:
                                            [0, sigma_vy ** 2, 0, 0],
                                            [0, 0, sigma_vz ** 2, 0],
                                            [0, 0, 0, sigma_yaw ** 2]])
+
+    def update(self, z, angle_x, angle_y, prev_kp, prev_des, kp, des):
+        """
+        We implement the MCL algorithm from probabilistic robotics (Table 8.2)
+        kp is the position of detected features
+        des is the description of detected features
+        """
+        # update parameters
+        self.z = z
+        self.angle_x = angle_x
+        self.angle_y = angle_y
+
+        transform = self.compute_transform(prev_kp, prev_des, kp, des)
+
+        if transform is not None:
+            x = self.pixel_to_meter(-transform[0, 2])
+            y = self.pixel_to_meter(transform[1, 2])
+            yaw = -np.arctan2(transform[1, 0], transform[0, 0])
+
+            self.sample_motion_model(x, y, yaw)
+
+            # if there is some previous keyframe
+            if self.key_kp is not None and self.key_des is not None:
+
+                transform = self.compute_transform(self.key_kp, self.key_des, kp, des)
+
+                if transform is not None:
+                    # distance since previous keyframe in PIXELS
+                    x = -transform[0, 2]
+                    y = transform[1, 2]
+                    yaw = -np.arctan2(transform[1, 0], transform[0, 0])
+
+                    # if we've moved an entire camera frame distance since the last keyframe (or yawed 10 degrees)
+                    if distance(x, y, 0, 0) > KEYFRAME_DIST_THRESHOLD or yaw > KEYFRAME_YAW_THRESHOLD:
+                        self.measurement_model(kp, des)
+                        self.key_kp, self.key_des = kp, des
+                else:
+                    # moved too far to transform from last keyframe, so set a new one
+                    self.measurement_model(kp, des)
+                    self.key_kp, self.key_des = kp, des
+
+            # there is no previous keyframe
+            else:
+                self.measurement_model(kp, des)
+                self.key_kp, self.key_des = kp, des
+
+        self.resample_particles()
+        return self.get_estimated_position()
 
     def sample_motion_model(self, x, y, yaw):
         """
@@ -122,7 +179,7 @@ class LocalizationParticleFilter:
             pose[1] += (noisy_x_y_z_yaw[0] * np.sin(old_yaw) + noisy_x_y_z_yaw[1] * np.cos(old_yaw))
             pose[2] = self.z
             pose[3] += noisy_x_y_z_yaw[3]
-            pose[3] = adjustAngle(pose[3])
+            pose[3] = adjust_angle(pose[3])
 
     def measurement_model(self, kp, des):
         """
@@ -151,45 +208,18 @@ class LocalizationParticleFilter:
                 noisy_pose = [np.random.normal(pose[0], self.sigma_x), np.random.normal(pose[1], self.sigma_y), pose[2],
                               np.random.normal(pose[3], self.sigma_yaw)]
 
-                noisy_pose[3] = adjustAngle(noisy_pose[3])
+                noisy_pose[3] = adjust_angle(noisy_pose[3])
 
                 yaw_difference = noisy_pose[3] - position[3]
-                yaw_difference = adjustAngle(yaw_difference)
+                yaw_difference = adjust_angle(yaw_difference)
 
+                # norm_pdf(x, 0, sigma) gets you the probability of x
                 q = norm_pdf(noisy_pose[0] - position[0], 0, self.sigma_x) \
                     * norm_pdf(noisy_pose[1] - position[1], 0, self.sigma_y) \
                     * norm_pdf(yaw_difference, 0, self.sigma_yaw)
 
+            # keep floats from overflowing
             self.particles.weights[i] = max(q, PROB_THRESHOLD)
-
-    def update(self, z, angle_x, angle_y, prev_kp, prev_des, kp, des):
-        """
-        We implement the MCL algorithm from probabilistic robotics (Table 8.2)
-        kp is the position of detected features
-        des is the description of detected features
-        """
-        # update parameters
-        self.z = z
-        self.angle_x = angle_x
-        self.angle_y = angle_y
-
-        transform = self.compute_transform(prev_kp, prev_des, kp, des)
-        if transform is not None:
-            # these are the differences, not global
-            x = -transform[0, 2] * self.z / CAMERA_SCALE
-            y = transform[1, 2] * self.z / CAMERA_SCALE
-            yaw = -np.arctan2(transform[1, 0], transform[0, 0])
-            self.sample_motion_model(x, y, yaw)
-
-        if self.measure_count > MEASURE_WAIT_COUNT:
-            self.measurement_model(kp, des)
-            self.measure_count = 0
-
-        self.measure_count += 1
-
-        self.resample_particles()
-
-        return self.get_estimated_position()
 
     def resample_particles(self):
         """""
@@ -221,7 +251,7 @@ class LocalizationParticleFilter:
         z = 0
         yaw = 0
 
-        normal_weights = self.particles.weights / float(weights_sum)  # get the probability
+        normal_weights = self.particles.weights / float(weights_sum)
         for i, prob in enumerate(normal_weights):
             x += prob * self.particles.poses[i, 0]
             y += prob * self.particles.poses[i, 1]
@@ -237,6 +267,7 @@ class LocalizationParticleFilter:
         :param kp: the keyPoints of the first captured image
         :param des: the descriptions of the first captured image
         """
+        self.key_kp, self.key_des = None, None
         weights_sum = 0.0
         weights = []
         poses = []
@@ -258,8 +289,8 @@ class LocalizationParticleFilter:
                 for y in range(MAP_GRID_SIZE_Y):
                     poses.append([(x * CELL_X + CELL_X / 2.0) / METER_TO_PIXEL,
                                   (y * CELL_Y + CELL_Y / 2.0) / METER_TO_PIXEL,
-                                   self.z,
-                                   np.random.random_sample() * 2 * np.pi - np.pi])
+                                  self.z,
+                                  np.random.random_sample() * 2 * np.pi - np.pi])
                     weights_sum += 1.0  # uniform sample
                     weights.append(1.0)
 
@@ -333,8 +364,14 @@ class LocalizationParticleFilter:
 
         return transform
 
+    def pixel_to_meter(self, px):
+        """""
+        uses the camera scale to convert pixel measurements into meter
+        """""
+        return px * self.z / CAMERA_SCALE
 
-def adjustAngle(angle):
+
+def adjust_angle(angle):
     """""
     keeps angle within -pi to pi
     """""
@@ -344,6 +381,7 @@ def adjustAngle(angle):
         angle += 2 * math.pi
 
     return angle
+
 
 def create_map(file_name):
     """
@@ -356,15 +394,15 @@ def create_map(file_name):
     image = cv2.imread(file_name)
     # the edgeThreshold and patchSize can be tuned if the gap between cell is too large
     detector = cv2.ORB(nfeatures=MAP_FEATURES, scoreType=cv2.ORB_FAST_SCORE)
-    maxTotalKeypoints = 500 * ORB_GRID_SIZE_X * ORB_GRID_SIZE_Y
-    detector_grid = cv2.GridAdaptedFeatureDetector(detector, maxTotalKeypoints=maxTotalKeypoints,
+    max_total_keypoints = 500 * ORB_GRID_SIZE_X * ORB_GRID_SIZE_Y
+    detector_grid = cv2.GridAdaptedFeatureDetector(detector, maxTotalKeypoints=max_total_keypoints,
                                                    gridCols=ORB_GRID_SIZE_X, gridRows=ORB_GRID_SIZE_Y)
     kp = detector_grid.detect(image, None)
     kp, des = detector.compute(image, kp)
 
     # rearrange kp and des into grid
-    grid_kp = [[[] for y in range(MAP_GRID_SIZE_Y)] for x in range(MAP_GRID_SIZE_X)]
-    grid_des = [[[] for y in range(MAP_GRID_SIZE_Y)] for x in range(MAP_GRID_SIZE_X)]
+    grid_kp = [[[] for _ in range(MAP_GRID_SIZE_Y)] for _ in range(MAP_GRID_SIZE_X)]
+    grid_des = [[[] for _ in range(MAP_GRID_SIZE_Y)] for _ in range(MAP_GRID_SIZE_X)]
     for i in range(len(kp)):
         x = int(kp[i].pt[0] / CELL_X)
         y = MAP_GRID_SIZE_Y - 1 - int(kp[i].pt[1] / CELL_Y)
@@ -372,8 +410,8 @@ def create_map(file_name):
         grid_des[x][y].append(des[i])
 
     # group every 3 by 3 grid, so we can access each center of grid and its 8 neighbors easily
-    map_grid_kp = [[[] for y in range(MAP_GRID_SIZE_Y)] for x in range(MAP_GRID_SIZE_X)]
-    map_grid_des = [[[] for y in range(MAP_GRID_SIZE_Y)] for x in range(MAP_GRID_SIZE_X)]
+    map_grid_kp = [[[] for _ in range(MAP_GRID_SIZE_Y)] for _ in range(MAP_GRID_SIZE_X)]
+    map_grid_des = [[[] for _ in range(MAP_GRID_SIZE_Y)] for _ in range(MAP_GRID_SIZE_X)]
     for i in range(MAP_GRID_SIZE_X):
         for j in range(MAP_GRID_SIZE_Y):
             for k in range(-1, 2):
@@ -392,3 +430,10 @@ def norm_pdf(x, mu, sigma):
     u = (x - mu) / float(abs(sigma))
     y = (1 / (np.sqrt(2 * np.pi) * abs(sigma))) * np.exp(-u * u / 2.)
     return y
+
+
+def distance(x1, y1, x2, y2):
+    """""
+    returns the distance between two points (x1,y1) and (x2, y2)
+    """""
+    return math.sqrt(math.pow(x2-x1, 2) + math.pow(y2-y1, 2))
