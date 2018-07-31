@@ -46,20 +46,35 @@ stuff "source setup.sh"
 stuff "roscore"
 stuff ""
 
-screen -t " flight"
+screen -t " mode_controller"
 stuff "source setup.sh"
 stuff "cd $(rospack find pidrone_pkg)/scripts"
-stuff "python state_controller.py" # starting state controller automatically is unsafe
+stuff "python mode_controller.py" # starting mode controller automatically is unsafe
+
+screen -t " terminal_mode_selector"
+stuff "source setup.sh\n"
+stuff "cd $(rospack find pidrone_pkg)/scripts/\n"
+stuff "python terminal_mode_selector.py\n"
 
 screen -t " flight_controller"
 stuff "source setup.sh\n"
 stuff "cd $(rospack find pidrone_pkg)/scripts/\n"
-stuff "python flight_controller_pub.py\n"
+stuff "python flight_controller_node.py\n"
 
 screen -t " pid_controller"
 stuff "source setup.sh\n"
 stuff "cd $(rospack find pidrone_pkg)/scripts/\n"
 stuff "python pid_controller.py\n"
+
+screen -t " mocap sim"
+stuff "source setup.sh\n"
+stuff "cd $(rospack find pidrone_pkg)/scripts/\n"
+stuff "python fc_and_mocap_sim.py\n"
+
+screen -t " state_estimator"
+stuff "source setup.sh\n"
+stuff "cd $(rospack find pidrone_pkg)/scripts/\n"
+stuff "python mocap_state_estimator.py\n"
 
 screen -t " vision"
 stuff "source setup.sh\n"
@@ -70,11 +85,6 @@ screen -t " infrared"
 stuff "source setup.sh\n"
 stuff "cd $(rospack find pidrone_pkg)/scripts/\n"
 stuff "python infrared_pub.py\n"
-
-screen -t " joy_node"
-stuff "source setup.sh"
-stuff "cd $(rospack find pidrone_pkg)/scripts/"
-stuff "python joy_translation.py"
 
 screen -t " key_node"
 stuff "source setup.sh"
