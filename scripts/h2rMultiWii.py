@@ -98,8 +98,9 @@ class MultiWii:
 
         #NOTICE: the order of the yaw and thrust is switched to correspond to
         # cleanflight's standard AETR channel order
-        [r,p,y,t] = data
-        data = [r,p,t,y]
+        if len(data) == 4:
+            [r,p,y,t] = data
+            data = [r,p,t,y]
 
         dl = len(data)
         if dl == 0:
