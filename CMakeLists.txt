@@ -7,6 +7,7 @@ project(pidrone_pkg)
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
+  geometry_msgs
   std_msgs
   message_generation
 )
@@ -47,12 +48,8 @@ find_package(catkin REQUIRED COMPONENTS
 add_message_files(
   FILES
   RC.msg
-  ERR.msg
-  axes_err.msg
   Mode.msg
   Battery.msg
-  FC_command.msg
-  Velocity.msg
 )
 
 ## Generate services in the 'srv' folder
@@ -73,6 +70,7 @@ add_message_files(
 generate_messages(
   DEPENDENCIES
   std_msgs
+  geometry_msgs
 )
 catkin_package(CATKIN_DEPENDS message_runtime)
 
