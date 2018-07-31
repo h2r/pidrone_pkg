@@ -9,32 +9,35 @@ import math
 import utils
 import copy
 import cv2
+import threading
+from Queue import Queue
 
 DEBUG = False
 
-MATCH_RATIO = 0.7
-PROB_THRESHOLD = 0.005
-DRONE_LEVEL_THRESHOLD = 0.35  # radians, corresponds to 20 degrees
+# ----- camera parameters DO NOT EDIT ------- #
 CAMERA_SCALE = 290.
 CAMERA_WIDTH = 320.
 CAMERA_HEIGHT = 240.
+
+# ----- feature parameters DO NOT EDIT ------ #
 DES_MATCH_THRESHOLD = 55.
-# the height of the camera frame is the shortest distance you could move and have all new features in frame, include
-# some overlap for safety
+
+# ----- SLAM parameters ------- #
+PROB_THRESHOLD = 0.005
 KEYFRAME_DIST_THRESHOLD = CAMERA_HEIGHT
 KEYFRAME_YAW_THRESHOLD = 0.175
 
-# TODO throw away frames when the drone is not level or use stack overflow suggestion
+pose_path = '/home/pi/ws/src/pidrone_pkg/scripts/pose_data.txt'
 
 
 class Landmark:
-    """""
+    """
     attributes:
-        x, y: the position of the landmark
-        covariance: the covariance matrix for the landmark's position, 2x2
-        des: the descriptor of this landmark (landmarks are openCV features)
-        counter: the number of times this landmark has been seen, initialized as 1
-    """""
+    x, y: the position of the landmark
+    covariance: the covariance matrix for the landmark's position, 2x2
+    des: the descriptor of this landmark (landmarks are openCV features)
+    counter: the number of times this landmark has been seen, initialized as 1
+    """
 
     def __init__(self, x, y, covariance, des, count):
         self.x = x
@@ -43,15 +46,18 @@ class Landmark:
         self.des = des
         self.counter = count
 
+    def __repr__(self):
+        return "Pose: " + str(self.x) + str(self.y) + "Count: " + str(self.counter)
+
 
 class Particle:
-    """"
+    """
     attributes:
-        robot_position: a list of the robot's position (x, y, z, yaw)
-        landmarks:      a list of landmark objects
-        descriptors:    a list of feature descriptors for each landmark
-        weight:         the current weight for the particle
-    """""
+    robot_position: a list of the robot's position (x, y, z, yaw)
+    landmarks:      a list of landmark objects
+    descriptors:    a list of feature descriptors for each landmark
+    weight:         the current weight for the particle
+    """
 
     def __init__(self, x, y, z, yaw):
         self.pose = [x, y, z, yaw]
@@ -66,32 +72,32 @@ class FastSLAM:
     def __init__(self):
         self.particles = None
         self.num_particles = None
-        self.weight = None
+        self.weight = PROB_THRESHOLD
 
         self.z = 0
-        # distance from center of frame to ede of frame,
         self.perceptual_range = 0.0
-        self.angle_x = 0
-        self.angle_y = 0
 
-        # keypoints and descriptors from the most recent keyframe
+        # key points and descriptors from the most recent keyframe
         self.key_kp = None
         self.key_des = None
 
-        # for computing the transform
+        self.file = open(pose_path, 'w')
+
+        # map update threads enqueue their results here
+        self.map_update_queue = Queue(maxsize=0)
+
+        # --------------- openCV parameters --------------------- #
         index_params = dict(algorithm=6, table_number=6, key_size=12, multi_probe_level=1)
         search_params = dict(checks=50)
         self.matcher = cv2.FlannBasedMatcher(index_params, search_params)
-
         self.landmark_matcher = cv2.BFMatcher(cv2.NORM_HAMMING)
 
-        # distance (range) noise
+        # ------- parameters for noise on observations ----------- #
         self.sigma_d = 3
-        # bearing noise
         self.sigma_p = .30
-        # observation noise
         self.sigma_observation = np.array([[self.sigma_d ** 2, 0], [0, self.sigma_p ** 2]])
 
+        # ------- parameters for noise on motion updates --------- #
         sigma_vx = 0.0001
         sigma_vy = 0.0001
         sigma_vz = 0.0
@@ -101,112 +107,202 @@ class FastSLAM:
                                            [0, 0, sigma_vz ** 2, 0],
                                            [0, 0, 0, sigma_yaw ** 2]])
 
-    def run(self, z, angle_x, angle_y, prev_kp, prev_des, kp, des):
-        """""
+    def generate_particles(self, num_particles):
+        """
+        Creates the initial set of particles for SLAM
+        Each particle starts at (0,0) since we build the map relative to the drone's
+        initial position, but with some noise
+
+        :param num_particles: the number of particles to generate
+        """
+        # since the localization code treats pi as the forward facing yaw, probably safer to initialize the
+        # heading around pi...
+        self.particles = [Particle(abs(utils.normal(0, 0.1)),
+                                   abs(utils.normal(0, 0.1)),
+                                   self.z,
+                                   abs(utils.normal(math.pi, 0.01))) for _ in range(num_particles)]
+
+        self.num_particles = num_particles
+        self.key_kp, self.key_des = None, None
+        self.weight = PROB_THRESHOLD
+
+        return self.estimate_pose()
+
+    def run(self, z, prev_kp, prev_des, kp, des):
+        """
         applies an iteration of the FastSLAM algorithm
-        args
-            z, angle_x, angle_y are new position data
-            prev_kp, prev_des are the keypoints and descriptors from the previous frame
-            kp, des are the current keypoints and descriptors
-        """""
+
+        :param z: the new infrared height estimate for the drone
+        :param prev_kp, prev_des: are the keypoints and descriptors from the previous frame
+        :param kp, des: the current keypoints and descriptors
+        """
         if DEBUG:
             print 'RUN'
 
-        print len(self.particles[0].landmarks)
+        # print the average number of landmarks per particles
+        print "LM: ", np.sum([len(p.landmarks) for p in self.particles]) / float(self.num_particles)
+
+        # write poses to a text file to be animated
+        for p in self.particles:
+            self.file.write(str(p.pose[0]) + '\n')
+            self.file.write(str(p.pose[1]) + '\n')
 
         self.z = z
-        self.angle_x = angle_x
-        self.angle_y = angle_y
 
         # reflect that the drone can see more or less if its height changes
         self.update_perceptual_range()
 
         # compute transformation from previous frame
-        transform = self.compute_transform(prev_kp, prev_des, kp, des)
+        transform = utils.compute_transform(self.matcher, prev_kp, prev_des, kp, des)
 
         if transform is not None:
             # compute how much we have moved
-            x = self.pixel_to_meter(-transform[0, 2])
-            y = self.pixel_to_meter(transform[1, 2])
+            x = -transform[0, 2]
+            y = transform[1, 2]
             yaw = -np.arctan2(transform[1, 0], transform[0, 0])
-
-            # reflect that more motion causes more uncertainty and vice versa
-            self.update_motion_covariance(x, y, yaw)
 
             # update poses with motion prediction
             for p in self.particles:
                 self.predict_particle(p, x, y, yaw)
 
-            # if there is some previous keyframe
-            if self.key_kp is not None and self.key_des is not None:
+            # (potentially) do a map update
+            self.map_update_thread(kp, des)
 
-                transform = self.compute_transform(self.key_kp, self.key_des, kp, des)
+            # get the most recently updated map from the queue
+            most_recent_particles = None
+            while not self.map_update_queue.empty():
+                most_recent_particles = self.map_update_queue.get()
 
-                if transform is not None:
-                    # distance since previous keyframe in PIXELS
-                    x = -transform[0, 2]
-                    y = transform[1, 2]
-                    yaw = -np.arctan2(transform[1, 0], transform[0, 0])
-                    # if we've moved an entire camera frame distance since the last keyframe (or yawed 10 degrees)
-                    if utils.distance(x, y, 0, 0) > KEYFRAME_DIST_THRESHOLD or yaw > KEYFRAME_YAW_THRESHOLD:
-                        self.keyframe_update(kp, des)
-                else:
-                    # moved too far to transform from last keyframe, so set a new one
-                    self.keyframe_update(kp, des)
-            # there is no previous keyframe
-            else:
-                self.keyframe_update(kp, des)
+            # replace particles with updated ones
+            if most_recent_particles is not None:
+                for old, new in zip(self.particles, most_recent_particles[0]):
+                    old.landmarks = new.landmarks
+
+                # update the weight with the most recent thread result
+                self.weight = most_recent_particles[1]
+
+                self.particles = resample_particles(self.particles)
 
         return self.estimate_pose(), self.weight
 
-    def keyframe_update(self, kp, des):
-        """""
-        updates the map, gets the average weight of the particles, then resamples the particles
-        args:
-            kp, des: the current keypoints and descriptors
-        """""
-        for p in self.particles:
-            self.update_map(p, kp, des)
-
-        self.weight = self.get_average_weight()
-
-        self.resample_particles()
-        self.key_kp, self.key_des = kp, des
-
     def predict_particle(self, particle, x, y, yaw):
-        """"
-        updates this particle's position according to transform from prev frame to this one
+        """
+        updates this particle's position according to the transformation from prev frame to this one
 
         the robot's new position is determined based on the control, with
         added noise to account for control error
 
-        args:
-            particle:  the particle containing the robot position information
-            x, y, yaw: the "controls" computed by transforming the previous camera frame to this one
-        """""
+        :param particle:  the particle containing the robot's position information
+        :param x, y, yaw: the "controls" computed by transforming the previous camera frame to this one
+        """
         if DEBUG:
             print 'PREDICT'
 
         noisy_x_y_z_yaw = np.random.multivariate_normal([x, y, self.z, yaw], self.covariance_motion)
 
-        old_yaw = particle.pose[3]
-        # TODO: is this what causes the drone to move in the opposite direction?
-        particle.pose[0] += (noisy_x_y_z_yaw[0] * np.cos(old_yaw) + noisy_x_y_z_yaw[1] * np.sin(old_yaw))
-        particle.pose[1] += (noisy_x_y_z_yaw[0] * np.sin(old_yaw) + noisy_x_y_z_yaw[1] * np.cos(old_yaw))
+        particle.pose[0] += self.pixel_to_meter(noisy_x_y_z_yaw[0])
+        particle.pose[1] += self.pixel_to_meter(noisy_x_y_z_yaw[1])
         particle.pose[2] = self.z
         particle.pose[3] += noisy_x_y_z_yaw[3]
         particle.pose[3] = utils.adjust_angle(particle.pose[3])
 
-    def update_map(self, particle, keypoints, descriptors):
-        """"
-        associates observed keypoints with an old particle's landmark set and updates the EKF
-        and increments the counter if it finds a match, otherwise it adds the new keypoint, and
-        if it DOESN'T observed a stored keypoint close to this particle's pose, it decrements the counter
+    def estimate_pose(self):
+        """
+        retrieves the drone's estimated position by summing each particle's pose estimate multiplied
+        by its weight
 
-        args:
-            particle: the old particle to perform the data association on
-            keypoints, descriptors:  the lists of currently observed keypoints and descriptors
-        """""
+        some mathematical motivation E[X] = sum over all x in X of p(x) * x
+        """
+        weight_sum = 0.0
+        normal_weights = np.array([])
+
+        for p in self.particles:
+            w = min(math.exp(p.weight), utils.max_float)
+            normal_weights = np.append(normal_weights, w)
+            weight_sum += w
+
+        normal_weights /= weight_sum
+
+        x = 0.0
+        y = 0
+        z = 0
+        yaw = 0
+
+        for i, prob in enumerate(normal_weights):
+            x += prob * self.particles[i].pose[0]
+            y += prob * self.particles[i].pose[1]
+            z += prob * self.particles[i].pose[2]
+            yaw += prob * self.particles[i].pose[3]
+
+        yaw = utils.adjust_angle(yaw)
+
+        # return the "average" pose and weight
+        return [x, y, z, yaw]
+
+    def map_update_thread(self, kp, des):
+        """
+        takes care of map updates with a thread, since they are slower than motion updates, this way the
+        motion updates can still happen while the map is updating
+
+        :param kp, des: the lists of keypoints and descriptors
+        """
+        # there is some previous keyframe
+        if self.key_kp is not None and self.key_des is not None:
+
+            transform = utils.compute_transform(self.matcher, self.key_kp, self.key_des, kp, des)
+
+            if transform is not None:
+                # distance since previous keyframe in PIXELS
+                x = -transform[0, 2]
+                y = transform[1, 2]
+                yaw = -np.arctan2(transform[1, 0], transform[0, 0])
+
+                if utils.distance(x, y, 0, 0) > KEYFRAME_DIST_THRESHOLD or yaw > KEYFRAME_YAW_THRESHOLD:
+                    self.start_thread(kp, des)
+            else:
+                # moved too far to transform from last keyframe, so set a new one
+                self.start_thread(kp, des)
+        # there is no previous keyframe
+        else:
+            self.start_thread(kp, des)
+
+    def start_thread(self, kp, des):
+        """
+        starts a thread to update the map
+
+        :param kp, des: the lists of keypoints and descriptors
+        """
+        # ensure there is not more than 1 thread at a time
+        if len(threading.enumerate()) < 15:
+            t = threading.Thread(target=self.keyframe_update, args=(kp, des,))
+            t.start()
+        self.key_kp, self.key_des = kp, des
+
+    def keyframe_update(self, kp, des):
+        """
+        updates the map and gets the average weight of the particles, then queues those results
+
+        :param kp, des: the lists of keypoints and descriptors
+        """
+        # save a copy of the particles at this time to avoid conflicts
+        curr_particles = copy.deepcopy(self.particles)
+
+        for p in curr_particles:
+            self.update_map(p, kp, des)
+
+        weight = self.get_average_weight(curr_particles)
+
+        self.map_update_queue.put((curr_particles, weight))
+
+    def update_map(self, particle, keypoints, descriptors):
+        """
+        Associate observed keypoints with an old particle's landmark set and update the EKF
+        Increment the landmark's counter if it finds a match, otherwise add a new landmark
+        Dcrement the counter of a landmark which is close to this particle's pose and not observed
+
+        :param particle: the old particle to perform the data association on
+        :param keypoints, descriptors: the lists of currently observed keypoints and descriptors
+        """
 
         if DEBUG:
             print 'UPDATE'
@@ -216,56 +312,64 @@ class FastSLAM:
             for kp, des in zip(keypoints, descriptors):
                 self.add_landmark(particle, kp, des)
         else:
-            part_descriptors = [lm.des for lm in particle.landmarks]
+            # find particle's landmarks in a close range, close_landmarks holds tuples of the landmark and its index
+            close_landmarks = []
+            for i, lm in enumerate(particle.landmarks):
+                if utils.distance(lm.x, lm.y, particle.pose[0], particle.pose[1]) <= self.perceptual_range * 1.5:
+                    close_landmarks.append((lm, i))
 
-            # we will set to true indices where a landmark is matched
-            matched_landmarks = [False] * len(particle.landmarks)
+            if len(close_landmarks) != 0:
+                # get descriptors of relevant landmarks
+                part_descriptors = [lm[0].des for lm in close_landmarks]
 
-            # iterate through every measurement
-            for kp, des in zip(keypoints, descriptors):
-                # length 1 list of the most likely match between this descriptor and all the particle's descriptors
-                match = self.landmark_matcher.match(np.array([des]), np.array(part_descriptors))
+                # we will set to true indices where a landmark is matched
+                matched_landmarks = [False] * len(close_landmarks)
 
-                # there was no match
-                if match[0].distance > DES_MATCH_THRESHOLD:
-                    self.add_landmark(particle, kp, des)
-                    particle.weight += math.log(PROB_THRESHOLD)
-                else:
-                    # get the index of the matched landmark in the old particle
-                    old_index = match[0].trainIdx
+                # iterate through every measurement
+                for kp, des in zip(keypoints, descriptors):
+                    # length 1 list of the most likely match between this descriptor and all the particle's descriptors
+                    match = self.landmark_matcher.match(np.array([des]), np.array(part_descriptors))
 
-                    self.update_landmark(particle, old_index, kp, des)
-                    particle.weight += math.log(scale_weight(match[0].distance))
-                    matched_landmarks[old_index] = True
+                    # there was no match
+                    if match[0].distance > DES_MATCH_THRESHOLD:
+                        self.add_landmark(particle, kp, des)
 
-            removed = []
-            for i, match in enumerate(matched_landmarks):
-                lm = particle.landmarks[i]
-                if match:
-                    lm.counter += 1
-                # this landmark was not matched to, but is within sight of this particle
-                elif utils.distance(lm.x, lm.y, particle.pose[0], particle.pose[1]) <= self.perceptual_range:
-                    lm.counter -= 1
-                    # particle.weight += math.log(PROB_THRESHOLD)
-                    if lm.counter < 0:
-                        removed.append(lm)
+                        particle.weight += math.log(PROB_THRESHOLD)
+                    else:
+                        # get the index of the matched landmark in close_landmarks
+                        close_index = match[0].trainIdx
+                        matched_landmarks[close_index] = True
+                        dated_landmark = close_landmarks[close_index]
 
-            for rm in removed:
-                particle.landmarks.remove(rm)
+                        # update the original landmark in this particle
+                        updated_landmark = self.update_landmark(particle, dated_landmark[0], kp, des)
+                        particle.landmarks[dated_landmark[1]] = updated_landmark
+
+                        particle.weight += math.log(scale_weight(match[0].distance))
+
+                removed = []
+                for i, match in enumerate(matched_landmarks):
+                    tup = close_landmarks[i]
+                    lm = particle.landmarks[tup[1]]
+                    if match:
+                        lm.counter += 1
+                    else:
+                        lm.counter -= 1
+                        # 'punish' this particle for having a dubious landmark
+                        particle.weight += math.log(0.1*PROB_THRESHOLD)
+                        if lm.counter < 0:
+                            removed.append(lm)
+
+                for rm in removed:
+                    particle.landmarks.remove(rm)
 
     def add_landmark(self, particle, kp, des):
-        """"
+        """
         adds a newly observed landmark to particle
 
-        if a landmark has not been matched to an existing landmark,
-        add it to the particle's list with the appropriate
-        mean (x, y) and covariance (sigma)
-
-        args:
-            particle: the particle to add the new landmark to
-            kp: the keypoint of the new landmark to add
-            des: the descriptor of the new landmark to add
-        """""
+        :param particle: the particle to add the new landmark to
+        :param kp, des: the keypoint and descriptor of the new landmark to add
+        """
         if DEBUG:
             print 'NEW LM'
 
@@ -286,23 +390,20 @@ class FastSLAM:
         # add the new landmark to this particle's list of landmarks
         particle.landmarks.append(Landmark(land_x, land_y, covariance, des, 1))
 
-    def update_landmark(self, particle, index, kp, des):
-        """"
+    def update_landmark(self, particle, landmark, kp, des):
+        """
         update the mean and covariance of a landmark
 
-        uses the Extended Kalman Filter (EKF) to update the existing
-        landmark's mean (x, y) and covariance according to the new measurement
+        uses the Extended Kalman Filter (EKF) to update the existing landmark's mean (x, y) and
+        covariance according to the new measurement
 
-        args:
-            particle: the particle to update
-            index: the index of the landmark to update
-            kp, des: the keypoint and descriptor of the new landmark
-        """""
+        :param particle: the particle to update
+        :param landmark: the landmark to update
+        :param kp, des: the keypoint and descriptor of the new landmark
+        """
 
         if DEBUG:
             print 'OLD LM'
-
-        landmark = particle.landmarks[index]
 
         robot_x, robot_y = particle.pose[0], particle.pose[1]
 
@@ -330,131 +431,31 @@ class FastSLAM:
         # compute the updated covariance of the landmark
         new_covariance = utils.compute_new_covariance(K, H, S)
 
-        lm = Landmark(new_landmark[0], new_landmark[1], new_covariance, des, landmark.counter)
-        particle.landmarks[index] = lm
+        return Landmark(new_landmark[0], new_landmark[1], new_covariance, des, landmark.counter)
 
-    def resample_particles(self):
-        """"
-        resample particles according to weight
-        """""
-
-        if DEBUG:
-            print 'RESAMPLE'
-
-        weight_sum = 0.0
-        new_particles = []
-        normal_weights = np.array([])
-
-        for p in self.particles:
-            w = min(math.exp(p.weight), utils.max_float)
-            normal_weights = np.append(normal_weights, w)
-            weight_sum += w
-
-        normal_weights /= weight_sum
-
-        samples = np.random.multinomial(self.num_particles, normal_weights)
-        for i, count in enumerate(samples):
-            for _ in range(count):
-                p = copy.deepcopy(self.particles[i])
-                p.weight = PROB_THRESHOLD
-                new_particles.append(p)
-
-        self.particles = new_particles
-
-    def generate_particles(self, num_particles):
-        """""
-        Creates the initial set of particles for SLAM
-
-        Each particle should start at (0,0) since we build the map relative to the drone's
-        initial position, but I want them to be a little different so Gaussian
-
-        potential problem here is that some of them will be negative which is impossible so maybe abs?
-        """""
-        # since the localization code treats pi and the forward facing yaw, probably safer to initialize the
-        # heading around pi...
-        self.particles = [Particle(abs(utils.normal(0, 0.01)),
-                                   abs(utils.normal(0, 0.01)),
-                                   self.z,
-                                   abs(utils.normal(math.pi, 0.01))) for _ in range(num_particles)]
-
-        self.num_particles = num_particles
-        self.key_kp, self.key_des = None, None
-
-        return self.estimate_pose()
-
-    def estimate_pose(self):
-        """""
-        retrieves the drone's estimated position by summing each particles estimate multiplied
-        by its weight
-
-        some mathematical motivation E[X] = sum over all x in X: p(x) * x
-        """""
-        weight_sum = 0.0
-        normal_weights = np.array([])
-
-        for p in self.particles:
-            w = min(math.exp(p.weight), utils.max_float)
-            normal_weights = np.append(normal_weights, w)
-            weight_sum += w
-
-        normal_weights /= weight_sum
-
-        x = 0.0
-        y = 0
-        z = 0
-        yaw = 0
-
-        for i, prob in enumerate(normal_weights):
-            x += prob * self.particles[i].pose[0]
-            y += prob * self.particles[i].pose[1]
-            z += prob * self.particles[i].pose[2]
-            yaw += prob * self.particles[i].pose[3]
-
-        yaw = utils.adjust_angle(yaw)
-
-        # return the "average" pose and weight
-        return [x, y, z, yaw]
-
-    def get_average_weight(self):
-        """""
+    def get_average_weight(self, particles):
+        """
         the average weight of all the particles
-        """""
-        return np.sum([p.weight for p in self.particles]) / float(self.num_particles)
 
-    def compute_transform(self, kp1, des1, kp2, des2):
-        """""
-        computes the transformation between two sets of keypoints and descriptors
-        """""
-        transform = None
-
-        if des1 is not None and des2 is not None:
-            matches = self.matcher.knnMatch(des1, des2, k=2)
-
-            good = []
-            for match in matches:
-                if len(match) > 1 and match[0].distance < MATCH_RATIO * match[1].distance:
-                    good.append(match[0])
-
-            src_pts = np.float32([kp1[m.queryIdx].pt for m in good]).reshape(-1, 1, 2)
-            dst_pts = np.float32([kp2[m.trainIdx].pt for m in good]).reshape(-1, 1, 2)
-
-            # estimateRigidTransform needs at least three pairs
-            if src_pts is not None and dst_pts is not None and len(src_pts) > 3 and len(dst_pts) > 3:
-                transform = cv2.estimateRigidTransform(src_pts, dst_pts, False)
-
-        return transform
+        :param particles: the set of particles whose weight will be averaged
+        """
+        return np.sum([p.weight for p in particles]) / float(self.num_particles)
 
     def pixel_to_meter(self, px):
-        """""
-        uses the camera scale to convert pixel measurements into meter
-        """""
+        """
+        uses the camera scale to convert pixel measurements into meters
+
+        :param px: the distance in pixels to convert
+        """
         return px * self.z / CAMERA_SCALE
 
     def kp_to_measurement(self, kp):
-        """""
+        """
         Computes the range and bearing from the center of the camera frame to (kp.x, kp.y)
         bearing is in (-pi/2, pi/2) measured in the standard math way
-        """""
+
+        :param kp: they keypoint to measure from
+        """
         kp_x, kp_y = kp.pt[0], kp.pt[1]
         # key point y is measured from the top left
         kp_y = CAMERA_HEIGHT - kp_y
@@ -468,52 +469,54 @@ class FastSLAM:
         return dist, bearing
 
     def update_perceptual_range(self):
-        """""
+        """
         computes the perceptual range of the drone: the distance from the center of the frame to the
         width-wise border of the frame
-        """""
+        """
         self.perceptual_range = self.pixel_to_meter(CAMERA_WIDTH / 2)
-
-    def update_motion_covariance(self, dx, dy, dyaw):
-        """""
-        scales the covariance matrix for the motion model according to the velocities of the drone because
-        when the drone isn't moving, we are most certain of the motion model, and vice versa
-        
-        args:
-            dx, dy, dyaw: the displacement of the drone, in pixels, since the last frame
-        """""
-
-        # RULES
-        # a delta of 0 is always 0 variance
-        # an x/y delta of 10cm or more is always 0.1 variance
-        # a yaw of more than 0.34 or less than -0.34 radian is always 0.1 variance
-        # linear scale for all values in between
-
-        vx = abs(dx)
-        vy = abs(dy)
-        vyaw = abs(dyaw)
-
-        if vx > 0.1: vx = 0.1
-        if vy > 0.1: vy = 0.1
-
-        if vyaw >= 0.34:
-            vyaw = 0.1
-        else:
-            # linear scale from [0,0.34] to [0,0.1]
-            vyaw *= 0.294
-
-        # squish them down a lot more because they need to be small
-        self.covariance_motion[0][0] = vx * 0.01
-        self.covariance_motion[1][1] = vy * 0.01
-        self.covariance_motion[3][3] = vyaw * 0.01
 
 
 def scale_weight(w):
-    """""
+    """
     scales a weight from (0, DES_THRESHOLD) to (0,1)
-    never returns 0 since that logarithm is undefined
-    """""
+    never returns 0 since we tale the logarithm of the weight
+
+    :param w: the weight to scale
+    """
     scaled = 1 - (w / DES_MATCH_THRESHOLD)
     if scaled == 0:
         scaled = PROB_THRESHOLD
     return scaled
+
+
+def resample_particles(particles):
+    """
+    resample particles according to their weight
+
+    :param particles: the set of particles to resample
+    """
+
+    if DEBUG:
+        print 'RESAMPLE'
+
+    weight_sum = 0.0
+    new_particles = []
+    normal_weights = np.array([])
+
+    for p in particles:
+        w = min(math.exp(p.weight), utils.max_float)
+        normal_weights = np.append(normal_weights, w)
+        weight_sum += w
+
+    normal_weights /= weight_sum
+    samples = np.random.multinomial(len(particles), normal_weights)
+    for i, count in enumerate(samples):
+        for _ in range(count):
+            p = copy.deepcopy(particles[i])
+            p.weight = PROB_THRESHOLD
+            new_particles.append(p)
+
+    return new_particles
+
+
+

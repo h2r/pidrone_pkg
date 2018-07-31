@@ -3,7 +3,7 @@ Support code for fast slam
 """""
 
 from __future__ import division
-import re
+import cv2
 import numpy as np
 from numpy import dot
 from numpy import identity
@@ -11,6 +11,8 @@ import math
 import sys
 
 max_float = sys.float_info.max
+MATCH_RATIO = 0.7
+
 debug = False
 
 
@@ -167,6 +169,30 @@ def adjust_angle(angle):
         angle += 2 * math.pi
 
     return angle
+
+
+def compute_transform(matcher, kp1, des1, kp2, des2):
+    """
+    computes the transformation between two sets of keypoints and descriptors
+    """
+    transform = None
+
+    if des1 is not None and des2 is not None:
+        matches = matcher.knnMatch(des1, des2, k=2)
+
+        good = []
+        for match in matches:
+            if len(match) > 1 and match[0].distance < MATCH_RATIO * match[1].distance:
+                good.append(match[0])
+
+        src_pts = np.float32([kp1[m.queryIdx].pt for m in good]).reshape(-1, 1, 2)
+        dst_pts = np.float32([kp2[m.trainIdx].pt for m in good]).reshape(-1, 1, 2)
+
+        # estimateRigidTransform needs at least three pairs
+        if src_pts is not None and dst_pts is not None and len(src_pts) > 3 and len(dst_pts) > 3:
+            transform = cv2.estimateRigidTransform(src_pts, dst_pts, False)
+
+    return transform
 
 
 def distance(x1, y1, x2, y2):
