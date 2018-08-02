@@ -115,7 +115,7 @@ class StateGrapher(object):
             x_max = new_time
             # Don't update the plot that often, as it takes a fair amount of
             # time to do so
-            if (new_time - self.last_plot_time) > 0.5:
+            if (new_time - self.last_plot_time) > 0.7:
                 do_plot = True
             else:
                 do_plot = False

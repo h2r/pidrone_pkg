@@ -2,12 +2,7 @@
 
 from numpy.random import randn # to generate some random Gaussian noise
 import numpy as np
-import os
-import csv
-import rospy
-from sensor_msgs.msg import Imu, Range
-from geometry_msgs.msg import TwistStamped
-import tf
+import argparse
 
 class DroneSimulator(object):
     '''
@@ -23,20 +18,38 @@ class DroneSimulator(object):
     relevant ROS topics, if the need arises.
     '''
     
-    def __init__(self, publish_ros=False, save_to_csv=False, correlate_z_pos_and_accel=False, delay_rate=1.0):
+    def __init__(self, publish_ros=False, save_to_csv=False, correlate_z_pos_and_accel=True, rate=1.0, dim=3):
         self.publish_ros = publish_ros
         self.save_to_csv = save_to_csv
         self.correlate_z_pos_and_accel = correlate_z_pos_and_accel
-        self.delay_rate = delay_rate
-        # NOTE: Live playback of simulated data on ROS topics may be unnecessary,
-        # as in the future we could just use rosbag to collect real data and then
-        # play it back.
+        self.delay_rate = 1.0/rate
+        self.dim = dim # number of spatial dimensions to simulate (1, 2, or 3)
+        if not self.publish_ros and not self.save_to_csv:
+            # If none of these two args are specified, default to ROS publishing
+            print 'Publishing to ROS topics by default'
+            self.publish_ros = True
         if self.publish_ros:
+            # Importing from within a class/function may not be good Python
+            # practice, but this allows for the code to be run in a non-ROS
+            # environment depending on the command-line arguments given
+            global rospy
+            global Imu
+            global Range
+            global TwistStamped
+            global tf
+            import rospy
+            from sensor_msgs.msg import Imu, Range
+            from geometry_msgs.msg import TwistStamped
+            import tf
             rospy.init_node('drone_simulator')
             self.imu_pub = rospy.Publisher('/pidrone/imu', Imu, queue_size=1)
             self.optical_flow_pub = rospy.Publisher('/pidrone/plane_err', TwistStamped, queue_size=1)
             self.ir_pub = rospy.Publisher('/pidrone/infrared', Range, queue_size=1)
         if self.save_to_csv:
+            global csv
+            global os
+            import csv
+            import os
             self.log_basename = '../logs'
             self.time_header = ['Seconds', 'Nanoseconds']
             self.filenames = ['ir_RAW', 'x_y_yaw_velocity_RAW', 'roll_pitch_yaw_RAW', 'imu_RAW']
@@ -168,13 +181,15 @@ class DroneSimulator(object):
             elif next_sample_id == self.IMU:
                 if on_first_imu:
                     on_first_imu = False
-                    self.init_rpy_data()
+                    if self.dim > 1:
+                        self.init_rpy_data()
                     self.init_linear_acceleration_imu_data()
-                self.step_rpy_data()
+                if self.dim > 1:
+                    self.step_rpy_data()
                 self.step_linear_acceleration_imu_data()
                 if self.publish_ros:
                     self.publish_imu()
-            elif next_sample_id == self.CAMERA:
+            elif next_sample_id == self.CAMERA and self.dim > 1:
                 if on_first_camera:
                     on_first_camera = False
                     self.init_x_y_yaw_velocity_data()
@@ -251,9 +266,14 @@ class DroneSimulator(object):
         self.yaw_std_dev = np.deg2rad(1.0)
         
     def step_rpy_data(self):
-        self.roll = self.roll_std_dev * randn()
+        if self.dim == 3:
+            self.roll = self.roll_std_dev * randn()
+            self.yaw = self.yaw_std_dev * randn()
+        else:
+            self.roll = 0.0
+            self.yaw = 0.0
+        # If 2D simulation, only simulate pitch
         self.pitch = self.pitch_std_dev * randn()
-        self.yaw = self.yaw_std_dev * randn()
         self.imu_rpy_data.append([self.roll, self.pitch, self.yaw])
             
     def init_linear_acceleration_imu_data(self):
@@ -265,8 +285,17 @@ class DroneSimulator(object):
             self.ir_z_accels.append(0.0)
             
     def step_linear_acceleration_imu_data(self):
-        self.x_accel = self.x_accel_std_dev * randn()
-        self.y_accel = self.y_accel_std_dev * randn()
+        if self.dim >= 2:
+            # For 2D and 3D simulations, simulate x acceleration
+            self.x_accel = self.x_accel_std_dev * randn()
+        else:
+            self.x_accel = 0.0
+        if self.dim == 3:
+            # For 3D simulation, simulate y acceleration
+            self.y_accel = self.y_accel_std_dev * randn()
+        else:
+            self.y_accel = 0.0
+            
         if self.correlate_z_pos_and_accel:
             # Get most recent z accel from IR
             self.z_accel = self.ir_z_accels[-1]
@@ -296,8 +325,12 @@ class DroneSimulator(object):
         
     def step_x_y_yaw_velocity_data(self):
         self.x_vel = self.x_vel_std_dev * randn()
-        self.y_vel = self.y_vel_std_dev * randn()
-        self.yaw_vel = self.yaw_vel_std_dev * randn()
+        if self.dim == 3:
+            self.y_vel = self.y_vel_std_dev * randn()
+            self.yaw_vel = self.yaw_vel_std_dev * randn()
+        else:
+            self.y_vel = 0.0
+            self.yaw_vel = 0.0
         self.camera_data.append([self.x_vel, self.y_vel, self.yaw_vel])
         
     def publish_x_y_yaw_vel(self):
@@ -322,14 +355,40 @@ class DroneSimulator(object):
             self.initialize_csv_files()
         self.generate_data(duration=duration, time_std_dev=0.3)
         
+def positive_float_duration(val):
+    '''
+    Function to check that the --duration command-line argument is a positive
+    float.
+    '''
+    value = float(val)
+    if value <= 0.0:
+        raise argparse.ArgumentTypeError('Duration must be positive')
+    return value
+        
         
 if __name__ == '__main__':
     print 'Starting simulation...'
-    #drone_sim = DroneSimulator(publish_ros=True)
-    #drone_sim = DroneSimulator(publish_ros=True, delay_rate=100)
-    drone_sim = DroneSimulator(publish_ros=True, correlate_z_pos_and_accel=True)
-    #drone_sim = DroneSimulator(save_to_csv=True, correlate_z_pos_and_accel=True)
-    # Run the drone for 50 seconds
-    drone_sim.run_drone(duration=10)
-    #drone_sim.run_drone(duration=0.5)
+    parser = argparse.ArgumentParser(description=('Simulate the PiDrone\'s data'
+                ' outputs, either by publishing to ROS topics or saving to a'
+                ' CSV file.'))
+    parser.add_argument('--publish_ros', '-p', action='store_true',
+                        help=('Publish to ROS topics. If no -p or -s flag given,'
+                              ' will default to publishing to ROS'))
+    parser.add_argument('--save_csv', '-s', action='store_true',
+                        help='Save data to CSV files')
+    parser.add_argument('--rate', '-r', default=1.0, type=float,
+                        help=('Approximate rate at which to run the simulation '
+                              'if publishing to ROS (default: 1.0)'))
+    parser.add_argument('--dim', '-d', default=3, type=int, choices=[1, 2, 3],
+                        help=('Number of spatial dimensions in which to simulate'
+                              'the drone\'s motion (default: 3)'))
+    parser.add_argument('--duration', default=10.0, type=positive_float_duration,
+                        help='Duration (seconds) of simulation')
+    args = parser.parse_args()
+    drone_sim = DroneSimulator(publish_ros=args.publish_ros,
+                               save_to_csv=args.save_csv,
+                               rate=args.rate,
+                               dim=args.dim)
+    # Run the drone
+    drone_sim.run_drone(duration=args.duration)
     print '\nSimulation complete.'
