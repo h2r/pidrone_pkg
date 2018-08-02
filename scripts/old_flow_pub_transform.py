@@ -1,21 +1,21 @@
-import numpy as np
-import picamera
-import picamera.array
-import cv2
-import rospy
-import time
+import tf
 import sys
-from picam_flow_class import AnalyzeFlow
-from pidrone_pkg.msg import Velocity, ERR
+import cv2
+import math
+import time
+import rospy
+import signal
+import picamera
+import numpy as np
+import picamera.array
+import camera_info_manager
+from pid_class import PIDaxis
+from std_msgs.msg import Empty
+from analyze_flow import AnalyzeFlow
+from three_dim_vec import Position, Error
 from cv_bridge import CvBridge, CvBridgeError
 from sensor_msgs.msg import Image, Range, CameraInfo
-from std_msgs.msg import Empty
-import rospy
-import tf
-from pid_class import PIDaxis
-import math
-import camera_info_manager
-import signal
+from geometry_msgs.msg import PoseWithCovarianceStamped
 
 
 class AnalyzePhase(picamera.array.PiMotionAnalysis):
@@ -23,89 +23,115 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
     def __init__(self, camera):
         picamera.array.PiMotionAnalysis.__init__(self, camera)
         self.br = tf.TransformBroadcaster()
+        # used to safely end the connection to the camera
         self.phase_started = False
+        # initialize the variables relating to the first image
+        self.first_img = None
+        self.last_first_time = None
+        self.has_first = False
+        self.prev_img = None
+        self.prev_time = None
+        # the number of images in which the first image was visible
         self.first_counter = 0
+        # the maximum number of consecutive images in which the first image was visible
         self.max_first_counter = 0
-        self.replan_period = 1.0 # seconds
-        self.replan_scale = 0.5
-        self.replan_last_reset = 0
-        self.replan_next_deadline = 0
-        self.replan_until_deadline = 0
-        self.replan_vel_x = 0
-        self.replan_vel_y = 0
-        self.vel_average = [0,0]
-        self.vel_alpha = 1.0
-        self.vel_average_time = 0.0
+        # initialize the control mode as velocity control
+        self.control_mode = 'VELOCITY'
+        # current position
+        self.position = Position(0.0, 0.0, 0.0)
+        # target position
+        self.target_position = Position(0.0, 0.0, 0.0)
+        # PIDs:
+        # left/right (roll) pid
+        self.lr_pid = PIDaxis(0.0500, -0.00000, 0.000, midpoint=0, control_range=(-10.0, 10.0))
+        # front/back (pitch) pid
+        self.fb_pid = PIDaxis(-0.0500, 0.0000, -0.000, midpoint=0, control_range=(-10.0, 10.0))
+        # errors:
+        self.lr_err = Error(0.0, 0.0, 0.0)
+        self.fb_err = Error(0.0, 0.0, 0.0)
+        # initialize variables for yaw velocity PI controller:
+        # propotional constant
+        self.kp_yaw = 100.0
+        # integral constant
+        self.ki_yaw = 0.1
+        self.kpi_yaw = 20.0
+        self.kpi_max_yaw = 0.01
+        # smoothing value for complimentary filter
+        self.alpha_yaw = 0.1
+        self.smoothed_yaw = 0.0
+        self.yaw_observed = 0.0
+        # yaw accumulated integral
+        self.iacc_yaw = 0.0
+        # initial altitude used for camera movement calculations
+        self.z = 7.5
+
+
+# TODO determine if these do anything and comment these
+        self.est_RT = np.identity(4)
+        self.threshold = 0.5
+        self.index_params = dict(algorithm = 6, table_number = 6,
+                                key_size = 12, multi_probe_level = 1)
+        self.search_params = dict(checks = 50)
+        self.min_match_count = 10
+        self.camera_matrix = np.array([[ 250.0, 0., 160.0],
+                                    [ 0., 250.0, 120.0],
+                                    [   0., 0., 1.]])
+
+
+    def setup(self):
+
+
+        self.set_vel_pub = rospy.Publisher('/pidrone/set_vel', Velocity, queue_size=1)
+
+
+
 
     def write(self, data):
         img = np.reshape(np.fromstring(data, dtype=np.uint8), (240, 320, 3))
-#       cv2.imshow("img", img)
-#       cv2.waitKey(1)
-        curr_rostime = rospy.Time.now()
-        curr_time = curr_rostime.to_sec()
+        current_time = rospy.get_time()
 
-        shouldi_set_velocity = 1 #0
-        if np.abs(curr_time - self.replan_last_reset) > self.replan_period:
-            self.replan_last_reset = curr_time
-            self.replan_next_deadline = self.replan_last_reset + self.replan_period
-            shouldi_set_velocity = 1
-        self.replan_until_deadline = self.replan_next_deadline-curr_time
-        #print curr_time, replan_last_reset, replan_next_deadline, replan_until_deadline, replan_vel_x, replan_vel_y
-
-
-        if self.first:
-            print "taking new first"
-            self.first = False
-            #self.first_img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+        # if there is no first image
+        if not self.has_first:
+            print 'Captured the first image'
+            self.has_first = True
             self.first_img = img
-            cv2.imwrite("first_img" + str(self.i) + ".jpg", self.first_img)
-            #self.prev_img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
-            self.prev_img = img
-            self.prev_rostime = curr_rostime
-            self.prev_time = curr_time
+            self.previous_img = img
+            self.previous_time = current_time
 
-            self.i += 1
+            cv2.imwrite("first_img" + str(self.i) + ".jpg", self.first_img)
             image_message = self.bridge.cv2_to_imgmsg(img, encoding="bgr8")
             self.first_image_pub.publish(image_message)
 
+        # if there is a first image and the position control is enabled
+        elif self.control_mode = 'POSITION':
+            current_img = img
+            transform_first = cv2.estimateRigidTransform(self.first_img, current_img, False)
+            transform_integrated = cv2.estimateRigidTransform(self.prev_img, curr_img, False)
+            delta_time = current_time - self.previous_time
+            self.previous_img = current_img
+            self.previous_time = current_time
 
-        elif self.transforming:
-            #curr_img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
-            curr_img = img
-            corr_first = cv2.estimateRigidTransform(self.first_img, curr_img, False)
-            corr_int = cv2.estimateRigidTransform(self.prev_img, curr_img, False)
-            self.prev_img = curr_img
-            self.prev_rostime = curr_rostime
-            self.prev_time = curr_time
-
-
-            if corr_first is not None:
+            # if the first image is visible
+            if transform_first is not None:
                 self.last_first_time = curr_time
                 if curr_time - self.last_first_time > 2:
-                    self.first = True
-                first_displacement = [corr_first[0, 2] / 320., corr_first[1, 2] / 240.]
-                scalex = np.linalg.norm(corr_first[:, 0])
-                scalez = np.linalg.norm(corr_first[:, 1])
-                corr_first[:, 0] /= scalex
-                corr_first[:, 1] /= scalez
-                self.yaw_observed = math.atan2(corr_first[1, 0], corr_first[0, 0])
+                    self.has_first = False
+                first_displacement = [transform_first[0, 2] / 320., transform_first[1, 2] / 240.]
+                scalex = np.linalg.norm(transform_first[:, 0])
+                scalez = np.linalg.norm(transform_first[:, 1])
+                transform_first[:, 0] /= scalex
+                transform_first[:, 1] /= scalez
+                self.yaw_observed = math.atan2(transform_first[1, 0], transform_first[0, 0])
                 #print first_displacement, yaw_observed
                 #yaw = yaw_observed
                 self.smoothed_yaw = (1.0 - self.alpha_yaw) * self.smoothed_yaw + (self.alpha_yaw) * self.yaw_observed
                 yaw = self.smoothed_yaw
-                self.vel_average[0] = (1.0 - self.vel_alpha) * self.vel_average[0] + (self.vel_alpha) * self.pos[0]
                 # jgo XXX see what happens if we dont reset upon seeing first
                 #self.pos = [first_displacement[0] * self.z, first_displacement[1] * self.z / 240., yaw]
                 # jgo XXX see what happens if we use alpha blending
                 hybrid_alpha = 0.1 # needs to be between 0 and 1.0
                 self.pos[0:2] = [(hybrid_alpha) * first_displacement[0] * self.z + (1.0 - hybrid_alpha) * self.pos[0],
                             (hybrid_alpha) * first_displacement[1] * self.z  + (1.0 - hybrid_alpha) * self.pos[1]]
-                self.vel_average[0] = (1.0 - self.vel_alpha) * self.vel_average[0] + (self.vel_alpha) * self.pos[0]
-                self.vel_average[1] = (1.0 - self.vel_alpha) * self.vel_average[1] + (self.vel_alpha) * self.pos[1]
-                self.vel_average_time = (1.0 - self.vel_alpha) * self.vel_average_time + (self.vel_alpha) * curr_time
-                #print "times: ", vel_average_time, curr_time, curr_time - vel_average_time
-                #self.lr_err.err = vel_average[0] + self.target_x
-                #self.fb_err.err = vel_average[1] + self.target_y
                 self.lr_err.err = self.pos[0] + self.target_x
                 self.fb_err.err = self.pos[1] + self.target_y
                 print "ERR", self.lr_err.err, self.fb_err.err
@@ -152,26 +178,22 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
                 print "yaw iacc: ", self.iacc_yaw
                 self.set_vel_pub.publish(set_vel)
                 print "first", self.max_first_counter, self.first_counter
-            elif corr_int is not None:
+
+            # if the first image is lost, but the previous image is visible
+            elif transform_integrated is not None:
                 time_since_first = curr_time - self.last_first_time
                 print "integrated", time_since_first
                 print "max_first_counter: ", self.max_first
-                int_displacement = [corr_int[0, 2] / 320., corr_int[1, 2] / 240.]
-                scalex = np.linalg.norm(corr_int[:, 0])
-                scalez = np.linalg.norm(corr_int[:, 1])
-                corr_int[:, 0] /= scalex
-                corr_int[:, 1] /= scalez
-                yaw = math.atan2(corr_int[1, 0], corr_int[0, 0])
+                int_displacement = [transform_integrated[0, 2] / 320., transform_integrated[1, 2] / 240.]
+                scalex = np.linalg.norm(transform_integrated[:, 0])
+                scalez = np.linalg.norm(transform_integrated[:, 1])
+                transform_integrated[:, 0] /= scalex
+                transform_integrated[:, 1] /= scalez
+                yaw = math.atan2(transform_integrated[1, 0], transform_integrated[0, 0])
                 print int_displacement, yaw
                 self.pos[0] += int_displacement[0] * self.z
                 self.pos[1] += int_displacement[1] * self.z
                 #self.pos[2] = yaw
-                #vel_average = (1.0 - vel_alpha) * vel_average[0] + (vel_alpha) * self.pos[0]
-                #vel_average = (1.0 - vel_alpha) * vel_average[1] + (vel_alpha) * self.pos[1]
-                self.vel_average_time = (1.0 - self.vel_alpha) * self.vel_average_time + (self.vel_alpha) * curr_time
-                #print "times: ", vel_average_time, curr_time, curr_time - vel_average_time
-                #self.lr_err.err = vel_average[0] + self.target_x
-                #self.fb_err.err = vel_average[1] + self.target_y
                 self.lr_err.err = self.pos[0] + self.target_x
                 self.fb_err.err = self.pos[1] + self.target_y
                 print "ERR", self.lr_err.err, self.fb_err.err
@@ -203,6 +225,8 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
                 set_vel.yaw_velocity = self.iacc_yaw
                 print "yaw iacc: ", self.iacc_yaw
                 self.set_vel_pub.publish(set_vel)
+
+            # if both the first and previous images are lost
             else:
                 print "LOST"
 
@@ -210,12 +234,12 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
             #print "Not transforming"
             #curr_img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
             curr_img = img
-            corr_first = cv2.estimateRigidTransform(self.first_img, curr_img, False)
-            if corr_first is not None:
+            transform_first = cv2.estimateRigidTransform(self.first_img, curr_img, False)
+            if transform_first is not None:
                 #print "first"
                 self.last_first_time = rospy.get_time()
                 if curr_time - self.last_first_time > 2:
-                    self.first = True
+                    self.has_first = False
             else:
                 print "no first", curr_time - self.last_first_time
             self.prev_img = curr_img
@@ -231,46 +255,7 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
                               "world")
 
 
-    def setup(self):
-        self.first_img = None
-        self.prev_img = None
-        self.first = True
-        self.lr_err = ERR()
-        self.fb_err = ERR()
-        self.prev_time = None
-        self.set_vel_pub = rospy.Publisher('/pidrone/set_vel', Velocity, queue_size=1)
-        self.pos = [0, 0, 0]
-        # -, -, 0.1
-        #self.lr_pid = PIDaxis(0.100, -0.000100, 0.0050, midpoint=0, control_range=(-10.0, 10.0))
-        self.lr_pid = PIDaxis(0.0500, -0.00000, 0.000, midpoint=0, control_range=(-10.0, 10.0))
-        self.fb_pid = PIDaxis(-0.0500, 0.0000, -0.000, midpoint=0, control_range=(-10.0, 10.0))
-        #self.lr_pid = PIDaxis(0.0500, 0.001, 0.04, midpoint=0, control_range=(-15., 15.))
-        #self.fb_pid = PIDaxis(-0.0500, -0.0010, -0.04, midpoint=0, control_range=(-15., 15.))
-        #self.lr_pid = PIDaxis(0.05, 0., 0.001, midpoint=0, control_range=(-15., 15.))
-        #self.fb_pid = PIDaxis(-0.05, 0., -0.001, midpoint=0, control_range=(-15., 15.))
-        self.index_params = dict(algorithm = 6, table_number = 6,
-                                key_size = 12, multi_probe_level = 1)
-        self.search_params = dict(checks = 50)
-        self.min_match_count = 10
-        self.camera_matrix = np.array([[ 250.0, 0., 160.0],
-                                    [ 0., 250.0, 120.0],
-                                    [   0., 0., 1.]])
-        self.z = 7.5
-        self.est_RT = np.identity(4)
-        self.threshold = 0.5
-        self.kp_yaw = 100.0
-        self.ki_yaw = 0.1
-        self.kpi_yaw = 20.0
-        self.kpi_max_yaw = 0.01
-        self.alpha_yaw = 0.1
-        self.smoothed_yaw = 0.0
-        self.yaw_observed = 0.0
-        self.iacc_yaw = 0.0
-        self.transforming = False
-        self.i = 0
-        self.last_first_time = None
-        self.target_x = 0
-        self.target_y = 0
+
 
     # ROS Subscriber Callback Methods
     #################################
@@ -280,7 +265,7 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
 
     def reset_callback(self, msg):
         print "Resetting Phase"
-        self.first = True
+        self.has_first = False
         self.pos = [0, 0, 0]
         self.fb_pid._i = 0
         self.lr_pid._i = 0

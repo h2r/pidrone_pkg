@@ -2,6 +2,7 @@
 import sys
 import rospy
 import signal
+from std_msgs.msg import Empty
 from pidrone_pkg.msg import Mode
 from geometry_msgs.msg import PoseWithCovarianceStamped, TwistWithCovarianceStamped
 
@@ -50,17 +51,25 @@ def publish_desired_mode(mode, desired_mode_pub):
     desired_mode_pub.publish(desired_mode_msg)
 
 if __name__ == '__main__':
+    # ROS Setup
+    ###########
     rospy.init_node('aarons_terminal_mode_selector')
+
+    # Publishers
+    ############
     desired_mode_pub = rospy.Publisher('/pidrone/desired_mode', Mode, queue_size=1)
     desired_pose_pub = rospy.Publisher('/pidrone/desired_pose', PoseWithCovarianceStamped, queue_size=1)
     desired_twist_pub = rospy.Publisher('/pidrone/desired_twist', TwistWithCovarianceStamped, queue_size=1)
+    reset_transform_pub = rospy.Publisher('pidrone/reset_transform', Empty, queue_size=1)
+    toggle_transform_pub = rospy.Publisher('pidrone/toggle_transform', Empty, queue_size=1)
+
     publish_desired_mode('DISARMED', desired_mode_pub)
     signal.signal(signal.SIGINT, lambda x,y: ctrl_c_handler(x,y,desired_mode_pub))
     print('Valid modes are DISARMED, ARMED, and FLYING')
     print('Alternatively, D, A, and F')
-    print('To switch between position and velocity control, use the following:')
+    print('To switch between position and velocity control, press \'p\'')
     print('p <x> <y> <z> will command the drone to go to position (x, y, z)')
-    print('v <vx> <vy> <vz> will command the drone to go to velocity (vx, vy, vz)')
+    print('v <vx> <vy> <vz> will command the travel a set distnace at velocity (vx, vy, vz)')
     try:
         while not rospy.is_shutdown():
             raw_entry = raw_input('Type a mode and press enter:\t')
@@ -69,7 +78,11 @@ if __name__ == '__main__':
                 print 'invalid entry. try again.'
             else:
                 # position commands take the form p <x> <y> <z> where x, y, and z are floats
-                if entry[0] == 'p':
+                if entry[0] == 'r' and len(entry) == 1:
+                    reset_transform_pub.publish(Empty())
+                elif entry[0] == 'p' and len(entry) == 1:
+                    toggle_transform_pub.publish(Empty())
+                elif entry[0] == 'p':
                     # It's a position command
                     strs = entry.split()
                     if len(strs) >= 4:

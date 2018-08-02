@@ -1,10 +1,11 @@
+import cv2
+import time
+import rospy
 import numpy as np
 import picamera.array
-import cv2
 from h2rMultiWii import MultiWii
-import time
-from geometry_msgs.msg import TwistStamped
-import rospy
+from geometry_msgs.msg import TwistWithCovarianceStamped
+
 
 # RASPBERRY PI?
 camera_matrix = np.array([[ 253.70549591,    0.,          162.39457585],
@@ -15,37 +16,61 @@ dist_coeffs = np.array([ 0.20462996, -0.41924085,  0.00484044,  0.00776978,
 
 
 class AnalyzeFlow(picamera.array.PiMotionAnalysis):
+    ''' A class used for real-time motion analysis to obtain the planar and yaw
+    velocities of the drone.
+
+    For more information, read the following:
+    http://picamera.readthedocs.io/en/release-1.10/api_array.html#picamera.array.PiMotionAnalysis
+    '''
 
     def analyse(self, a):
+        ''' Analyze the frame, calculate the motion vectors, and publish the
+        twist message. This is implicitly called by the
+
+        a : an array of the incoming motion data that is provided by the
+            PiMotionAnalysis api
+        '''
         start = time.time()
+        # signed 1-byte values
         x = a['x']
         y = a['y']
+        # an unsigned 2-byte value representing the sum of absolute differences
+        # of the block.
         sad = a['sad']
 
+        # store the time variables
         curr_time = time.time()
-        diff_time = curr_time - self.prev_time
+        delta_time = curr_time - self.prev_time
         self.prev_time = curr_time
 
-        self.x_motion = 0 - np.sum(x) * self.flow_coeff + np.arctan(self.ang_vx * diff_time) * self.ang_coefficient
-        self.y_motion = np.sum(y) * self.flow_coeff + np.arctan(self.ang_vy * diff_time) * self.ang_coefficient
+        # calculate the planar and yaw motions
+        self.x_motion = 0 - np.sum(x) * self.flow_coeff + np.arctan(self.ang_vx * delta_time) * self.ang_coefficient
+        self.y_motion = np.sum(y) * self.flow_coeff + np.arctan(self.ang_vy * delta_time) * self.ang_coefficient
         self.z_motion = np.sum(np.multiply(x, self.z_filter_x)) + \
                 np.sum(np.multiply(y, self.z_filter_y))
+        # yaw is negative if drone rotated to right
         self.yaw_motion = np.sum(np.multiply(x, self.yaw_filter_x)) + \
                 np.sum(np.multiply(y, self.yaw_filter_y))
-        # yaw is negative if drone rotated to right
 
-        # TODO smooth or not
-        self.velocity.twist.linear.x = self.x_motion
-        self.velocity.twist.linear.y = self.y_motion
-        self.velocity.twist.linear.z = self.z_motion
-        self.velocity.twist.angular.z = self.yaw_motion
-        self.velocity.header.stamp = rospy.get_rostime()
-        self.pub.publish(self.velocity)
-#       print 'XYZyaw:\t{},\t{},\t{}\t{}\t\t\t{}'.format( \
-#               self.x_motion,self.y_motion,self.z_motion,self.yaw_motion,time.time() - start)
+# TODO smooth or not
+        # update the header fields
+        self.twist_msg.header.stamp = rospy.get_rostime()
+# TODO check if this is correct frame_id
+        self.tsist_msg.header.frame_id = 'Body'
+        # update the linear and yaw velocities
+        self.twist_msg.twist.twist.linear.x = self.x_motion
+        self.twist_msg.twist.twist.linear.y = self.y_motion
+        self.twist_msg.twist.twist.linear.z = self.z_motion
+        self.twist_msg.twist.twist.angular.z = self.yaw_motion
+        # update the angular velocities calculated by imu_callback
+        self.twist_msg.twist.twist.angular.x = self.ang_vx
+        self.twist_msg.twist.twist.angular.y = self.ang_vy
+        # publish the twist message
+        self.twistpub.publish(self.twist_msg)
+        # print 'vx, vy, vz, vyaw', self.x_motion, self.y_motion, self.z_motion, self.yaw_motion
 
     def get_z_filter(self, (width, height)):
-        # computes a divergence filter to estimate z component of flow
+        ''' Compute a divergence filter to estimate z component of flow '''
         assert width%16 == 0 and height%16 == 0
         num_rows = height/16
         num_cols = width/16
@@ -73,7 +98,7 @@ class AnalyzeFlow(picamera.array.PiMotionAnalysis):
         self.yaw_filter_y = -1 * self.z_filter_x
 
     def imu_callback(self, msg):
-        """Calculates angle compensation values to account for the tilt of the drone"""
+        ''' Calculate angle compensation values to account for the tilt of the drone '''
         # Convert the quaternion to euler angles
         # store the orientation quaternion
         oq = msg.orientation
@@ -94,47 +119,29 @@ class AnalyzeFlow(picamera.array.PiMotionAnalysis):
             self.prev_angy = new_angy
             self.imu_time = curr_time
 
-    def setup(self, camera_wh = (320,240), pub=None, flow_scale=16.5):
+    def setup(self, camera_wh):
+        ''' Initialize the instance variables '''
         self.get_z_filter(camera_wh)
         self.get_yaw_filter(camera_wh)
+        # store the angular velocities and variables to calculate these velocities
         self.ang_vx = 0
         self.ang_vy = 0
         self.prev_angx = 0
         self.prev_angy = 0
         self.prev_imu_time = 0
         self.prev_time = time.time()
-        self.ang_coefficient = 1.0 # the amount that roll rate factors in
+        # set the amount that roll rate factors in
+        self.ang_coefficient = 1.0
+        # initialize the planar and yaw velocities to zero
         self.x_motion = 0
         self.y_motion = 0
         self.z_motion = 0
         self.yaw_motion = 0
         self.max_flow = camera_wh[0] / 16.0 * camera_wh[1] / 16.0 * 2**7
+        self.flow_scale = 16.5
         self.norm_flow_to_cm = flow_scale # the conversion from flow units to cm
         self.flow_coeff = self.norm_flow_to_cm/self.max_flow
-        self.pub = rospy.Publisher('/pidrone/plane_err', TwistStamped, queue_size=1)
-        self.alpha = 0.3
-        if self.pub is not None:
-            self.velocity = TwistStamped()
-
-if __name__ == '__main__':
-    with picamera.PiCamera(framerate=90) as camera:
-        with AnalyzeFlow(camera) as flow_analyzer:
-            rate = rospy.Rate(90)
-            camera.resolution = (320, 240)
-            flow_analyzer.setup(camera.resolution)
-            output = SplitFrames(width, height)
-            camera.start_recording('/dev/null', format='h264', motion_output=flow_analyzer)
-
-            while not rospy.is_shutdown():
-                camera.wait_recording(0)
-                if len(output.images) == 0:
-                    continue
-                ts, image = output.images[-1]
-                if ts == last_ts:
-                    continue
-                cv2.imshow('color', image)
-                cv2.waitKey(1)
-                rate.sleep()
-
-            camera.wait_recording(30)
-            camera.stop_recording()
+        # initialize the publisher for the TwistWithCovarianceStamped message
+        self.twistpub = rospy.Publisher('/pidrone/twist', TwistWithCovarianceStamped, queue_size=1)
+        # initialize the TwistWithCovarianceStamped message
+        self.twist_msg = TwistWithCovarianceStamped()

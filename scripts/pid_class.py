@@ -44,10 +44,10 @@ class PositionPID(object):
         else:
             time_elapsed = rospy.get_time() - self.time
 
-        roll_midpoint = 1500
-        pitch_midpoint = 1480
+        roll_midpoint = 1555
+        pitch_midpoint = 1531
         yaw_midpoint = 1500
-        thrust_midpoint = 1380
+        thrust_midpoint = 1320
 
         if self.error_last is not None:
             d_err_x = error.x - self.error_last.x
@@ -72,7 +72,7 @@ class PositionPID(object):
 
         kp_x = 0
         kp_y = 0
-        kp_z = 8
+        kp_z = 0
 
 
         ki_x = 0
@@ -160,8 +160,8 @@ class VelocityPID(object):
         # with the drone facing baxter (flight controller pointing toward him),
         # this means +pitch -> +Z, -roll -> +X
 
-        roll_midpoint = 1500
-        pitch_midpoint = 1480
+        roll_midpoint = 1520
+        pitch_midpoint = 1600
         yaw_midpoint = 1500
         thrust_midpoint = 1380
 

@@ -32,6 +32,7 @@ if __name__ == '__main__':
                 y = float(strs[2])
                 z = float(strs[3])
                 curr_pos_msg = PoseStamped()
+                curr_pos_msg.header.stamp = rospy.get_rostime()
                 curr_pos_msg.pose.position.x = x
                 curr_pos_msg.pose.position.y = y
                 curr_pos_msg.pose.position.z = z

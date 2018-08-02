@@ -60,8 +60,8 @@ class PIDController(object):
         self.lr_pid = PIDaxis(0.0500, -0.00000, 0.000, midpoint=0, control_range=(-10.0, 10.0))
         # front/back (pitch) pid
         self.fb_pid = PIDaxis(-0.0500, 0.0000, -0.000, midpoint=0, control_range=(-10.0, 10.0))
-        # up/down (throttle) pid
-        self.ud_pid = PIDaxis(-0.0500, 0.0000, -0.000, midpoint=0, control_range=(-10.0, 10.0))
+        ### # up/down (throttle) pid
+        ### self.ud_pid = PIDaxis(-0.0500, 0.0000, -0.000, midpoint=0, control_range=(-10.0, 10.0))
 
         # initialize variables for yaw velocity PI controller:
         # propotional constant
@@ -192,41 +192,41 @@ class PIDController(object):
         rotated_current_position = current_position_matrix.dot(rotation_matrix)
         self.current_position = Position(rotated_current_position[0,0], rotated_current_position[0,1], rotated_current_position[0,2])
 
-    def calc_z_velocity(self):
-        ''' Caculate the velocity in the z direction from the z position values
-        since these are directly measured
-        '''
-# TODO try using z velocity from camera!
-        self.current_calculated_z_velocity = (self.z - self.previous_z)/(self.pose_delta_time)
+#     def calc_z_velocity(self):
+#         ''' Caculate the velocity in the z direction from the z position values
+#         since these are directly measured
+#         '''
+# # TODO try using z velocity from camera!
+#         self.current_calculated_z_velocity = (self.z - self.previous_z)/(self.pose_delta_time)
     def calc_error(self):
         #TODO ADD COMMENT
         # calculate the velocity error in the x, y, z, and yaw directions
         dvx = self.desired_velocity.x - self.current_velocity.x
-        dvy = self.desired_velocity.y - self.current_velocity.y
+        dvy = - (self.desired_velocity.y - self.current_velocity.y)
         # calculate this differently because it is measured by the range sensor
-        dvz = self.desired_velocity.z - self.current_calculated_z_velocity
+        dz = self.desired_position.z - self.current_position.z
         # TODO dvyaw =
-        self.velocity_error = Error(dvx,dvy,dvz)
+        self.velocity_error = Error(dvx,dvy,dz)
         if self.position_control:
             dx = self.desired_position.x - self.current_position.x
-            dy = self.desired_position.y - self.current_position.y
+            dy = - (self.desired_position.y - self.current_position.y)
             dz = self.desired_position.z - self.current_position.z
             # TODO this is unused
             self.position_error = Position(dx, dy, dz)
             # calculate a value to add to the velocity error based based on the
             # position error in the x (roll) direction
-            lr_step = self.lr_pid.step(dx, self.pose_delta_time)
+            #lr_step = self.lr_pid.step(dx, self.pose_delta_time)
             # calculate a value to add to the velocity error based based on the
             # position error in the y (pitch) direction
-            fb_step = self.fb_pid.step(dy, self.pose_delta_time)
+            #fb_step = self.fb_pid.step(dy, self.pose_delta_time)
             # calculate a value to add to the velocity error based based on the
             # position error in the z (pitch) direction
-            ud_step = self.ud_pid.step(dz, self.pose_delta_time)
+            # ud_step = self.ud_pid.step(dz, self.pose_delta_time)
 
             # add the velocity values to their error corresponding components
-            self.velocity_error.x += lr_step
-            self.velocity_error.y += fb_step
-            self.velocity_error.z += ud_step
+            self.velocity_error.x #+= lr_step
+            self.velocity_error.y #+= fb_step
+            # self.velocity_error.z += ud_step
 
 
 # TODO TEST THIS METHOD AND FIX COMMENT
@@ -313,7 +313,7 @@ if __name__ == '__main__':
     # set up ctrl-c handler
     signal.signal(signal.SIGINT, pid_controller.ctrl_c_handler)
     # set the loop rate (Hz)
-    loop_rate = rospy.Rate(20)
+    loop_rate = rospy.Rate(100)
     print 'PID Controller Started'
     while not rospy.is_shutdown():
         # Steps the PID. If we are not flying, this can be used to

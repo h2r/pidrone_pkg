@@ -51,10 +51,10 @@ stuff "source setup.sh"
 stuff "cd $(rospack find pidrone_pkg)/scripts"
 stuff "python mode_controller.py" # starting mode controller automatically is unsafe
 
-screen -t " terminal_mode_selector"
+screen -t " command_line_interface"
 stuff "source setup.sh\n"
 stuff "cd $(rospack find pidrone_pkg)/scripts/\n"
-stuff "python terminal_mode_selector.py\n"
+stuff "python command_line_interface.py\n"
 
 screen -t " flight_controller"
 stuff "source setup.sh\n"
