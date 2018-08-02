@@ -5,46 +5,12 @@ import rospy
 import signal
 import traceback
 import numpy as np
+from old_pid_class import PID
 from std_msgs.msg import Float32
 from pidrone_pkg.msg import Mode, RC
 from pid_class import PositionPID, VelocityPID
+from three_dim_vec import Position, Velocity, Error
 from geometry_msgs.msg import PoseWithCovarianceStamped, TwistWithCovarianceStamped
-
-# TODO: figure out safe way to exit program
-class ThreeDimVec(object):
-    ''' Struct to store x,y,z'''
-    # This should be turned into a data class with the next python 3 release
-    def __init__(self, x=0, y=0 ,z=0):
-        self.x = x
-        self.y = y
-        self.z = z
-    def __str__(self):
-        return "x: %f, y: %f, z: %f" % (self.x, self.y, self.z)
-
-    def __mul__(self, other):
-        return ThreeDimVec(self.x * other, self.y * other, self.z * other)
-
-    def __rmul__(self, other):
-        return self.__mul__(other)
-
-    def __add__(self, other):
-        return ThreeDimVec(self.x + other.x, self.y + other.y, self.z + other.z)
-
-    def __radd__(self, other):
-        return self.__add__(other)
-
-    def __sub__(self, other):
-        return ThreeDimVec(self.x - other.x, self.y - other.y, self.z - other.z)
-
-class Position(ThreeDimVec):
-    ''' Struct to store postion x,y,z '''
-    def __init__(self, x=0, y=0, z=0):
-        super(Position, self).__init__()
-
-class Velocity(ThreeDimVec):
-    ''' Struct to store velocity x,y,z '''
-    def __init__(self, vx=0, vy=0, vz=0):
-        super(Velocity, self).__init__()
 
 
 class PIDController(object):
@@ -62,8 +28,8 @@ class PIDController(object):
         # determines if the pid is controlling position or velocity. Can be
         # either 'POSITION' or 'VELOCITY'
 # TODO is it safe to have this start as velocity or should it be none and then check elsewhere?
-        self.control_mode = 'VELOCITY'
-        self.previous_control_mode = 'VELOCITY'
+        self.control_mode = None
+        self.previous_control_mode = None
 
         # Initialize the possible control modes to False. These become True only
         # if the associated data is being published
@@ -76,16 +42,22 @@ class PIDController(object):
         self.filtered_desired_position = Position()
         self.current_orientation = None
 
+        # Initialize the position error
+        self.position_error = Error()
+
         # Initialize the Position PID
-        self.position_pid = PositionPID()
+        self.position_pid = PID()
 
         # Initialize the current and desired velocities
         self.current_velocity = Velocity()
         self.desired_velocity = Velocity()
         self.filtered_desired_velocity = Velocity()
 
+        # Initialize the velocity error
+        self.velocity_error = Error()
+
         # Initialize the Velocity PID
-        self.velocity_pid = VelocityPID()
+        self.velocity_pid = PID()
 
         # Store the command publisher
         self.cmdpub = None
@@ -147,7 +119,7 @@ class PIDController(object):
         ''' Update the desired mode '''
         self.desired_mode = msg.mode
 
-
+# TODO ADD YAW
     # Step Method
     #############
     def step(self):
@@ -157,16 +129,18 @@ class PIDController(object):
         if self.control_mode == 'POSITION':
             # The desired position, after filtering
             self.filtered_desired_position = self.prefilter()
+            self.calc_error()
+            cmds = self.position_pid.step(self.position_error)
         elif self.control_mode == 'VELOCITY':
             # The desired velocity, after filtering
             self.filtered_desired_velocity = self.prefilter()
+            self.calc_error()
+            cmds = self.velocity_pid.step(self.velocity_error)
         else:
             print 'Internal control_mode error.'
             print 'Stopping controller.'
             sys.exit()
-
-        error = self.calc_error()
-        cmds = self.position_pid.step(error)
+# TODO possible bug here
         return cmds
 
     # HELPER METHODS
@@ -231,34 +205,47 @@ class PIDController(object):
             dx = self.desired_position.x - self.current_position.x
             dy = self.desired_position.y - self.current_position.y
             dz = self.desired_position.z - self.current_position.z
+            self.position_error = Error(dx,dy,dz)
         elif self.control_mode == 'VELOCITY':
             dx = self.desired_velocity.x - self.current_velocity.x
             dy = self.desired_velocity.y - self.current_velocity.y
             dz = self.desired_velocity.z - self.current_velocity.z
+            self.velocity_error = Error(dx,dy,dz)
         else:
             print 'Internal control_mode error'
             print 'Internal control_mode error.'
             print 'Stopping controller.'
             sys.exit()
 
-# TODO CHECK THIS MAG VALUE
-        # If the magnitude of the error is greater than 0.05 m, then scale down
-        # the error to prevent extreme accelerations
-        error = np.array([dx, dy, dz])
-        magnitude = np.sqrt(error.dot(error))
-        #if magnitude > 0.05:
-        #    error = (error / magnitude) * 0.05
-        return ThreeDimVec(error[0], error[1], error[2])
+
+# TODO TEST THIS METHOD AND FIX COMMENT
+    def reduce_magnitude(error):
+        ''' Returns a vector with the same direction but with a reduced
+        magnitude to enable small steps when a large error exists. Essentially
+        moves the desried position or velocity closer to the current one '''
+        error_array = np.array([error.x, error.y, error.z])
+        magnitude = np.sqrt(error_array.dot(error_array))
+        if magnitude > 0.05:
+            error_array = (error_array / magnitude) * 0.05
+        return Error(error_array[0], error_array[1], error_array[2])
 
     def reset(self):
         ''' Set filtered_desired_position to be current position, set
         filtered_desired_velocity to be zero, and reset both the PositionPID
         and VelocityPID
         '''
-        #self.filtered_desired_position = self.current_position
-# TODO test this
-        self.filtered_desired_velocity = Velocity(0,0,0)
+        # TODO THERE COULD BE A PROBLEM WHEN FLYING AND YOU SWITCH MODES AND IT DOESN'T RESET PROPERLY
+        # MAYBE HAVE A TAKEOFF RESET AND AN IN AIR RESET???
+        # reset position control variables
+        self.position_error = Error(0,0,0)
+        self.desired_position = Position(self.current_position.x,self.current_position.y,0.3)
+        self.filtered_desired_position = Position(self.current_position.x,self.current_position.y,0.3)
         self.position_pid.reset()
+# TODO test this
+        # reset velocity control_variables
+        self.velocity_error = Error(0,0,0)
+        self.desired_velocity = Velocity(0,0,0)
+        self.filtered_desired_velocity = Velocity(0,0,0)
         self.velocity_pid.reset()
 
     def ctrl_c_handler(self, signal, frame):
@@ -310,36 +297,42 @@ if __name__ == '__main__':
     # set up ctrl-c handler
     signal.signal(signal.SIGINT, pid_controller.ctrl_c_handler)
     # set the loop rate (Hz)
-    loop_rate = rospy.Rate(100)
+    loop_rate = rospy.Rate(5)
     print 'PID Controller Started'
     while not rospy.is_shutdown():
-        # if the flying mode changes, reset the pids
-        if pid_controller.control_mode != pid_controller.previous_control_mode:
-            pid_controller.previous_control_mode = pid_controller.control_mode
-            print 'Controlling:', pid_controller.control_mode
-            pid_controller.reset()
-        # Steps the PID. If we are not flying, this can be used to
-        # examine the behavior of the PID based on published values
-        fly_command = pid_controller.step()
-
-        # reset the pids before takeoff
-        if pid_controller.current_mode == 'ARMED':
-            if pid_controller.desired_mode == 'FLYING':
+        if pid_controller.control_mode == None :
+            print 'Waiting for a control mode to be chosen from the user interface'
+            rospy.sleep(2)
+        else:
+            # if the flying mode changes, reset the pids
+            if pid_controller.control_mode != pid_controller.previous_control_mode:
+                pid_controller.previous_control_mode = pid_controller.control_mode
+                print 'Controlling:', pid_controller.control_mode
                 pid_controller.reset()
-        # if the drone is flying, send the fly_command
-        elif pid_controller.current_mode == 'FLYING':
-            if pid_controller.desired_mode == 'FLYING':
-                # Publish the ouput of pid step method
-                pid_controller.publish_cmd(fly_command)
+            # Steps the PID. If we are not flying, this can be used to
+            # examine the behavior of the PID based on published values
+            fly_command = pid_controller.step()
 
-        if verbose >= 2:
-            if pid_controller.control_mode == 'POSITION':
-                print 'current position:', pid_controller.current_position
-                print 'desired position:', pid_controller.desired_position
-            else:
-                print 'current velocity:', pid_controller.current_velocity
-                print 'desired velocity:', pid_controller.desired_velocity
-        if verbose >= 1:
-            print 'r,p,y,t:', fly_command
+            # reset the pids after arming
+            if pid_controller.current_mode == 'DISARMED':
+                if pid_controller.desired_mode == 'ARMED':
+                    pid_controller.reset()
+            # if the drone is flying, send the fly_command
+            elif pid_controller.current_mode == 'FLYING':
+                if pid_controller.desired_mode == 'FLYING':
+                    # Publish the ouput of pid step method
+                    pid_controller.publish_cmd(fly_command)
+
+            if verbose >= 2:
+                if pid_controller.control_mode == 'POSITION':
+                    print 'current position:', pid_controller.current_position
+                    print 'desired position:', pid_controller.desired_position
+                    #print 'filtered position:', pid_controller.filtered_desired_position
+                    print 'position error:', pid_controller.position_error
+                else:
+                    print 'current velocity:', pid_controller.current_velocity
+                    print 'desired velocity:', pid_controller.desired_velocity
+            if verbose >= 1:
+                print 'r,p,y,t:', fly_command
 
         loop_rate.sleep()
