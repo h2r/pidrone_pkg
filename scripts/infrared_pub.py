@@ -33,8 +33,9 @@ def get_range():
     distance = (1.0 / voltage) * m + b
     smoothed_distance = (1.0 - alpha) * smoothed_distance + alpha * distance
     smoothed_distance = min(smoothed_distance, 55.0)
-
-    return distance, smoothed_distance
+    
+    # Convert centimeters to meters upon returning
+    return (distance/100.0), (smoothed_distance/100.0)
 
 if __name__ == "__main__":
     rospy.init_node("infrared_pub")
