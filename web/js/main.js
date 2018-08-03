@@ -1,5 +1,5 @@
 /**
-* Setup all visualization elements when the page is loaded. 
+* Setup all visualization elements when the page is loaded.
 */
 function empty(element) {
 while (element.firstChild) {
@@ -362,11 +362,14 @@ $(document).keydown(function(event){
   }
 });
 
+var irChart;
+var count;
+var windowSize;
 $(document).ready(function() {
     var ctx = document.getElementById("irChart").getContext('2d');
-    var count = 0;
-    var windowSize = 500;
-    var irChart = new Chart(ctx, {
+    count = 0;
+    windowSize = 500;
+    irChart = new Chart(ctx, {
         type: 'line',
         data: {
             labels: Array(windowSize),
@@ -396,7 +399,7 @@ $(document).ready(function() {
                     ticks: {
                         beginAtZero:true,
                         min: 0,
-                        max: 1,
+                        max: 0.6,
                     }
                 }],
                 xAxes: [{
