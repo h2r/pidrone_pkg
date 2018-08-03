@@ -3,27 +3,31 @@
 from numpy.random import randn # to generate some random Gaussian noise
 import numpy as np
 import argparse
+import os
+import sys
+import time
+
 
 class DroneSimulator(object):
     '''
     This class is intended to simulate the drone's raw sensor outputs to aid in
-    the development of an Unscented Kalman Filter (UKF).
+    the development of an Unscented Kalman Filter (UKF). It is intended to be
+    inherited by DroneSimulator1D, DroneSimulator2D, or DroneSimulator3D, which
+    implement the required data generation.
     
-    Currently, this script outputs data to .csv files to interface with the
-    state_analyzer.py and state_analyzer_1d.py scripts, which use the
-    ukf_state_estimation.py and ukf_state_estimation_1d.py scripts,
-    respectively.
-    
-    In later stages, this class could also publish data in real-time to the
-    relevant ROS topics, if the need arises.
+    This script can publish data in real-time to relevant ROS topics and can
+    output data to CSV files, if the user wishes to analyze the data altogether
+    with a script such as state_analyzer.py and state_analyzer_1d.py (NOTE:
+    These scripts may be outdated).
     '''
     
-    def __init__(self, publish_ros=False, save_to_csv=False, correlate_z_pos_and_accel=True, rate=1.0, dim=3):
+    def __init__(self, publish_ros=False, save_to_csv=False, rate=1.0, dim=3):
         self.publish_ros = publish_ros
         self.save_to_csv = save_to_csv
-        self.correlate_z_pos_and_accel = correlate_z_pos_and_accel
         self.delay_rate = 1.0/rate
         self.dim = dim # number of spatial dimensions to simulate (1, 2, or 3)
+        self.start_time = time.time()
+        
         if not self.publish_ros and not self.save_to_csv:
             # If none of these two args are specified, default to ROS publishing
             print 'Publishing to ROS topics by default'
@@ -33,53 +37,85 @@ class DroneSimulator(object):
             # practice, but this allows for the code to be run in a non-ROS
             # environment depending on the command-line arguments given
             global rospy
+            import rospy
+            
             global Imu
             global Range
+            global StateGroundTruth
+            global Header
+            global PoseStamped
             global TwistStamped
-            global tf
-            import rospy
             from sensor_msgs.msg import Imu, Range
-            from geometry_msgs.msg import TwistStamped
-            import tf
+            # TODO: Create this custom message
+            from pidrone_pkg.msg import StateGroundTruth
+            from std_msgs.msg import Header
+            from geometry_msgs.msg import PoseStamped, TwistStamped
+            
             rospy.init_node('drone_simulator')
-            self.imu_pub = rospy.Publisher('/pidrone/imu', Imu, queue_size=1)
-            self.optical_flow_pub = rospy.Publisher('/pidrone/plane_err', TwistStamped, queue_size=1)
-            self.ir_pub = rospy.Publisher('/pidrone/infrared', Range, queue_size=1)
+            self.init_pubs()
         if self.save_to_csv:
             global csv
-            global os
             import csv
-            import os
-            self.log_basename = '../logs'
-            self.time_header = ['Seconds', 'Nanoseconds']
-            self.filenames = ['ir_RAW', 'x_y_yaw_velocity_RAW', 'roll_pitch_yaw_RAW', 'imu_RAW']
-            self.filenames_to_headers = {
-                self.filenames[0] : ['Range_(meters)'],
-                self.filenames[1] : ['Vel_x_(m/s)', 'Vel_y_(m/s)', 'Vel_yaw_(deg/s)'],
-                self.filenames[2] : ['Roll_(deg)', 'Pitch_(deg)', 'Yaw_(deg)'],
-                self.filenames[3] : ['Accel_x_body', 'Accel_y_body', 'Accel_z_body']}
-
-        # Approximate samples/second of each sensor output
-        self.ir_hz = 57
-        if self.correlate_z_pos_and_accel:
-            self.imu_hz = self.ir_hz
-        else:
-            self.imu_hz = 26 # RPY info published on /pidrone/state
-        self.camera_hz = 20 # just a guess
+            
+    def init_pubs(self):
+        '''
+        Initialize ROS publishers
+        '''
+        self.ir_pub = rospy.Publisher('/pidrone/infrared', Range, queue_size=1)
+        self.imu_pub = rospy.Publisher('/pidrone/imu', Imu, queue_size=1)
         
-        # Identifier enums
-        self.IR = 0
-        self.IMU = 1
-        self.CAMERA = 2
+        # Create the publisher to publish state estimates
+        self.state_ground_truth_pub = rospy.Publisher('/pidrone/state_ground_truth',
+                                                      StateGroundTruth,
+                                                      queue_size=1,
+                                                      tcp_nodelay=False)
+        
+    def create_dir(self, dir):
+        '''
+        If directory dir does not exist, create it
+        '''
+        if not os.path.isdir(dir):
+            print 'Creating directory:', dir
+            os.mkdir(dir)
+        
+    def create_logs_dir(self):
+        '''
+        If there is no logs directory in the right location, create one
+        '''
+        self.create_dir(self.logs_dir)
+            
+    def create_logs_full_dir(self):
+        '''
+        If there is no logs directory with dimension in the right location,
+        create one
+        '''
+        self.create_dir(self.logs_full_dir)
+        
+    def check_current_working_directory(self):
+        if os.path.basename(os.getcwd()) != 'scripts':
+            # Then this file is not being run from the correct directory
+            print ('This program must be run from the "scripts" directory in '
+                  'order to save CSV log files. Exiting...')
+            sys.exit()
                 
-    def initialize_csv_files(self):
+    def init_csv_files(self):
         '''
         Write the log file headers to csv files
         '''
-        for key in self.filenames_to_headers:
-            with open(os.path.join(self.log_basename, key+'.csv'), 'w') as csv_file:
-                csv_writer = csv.writer(csv_file, delimiter=' ')
-                csv_writer.writerow(self.time_header + self.filenames_to_headers[key])
+        self.check_current_working_directory()
+        self.logs_dir = '../logs'
+        self.logs_full_dir = os.path.join(self.logs_dir, '{}D'.format(self.dim))
+        self.create_logs_dir()
+        self.create_logs_full_dir()
+        self.time_header = ['Seconds', 'Nanoseconds']
+        
+        # For each sensor type
+        for _, info_dict in self.info_dicts.iteritems():
+            # For each filename corresponding to the sensor
+            for key, filename in info_dict['filenames'].iteritems():
+                with open(os.path.join(self.logs_full_dir, filename+'.csv'), 'w') as csv_file:
+                    csv_writer = csv.writer(csv_file, delimiter=' ')
+                    csv_writer.writerow(self.time_header + info_dict['headers'][key])
                 
     def serialize_times(self):
         '''
@@ -90,7 +126,9 @@ class DroneSimulator(object):
         while not sorted_all_data:
             first_key = True
             got_nonempty_times_list = False
-            for num, (time_list, _) in enumerate(self.times):
+            for _, info_dict in self.info_dicts.iteritems():
+                num = info_dict['id']
+                time_list = info_dict['times']
                 if time_list:
                     # List representing sample times is not empty
                     got_nonempty_times_list = True
@@ -113,150 +151,28 @@ class DroneSimulator(object):
                 next_time_list.pop(0)
                 # Append a fileID-time pair
                 self.serialized_times.append((next_time_id, (next_time_sec, next_time_nsec)))
-                
-    def generate_data(self, duration, time_std_dev):
-        '''
-        Generate data from each sensor based on each sensor's average frequency
-        
-        duration : approximate number of seconds for which to generate data
-        time_std_dev : standard deviation to use for the noise in the time steps
-        '''
-        self.ir_times = []
-        self.ir_data = []
-        
-        self.imu_times = []
-        self.imu_rpy_data = []
-        self.imu_accel_data = []
-        
-        self.camera_times = []
-        self.camera_data = []
-        
-        # For info on how to use numpy.random.randn:
-        # https://docs.scipy.org/doc/numpy-1.14.0/reference/generated/numpy.random.randn.html#numpy.random.randn
-        
-        if not self.correlate_z_pos_and_accel:
-            self.times = ((self.ir_times, self.ir_hz),
-                          (self.imu_times, self.imu_hz),
-                          (self.camera_times, self.camera_hz))
-            self.generate_times(duration, time_std_dev)
-        else:
-            # Don't generate separate times for IR
-            self.times = ((self.imu_times, self.imu_hz),
-                          (self.camera_times, self.camera_hz))
-            self.generate_times(duration, time_std_dev)
-            # Instead, set equal to a copy of the randomly generated IMU times
-            self.ir_times = list(self.imu_times)
-        self.times_lists_copies = (list(self.ir_times), list(self.imu_times), list(self.camera_times))
-        self.times = ((self.ir_times, self.ir_hz),
-                      (self.imu_times, self.imu_hz),
-                      (self.camera_times, self.camera_hz))
-        self.serialize_times()
-        
-        on_first_ir = True
-        on_first_imu = True
-        on_first_camera = True
-        # Generate sample data in order of serialized times:
-        while len(self.serialized_times) > 0:
-            next_sample_id, next_time_pair = self.serialized_times.pop(0)
-            if self.publish_ros and len(self.serialized_times) > 0:
-                t0 = next_time_pair[0] + next_time_pair[1]*1e-9
-                print 'Duration: {0} / {1}\r'.format(round(t0, 4), duration),
-                t1 = self.serialized_times[0][1][0] + self.serialized_times[0][1][1]*1e-9
-                # It might not be valid to keep updating the Rate like so and
-                # expect ROS to sleep the correct amount each time
-                #r = rospy.Rate(1/float(t1-t0)) # 1/dt Hz
-                #r.sleep()
-                # Naively sleep for a certain amount of time, not taking into
-                # account the amount of time required to carry out operations in
-                # this loop
-                rospy.sleep(self.delay_rate*(t1-t0))
-            if next_sample_id == self.IR:
-                if on_first_ir:
-                    on_first_ir = False
-                    self.init_ir_data(next_time_pair)
-                else:
-                    self.step_ir_data(next_time_pair)
-                if self.publish_ros:
-                    self.publish_ir()
-            elif next_sample_id == self.IMU:
-                if on_first_imu:
-                    on_first_imu = False
-                    if self.dim > 1:
-                        self.init_rpy_data()
-                    self.init_linear_acceleration_imu_data()
-                if self.dim > 1:
-                    self.step_rpy_data()
-                self.step_linear_acceleration_imu_data()
-                if self.publish_ros:
-                    self.publish_imu()
-            elif next_sample_id == self.CAMERA and self.dim > 1:
-                if on_first_camera:
-                    on_first_camera = False
-                    self.init_x_y_yaw_velocity_data()
-                self.step_x_y_yaw_velocity_data()
-                if self.publish_ros:
-                    self.publish_x_y_yaw_vel()
-                                            
-        if self.save_to_csv:
-            self.write_to_csv(filename='ir_RAW', times=self.times_lists_copies[0],
-                              data_list=self.ir_data)
-            self.write_to_csv(filename='roll_pitch_yaw_RAW',
-                              times=self.times_lists_copies[1], data_list=self.imu_rpy_data)
-            self.write_to_csv(filename='x_y_yaw_velocity_RAW',
-                              times=self.times_lists_copies[2],
-                              data_list=self.camera_data)
-            self.write_to_csv(filename='imu_RAW',
-                              times=self.times_lists_copies[1], data_list=self.imu_accel_data)
         
     def generate_times(self, duration, time_std_dev):
-        # Generate sample times
-        for data_time_list, data_hz in self.times:
-            curr_time = 0.0
-            while curr_time <= duration:
-                curr_time += 1/(time_std_dev * randn() + data_hz)
-                curr_sec = int(curr_time)
-                curr_nsec = int((curr_time - curr_sec)*(1e9))
-                data_time_list.append([curr_sec, curr_nsec])
-            del data_time_list[-1] # to keep times less than or equal to duration
-    
-    def init_ir_data(self, first_ir_time_pair):
-        # Assume a model with small accelerations, with some noise
-        self.z_vel = 0.0 # meters/second
-        self.z_accel_measured_std_dev = 0.001 # meters/second^2
-        self.z_accel_actual_std_dev = 0.0001 # meters/second^2 # to simulate random real-world disturbances
-        self.z_pos_std_dev = np.sqrt(2.2221e-05) # meters. Estimated standard deviation based on measured variance
-        # Start the drone in the air
-        self.curr_pos_actual = 0.4 # current position along the z-axis (meters)
-        self.curr_pos_measured = self.z_pos_std_dev * randn() + self.curr_pos_actual
-        self.z_accel_actual = 0.0
-        self.ir_data.append([self.curr_pos_measured])
-        if self.correlate_z_pos_and_accel:
-            self.ir_z_accels = []
-        self.next_ir_time_pair = first_ir_time_pair # sec and nsec pair
-        self.next_ir_time = self.next_ir_time_pair[0] + self.next_ir_time_pair[1]*1e-9
-    
-    def step_ir_data(self, next_ir_time_pair):
-        self.curr_ir_time = self.next_ir_time
-        self.next_ir_time_pair = next_ir_time_pair # sec and nsec pair
-        self.next_ir_time = self.next_ir_time_pair[0] + self.next_ir_time_pair[1]*1e-9
-        time_step = self.next_ir_time - self.curr_ir_time
-        # Simulating a near-zero acceleration model
-        self.z_accel_actual = self.z_accel_actual_std_dev * randn()
-        z_accel_measured = self.z_accel_measured_std_dev * randn() + self.z_accel_actual
-        if self.correlate_z_pos_and_accel:
-            self.ir_z_accels.append(z_accel_measured)
-        self.z_vel += self.z_accel_actual * time_step
-        self.curr_pos_actual += self.z_vel * time_step
-        # Don't allow drone to go below 9 centimeters off of the ground
-        if self.curr_pos_actual < 0.09:
-            self.curr_pos_actual = 0.09
-        self.curr_pos_measured = self.z_pos_std_dev * randn() + self.curr_pos_actual
-        self.ir_data.append([self.curr_pos_measured])
+        '''
+        Generate sample times based on the Hz of each sensor
+        '''
+        for _, info_dict in self.info_dicts.iteritems():
+            time_list = info_dict['times']
+            hz = info_dict['hz']
+            curr_time = self.start_time
+            while curr_time <= (self.start_time + duration):
+                curr_time += 1/(time_std_dev * randn() + hz)
+                curr_sec, curr_nsec = self.float_secs_to_time_pair(curr_time)
+                time_list.append([curr_sec, curr_nsec])
+            del time_list[-1] # to keep times less than or equal to duration
         
     def publish_ir(self):
+        '''
+        Publish simulated IR measurements
+        '''
         range_msg = Range()
         range_msg.header.stamp = rospy.Time.now()
-        range_msg.range = self.curr_pos_measured
+        range_msg.range = self.z_pos_ir_measurement
         self.ir_pub.publish(range_msg)
         
     def init_rpy_data(self):
@@ -303,18 +219,7 @@ class DroneSimulator(object):
             self.z_accel = self.z_accel_std_dev * randn()
         self.imu_accel_data.append([self.x_accel, self.y_accel, self.z_accel])
             
-    def publish_imu(self):
-        imu_msg = Imu()
-        imu_msg.header.stamp = rospy.Time.now()
-        quaternion = tf.transformations.quaternion_from_euler(self.roll, self.pitch, self.yaw)
-        imu_msg.orientation.x = quaternion[0]
-        imu_msg.orientation.y = quaternion[1]
-        imu_msg.orientation.z = quaternion[2]
-        imu_msg.orientation.w = quaternion[3]
-        imu_msg.linear_acceleration.x = self.x_accel
-        imu_msg.linear_acceleration.y = self.y_accel
-        imu_msg.linear_acceleration.z = self.z_accel
-        self.imu_pub.publish(imu_msg)
+    
                               
     def init_x_y_yaw_velocity_data(self):
         # Assume a model with small accelerations in x and y, with some noise
@@ -342,20 +247,378 @@ class DroneSimulator(object):
         self.optical_flow_pub.publish(twist_msg)
     
     def write_to_csv(self, filename, times, data_list):
-        with open(os.path.join(self.log_basename, filename+'.csv'), 'a') as csv_file:
+        with open(os.path.join(self.logs_full_dir, filename+'.csv'), 'a') as csv_file:
             csv_writer = csv.writer(csv_file, delimiter=' ')
             for num, data in enumerate(data_list):
                 csv_writer.writerow(times[num] + data)
+                
+    def copy_times_lists(self):
+        for _, info_dict in self.info_dicts.iteritems():
+            info_dict['times_copy'] = list(info_dict['times'])
+            
+    def write_all_to_csv(self):
+        # For each sensor type
+        for _, info_dict in self.info_dicts.iteritems():
+            # For each filename corresponding to the sensor
+            for key in info_dict['filenames']:
+                self.write_to_csv(filename=info_dict['filenames'][key],
+                                  times=info_dict['times_copy'],
+                                  data_list=info_dict['data_lists'][key])
+                                      
+    def create_state_ground_truth_msg(self):
+        header = Header()
+        secs, nsecs = float_secs_to_time_pair(self.curr_time)
+        header.stamp.secs = secs
+        header.stamp.nsecs = nsecs
+        header.frame_id = 'global'
+        
+        pose_msg = PoseStamped()
+        twist_msg = TwistStamped()
+        pose_msg.header = header
+        twist_msg.header = header
+        
+        state_ground_truth_msg = StateGroundTruth()
+        state_ground_truth_msg.pose_stamped = pose_msg
+        state_ground_truth_msg.twist_stamped = twist_msg
+        return state_ground_truth_msg
+                
+    def float_secs_to_time_pair(self, t):
+        '''
+        Turn a float representing seconds into a secs-nsecs pair
+        '''
+        secs = int(t)
+        nsecs = int((t - secs)*(1e9))
+        return (secs, nsecs)
     
     def run_drone(self, duration):
         '''
         Start the drone sensor output
         '''
-        if self.save_to_csv:
-            self.initialize_csv_files()
+        print 'Starting simulation...'
         self.generate_data(duration=duration, time_std_dev=0.3)
+        if self.save_to_csv:
+            self.write_all_to_csv()
+        print '\nSimulation complete.'
         
-def positive_float_duration(val):
+        
+        
+        
+        
+        
+        
+        
+class DroneSimulator1D(DroneSimulator):
+    
+    def __init__(self, publish_ros=False, save_to_csv=False, rate=1.0):
+        super(DroneSimulator1D, self).__init__(publish_ros=publish_ros,
+                                               save_to_csv=save_to_csv,
+                                               rate=rate,
+                                               dim=1)
+        self.init_info()
+        self.init_state()
+        self.init_std_devs()
+        self.init_csv_files()
+        
+    def init_info(self):
+        '''
+        Create dictionaries to store information about sensors
+        '''
+        self.ir_info = {'id' : 0,
+                        'hz' : 57,
+                        'topic' : '/pidrone/infrared',
+                        'times' : [],
+                        'times_copy' : [],
+                        'filenames' : {'ir' : 'ir_RAW'},
+                        'headers' : {'ir' : ['Range_(meters)']},
+                        'data_lists' : {'ir' : []}
+                        }
+        self.imu_info = {'id' : 1,
+                         'hz' : 26,
+                         'topic' : '/pidrone/imu',
+                         'times' : [],
+                         'times_copy' : [],
+                         'filenames' : {'accel' : 'imu_RAW'},
+                         'headers' : {'accel' : ['Accel_x_body', 'Accel_y_body', 'Accel_z_body']},
+                         'data_lists' : {'accel' : []}
+                         }
+                            
+        self.info_dicts = {'ir' : self.ir_info,
+                           'imu' : self.imu_info,
+                           }
+                           
+    def init_state(self):
+        '''
+        Initialize the simulated drone's actual state. For this 1D simulation,
+        we define the state as the drone's position and velocity along the
+        vertical axis.
+        '''
+        self.actual_state = [0.4, 0.0] # [pos (meters), vel (m/s)]
+        self.actual_accel = 0.0 # m/s^2 along the z-axis
+        # To simulate random real-world disturbances:
+        self.actual_accel_std_dev = 0.0001 # m/s^2
+        self.curr_time = self.start_time
+        
+    def step_state(self, next_time_pair):
+        '''
+        Perform a time step and update the drone's state
+        '''
+        self.prev_time = self.curr_time
+        self.curr_time = next_time_pair[0] + next_time_pair[1]*1e-9
+        time_step = self.curr_time - self.prev_time
+        # Simulating a near-zero acceleration model
+        self.actual_accel = self.actual_accel_std_dev * randn()
+        self.actual_state[1] += self.actual_accel * time_step
+        self.actual_state[0] += self.actual_state[1] * time_step
+        # Don't allow drone to go below 9 centimeters off of the ground
+        if self.actual_state[0] < 0.09:
+            self.actual_state[0] = 0.09
+        
+    def init_std_devs(self):
+        self.z_accel_imu_measured_std_dev = 0.001 # meters/second^2
+        # Estimated standard deviation based on IR reading measured variance
+        self.z_pos_ir_measured_std_dev = np.sqrt(2.2221e-05) # meters
+    
+    def take_ir_sample(self):
+        self.z_pos_ir_measurement = self.z_pos_ir_measured_std_dev * randn() + self.actual_state[0]
+        self.ir_info['data_lists']['ir'].append([self.z_pos_ir_measurement])
+        
+    def take_imu_sample(self):
+        '''
+        Take a reading of acceleration along the z-axis
+        '''
+        self.z_accel_imu_measurement = self.z_accel_imu_measured_std_dev * randn() + self.actual_accel
+        self.imu_info['data_lists']['accel'].append([0.0, 0.0, self.z_accel_imu_measurement])
+        
+    def publish_ir(self):
+        range_msg = Range()
+        range_msg.header.stamp = rospy.Time.now()
+        range_msg.range = self.z_pos_ir_measurement
+        self.ir_pub.publish(range_msg)
+        
+    def publish_imu(self):
+        imu_msg = Imu()
+        imu_msg.header.stamp = rospy.Time.now()
+        imu_msg.linear_acceleration.z = self.z_accel_imu_measurement
+        self.imu_pub.publish(imu_msg)
+        
+    def publish_actual_state(self):
+        '''
+        Publish the current actual state from the simulation. This is
+        a StateGroundTruth message containing:
+            - PoseStamped
+            - TwistStamped
+        Note that a lot of these ROS message fields will be left empty, as the
+        1D simulation does not produce information on the entire state space of
+        the drone.
+        '''
+        state_ground_truth_msg = self.create_state_ground_truth_msg
+        state_ground_truth_msg.pose_stamped.pose.position.z = self.actual_state[0]
+        state_ground_truth_msg.twist_stamped.twist.linear.z = self.actual_state[1]
+        self.state_ground_truth_pub.publish(state_ground_truth_msg)
+                            
+    def generate_data(self, duration, time_std_dev):
+        '''
+        Generate data from each sensor based on each sensor's average frequency
+        
+        duration : approximate number of seconds for which to generate data
+        time_std_dev : standard deviation to use for the noise in the time steps
+        '''
+        self.generate_times(duration, time_std_dev)
+        self.copy_times_lists()
+        self.serialize_times()
+        
+        # Generate sample data in order of serialized times:
+        while len(self.serialized_times) > 0:
+            next_sample_id, next_time_pair = self.serialized_times.pop(0)
+            self.step_state(next_time_pair)
+            if self.publish_ros:
+                self.publish_actual_state()
+            if self.publish_ros and len(self.serialized_times) > 0:
+                t0 = next_time_pair[0] + next_time_pair[1]*1e-9
+                print 'Duration: {0} / {1}\r'.format(round(t0, 4), duration),
+                t1 = self.serialized_times[0][1][0] + self.serialized_times[0][1][1]*1e-9
+                # Naively sleep for a certain amount of time, not taking into
+                # account the amount of time required to carry out operations in
+                # this loop
+                rospy.sleep(self.delay_rate*(t1-t0))
+            if next_sample_id == self.ir_info['id']:
+                self.take_ir_sample()
+                if self.publish_ros:
+                    self.publish_ir()
+            elif next_sample_id == self.imu_info['id']:
+                self.take_imu_sample()
+                if self.publish_ros:
+                    self.publish_imu()
+                                            
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+class DroneSimulator2D(DroneSimulator):
+    
+    def __init__(self, publish_ros=False, save_to_csv=False, rate=1.0):
+        super(DroneSimulator2D, self).__init__(publish_ros=publish_ros,
+                                               save_to_csv=save_to_csv,
+                                               rate=rate,
+                                               dim=2)
+        self.init_info()
+        self.init_state()
+        self.init_std_devs()
+        self.init_csv_files()
+        if self.publish_ros:
+            global tf
+            import tf
+            global TwistStamped
+            from geometry_msgs.msg import TwistStamped
+            self.optical_flow_pub = rospy.Publisher('/pidrone/plane_err',
+                                                    TwistStamped,
+                                                    queue_size=1)
+        
+    def init_info(self):
+        '''
+        Create dictionaries to store information about sensors
+        '''
+        self.ir_info = {'id' : 0,
+                        'hz' : 57,
+                        'topic' : '/pidrone/infrared',
+                        'times' : [],
+                        'times_copy' : [],
+                        'filenames' : {'ir' : 'ir_RAW'},
+                        'headers' : {'ir' : ['Range_(meters)']},
+                        'data_lists' : {'ir' : []}
+                        }
+        self.imu_info = {'id' : 1,
+                         'hz' : 26,
+                         'topic' : '/pidrone/imu',
+                         'times' : [],
+                         'times_copy' : [],
+                         'filenames' :
+                            {'accel' : 'imu_RAW',
+                             'rpy' : 'roll_pitch_yaw_RAW'
+                             },
+                         'headers' :
+                            {'accel' : ['Accel_x_body', 'Accel_y_body', 'Accel_z_body'],
+                             'rpy' : ['Roll_(rad)', 'Pitch_(rad)', 'Yaw_(rad)']
+                             },
+                         'data_lists' :
+                            {'accel' : [],
+                             'rpy' : []
+                             }
+                         }
+        self.camera_info = {'id' : 2,
+                            'hz' : 20,
+                            'topic' : '/pidrone/plane_err',
+                            'times' : [],
+                            'times_copy' : [],
+                            'filenames' : {'camera' : 'x_y_yaw_velocity_RAW'},
+                            'headers' : {'camera' : ['Vel_x_(m/s)', 'Vel_y_(m/s)', 'Vel_yaw_(rad/s)']},
+                            'data_lists' : {'camera' : []}
+                            }
+                            
+        self.info_dicts = {'ir' : self.ir_info,
+                           'imu' : self.imu_info,
+                           'camera' : self.camera_info
+                           }
+            
+        
+    def init_state(self):
+        pass
+        
+        
+class DroneSimulator3D(DroneSimulator):
+    
+    def __init__(self, publish_ros=False, save_to_csv=False, rate=1.0):
+        super(DroneSimulator3D, self).__init__(publish_ros=publish_ros,
+                                               save_to_csv=save_to_csv,
+                                               rate=rate,
+                                               dim=3)
+        self.init_info()
+        self.init_state()
+        self.init_std_devs()
+        self.init_csv_files()
+        if self.publish_ros:
+            global tf
+            import tf
+            global TwistStamped
+            from geometry_msgs.msg import TwistStamped
+            self.optical_flow_pub = rospy.Publisher('/pidrone/plane_err',
+                                                    TwistStamped,
+                                                    queue_size=1)
+                                                    
+    def init_info(self):
+        '''
+        Create dictionaries to store information about sensors
+        '''
+        self.ir_info = {'id' : 0,
+                        'hz' : 57,
+                        'topic' : '/pidrone/infrared',
+                        'times' : [],
+                        'times_copy' : [],
+                        'filenames' : {'ir' : 'ir_RAW'},
+                        'headers' : {'ir' : ['Range_(meters)']},
+                        'data_lists' : {'ir' : []}
+                        }
+        self.imu_info = {'id' : 1,
+                         'hz' : 26,
+                         'topic' : '/pidrone/imu',
+                         'times' : [],
+                         'times_copy' : [],
+                         'filenames' :
+                            {'accel' : 'imu_RAW',
+                             'rpy' : 'roll_pitch_yaw_RAW'
+                             },
+                         'headers' :
+                            {'accel' : ['Accel_x_body', 'Accel_y_body', 'Accel_z_body'],
+                             'rpy' : ['Roll_(rad)', 'Pitch_(rad)', 'Yaw_(rad)']
+                             },
+                         'data_lists' :
+                            {'accel' : [],
+                             'rpy' : []
+                             }
+                         }
+        self.camera_info = {'id' : 2,
+                            'hz' : 20,
+                            'topic' : '/pidrone/plane_err',
+                            'times' : [],
+                            'times_copy' : [],
+                            'filenames' : {'camera' : 'x_y_yaw_velocity_RAW'},
+                            'headers' : {'camera' : ['Vel_x_(m/s)', 'Vel_y_(m/s)', 'Vel_yaw_(rad/s)']},
+                            'data_lists' : {'camera' : []}
+                            }
+                            
+        self.info_dicts = {'ir' : self.ir_info,
+                           'imu' : self.imu_info,
+                           'camera' : self.camera_info
+                           }
+        
+    def init_state(self):
+        pass
+        
+    def publish_imu(self):
+        imu_msg = Imu()
+        imu_msg.header.stamp = rospy.Time.now()
+        quaternion = tf.transformations.quaternion_from_euler(self.roll, self.pitch, self.yaw)
+        imu_msg.orientation.x = quaternion[0]
+        imu_msg.orientation.y = quaternion[1]
+        imu_msg.orientation.z = quaternion[2]
+        imu_msg.orientation.w = quaternion[3]
+        imu_msg.linear_acceleration.x = self.x_accel
+        imu_msg.linear_acceleration.y = self.y_accel
+        imu_msg.linear_acceleration.z = self.z_accel
+        self.imu_pub.publish(imu_msg)
+
+        
+def check_positive_float_duration(val):
     '''
     Function to check that the --duration command-line argument is a positive
     float.
@@ -365,9 +628,7 @@ def positive_float_duration(val):
         raise argparse.ArgumentTypeError('Duration must be positive')
     return value
         
-        
-if __name__ == '__main__':
-    print 'Starting simulation...'
+def main():
     parser = argparse.ArgumentParser(description=('Simulate the PiDrone\'s data'
                 ' outputs, either by publishing to ROS topics or saving to a'
                 ' CSV file.'))
@@ -382,13 +643,15 @@ if __name__ == '__main__':
     parser.add_argument('--dim', '-d', default=3, type=int, choices=[1, 2, 3],
                         help=('Number of spatial dimensions in which to simulate'
                               'the drone\'s motion (default: 3)'))
-    parser.add_argument('--duration', default=10.0, type=positive_float_duration,
+    parser.add_argument('--duration', default=10.0, type=check_positive_float_duration,
                         help='Duration (seconds) of simulation')
     args = parser.parse_args()
-    drone_sim = DroneSimulator(publish_ros=args.publish_ros,
-                               save_to_csv=args.save_csv,
-                               rate=args.rate,
-                               dim=args.dim)
+    drone_sim_dims = [DroneSimulator1D, DroneSimulator2D, DroneSimulator3D]
+    drone_sim = drone_sim_dims[args.dim-1](publish_ros=args.publish_ros,
+                                           save_to_csv=args.save_csv,
+                                           rate=args.rate)
     # Run the drone
     drone_sim.run_drone(duration=args.duration)
-    print '\nSimulation complete.'
+        
+if __name__ == '__main__':
+    main()

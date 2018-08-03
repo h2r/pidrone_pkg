@@ -32,8 +32,7 @@ class StateAnalyzer1D(object):
         self.include_mocap = include_mocap
         self.unit = unit
 
-        self.log_file_dir = '../logs/2018-06-26_test1_ir_control'
-        self.log_file_dir = '../logs'
+        self.log_file_dir = '../logs/1D'
         self.filenames = ['ir_RAW', 'ir_EMA', 'mocap']
         self.raw_data_filenames = ['ir_RAW']
         self.ema_data_filenames = ['ir_EMA']
@@ -43,7 +42,7 @@ class StateAnalyzer1D(object):
         
         # Approximate number of seconds by which mocap data is late compared to
         # other data in the current data set
-        self.mocap_time_offset = 21.0
+        self.mocap_time_offset = 0.0
 
     def load_raw_data(self):
         '''
