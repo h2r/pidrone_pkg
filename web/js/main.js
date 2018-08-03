@@ -24,6 +24,11 @@ var ros;
 var modepub;
 var modeMsg;
 var heartbeatPub;
+var irChart;
+var count;
+var windowSize;
+var gotFirstIR = false;
+var startTime;
 
 function closeSession(){
   console.log("Closing connections.");
@@ -129,17 +134,30 @@ function init() {
     irsub.subscribe(function(message) {
       //printProperties(message);
       //console.log("Range: " + message.range);
-      irChart.data.datasets[0].data[count] = message.range;
-      if (count - 1 < 0) {
-        irChart.data.datasets[1].data[windowSize - 1] = 0;
-      } else{
-        irChart.data.datasets[1].data[count - 1] = 0;
+      timeVal = message.header.stamp.secs + message.header.stamp.nsecs/1.0e9;
+      if (!gotFirstIR) {
+          gotFirstIR = true;
+          startTime = timeVal;
       }
-      irChart.data.datasets[1].data[count] = 60;
-      count = count + 1;
-      count = count % irChart.data.datasets[0].data.length;
+      xVal = timeVal - startTime;
+      // Have the plot scroll in time, showing a window of 10 seconds
+      if (xVal > 10) {
+          irChart.options.scales.xAxes[0].ticks.min = xVal - windowSize;
+          irChart.options.scales.xAxes[0].ticks.max = xVal;
+          // Remove first element of array
+          irChart.data.labels.splice(0, 1);
+          irChart.data.datasets[0].data.splice(0, 1);
+      }
+      // Add new range reading to end of the data array
+      irChart.data.labels.push(xVal);
+      irChart.data.datasets[0].data.push(message.range);
+      // // x-y pair:
+      // var xyPair = {x: xVal,
+      //               y: message.range};
+      // irChart.data.datasets[0].data.push(xyPair);
       irChart.update();
       //console.log("Data: " + irChart.data.datasets[0].data);
+      //console.log('xVal: ' + xVal)
 
     });
 
@@ -362,32 +380,23 @@ $(document).keydown(function(event){
   }
 });
 
-var irChart;
-var count;
-var windowSize;
 $(document).ready(function() {
     var ctx = document.getElementById("irChart").getContext('2d');
     count = 0;
-    windowSize = 500;
+    windowSize = 10;
     irChart = new Chart(ctx, {
         type: 'line',
         data: {
-            labels: Array(windowSize),
+            labels: Array(0), // initialize array of length 0
             datasets: [
               {
-                label: 'IR Readings',
-                data: Array(windowSize),
-                borderWidth: 1,
+                label: 'Raw IR Readings',
+                data: Array(0), // initialize array of length 0
+                borderWidth: 1.5,
                 pointRadius: 0,
-                //borderColor: 'rgba(0, 255, 0, 1)'
-              },
-              {
-                label: 'Window',
-                data: Array(windowSize),
-                borderWidth: 1,
-                pointRadius: 0,
+                fill: false,
                 borderColor: 'rgba(255, 0, 0, 1)'
-              },
+              }
             ]
         },
         options: {
@@ -397,13 +406,17 @@ $(document).ready(function() {
             scales: {
                 yAxes: [{
                     ticks: {
-                        beginAtZero:true,
+                        beginAtZero: true,
                         min: 0,
-                        max: 0.6,
+                        max: 0.6
                     }
                 }],
                 xAxes: [{
-                    display: false
+                    display: false,
+                    ticks: {
+                        min: 0,
+                        max: 10
+                    }
                 }]
             },
             legend: {
@@ -411,11 +424,6 @@ $(document).ready(function() {
             },
         }
     });
-    for (i = 0; i < irChart.data.datasets[0].data.length; i++) {
-      irChart.data.datasets[0].data[i] = 0;
-      irChart.data.labels[i] = i;
-      irChart.data.datasets[1].data[i] = 0;
-    }
     init();
 });
 
