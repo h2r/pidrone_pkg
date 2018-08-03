@@ -52,6 +52,7 @@ add_message_files(
   axes_err.msg
   Mode.msg
   State.msg
+  StateGroundTruth.msg
 
 )
 

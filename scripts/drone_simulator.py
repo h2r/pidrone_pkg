@@ -267,7 +267,7 @@ class DroneSimulator(object):
                                       
     def create_state_ground_truth_msg(self):
         header = Header()
-        secs, nsecs = float_secs_to_time_pair(self.curr_time)
+        secs, nsecs = self.float_secs_to_time_pair(self.curr_time)
         header.stamp.secs = secs
         header.stamp.nsecs = nsecs
         header.frame_id = 'global'
@@ -317,7 +317,8 @@ class DroneSimulator1D(DroneSimulator):
         self.init_info()
         self.init_state()
         self.init_std_devs()
-        self.init_csv_files()
+        if self.save_to_csv:
+            self.init_csv_files()
         
     def init_info(self):
         '''
@@ -390,6 +391,9 @@ class DroneSimulator1D(DroneSimulator):
         self.imu_info['data_lists']['accel'].append([0.0, 0.0, self.z_accel_imu_measurement])
         
     def publish_ir(self):
+        '''
+        Publish simulated IR measurements
+        '''
         range_msg = Range()
         range_msg.header.stamp = rospy.Time.now()
         range_msg.range = self.z_pos_ir_measurement
@@ -411,7 +415,7 @@ class DroneSimulator1D(DroneSimulator):
         1D simulation does not produce information on the entire state space of
         the drone.
         '''
-        state_ground_truth_msg = self.create_state_ground_truth_msg
+        state_ground_truth_msg = self.create_state_ground_truth_msg()
         state_ground_truth_msg.pose_stamped.pose.position.z = self.actual_state[0]
         state_ground_truth_msg.twist_stamped.twist.linear.z = self.actual_state[1]
         self.state_ground_truth_pub.publish(state_ground_truth_msg)
@@ -435,7 +439,7 @@ class DroneSimulator1D(DroneSimulator):
                 self.publish_actual_state()
             if self.publish_ros and len(self.serialized_times) > 0:
                 t0 = next_time_pair[0] + next_time_pair[1]*1e-9
-                print 'Duration: {0} / {1}\r'.format(round(t0, 4), duration),
+                print 'Duration: {0} / {1}\r'.format(round(t0-self.start_time, 4), duration),
                 t1 = self.serialized_times[0][1][0] + self.serialized_times[0][1][1]*1e-9
                 # Naively sleep for a certain amount of time, not taking into
                 # account the amount of time required to carry out operations in
@@ -474,7 +478,8 @@ class DroneSimulator2D(DroneSimulator):
         self.init_info()
         self.init_state()
         self.init_std_devs()
-        self.init_csv_files()
+        if self.save_to_csv:
+            self.init_csv_files()
         if self.publish_ros:
             global tf
             import tf
@@ -545,7 +550,8 @@ class DroneSimulator3D(DroneSimulator):
         self.init_info()
         self.init_state()
         self.init_std_devs()
-        self.init_csv_files()
+        if self.save_to_csv:
+            self.init_csv_files()
         if self.publish_ros:
             global tf
             import tf
