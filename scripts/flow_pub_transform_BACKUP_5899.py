@@ -137,7 +137,11 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
                 self.yaw_observed = math.atan2(corr_first[1, 0], corr_first[0, 0])
                 #print first_displacement, yaw_observed
                 #yaw = yaw_observed
-                self.smoothed_yaw = (1.0 - self.alpha_yaw) * self.smoothed_yaw + (self.alpha_yaw) * self.yaw_observed
+<<<<<<< HEAD
+                self.smoothed_yaw = (1.0 - self.alpha_yaw) * self.smoothed_yaw + (self.alpha_yaw) * yaw_observed
+=======
+                self.smoothed_yaw = (1.0 - self.alpha_yaw) * self.smoothed_yaw + (self.alpha_yaw) * self.yaw_observed 
+>>>>>>> feature/webPrettyify
                 yaw = self.smoothed_yaw
                 vel_average[0] = (1.0 - vel_alpha) * vel_average[0] + (vel_alpha) * self.pos[0]
                 # jgo XXX see what happens if we dont reset upon seeing first
@@ -358,6 +362,11 @@ def toggle_callback(data):
 def main():
     rospy.init_node('flow_pub')
 
+<<<<<<< HEAD
+
+
+=======
+>>>>>>> 1d6eb550eab108dfc7c3e3b3b6fcca8777ced052
     first_image_pub = rospy.Publisher("/pidrone/picamera/first_image", Image, queue_size=1, latch=True)
     
     image_pub = rospy.Publisher("/pidrone/picamera/image_raw", Image, queue_size=1, tcp_nodelay=False)
@@ -398,6 +407,12 @@ def main():
             i = 0
             last_time = None
             while not rospy.is_shutdown():
+<<<<<<< HEAD
+                velocity.x.err = flow_analyzer.x_motion
+                velocity.y.err = flow_analyzer.y_motion
+                velocity.z.err = flow_analyzer.z_motion
+=======
+>>>>>>> feature/webPrettyify
                 camera.wait_recording(1/100.0)
 
 

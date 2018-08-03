@@ -1,7 +1,7 @@
 """""
-picam_localization_distance
+slam.py
 
-implements Monte-Carlo Localization using the pi-camera
+Runs fastSLAM algorithm for the PiDrone. Helper code located in slam_helper.py
 """""
 
 import numpy as np
@@ -19,21 +19,16 @@ import sys
 from pid_class import PIDaxis
 import camera_info_manager
 from geometry_msgs.msg import TwistStamped
-from global_position_estimator_distance import LocalizationParticleFilter, create_map, PROB_THRESHOLD
-
-MAP_PIXEL_WIDTH = 2048  # in pixel
-MAP_PIXEL_HEIGHT = 1616
-MAP_REAL_WIDTH = 1.4  # in meter
-MAP_REAL_HEIGHT = 1.07
+from slam_helper import FastSLAM, PROB_THRESHOLD
+import math
 
 CAMERA_WIDTH = 320
 CAMERA_HEIGHT = 240
 # assume a pixel in x and y has the same length
-METER_TO_PIXEL = (float(MAP_PIXEL_WIDTH) / MAP_REAL_WIDTH + float(MAP_PIXEL_HEIGHT) / MAP_REAL_HEIGHT) / 2.
 CAMERA_CENTER = np.float32([(CAMERA_WIDTH - 1) / 2., (CAMERA_HEIGHT - 1) / 2.]).reshape(-1, 1, 2)
-MAX_BAD_COUNT = -10
-NUM_PARTICLE = 50
-NUM_FEATURES = 200
+MAX_BAD_COUNT = -100
+NUM_PARTICLE = 7
+NUM_FEATURES = 30
 
 
 class AnalyzePhase(picamera.array.PiMotionAnalysis):
@@ -55,9 +50,8 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
         self.lr_pid = PIDaxis(10.0, 0.000, 0.0, midpoint=0, control_range=(-5.0, 5.0))
         self.fb_pid = PIDaxis(10.0, 0.000, 0.0, midpoint=0, control_range=(-5.0, 5.0))
 
-        self.detector = cv2.ORB(nfeatures=NUM_FEATURES, scoreType=cv2.ORB_FAST_SCORE)  # FAST_SCORE is a little faster to compute
-        map_grid_kp, map_grid_des = create_map('map.jpg')
-        self.estimator = LocalizationParticleFilter(map_grid_kp, map_grid_des)
+        self.detector = cv2.ORB(nfeatures=NUM_FEATURES, scoreType=cv2.ORB_FAST_SCORE)
+        self.estimator = FastSLAM()
 
         self.first_locate = True
         self.first_hold = True
@@ -72,7 +66,7 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
         self.z = 0.075
         self.iacc_yaw = 0.0
         self.hold_position = False
-        self.target_pos = [0, 0, 0, 0]
+        self.target_pos = [0, 0, 0]
         self.target_yaw = 0.0
         self.map_counter = 0
         self.max_map_counter = 0
@@ -92,33 +86,33 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
         curr_rostime = rospy.Time.now()
         curr_time = curr_rostime.to_sec()
 
-        # start MCL localization
+        # start SLAM
         if self.locate_position:
             curr_kp, curr_des = self.detector.detectAndCompute(curr_img, None)
 
             if curr_kp is not None and curr_kp is not None:
                 # generate particles for the first time
                 if self.first_locate:
-                    particle = self.estimator.initialize_particles(NUM_PARTICLE, curr_kp, curr_des)
+                    pose = self.estimator.generate_particles(NUM_PARTICLE)
                     self.first_locate = False
-                    self.pos = [particle.x(), particle.y(), particle.z(), particle.yaw()]
-                    self.yaw = particle.yaw()
-                    print 'first', particle
+                    self.pos = pose
+                    self.yaw = pose[3]
+                    print 'first', pose
                 else:
-                    # get a estimate velocity over time
-                    particle = self.estimator.update(self.z, self.angle_x, self.angle_y, self.prev_kp, self.prev_des,
+                    pose, weight = self.estimator.run(self.z, self.angle_x, self.angle_y, self.prev_kp, self.prev_des,
                                                      curr_kp, curr_des)
 
                     # update position
-                    self.pos = [self.hybrid_alpha * particle.x() + (1.0 - self.hybrid_alpha) * self.pos[0],
-                                self.hybrid_alpha * particle.y() + (1.0 - self.hybrid_alpha) * self.pos[1],
+                    self.pos = [self.hybrid_alpha * pose[0] + (1.0 - self.hybrid_alpha) * self.pos[0],
+                                self.hybrid_alpha * pose[1] + (1.0 - self.hybrid_alpha) * self.pos[1],
                                 self.z]
-                    self.yaw = self.alpha_yaw * particle.yaw() + (1.0 - self.alpha_yaw) * self.yaw
-                    # print 'particle', particle
+                    self.yaw = self.alpha_yaw * pose[3] + (1.0 - self.alpha_yaw) * self.yaw
+
                     print '--pose', self.pos[0], self.pos[1], self.yaw
+                    print '--weight', weight
 
                     # if average particle weight is close to initial weight
-                    if is_almost_equal(particle.weight(), PROB_THRESHOLD):
+                    if is_almost_equal(weight, NUM_FEATURES*math.log(PROB_THRESHOLD)):
                         self.map_counter = self.map_counter - 1
                     elif self.map_counter <= 0:
                         self.map_counter = 1
@@ -136,7 +130,7 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
                         self.mode.y_velocity = 0
                         self.mode.yaw_velocity = 0
                         self.pospub.publish(self.mode)
-                        print 'Restart localization'
+                        print 'Restart SLAM'
                     else:
                         if self.hold_position:
                             if self.first_hold:
@@ -184,7 +178,7 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
 
     # start localization when '/pidrone/reset_transform' is published to (press 'r')
     def reset_callback(self, data):
-        print "Start localization"
+        print "Start SLAM"
         self.locate_position = True
         self.first_locate = True
         self.hold_position = False
@@ -215,8 +209,11 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
 
 
 def is_almost_equal(x, y):
-    epsilon = 1*10**(-8)
-    return abs(x-y) <= epsilon
+    """""
+    Is the difference between average weight and the lower bound on weight within 25% of the lower bound?
+    """""
+    epsilon = 0.25 * y
+    return abs(x-y) <= abs(epsilon)
 
 
 def main():

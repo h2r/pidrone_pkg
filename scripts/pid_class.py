@@ -114,13 +114,10 @@ class PID:
         self._t = None
 
         # Steve005 presets
-        #self.roll_low._i = 13.0
-        self.roll_low._i = 40.0 # for gdrone
-        #self.pitch_low._i = -2.0
-        self.pitch_low._i = 0.0 # for gdrone
+        self.roll_low._i = 15
+        self.pitch_low._i = 8
 
-        #self.throttle_low.init_i = 100
-        self.throttle_low.init_i = 45.0 # for gdrone
+        self.throttle_low.init_i = 130
         self.throttle.init_i = 0.0
         self.throttle.mw_angle_alt_scale = 1.0
         self.reset()

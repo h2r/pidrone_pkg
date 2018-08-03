@@ -1,0 +1,7 @@
+1. Finish making changes in latest release branch (i.e. release-[VERSION])
+2. Merge release branch into master branch
+3. Merge release branch back into develop branch
+4. In master branch, run bump-version.sh (this will update VERSION and create
+   a git tag)
+5. Publish a new release on github based on the git tag
+6. Delete the release branch

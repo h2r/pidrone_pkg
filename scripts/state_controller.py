@@ -1,6 +1,6 @@
 from pid_class import PID
-from geometry_msgs.msg import PoseStamped
-from sensor_msgs.msg import Range, Imu
+from geometry_msgs.msg import PoseStamped, TwistStamped
+from sensor_msgs.msg import Range
 from std_msgs.msg import String
 import rospy
 import numpy as np
@@ -9,9 +9,6 @@ from h2rMultiWii import MultiWii
 import time
 import signal
 import sys
-import rospkg
-import yaml
-import tf
 
 
 class StateController(object):
@@ -42,8 +39,6 @@ class StateController(object):
         # Time of last heartbeat from the web interface
         self.last_heartbeat = None
 
-        # Commanded x, y velocity of the drone
-        self.cmd_velocity = [0, 0]
         # Commanded yaw velocity of the drone
         self.cmd_yaw_velocity = 0
 
@@ -58,6 +53,7 @@ class StateController(object):
         self.mw_angle_comp_y = 0
         self.mw_angle_alt_scale = 1.0
         self.mw_angle_coeff = 10.0
+        self.angle = TwistStamped()
 
         # Desired and current mode of the drone
         self.commanded_mode = self.DISARMED
@@ -70,7 +66,6 @@ class StateController(object):
         """Arms the drone by sending the arm command to the flight controller"""
         arm_cmd = [1500, 1500, 2000, 900]
         self.board.sendCMD(8, MultiWii.SET_RAW_RC, arm_cmd)
-        #rospy.sleep(0.01)
         self.board.receiveDataPacket()
         rospy.sleep(1)
 
@@ -78,7 +73,6 @@ class StateController(object):
         """Disarms the drone by sending the disarm command to the flight controller"""
         disarm_cmd = [1500, 1500, 1000, 900]
         self.board.sendCMD(8, MultiWii.SET_RAW_RC, disarm_cmd)
-        #rospy.sleep(0.01)
         self.board.receiveDataPacket()
         rospy.sleep(1)
 
@@ -86,16 +80,12 @@ class StateController(object):
         """Enables the drone to continue arming until commanded otherwise"""
         idle_cmd = [1500, 1500, 1500, 1000]
         self.board.sendCMD(8, MultiWii.SET_RAW_RC, idle_cmd)
-        #rospy.sleep(0.01)
         self.board.receiveDataPacket()
-        rospy.sleep(1)
 
     def fly(self, fly_cmd):
         """Enables flight by sending the calculated flight command to the flight controller"""
         self.board.sendCMD(8, MultiWii.SET_RAW_RC, fly_cmd)
-        #rospy.sleep(0.01)
         self.board.receiveDataPacket()
-        rospy.sleep(1)
 
     def update_fly_velocities(self, msg):
         """Updates the desired x, y, yaw velocities and z-position"""
@@ -103,7 +93,6 @@ class StateController(object):
             self.set_vel_x = msg.x_velocity
             self.set_vel_y = msg.y_velocity
 
-            self.cmd_velocity = [msg.x_i, msg.y_i]
             self.cmd_yaw_velocity = msg.yaw_velocity
 
             new_set_z = self.set_z + msg.z_velocity
@@ -117,19 +106,19 @@ class StateController(object):
     def infrared_callback(self, msg):
         """Updates the current z-position of the drone as measured by the infrared sensor"""
         # Scales infrared sensor reading to get z accounting for tilt of the drone
-        self.current_z = msg.range * self.mw_angle_alt_scale
+        self.current_z = msg.range * self.mw_angle_alt_scale * 100
         self.error.z.err = self.set_z - self.current_z
 
     def vrpn_callback(self, msg):
         """Updates the current z-position of the drone as measured by the motion capture rig"""
         # Mocap uses y-axis to represent the drone's z-axis motion
-        self.current_z = msg.pose.position.y
+        self.current_z = msg.pose.position.y * 100
         self.error.z.err = self.set_z - self.current_z
 
     def plane_callback(self, msg):
         """Calculates error for x, y planar motion of the drone"""
-        self.error.x.err = (msg.x.err - self.mw_angle_comp_x) * self.current_z + self.set_vel_x
-        self.error.y.err = (msg.y.err + self.mw_angle_comp_y) * self.current_z + self.set_vel_y
+        self.error.x.err = (msg.twist.linear.x - self.mw_angle_comp_x) * self.current_z + self.set_vel_x
+        self.error.y.err = (msg.twist.linear.y + self.mw_angle_comp_y) * self.current_z + self.set_vel_y
 
     def mode_callback(self, msg):
         """Updates commanded mode of the drone and updates targeted velocities if the drone is flying"""
@@ -143,11 +132,17 @@ class StateController(object):
         new_angt = time.time()
         new_angx = mw_data['angx'] / 180.0 * np.pi
         new_angy = mw_data['angy'] / 180.0 * np.pi
-        self.mw_angle_comp_x = np.tan((new_angx - self.prev_angx) * (new_angt - self.prev_angt)) * self.mw_angle_coeff
-        self.mw_angle_comp_y = np.tan((new_angy - self.prev_angy) * (new_angt - self.prev_angt)) * self.mw_angle_coeff
+
+        # Passes angle of drone and correct velocity of drone
+        self.angle.twist.angular.x = new_angx
+        self.angle.twist.angular.y = new_angy
+        self.angle.header.stamp = rospy.get_rostime()
+
+        dt = new_angt - self.prev_angt
+        self.mw_angle_comp_x = np.tan((new_angx - self.prev_angx) * dt) * self.mw_angle_coeff
+        self.mw_angle_comp_y = np.tan((new_angy - self.prev_angy) * dt) * self.mw_angle_coeff
 
         self.mw_angle_alt_scale = np.cos(new_angx) * np.cos(new_angy)
-
         self.pid.throttle.mw_angle_alt_scale = self.mw_angle_alt_scale
 
         self.prev_angx = new_angx
@@ -183,11 +178,11 @@ if __name__ == '__main__':
     errpub = rospy.Publisher('/pidrone/err', axes_err, queue_size=1)
     modepub = rospy.Publisher('/pidrone/mode', Mode, queue_size=1)
     statepub = rospy.Publisher('/pidrone/state', State, queue_size=1, tcp_nodelay=False)
-    imupub = rospy.Publisher('/pidrone/imu', Imu, queue_size=1, tcp_nodelay=False)
+    anglepub = rospy.Publisher('/pidrone/angle', TwistStamped, queue_size=1, tcp_nodelay=False)
 
     # Subscribers
     #############
-    rospy.Subscriber("/pidrone/plane_err", axes_err, sc.plane_callback)
+    rospy.Subscriber("/pidrone/plane_err", TwistStamped, sc.plane_callback)
     rospy.Subscriber("/pidrone/infrared", Range, sc.infrared_callback)
     rospy.Subscriber("/pidrone/vrpn_pos", PoseStamped, sc.vrpn_callback)
     rospy.Subscriber("/pidrone/set_mode_vel", Mode, sc.mode_callback)
@@ -201,17 +196,6 @@ if __name__ == '__main__':
 
     mode_to_pub = Mode()
     state_to_pub = State()
-    
-    # Accelerometer parameters
-    ##########################
-    rospack = rospkg.RosPack()
-    path = rospack.get_path('pidrone_pkg')
-    with open("%s/params/multiwii.yaml" % path) as f:
-        means = yaml.load(f)
-    accRawToMss = 9.8 / means["az"]
-    accZeroX = means["ax"] * accRawToMss
-    accZeroY = means["ay"] * accRawToMss
-    accZeroZ = means["az"] * accRawToMss
 
     while not rospy.is_shutdown():
         # Publishes current mode message
@@ -227,35 +211,15 @@ if __name__ == '__main__':
         # Publishes current battery voltage levels to display on the web interface
         state_to_pub.vbat = sc.board.analog['vbat'] * 0.10
         state_to_pub.amperage = sc.board.analog['amperage']
-        
-        curr_time = rospy.Time.now()
-        state_to_pub.header.stamp = curr_time
-        roll = sc.board.attitude['angx']
-        pitch = sc.board.attitude['angy']
-        print 'ROLL:', roll
-        print 'PITCH:', pitch
-        print 'HDG:', sc.board.attitude['heading']
-        state_to_pub.roll = roll
-        state_to_pub.pitch = pitch
-        
-        imu = Imu()
-        quaternion = tf.transformations.quaternion_from_euler(np.deg2rad(roll), np.deg2rad(pitch), 0.0)
-        imu.header.frame_id = "base"
-        imu.header.stamp = curr_time
-        imu.orientation.x = quaternion[0]
-        imu.orientation.y = quaternion[1]
-        imu.orientation.z = quaternion[2]
-        imu.orientation.w = quaternion[3]
-        imu.linear_acceleration.x = sc.board.rawIMU['ax'] * accRawToMss - accZeroX
-        imu.linear_acceleration.y = sc.board.rawIMU['ay'] * accRawToMss - accZeroY
-        imu.linear_acceleration.z = sc.board.rawIMU['az'] * accRawToMss - accZeroZ
-        imupub.publish(imu)        
         statepub.publish(state_to_pub)
 
         try:
             if not sc.current_mode == sc.DISARMED:
+                # Calculates angle compensation values
                 sc.calc_angle_comp_values(mw_data)
+                anglepub.publish(sc.angle)
 
+                # Checks heartbeat from web interface
                 if sc.shouldIDisarm():
                     print "Disarming because a safety check failed."
                     break
@@ -300,8 +264,8 @@ if __name__ == '__main__':
                 else:
                     print 'Cannot transition from Mode %d to Mode %d' % (sc.current_mode, sc.commanded_mode)
         except:
+            print "BOARD ERRORS!!"
             raise
 
     sc.disarm()
     print "Shutdown Received"
-

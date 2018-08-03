@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 from h2rMultiWii import MultiWii
 import time
 

@@ -33,7 +33,7 @@ max_first_counter = 0
 
 
 replan_period = 1.0 # seconds
-replan_scale = 0.5
+replan_scale = 0.5 
 replan_last_reset = 0
 replan_next_deadline = 0
 replan_until_deadline = 0
@@ -53,7 +53,6 @@ def mode_callback(data):
     current_mode = data.mode
     if not phase_analyzer.transforming or data.mode == 4 or data.mode == 3:
         print "VELOCITY"
-        phase_analyzer.transforming = False
         phase_analyzer.pospub.publish(data)
     else:
         phase_analyzer.target_x = data.x_velocity * 4.
@@ -97,7 +96,7 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
         if self.first:
             print "taking new first"
             self.first = False
-            #self.first_img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+            #self.first_img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)            
             self.first_img = img
             cv2.imwrite("first_img" + str(self.i) + ".jpg", self.first_img)
             #self.prev_img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
@@ -113,11 +112,6 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
         elif self.transforming:
             #curr_img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
             curr_img = img
-            mode = Mode()
-            mode_raw = Mode() # for data logging and analysis purposes
-            curr_timestamp = rospy.Time.from_sec(curr_time)
-            mode.header.stamp = curr_timestamp
-            mode_raw.header.stamp = curr_timestamp
             corr_first = cv2.estimateRigidTransform(self.first_img, curr_img, False)
             corr_int = cv2.estimateRigidTransform(self.prev_img, curr_img, False)
             self.prev_img = curr_img
@@ -137,12 +131,12 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
                 self.yaw_observed = math.atan2(corr_first[1, 0], corr_first[0, 0])
                 #print first_displacement, yaw_observed
                 #yaw = yaw_observed
-                self.smoothed_yaw = (1.0 - self.alpha_yaw) * self.smoothed_yaw + (self.alpha_yaw) * self.yaw_observed
+                self.smoothed_yaw = (1.0 - self.alpha_yaw) * self.smoothed_yaw + (self.alpha_yaw) * self.yaw_observed 
                 yaw = self.smoothed_yaw
                 vel_average[0] = (1.0 - vel_alpha) * vel_average[0] + (vel_alpha) * self.pos[0]
                 # jgo XXX see what happens if we dont reset upon seeing first
                 #self.pos = [first_displacement[0] * self.z, first_displacement[1] * self.z / 240., yaw]
-                # jgo XXX see what happens if we use alpha blending
+                # jgo XXX see what happens if we use alpha blending 
                 hybrid_alpha = 0.1 # needs to be between 0 and 1.0
                 self.pos[0:2] = [(hybrid_alpha) * first_displacement[0] * self.z + (1.0 - hybrid_alpha) * self.pos[0],
                             (hybrid_alpha) * first_displacement[1] * self.z  + (1.0 - hybrid_alpha) * self.pos[1]]
@@ -155,12 +149,13 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
                 self.lr_err.err = self.pos[0] + self.target_x
                 self.fb_err.err = self.pos[1] + self.target_y
                 print "ERR", self.lr_err.err, self.fb_err.err
+                mode = Mode()
                 mode.mode = 5
                 mode.x_i += self.lr_pid.step(self.lr_err.err, self.prev_time - curr_time)
                 mode.y_i += self.fb_pid.step(self.fb_err.err, self.prev_time - curr_time)
                 #mode.x_velocity = mode.x_i
                 #mode.y_velocity = mode.y_i
-                # jgo XXX LOLOL constant velocity controller
+                # jgo XXX LOLOL constant velocity controller 
                 first_counter = first_counter + 1
                 max_first_counter = max(first_counter, max_first_counter)
                 cvc_norm = np.sqrt(mode.x_i * mode.x_i + mode.y_i * mode.y_i)
@@ -180,30 +175,23 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
                 # integrate!
                 #mode.x_velocity = 0
                 #mode.y_velocity = 0
-                mode.x_velocity = cvc_vel * mode.x_i
-                mode.y_velocity = cvc_vel * mode.y_i
-                mode_raw.x_velocity = mode.x_velocity
-                mode_raw.y_velocity = mode.y_velocity
+                mode.x_velocity = cvc_vel * mode.x_i 
+                mode.y_velocity = cvc_vel * mode.y_i 
                 #mode.x_velocity = cvc_vel * mode.x_i / cvc_norm
                 #mode.y_velocity = cvc_vel * mode.y_i / cvc_norm
                 #mode.x_velocity = replan_vel_x
                 #mode.y_velocity = replan_vel_y
                 self.iacc_yaw += yaw * self.ki_yaw
-                self.iacc_yaw_raw += yaw_observed * self.ki_yaw
 
                 yaw_kpi_term = np.sign(yaw) * yaw * yaw * self.kpi_yaw
                 if abs(yaw_kpi_term) < self.kpi_max_yaw:
                     self.iacc_yaw += yaw_kpi_term
-                    self.iacc_yaw_raw += yaw_kpi_term
                 else:
                     self.iacc_yaw += np.sign(yaw) * self.kpi_max_yaw
-                    self.iacc_yaw_raw += np.sign(yaw_observed) * self.kpi_max_yaw
 
                 mode.yaw_velocity = yaw * self.kp_yaw + self.iacc_yaw
-                mode_raw.yaw_velocity = yaw_observed * self.kp_yaw + self.iacc_yaw_raw
                 print "yaw iacc: ", self.iacc_yaw
                 self.pospub.publish(mode)
-                self.pospub_raw.publish(mode_raw)
                 print "first", max_first_counter, first_counter
             elif corr_int is not None:
                 time_since_first = curr_time - self.last_first_time
@@ -228,15 +216,16 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
                 self.lr_err.err = self.pos[0] + self.target_x
                 self.fb_err.err = self.pos[1] + self.target_y
                 print "ERR", self.lr_err.err, self.fb_err.err
+                mode = Mode()
                 mode.mode = 5
                 mode.x_i += self.lr_pid.step(self.lr_err.err, self.prev_time - curr_time)
                 mode.y_i += self.fb_pid.step(self.fb_err.err, self.prev_time - curr_time)
-                # jgo XXX LOLOL constant velocity controller
+                # jgo XXX LOLOL constant velocity controller 
                 first_counter = 0
                 cvc_norm = np.sqrt(mode.x_i * mode.x_i + mode.y_i * mode.y_i)
                 if cvc_norm <= 0.01:
                     cvc_norm = 1.0
-                cvc_vel = 3.0#0.25 #1.0
+                cvc_vel = 3.0#0.25 #1.0 
 
                 if shouldi_set_velocity:
                     #replan_vel_x = mode.x_i * replan_scale# * cvc_vel
@@ -246,10 +235,8 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
                     replan_vel_x = min(replan_vel_x, 1.0)
                     replan_vel_y = min(replan_vel_y, 1.0)
                 #cvc_vel = max(min(time_since_first * 0.1, 1.0), 0.0)
-                mode.x_velocity = cvc_vel * mode.x_i
-                mode.y_velocity = cvc_vel * mode.y_i
-                mode_raw.x_velocity = mode.x_velocity
-                mode_raw.y_velocity = mode.y_velocity
+                mode.x_velocity = cvc_vel * mode.x_i 
+                mode.y_velocity = cvc_vel * mode.y_i 
                 #mode.x_velocity = cvc_vel * mode.x_i / cvc_norm
                 #mode.y_velocity = cvc_vel * mode.y_i / cvc_norm
                 #mode.x_velocity = replan_vel_x
@@ -257,10 +244,8 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
                 #mode.yaw_velocity = yaw * self.kp_yaw
                 # yaw i term only
                 mode.yaw_velocity = self.iacc_yaw
-                mode_raw.yaw_velocity = self.iacc_yaw_raw
                 print "yaw iacc: ", self.iacc_yaw
                 self.pospub.publish(mode)
-                self.pospub_raw.publish(mode_raw)
             else:
                 print "LOST"
 
@@ -297,7 +282,6 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
         self.fb_err = ERR()
         self.prev_time = None
         self.pospub = rospy.Publisher('/pidrone/set_mode_vel', Mode, queue_size=1)
-        self.pospub_raw = rospy.Publisher('/pidrone/set_mode_vel_raw', Mode, queue_size=1)
         self.pos = [0, 0, 0]
 # -, -, 0.1
         #self.lr_pid = PIDaxis(0.100, -0.000100, 0.0050, midpoint=0, control_range=(-10.0, 10.0))
@@ -311,8 +295,8 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
                                 key_size = 12, multi_probe_level = 1)
         self.search_params = dict(checks = 50)
         self.min_match_count = 10
-        self.camera_matrix = np.array([[ 250.0, 0., 160.0],
-                                    [ 0., 250.0, 120.0],
+        self.camera_matrix = np.array([[ 250.0, 0., 160.0], 
+                                    [ 0., 250.0, 120.0], 
                                     [   0., 0., 1.]])
         self.z = 7.5
         self.est_RT = np.identity(4)
@@ -325,7 +309,6 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
         self.smoothed_yaw = 0.0
         self.yaw_observed = 0.0
         self.iacc_yaw = 0.0
-        self.iacc_yaw_raw = 0.0
         self.transforming = False
         self.i = 0
         self.last_first_time = None
@@ -358,6 +341,11 @@ def toggle_callback(data):
 def main():
     rospy.init_node('flow_pub')
 
+<<<<<<< HEAD
+
+
+=======
+>>>>>>> 1d6eb550eab108dfc7c3e3b3b6fcca8777ced052
     first_image_pub = rospy.Publisher("/pidrone/picamera/first_image", Image, queue_size=1, latch=True)
     
     image_pub = rospy.Publisher("/pidrone/picamera/image_raw", Image, queue_size=1, tcp_nodelay=False)
@@ -419,7 +407,7 @@ def main():
         print "Shutdown Recieved"
         sys.exit()
     except Exception as e:
-        raise
+        raise 
     
 
 if __name__ == '__main__':
