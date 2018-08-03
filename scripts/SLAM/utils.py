@@ -16,6 +16,26 @@ MATCH_RATIO = 0.7
 debug = False
 
 
+class Landmark:
+    """
+    attributes:
+    x, y: the position of the landmark
+    covariance: the covariance matrix for the landmark's position, 2x2
+    des: the descriptor of this landmark (landmarks are openCV features)
+    counter: the number of times this landmark has been seen, initialized as 1
+    """
+
+    def __init__(self, x, y, covariance, des, count):
+        self.x = x
+        self.y = y
+        self.covariance = covariance
+        self.des = des
+        self.counter = count
+
+    def __repr__(self):
+        return "Pose: " + str(self.x) + str(self.y) + "Count: " + str(self.counter)
+
+
 def calculate_jacobian(robot_position, landmark_pos): 
 
     """ Calculates the Jacobian matrix of a particular observatoin
@@ -159,16 +179,73 @@ def compute_new_covariance(kalmanGain, jacobian, oldCovariance):
     return newCovariance
 
 
-def adjust_angle(angle):
-    """""
-    keeps angle within -pi to pi
-    """""
-    while angle > math.pi:
-        angle -= 2 * math.pi
-    while angle <= -math.pi:
-        angle += 2 * math.pi
+def add_landmark(particle, kp, des, sigma_observation, kp_to_measurement):
+    """
+    adds a newly observed landmark to particle
 
-    return angle
+    :param particle: the particle to add the new landmark to
+    :param kp, des: the keypoint and descriptor of the new landmark to add
+    :param sigma_observation: the covariance of the observation measurement
+    :param kp_to_measurement: a function which computes a range/bearing measurement from the center of the
+                              camera frame to kp
+    """
+
+    robot_x, robot_y = particle.pose[0], particle.pose[1]
+
+    # get the dist and bearing from the keypoint to the center of the camera frame
+    dist, bearing = kp_to_measurement(kp)
+
+    land_x = robot_x + (dist * np.cos(bearing))
+    land_y = robot_y + (dist * np.sin(bearing))
+
+    # compute Jacobian of the robot's position and covariance of the measurement
+    H = calculate_jacobian((robot_x, robot_y), (land_x, land_y))
+    covariance = compute_initial_covariance(H, sigma_observation)
+
+    # add the new landmark to this particle's list of landmarks
+    particle.landmarks.append(Landmark(land_x, land_y, covariance, des, 1))
+
+
+def update_landmark(particle, landmark, kp, des, sigma_observation, kp_to_measurement):
+    """
+    update the mean and covariance of a landmark
+
+    uses the Extended Kalman Filter (EKF) to update the existing landmark's mean (x, y) and
+    covariance according to the new measurement
+
+    :param particle: the particle to update
+    :param landmark: the landmark to update
+    :param kp, des: the keypoint and descriptor of the new landmark
+    :param sigma_observation: the covariance of the observation measurement
+    :param kp_to_measurement: a function which computes a range/bearing measurement from the center of the
+                              camera frame to kp
+    """
+
+    robot_x, robot_y = particle.pose[0], particle.pose[1]
+
+    # get the dist and bearing from the center of the camera frame to this keypoint
+    dist, bearing = kp_to_measurement(kp)
+
+    predicted_dist = distance(landmark.x, landmark.y, robot_x, robot_y)
+    predicted_bearing = (math.atan2((landmark.y - robot_y), (landmark.x - robot_x)))
+
+    # the covariance matrix of a landmark at the previous time step
+    S = landmark.covariance
+    # compute the Jacobian of the robot's position
+    H = calculate_jacobian((robot_x, robot_y), (landmark.x, landmark.y))
+    # compute the measurement covariance matrix
+    Q = compute_measurement_covariance(H, S, sigma_observation)
+    # compute the Kalman gain
+    K = compute_kalman_gain(H, S, Q)
+
+    # calculate the new landmark's position estimate using the Kalman gain
+    old_landmark = np.array(landmark.x, landmark.y)
+    new_landmark = compute_new_landmark((dist, bearing), (predicted_dist, predicted_bearing), K, old_landmark)
+
+    # compute the updated covariance of the landmark
+    new_covariance = compute_new_covariance(K, H, S)
+
+    return Landmark(new_landmark[0], new_landmark[1], new_covariance, des, landmark.counter)
 
 
 def compute_transform(matcher, kp1, des1, kp2, des2):
@@ -207,6 +284,17 @@ def normal(mu, sigma):
     samples from the Gaussian with 6 letters instead of 16
     """""
     return np.random.normal(mu, sigma)
+
+def adjust_angle(angle):
+    """
+    keeps angle within -pi to pi
+    """
+    while angle > math.pi:
+        angle -= 2 * math.pi
+    while angle <= -math.pi:
+        angle += 2 * math.pi
+
+    return angle
 
 
 

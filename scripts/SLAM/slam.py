@@ -19,7 +19,7 @@ import sys
 from pid_class import PIDaxis
 import camera_info_manager
 from geometry_msgs.msg import TwistStamped
-from archive.slam_helper import FastSLAM, PROB_THRESHOLD
+from slam_helper import FastSLAM, PROB_THRESHOLD
 import math
 
 # ---------- camera parameters DO NOT EDIT ----------- #
@@ -29,7 +29,7 @@ CAMERA_CENTER = np.float32([(CAMERA_WIDTH - 1) / 2., (CAMERA_HEIGHT - 1) / 2.]).
 # --------------------- #
 
 # ---------- SLAM parameters ----------- #
-MAX_BAD_COUNT = -500
+MAX_BAD_COUNT = -100
 NUM_PARTICLE = 7
 NUM_FEATURES = 30
 # --------------------- #
@@ -115,8 +115,8 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
                     print '--pose', self.pos[0], self.pos[1], self.pos[3]
                     print '--weight', weight
 
-                    # if average particle weight is close to initial weight
-                    if is_almost_equal(weight, NUM_FEATURES*math.log(PROB_THRESHOLD)):
+                    # if average weight is close to the worst possible weight
+                    if scale_weight(weight) < 0.2:
                         self.map_counter = self.map_counter - 1
                     elif self.map_counter <= 0:
                         self.map_counter = 1
@@ -217,12 +217,14 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
             print "Target position", self.target_pos
 
 
-def is_almost_equal(x, y):
-    """""
-    Is the difference between average weight and the lower bound on weight within 25% of the lower bound?
-    """""
-    epsilon = 0.25 * y
-    return abs(x-y) <= abs(epsilon)
+def scale_weight(w):
+    """
+    :param w: the current average weight of the particles
+    :return: the weight scaled from the (0, worst_possible_weight) to (0,1)
+    """
+    worst_possible_weight = NUM_FEATURES * (math.log(PROB_THRESHOLD) + math.log(0.1*PROB_THRESHOLD))
+    # subtract from 1 so that higher is better
+    return 1 - (w / worst_possible_weight)
 
 
 def main():

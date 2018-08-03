@@ -12,7 +12,10 @@ import cv2
 import threading
 from thread_queue import ThreadQueue
 
+# all for debugging
 DEBUG = False
+POSE  = False
+WEIGHT = False
 
 # ----- camera parameters DO NOT EDIT ------- #
 CAMERA_SCALE = 290.
@@ -27,27 +30,7 @@ PROB_THRESHOLD = 0.005
 KEYFRAME_DIST_THRESHOLD = CAMERA_HEIGHT
 KEYFRAME_YAW_THRESHOLD = 0.175
 
-pose_path = '/home/pi/ws/src/pidrone_pkg/scripts/pose_data.txt'
-
-
-class Landmark:
-    """
-    attributes:
-    x, y: the position of the landmark
-    covariance: the covariance matrix for the landmark's position, 2x2
-    des: the descriptor of this landmark (landmarks are openCV features)
-    counter: the number of times this landmark has been seen, initialized as 1
-    """
-
-    def __init__(self, x, y, covariance, des, count):
-        self.x = x
-        self.y = y
-        self.covariance = covariance
-        self.des = des
-        self.counter = count
-
-    def __repr__(self):
-        return "Pose: " + str(self.x) + str(self.y) + "Count: " + str(self.counter)
+pose_path = '/home/luke/ws/src/pidrone_pkg/scripts/pose_data.txt'
 
 
 class Particle:
@@ -81,7 +64,8 @@ class FastSLAM:
         self.key_kp = None
         self.key_des = None
 
-        self.file = open(pose_path, 'w')
+        if POSE or WEIGHT:
+            self.file = open(pose_path, 'w')
 
         # we will queue threads here, and they will store their results in most_recent_map and set new_result to True
         self.thread_queue = ThreadQueue()
@@ -100,10 +84,10 @@ class FastSLAM:
         self.sigma_observation = np.array([[self.sigma_d ** 2, 0], [0, self.sigma_p ** 2]])
 
         # ------- parameters for noise on motion updates --------- #
-        sigma_vx = 0.0001
-        sigma_vy = 0.0001
+        sigma_vx = 2
+        sigma_vy = 2
         sigma_vz = 0.0
-        sigma_yaw = 0.0001
+        sigma_yaw = 2
         self.covariance_motion = np.array([[sigma_vx ** 2, 0, 0, 0],
                                            [0, sigma_vy ** 2, 0, 0],
                                            [0, 0, sigma_vz ** 2, 0],
@@ -126,7 +110,7 @@ class FastSLAM:
         self.key_kp, self.key_des = None, None
         self.weight = PROB_THRESHOLD
 
-        return self.estimate_pose()
+        return estimate_pose(self.particles)
 
     def run(self, z, prev_kp, prev_des, kp, des):
         """
@@ -143,9 +127,10 @@ class FastSLAM:
         print "LM: ", np.sum([len(p.landmarks) for p in self.particles]) / float(self.num_particles)
 
         # write poses to a text file to be animated
-        for p in self.particles:
-            self.file.write(str(p.pose[0]) + '\n')
-            self.file.write(str(p.pose[1]) + '\n')
+        if POSE:
+            for p in self.particles:
+                self.file.write(str(p.pose[0]) + '\n')
+                self.file.write(str(p.pose[1]) + '\n')
 
         self.z = z
 
@@ -165,20 +150,27 @@ class FastSLAM:
                 self.predict_particle(p, x, y, yaw)
 
             # (potentially) do a map update
-            self.map_update_thread(kp, des)
+            self.detect_keyframe(kp, des)
 
             # replace particles with updated ones if a thread has completed
             if self.new_result:
                 self.new_result = False
+
                 most_recent_particles = self.most_recent_map
                 for old, new in zip(self.particles, most_recent_particles[0]):
                     old.landmarks = new.landmarks
+                    old.weight = new.weight
+
+                # write the weights to a text file to be animated
+                if WEIGHT:
+                    self.file.write(str([p.weight for p in self.particles]) + '\n')
 
                 # update the weight with the most recent thread result and resample
                 self.weight = most_recent_particles[1]
+
                 self.particles = resample_particles(self.particles)
 
-        return self.estimate_pose(), self.weight
+        return estimate_pose(self.particles), self.weight
 
     def predict_particle(self, particle, x, y, yaw):
         """
@@ -201,42 +193,11 @@ class FastSLAM:
         particle.pose[3] += noisy_x_y_z_yaw[3]
         particle.pose[3] = utils.adjust_angle(particle.pose[3])
 
-    def estimate_pose(self):
+    def detect_keyframe(self, kp, des):
         """
-        retrieves the drone's estimated position by summing each particle's pose estimate multiplied
-        by its weight
-
-        some mathematical motivation Expectation[X] = sum over all x in X of p(x) * x
-        """
-        weight_sum = 0.0
-        normal_weights = np.array([])
-
-        for p in self.particles:
-            w = min(math.exp(p.weight), utils.max_float)
-            normal_weights = np.append(normal_weights, w)
-            weight_sum += w
-
-        normal_weights /= weight_sum
-
-        x = 0.0
-        y = 0
-        z = 0
-        yaw = 0
-
-        for i, prob in enumerate(normal_weights):
-            x += prob * self.particles[i].pose[0]
-            y += prob * self.particles[i].pose[1]
-            z += prob * self.particles[i].pose[2]
-            yaw += prob * self.particles[i].pose[3]
-
-        yaw = utils.adjust_angle(yaw)
-
-        return [x, y, z, yaw]
-
-    def map_update_thread(self, kp, des):
-        """
-        takes care of map updates with a thread, since they are slower than motion updates, this way the
-        motion updates can still happen while the map is updating
+        Checks if there is a previous keyframe, and if not, starts  a new one. If the distance between the
+        previous keyframe and the current frame is above a threshold, starts a map update thread. Or, if
+        we cannot transform between the previous keyframe and this frame, also starts a map update thread.
 
         :param kp, des: the lists of keypoints and descriptors
         """
@@ -252,29 +213,29 @@ class FastSLAM:
                 yaw = -np.arctan2(transform[1, 0], transform[0, 0])
 
                 if utils.distance(x, y, 0, 0) > KEYFRAME_DIST_THRESHOLD or yaw > KEYFRAME_YAW_THRESHOLD:
-                    self.start_thread(kp, des)
+                    self.start_update_thread(kp, des)
             else:
                 # moved too far to transform from last keyframe, so set a new one
-                self.start_thread(kp, des)
+                self.start_update_thread(kp, des)
         # there is no previous keyframe
         else:
-            self.start_thread(kp, des)
+            self.start_update_thread(kp, des)
 
-    def start_thread(self, kp, des):
+    def start_update_thread(self, kp, des):
         """
         starts a thread to update the map
 
         :param kp, des: the lists of keypoints and descriptors
         """
-        t = threading.Thread(target=self.keyframe_update, args=(kp, des,))
+        t = threading.Thread(target=self.update_map, args=(kp, des,))
         self.thread_queue.add_thread(t)
 
         # set the new keyframe kp and des to the current ones
         self.key_kp, self.key_des = kp, des
 
-    def keyframe_update(self, kp, des):
+    def update_map(self, kp, des):
         """
-        updates the map and gets the average weight of the particles, then queues those results
+        updates the map and gets the average weight of the particles, then stores those results
 
         :param kp, des: the lists of keypoints and descriptors
         """
@@ -282,14 +243,14 @@ class FastSLAM:
         curr_particles = copy.deepcopy(self.particles)
 
         for p in curr_particles:
-            self.update_map(p, kp, des)
+            self.update_particle(p, kp, des)
 
         weight = self.get_average_weight(curr_particles)
 
         self.most_recent_map = (curr_particles, weight)
         self.new_result = True
 
-    def update_map(self, particle, keypoints, descriptors):
+    def update_particle(self, particle, keypoints, descriptors):
         """
         Associate observed keypoints with an old particle's landmark set and update the EKF
         Increment the landmark's counter if it finds a match, otherwise add a new landmark
@@ -305,12 +266,12 @@ class FastSLAM:
         # if this particle has no landmarks, make all measurements into landmarks
         if len(particle.landmarks) == 0:
             for kp, des in zip(keypoints, descriptors):
-                self.add_landmark(particle, kp, des)
+                utils.add_landmark(particle, kp, des, self.sigma_observation, self.kp_to_measurement)
         else:
             # find particle's landmarks in a close range, close_landmarks holds tuples of the landmark and its index
             close_landmarks = []
             for i, lm in enumerate(particle.landmarks):
-                if utils.distance(lm.x, lm.y, particle.pose[0], particle.pose[1]) <= self.perceptual_range * 1.2:
+                if utils.distance(lm.x, lm.y, particle.pose[0], particle.pose[1]) <= self.perceptual_range:
                     close_landmarks.append((lm, i))
 
             if len(close_landmarks) != 0:
@@ -326,7 +287,7 @@ class FastSLAM:
 
                     # there was no match
                     if match[0].distance > DES_MATCH_THRESHOLD:
-                        self.add_landmark(particle, kp, des)
+                        utils.add_landmark(particle, kp, des, self.sigma_observation, self.kp_to_measurement)
 
                         # 'punish' this particle since new landmarks decrease certainty
                         particle.weight += math.log(PROB_THRESHOLD)
@@ -337,12 +298,14 @@ class FastSLAM:
                         dated_landmark = close_landmarks[close_index]
 
                         # update the original landmark in this particle
-                        updated_landmark = self.update_landmark(particle, dated_landmark[0], kp, des)
+                        updated_landmark = utils.update_landmark(particle, dated_landmark[0], kp, des,
+                                                                 self.sigma_observation, self.kp_to_measurement)
                         particle.landmarks[dated_landmark[1]] = updated_landmark
 
                         # 'reward' this particles since revisting landmarks increases certainty
                         particle.weight += math.log(scale_weight(match[0].distance))
 
+                # increment counter for revisited particles, and decrement counter for non-revisited particles
                 removed = []
                 for i, match in enumerate(matched_landmarks):
                     tup = close_landmarks[i]
@@ -358,72 +321,6 @@ class FastSLAM:
 
                 for rm in removed:
                     particle.landmarks.remove(rm)
-
-    def add_landmark(self, particle, kp, des):
-        """
-        adds a newly observed landmark to particle
-
-        :param particle: the particle to add the new landmark to
-        :param kp, des: the keypoint and descriptor of the new landmark to add
-        """
-        if DEBUG:
-            print 'NEW LM'
-
-        robot_x, robot_y = particle.pose[0], particle.pose[1]
-
-        # get the dist and bearing from the keypoint to the center of the camera frame
-        dist, bearing = self.kp_to_measurement(kp)
-
-        land_x = robot_x + (dist * np.cos(bearing))
-        land_y = robot_y + (dist * np.sin(bearing))
-
-        # compute Jacobian of the robot's position and covariance of the measurement
-        H = utils.calculate_jacobian((robot_x, robot_y), (land_x, land_y))
-        covariance = utils.compute_initial_covariance(H, self.sigma_observation)
-
-        # add the new landmark to this particle's list of landmarks
-        particle.landmarks.append(Landmark(land_x, land_y, covariance, des, 1))
-
-    def update_landmark(self, particle, landmark, kp, des):
-        """
-        update the mean and covariance of a landmark
-
-        uses the Extended Kalman Filter (EKF) to update the existing landmark's mean (x, y) and
-        covariance according to the new measurement
-
-        :param particle: the particle to update
-        :param landmark: the landmark to update
-        :param kp, des: the keypoint and descriptor of the new landmark
-        """
-
-        if DEBUG:
-            print 'OLD LM'
-
-        robot_x, robot_y = particle.pose[0], particle.pose[1]
-
-        # get the dist and bearing from the center of the camera frame to this keypoint
-        dist, bearing = self.kp_to_measurement(kp)
-
-        predicted_dist = utils.distance(landmark.x, landmark.y, robot_x, robot_y)
-        predicted_bearing = (math.atan2((landmark.y - robot_y), (landmark.x - robot_x)))
-
-        # the covariance matrix of a landmark at the previous time step
-        S = landmark.covariance
-        # compute the Jacobian of the robot's position
-        H = utils.calculate_jacobian((robot_x, robot_y), (landmark.x, landmark.y))
-        # compute the measurement covariance matrix
-        Q = utils.compute_measurement_covariance(H, S, self.sigma_observation)
-        # compute the Kalman gain
-        K = utils.compute_kalman_gain(H, S, Q)
-
-        # calculate the new landmark's position estimate using the Kalman gain
-        old_landmark = np.array(landmark.x, landmark.y)
-        new_landmark = utils.compute_new_landmark((dist, bearing), (predicted_dist, predicted_bearing), K, old_landmark)
-
-        # compute the updated covariance of the landmark
-        new_covariance = utils.compute_new_covariance(K, H, S)
-
-        return Landmark(new_landmark[0], new_landmark[1], new_covariance, des, landmark.counter)
 
     def get_average_weight(self, particles):
         """
@@ -465,7 +362,7 @@ class FastSLAM:
         computes the perceptual range of the drone: the distance from the center of the frame to the
         width-wise border of the frame
         """
-        self.perceptual_range = self.pixel_to_meter(CAMERA_WIDTH / 2)
+        self.perceptual_range = self.pixel_to_meter(CAMERA_HEIGHT / 2)
 
 
 def scale_weight(w):
@@ -486,6 +383,7 @@ def resample_particles(particles):
     resample particles according to their weight
 
     :param particles: the set of particles to resample
+    :return: a new set of particles, resampled with replacement according to their weight
     """
 
     if DEBUG:
@@ -509,3 +407,42 @@ def resample_particles(particles):
             new_particles.append(p)
 
     return new_particles
+
+
+def estimate_pose(particles):
+    """
+    retrieves the drone's estimated position by summing each particle's pose estimate multiplied
+    by its weight
+
+    some mathematical motivation Expectation[X] = sum over all x in X of p(x) * x
+
+    :param particles: the set of particles to estimate a position for
+    :return: the estimated pose [x,y,z,yaw]
+    """
+    weight_sum = 0.0
+    normal_weights = np.array([])
+
+    for p in particles:
+        w = min(math.exp(p.weight), utils.max_float)
+        normal_weights = np.append(normal_weights, w)
+        weight_sum += w
+
+    normal_weights /= weight_sum
+
+    x = 0.0
+    y = 0
+    z = 0
+    yaw = 0
+
+    for i, prob in enumerate(normal_weights):
+        x += prob * particles[i].pose[0]
+        y += prob * particles[i].pose[1]
+        z += prob * particles[i].pose[2]
+        yaw += prob * particles[i].pose[3]
+
+    yaw = utils.adjust_angle(yaw)
+
+    return [x, y, z, yaw]
+
+
+
