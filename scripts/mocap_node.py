@@ -5,13 +5,13 @@ import signal
 from geometry_msgs.msg import PoseStamped, TwistStamped, AccelStamped
 from geometry_msgs.msg import PoseWithCovarianceStamped, TwistWithCovarianceStamped, AccelWithCovarianceStamped
 
-class MocapStateEstimator(object):
+class Mocap(object):
     ''' A class that subscribes to data from mocap, does the required axes
     transformations, and then publishes the data
     '''
 
     def __init__(self, rigid_body_name):
-        ''' A constructor for MocapStateEstimator
+        ''' A constructor for Mocap
 
         rigid_body_name : the name of the rigid body set in motive
         '''
@@ -85,39 +85,39 @@ class MocapStateEstimator(object):
 
 if __name__ == '__main__':
 
-    # Instantiate a MocapStateEstimator object
+    # Instantiate a Mocap object
     rigid_body_name = raw_input('Enter the name of the rigid body: ')
-    mse = MocapStateEstimator(rigid_body_name)
+    mc = Mocap(rigid_body_name)
 
     # ROS setup
     ###########
-    # Initialize the state estimator node
-    rospy.init_node('state_estimator')
+    # Initialize the mocap node
+    rospy.init_node('mocap')
 
     # Publishers
     ############
-    mse.posepub = rospy.Publisher('/pidrone/pose', PoseWithCovarianceStamped, queue_size=1, tcp_nodelay=False)
-    mse.twistpub = rospy.Publisher('/pidrone/twist', TwistWithCovarianceStamped, queue_size=1, tcp_nodelay=False)
-    mse.accelpub = rospy.Publisher('/pidrone/accel', AccelWithCovarianceStamped, queue_size=1, tcp_nodelay=False)
+    mc.posepub = rospy.Publisher('/pidrone/pose', PoseWithCovarianceStamped, queue_size=1, tcp_nodelay=False)
+    mc.twistpub = rospy.Publisher('/pidrone/twist', TwistWithCovarianceStamped, queue_size=1, tcp_nodelay=False)
+    mc.accelpub = rospy.Publisher('/pidrone/accel', AccelWithCovarianceStamped, queue_size=1, tcp_nodelay=False)
 
     # Subscribers
     #############
-    rospy.Subscriber(str(mse.mocap_pose_topic), PoseStamped, mse.pose_callback)
-    rospy.Subscriber(str(mse.mocap_twist_topic), TwistStamped, mse.twist_callback)
-    rospy.Subscriber(str(mse.mocap_accel_topic), AccelStamped, mse.accel_callback)
+    rospy.Subscriber(str(mc.mocap_pose_topic), PoseStamped, mc.pose_callback)
+    rospy.Subscriber(str(mc.mocap_twist_topic), TwistStamped, mc.twist_callback)
+    rospy.Subscriber(str(mc.mocap_accel_topic), AccelStamped, mc.accel_callback)
 
     # wait for data from the mocap
     # set up ctrl-c handler
-    signal.signal(signal.SIGINT, mse.ctrl_c_handler)
-    while not mse.received_data:
-        print 'waiting for mocap data'
-        rospy.sleep(2)
+    signal.signal(signal.SIGINT, mc.ctrl_c_handler)
+    print 'waiting for mocap data'
+    while not mc.received_data:
+        pass
 
     # print the topics that are being published to
     print 'Publishing to:'
-    print mse.mocap_pose_topic
-    print mse.mocap_twist_topic
-    print mse.mocap_accel_topic
+    print mc.mocap_pose_topic
+    print mc.mocap_twist_topic
+    print mc.mocap_accel_topic
 
     # keep the node running for the callback methods
     while not rospy.is_shutdown():

@@ -66,30 +66,20 @@ stuff "source setup.sh\n"
 stuff "cd $(rospack find pidrone_pkg)/scripts/\n"
 stuff "python pid_controller.py\n"
 
-screen -t " mocap sim"
-stuff "source setup.sh\n"
-stuff "cd $(rospack find pidrone_pkg)/scripts/\n"
-stuff "python fc_and_mocap_sim.py\n"
-
 screen -t " state_estimator"
 stuff "source setup.sh\n"
 stuff "cd $(rospack find pidrone_pkg)/scripts/\n"
-stuff "python mocap_state_estimator.py\n"
+stuff "python state_estimation_node_picam.py\n"
 
 screen -t " vision"
 stuff "source setup.sh\n"
 stuff "cd $(rospack find pidrone_pkg)/scripts\n"
-stuff "python picam_localization_distance.py\n"
+stuff "python vision_flow_and_phase.py\n"
 
 screen -t " infrared"
 stuff "source setup.sh\n"
 stuff "cd $(rospack find pidrone_pkg)/scripts/\n"
 stuff "python infrared_pub.py\n"
-
-screen -t " key_node"
-stuff "source setup.sh"
-stuff "cd $(rospack find pidrone_pkg)/scripts/"
-stuff "python key_translation.py"
 
 screen -t " rosbridge"
 stuff "source setup.sh"

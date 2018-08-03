@@ -3,6 +3,7 @@ import time
 import rospy
 import numpy as np
 import picamera.array
+from pidrone_pkg.msg import Flow
 from h2rMultiWii import MultiWii
 from geometry_msgs.msg import TwistWithCovarianceStamped
 
@@ -53,21 +54,13 @@ class AnalyzeFlow(picamera.array.PiMotionAnalysis):
                 np.sum(np.multiply(y, self.yaw_filter_y))
 
 # TODO smooth or not
-        # update the header fields
-        self.twist_msg.header.stamp = rospy.get_rostime()
-# TODO check if this is correct frame_id
-        self.tsist_msg.header.frame_id = 'Body'
-        # update the linear and yaw velocities
-        self.twist_msg.twist.twist.linear.x = self.x_motion
-        self.twist_msg.twist.twist.linear.y = self.y_motion
-        self.twist_msg.twist.twist.linear.z = self.z_motion
-        self.twist_msg.twist.twist.angular.z = self.yaw_motion
-        # update the angular velocities calculated by imu_callback
-        self.twist_msg.twist.twist.angular.x = self.ang_vx
-        self.twist_msg.twist.twist.angular.y = self.ang_vy
-        # publish the twist message
-        self.twistpub.publish(self.twist_msg)
-        # print 'vx, vy, vz, vyaw', self.x_motion, self.y_motion, self.z_motion, self.yaw_motion
+        # Update and publish the Flow msg
+        self.flow_msg.header.stamp = rospy.get_rostime()
+        self.flow_msg.x_velocity = self.x_motion
+        self.flow_msg.y_velocity = self.y_motion
+        self.flow_msg.z_velocity = self.z_motion
+        self.flow_msg.yaw_velocity = self.yaw_motion
+        self.flowpub.publish(self.flow_msg)
 
     def get_z_filter(self, (width, height)):
         ''' Compute a divergence filter to estimate z component of flow '''
@@ -139,9 +132,11 @@ class AnalyzeFlow(picamera.array.PiMotionAnalysis):
         self.yaw_motion = 0
         self.max_flow = camera_wh[0] / 16.0 * camera_wh[1] / 16.0 * 2**7
         self.flow_scale = 16.5
-        self.norm_flow_to_cm = flow_scale # the conversion from flow units to cm
+        self.norm_flow_to_cm = self.flow_scale # the conversion from flow units to cm
         self.flow_coeff = self.norm_flow_to_cm/self.max_flow
-        # initialize the publisher for the TwistWithCovarianceStamped message
-        self.twistpub = rospy.Publisher('/pidrone/twist', TwistWithCovarianceStamped, queue_size=1)
-        # initialize the TwistWithCovarianceStamped message
-        self.twist_msg = TwistWithCovarianceStamped()
+        # initialize the publisher for the Flow message
+        self.flowpub = rospy.Publisher('/picamera/flow', Flow, queue_size=1)
+        # Initialize the Flow message
+        self.flow_msg = Flow()
+        # set the header frame_id
+        self.flow_msg.header.frame_id = 'Body'

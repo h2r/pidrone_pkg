@@ -70,20 +70,20 @@ class PID:
 # TODO NOTE, THERE IS NO KP UPPER AS IN ORIGINAL CODE?
     def __init__(self,
 
-                 roll=PIDaxis(10., 0., 0.0, control_range=(1400, 1600), midpoint=1500),
-                 roll_low=PIDaxis(0., 0., 0.0, control_range=(1400, 1600), midpoint=1500),
+                 roll=PIDaxis(6., 4.0, 0.5, control_range=(1400, 1600), midpoint=1500),
+                 roll_low=PIDaxis(4., 0.2, 0.0, control_range=(1400, 1600), midpoint=1500),
 
-                 pitch=PIDaxis(10., 0.0, 0.0, control_range=(1400, 1600), midpoint=1485),
-                 pitch_low=PIDaxis(0., 0.0, 0.0, control_range=(1400, 1600), midpoint=1500),
+                 pitch=PIDaxis(6., 4.0, 0.5, control_range=(1400, 1600), midpoint=1500),
+                 pitch_low=PIDaxis(4., 0.2, 0.0, control_range=(1400, 1600), midpoint=1500),
 
                  yaw=PIDaxis(0.0, 0.0, 0.0),
 
                  # Kv 2300 motors have midpoint 1300, Kv 2550 motors have midpoint 1250
-                 throttle=PIDaxis(0.0/height_factor * battery_factor, 0.0/height_factor * battery_factor,
-                                  0.0/height_factor * battery_factor, kp_upper=0.0/height_factor * battery_factor,
+                 throttle=PIDaxis(1.0/height_factor * battery_factor, 0.5/height_factor * battery_factor,
+                                  2.0/height_factor * battery_factor, kp_upper=1.0/height_factor * battery_factor,
                                   i_range=(-400, 400), control_range=(1200, 2000), d_range=(-40, 40), midpoint=1250),
-                 throttle_low=PIDaxis(0.0/height_factor * battery_factor, 0.0/height_factor * battery_factor,
-                                      0.0/height_factor * battery_factor, kp_upper=0.0/height_factor * battery_factor,
+                 throttle_low=PIDaxis(1.0/height_factor * battery_factor, 0.05/height_factor * battery_factor,
+                                      2.0/height_factor * battery_factor, kp_upper=1.0/height_factor * battery_factor,
                                       i_range=(0, 400), control_range=(1200, 2000), d_range=(-40, 40), midpoint=1250)
                  ):
 
@@ -108,8 +108,8 @@ class PID:
         self._t = None
 
         # Steve005 presets
-        self.roll_low._i = 48
-        self.pitch_low._i = 0 #46.35
+        self.roll_low._i = 50
+        self.pitch_low._i = -6 #46.35
 
         self.throttle_low.init_i = 50
         self.throttle.init_i = 0.0

@@ -50,6 +50,8 @@ add_message_files(
   RC.msg
   Mode.msg
   Battery.msg
+  Flow.msg
+  Phase.msg
 )
 
 ## Generate services in the 'srv' folder

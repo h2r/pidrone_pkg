@@ -1,14 +1,19 @@
+import tf
 import cv2
 import rospy
 import picamera
 import numpy as np
 from std_msgs.msg import Empty
 from sensor_msgs.msg import Range
-from three_dim_vec import ZeroOrderState
-from geometry_msgs.msg import PoseWithCovarianceStamped
+from pidrone_pkg.msg import Phase
 
 
-class AnalyzePos(picamera.array.PiMotionAnalysis):
+class AnalyzePhase(picamera.array.PiMotionAnalysis):
+    ''' A class that uses OpenCV's estimateRigidTransform method to calculate
+    the change in position of the drone.
+    For more info, visit:
+    https://docs.opencv.org/3.0-beta/modules/video/doc/motion_analysis_and_object_tracking.html#estimaterigidtransform
+    '''
 
     def setup(self, camera_wh):
         self.position_control = False
@@ -25,21 +30,21 @@ class AnalyzePos(picamera.array.PiMotionAnalysis):
         self.alpha = 0.1
         # counter for the number of consecutive images that contain the first image
         self.first_counter = 0
-        # pose message
-        self.pose_msg = PoseWithCovarianceStamped()
-        self.pose_msg.frame_id = 'Body'
+        # phase message
+        self.phase_msg = Phase()
+        self.phase_msg.header.frame_id = 'Body'
 
         # ROS Setup
         ###########
         # Publisher
-        self.pose_pub = rospy.Publisher('/pidrone/pose', PoseWithCovarianceStamped, queue_size=1)
+        self.phasepub = rospy.Publisher('/picamera/phase', Phase, queue_size=1)
         # Subscribers
         rospy.Subscriber("/pidrone/infrared", Range, self.range_callback)
         rospy.Subscriber("/pidrone/reset_transform", Empty, self.reset_callback)
         rospy.Subscriber("/pidrone/toggle_transform", Empty, self.toggle_callback)
-        rospy.Subscriber("/pidrone/command/javascript", Mode, self.javascript_callback)
 
     def write(self, data):
+        ''' A method that is called everytime an image is taken '''
 
         if self.position_control:
             image = np.reshape(np.fromstring(data, dtype=np.uint8), (240, 320, 3))
@@ -48,7 +53,7 @@ class AnalyzePos(picamera.array.PiMotionAnalysis):
                 self.has_first = True
                 self.first_image = image
                 self.previous_image = image
-                print "Capture the first image"
+                print "\nCapture the first image"
             else:
                 transform_first = cv2.estimateRigidTransform(self.first_image, image, False)
                 ### delta_time = current_time - self.previous_time
@@ -79,20 +84,12 @@ class AnalyzePos(picamera.array.PiMotionAnalysis):
                     ###    self.mode_to_pub.y_velocity = 0
                     ###    self.mode_to_pub.yaw_velocity = 0
                         print "Lost the previous image !!!!!"
-
-                    self.counter = 0
-
-                self.pose_msg.pose.pose.x = self.x
-                self.pose_msg.pose.pose.y = self.y
-                self.pose_msg.pose.pose.z = self.z
-                # convert the yaw to a quaternion
-                q = tf.transformations.quaternion_from_euler(0,0,self.yaw)
-                # this only requires the z and w fields of the quaternion
-                self.pose_msg.pose.orientation.z = q[2]
-                self.pose_msg.pose.orientation.w = q[3]
-                self.posepub.publish(self.pose)
+                        self.reset_callback(data)
+                        self.counter = 0
 
             self.previous_image = image
+
+        self.publish_phase()
 
             #print self.x, self.y, self.yaw
 
@@ -107,14 +104,28 @@ class AnalyzePos(picamera.array.PiMotionAnalysis):
 
         return translation_x_y, yaw
 
+    # publish to /picamera/phase
+    def publish_phase(self):
+        ''' Publish the phase values '''
+        self.phase_msg.header.stamp = rospy.Time.now()
+        self.phase_msg.x_position = self.x
+        self.phase_msg.y_position = self.y
+        # convert z back to meters
+        self.phase_msg.z_position = self.z / 100
+        self.phase_msg.yaw_angle = self.yaw
+        # convert the yaw to a quaternion
+        self.phasepub.publish(self.phase_msg)
+
     # subscribe /pidrone/infrared
     def range_callback(self, data):
+        ''' Store the range value '''
         if data.range != -1:
-            # convert and store the range reading in meters
+            # convert and store the range reading in cm
             self.z = data.range * 100
 
     # subscribe /pidrone/reset_transform
     def reset_callback(self, data):
+        ''' Reset the current phase '''
         self.has_first = False
         self.x = 0.0
         self.y = 0.0
@@ -124,5 +135,6 @@ class AnalyzePos(picamera.array.PiMotionAnalysis):
 
     # subscribe /pidrone/toggle_transform
     def toggle_callback(self, data):
+        ''' Toggle whether the phase is calculated and published '''
         self.position_control = not self.position_control
         print "Position Control", self.position_control

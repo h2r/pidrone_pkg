@@ -262,6 +262,7 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
     def range_callback(self, msg):
         if msg.range != -1:
             self.z = msg.range * 100
+            self.publish_pos()
 
     def reset_callback(self, msg):
         print "Resetting Phase"
