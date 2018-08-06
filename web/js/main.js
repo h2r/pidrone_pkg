@@ -29,6 +29,7 @@ var count;
 var windowSize;
 var gotFirstHeight = false;
 var startTime;
+var heightChartPaused = false;
 
 function closeSession(){
   console.log("Closing connections.");
@@ -157,7 +158,9 @@ function init() {
           y: message.range
       }
       heightChart.data.datasets[0].data.push(xyPair);
-      heightChart.update();
+      if (!heightChartPaused) {
+          heightChart.update();
+      }
       //console.log("Data: " + heightChart.data.datasets[0].data);
       //console.log('tVal: ' + tVal)
     });
@@ -212,7 +215,10 @@ function init() {
       }
       heightChart.data.datasets[2].data.push(xyPairStdDevPlus);
       heightChart.data.datasets[3].data.push(xyPairStdDevMinus);
-      //heightChart.update(); // Avoid updating too often, to avoid shaky plotting?
+      // Avoid updating too often, to avoid shaky plotting?
+      // if (!heightChartPaused) {
+      //     heightChart.update();
+      // }
     });
     
     emaIrSub = new ROSLIB.Topic({
@@ -250,7 +256,10 @@ function init() {
           y: message.range
       }
       heightChart.data.datasets[4].data.push(xyPair);
-      //heightChart.update(); // Avoid updating too often, to avoid shaky plotting?
+      // Avoid updating too often, to avoid shaky plotting?
+      // if (!heightChartPaused) {
+      //     heightChart.update();
+      // }
     });
 
   
@@ -591,6 +600,24 @@ $(window).on("beforeunload", function(e) {
     closeSession();
 });
 
+function changeHeightChartYScaleMin() {
+    heightChart.options.scales.yAxes[0].ticks.min = parseFloat(document.getElementById('heightMin').value);
+    heightChart.update();
+}
+
+function changeHeightChartYScaleMax() {
+    heightChart.options.scales.yAxes[0].ticks.max = parseFloat(document.getElementById('heightMax').value);
+    heightChart.update();
+}
+
+function togglePauseChart(btn) {
+    heightChartPaused = !heightChartPaused;
+    if (heightChartPaused) {
+        btn.value = 'Play'
+    } else {
+        btn.value = 'Pause'
+    }
+}
 
 $(document).keyup(function(event){
   var char = String.fromCharCode(event.which || event.keyCode);
