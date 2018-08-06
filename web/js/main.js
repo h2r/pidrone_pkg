@@ -194,7 +194,43 @@ function init() {
           y: message.pose_with_covariance_stamped.pose.pose.position.z
       }
       heightChart.data.datasets[1].data.push(xyPair);
-      heightChart.update();
+      //heightChart.update(); // Avoid updating too often, to avoid shaky plotting?
+    });
+    
+    emaIrSub = new ROSLIB.Topic({
+      ros : ros,
+      name : '/pidrone/infrared',
+      messageType : 'sensor_msgs/Range',
+      queue_length : 2,
+      throttle_rate : 5
+    });
+    emaIrSub.subscribe(function(message) {
+      //printProperties(message);
+      //console.log("Range: " + message.range);
+      currTime = message.header.stamp.secs + message.header.stamp.nsecs/1.0e9;
+      if (!gotFirstHeight) {
+          gotFirstHeight = true;
+          startTime = currTime;
+      }
+      tVal = currTime - startTime;
+      // Have the plot scroll in time, showing a window of windowSize seconds
+      if (tVal > windowSize) {
+          heightChart.options.scales.xAxes[0].ticks.min = tVal - windowSize;
+          heightChart.options.scales.xAxes[0].ticks.max = tVal;
+          // Remove first element of array while difference compared to current
+          // time is greater than the windowSize
+          while (tVal - heightChart.data.datasets[2].data[0].x > windowSize) {
+              heightChart.data.datasets[2].data.splice(0, 1);
+          }
+      }
+      // Add new range reading to end of the data array
+      // x-y pair
+      var xyPair = {
+          x: tVal,
+          y: message.range
+      }
+      heightChart.data.datasets[2].data.push(xyPair);
+      //heightChart.update(); // Avoid updating too often, to avoid shaky plotting?
     });
 
   
@@ -441,6 +477,15 @@ $(document).ready(function() {
                 fill: false,
                 borderColor: 'rgba(0, 255, 0, 0.8)',
                 backgroundColor: 'rgba(0, 255, 0, 0)'
+              },
+              {
+                label: 'EMA-Smoothed IR Readings',
+                data: Array(0), // initialize array of length 0
+                borderWidth: 1.5,
+                pointRadius: 0,
+                fill: false,
+                borderColor: 'rgba(100, 0, 255, 0.8)',
+                backgroundColor: 'rgba(100, 0, 255, 0)'
               }
             ]
         },
