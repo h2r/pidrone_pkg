@@ -472,6 +472,61 @@ $(document).keydown(function(event){
   }
 });
 
+var rawIrDataset = {
+  label: 'Raw IR Readings',
+  data: Array(0), // initialize array of length 0
+  borderWidth: 1.5,
+  pointRadius: 0,
+  fill: false,
+  borderColor: 'rgba(255, 80, 0, 0.8)',
+  backgroundColor: 'rgba(255, 80, 0, 0)',
+  itemID: 0
+};
+
+var ukfDataset = {
+  label: 'UKF Filtered Height',
+  data: Array(0), // initialize array of length 0
+  borderWidth: 1.5,
+  pointRadius: 0,
+  fill: false,
+  borderColor: 'rgba(49, 26, 140, 0.8)',
+  backgroundColor: 'rgba(49, 26, 140, 0.1)',
+  itemID: 1
+}
+
+var ukfPlusSigmaDataset = {
+  label: 'UKF +sigma',
+  data: Array(0), // initialize array of length 0
+  borderWidth: 0,
+  pointRadius: 0,
+  fill: '+1', // fill to the next dataset
+  borderColor: 'rgba(49, 26, 140, 0)', // full transparency
+  backgroundColor: 'rgba(49, 26, 140, 0.1)',
+  itemID: 2
+}
+
+var ukfMinusSigmaDataset = {
+  label: 'UKF -sigma',
+  data: Array(0), // initialize array of length 0
+  borderWidth: 0,
+  pointRadius: 0,
+  fill: false,
+  borderColor: 'rgba(49, 26, 140, 0)', // full transparency
+  //backgroundColor: 'rgba(49, 26, 140, 0.1)'
+  itemID: 3
+}
+
+var emaDataset = {
+  label: 'EMA-Smoothed IR Readings',
+  data: Array(0), // initialize array of length 0
+  borderWidth: 1.5,
+  pointRadius: 0,
+  fill: false,
+  borderColor: 'rgba(252, 70, 173, 0.8)',
+  backgroundColor: 'rgba(252, 70, 173, 0)',
+  itemID: 4
+}
+
 $(document).ready(function() {
     var ctx = document.getElementById("heightChart").getContext('2d');
     count = 0;
@@ -480,51 +535,11 @@ $(document).ready(function() {
         type: 'line',
         data: {
             datasets: [
-              {
-                label: 'Raw IR Readings',
-                data: Array(0), // initialize array of length 0
-                borderWidth: 1.5,
-                pointRadius: 0,
-                fill: false,
-                borderColor: 'rgba(255, 80, 0, 0.8)',
-                backgroundColor: 'rgba(255, 80, 0, 0)'
-              },
-              {
-                label: 'UKF Filtered Height',
-                data: Array(0), // initialize array of length 0
-                borderWidth: 1.5,
-                pointRadius: 0,
-                fill: false,
-                borderColor: 'rgba(49, 26, 140, 0.8)',
-                backgroundColor: 'rgba(49, 26, 140, 0.1)'
-              },
-              {
-                label: 'UKF +sigma',
-                data: Array(0), // initialize array of length 0
-                borderWidth: 0,
-                pointRadius: 0,
-                fill: '+1', // fill to the next dataset
-                borderColor: 'rgba(49, 26, 140, 0)', // full transparency
-                backgroundColor: 'rgba(49, 26, 140, 0.1)'
-              },
-              {
-                label: 'UKF -sigma',
-                data: Array(0), // initialize array of length 0
-                borderWidth: 0,
-                pointRadius: 0,
-                fill: false,
-                borderColor: 'rgba(49, 26, 140, 0)', // full transparency
-                //backgroundColor: 'rgba(49, 26, 140, 0.1)'
-              },
-              {
-                label: 'EMA-Smoothed IR Readings',
-                data: Array(0), // initialize array of length 0
-                borderWidth: 1.5,
-                pointRadius: 0,
-                fill: false,
-                borderColor: 'rgba(252, 70, 173, 0.8)',
-                backgroundColor: 'rgba(252, 70, 173, 0)'
-              }
+                rawIrDataset,
+                ukfDataset,
+                ukfPlusSigmaDataset,
+                ukfMinusSigmaDataset,
+                emaDataset
             ]
         },
         options: {
@@ -557,12 +572,13 @@ $(document).ready(function() {
             legend: {
               display: true,
               labels: {
-                  // Filter out the datasets for UKF standard deviation, as
-                  // these would clutter the legend
-                  filter: function(itemInLegend, data) {
+                  // Filter out UKF standard deviation datasets and datasets
+                  // that have no data in them
+                  filter: function(itemInLegend, chartData) {
                       var itemIndex = itemInLegend.datasetIndex;
-                      // Standard deviation datasets have indices 2 and 3
-                      return (itemIndex != 2 && itemIndex != 3);
+                      return ((itemIndex != ukfPlusSigmaDataset.itemID &&
+                               itemIndex != ukfMinusSigmaDataset.itemID) &&
+                               (chartData.datasets[itemIndex].data.length != 0));
                   }
               }
             },
