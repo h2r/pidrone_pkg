@@ -24,10 +24,10 @@ var ros;
 var modepub;
 var modeMsg;
 var heartbeatPub;
-var irChart;
+var heightChart;
 var count;
 var windowSize;
-var gotFirstIR = false;
+var gotFirstHeight = false;
 var startTime;
 
 function closeSession(){
@@ -126,7 +126,7 @@ function init() {
 
     irsub = new ROSLIB.Topic({
       ros : ros,
-      name : '/pidrone/infrared',
+      name : '/pidrone/infrared_raw',
       messageType : 'sensor_msgs/Range',
       queue_length : 2,
       throttle_rate : 5
@@ -135,23 +135,20 @@ function init() {
       //printProperties(message);
       //console.log("Range: " + message.range);
       currTime = message.header.stamp.secs + message.header.stamp.nsecs/1.0e9;
-      if (!gotFirstIR) {
-          gotFirstIR = true;
+      if (!gotFirstHeight) {
+          gotFirstHeight = true;
           startTime = currTime;
       }
       tVal = currTime - startTime;
-      // Have the plot scroll in time, showing a window of 10 seconds
+      // Have the plot scroll in time, showing a window of windowSize seconds
       if (tVal > windowSize) {
-          irChart.options.scales.xAxes[0].ticks.min = tVal - windowSize;
-          irChart.options.scales.xAxes[0].ticks.max = tVal;
-          // irChart.options.scales.xAxes[0].ticks.min = undefined;
-          // irChart.options.scales.xAxes[0].ticks.max = undefined;
+          heightChart.options.scales.xAxes[0].ticks.min = tVal - windowSize;
+          heightChart.options.scales.xAxes[0].ticks.max = tVal;
           // Remove first element of array while difference compared to current
           // time is greater than the windowSize
-          while (tVal - irChart.data.datasets[0].data[0].x > windowSize) {
-              irChart.data.datasets[0].data.splice(0, 1);
+          while (tVal - heightChart.data.datasets[0].data[0].x > windowSize) {
+              heightChart.data.datasets[0].data.splice(0, 1);
           }
-          
       }
       // Add new range reading to end of the data array
       // x-y pair
@@ -159,11 +156,45 @@ function init() {
           x: tVal,
           y: message.range
       }
-      irChart.data.datasets[0].data.push(xyPair);
-      irChart.update();
-      //console.log("Data: " + irChart.data.datasets[0].data);
+      heightChart.data.datasets[0].data.push(xyPair);
+      heightChart.update();
+      //console.log("Data: " + heightChart.data.datasets[0].data);
       //console.log('tVal: ' + tVal)
-
+    });
+    
+    statesub = new ROSLIB.Topic({
+        ros : ros,
+        name : '/pidrone/state',
+        messageType : 'pidrone_pkg/State',
+        queue_length : 2,
+        throttle_rate : 5
+    });
+    statesub.subscribe(function(message) {
+      //printProperties(message);
+      currTime = message.pose_with_covariance_stamped.header.stamp.secs + message.pose_with_covariance_stamped.header.stamp.nsecs/1.0e9;
+      if (!gotFirstHeight) {
+          gotFirstHeight = true;
+          startTime = currTime;
+      }
+      tVal = currTime - startTime;
+      // Have the plot scroll in time, showing a window of windowSize seconds
+      if (tVal > windowSize) {
+          heightChart.options.scales.xAxes[0].ticks.min = tVal - windowSize;
+          heightChart.options.scales.xAxes[0].ticks.max = tVal;
+          // Remove first element of array while difference compared to current
+          // time is greater than the windowSize
+          while (tVal - heightChart.data.datasets[1].data[0].x > windowSize) {
+              heightChart.data.datasets[1].data.splice(0, 1);
+          }
+      }
+      // Add new range reading to end of the data array
+      // x-y pair
+      var xyPair = {
+          x: tVal,
+          y: message.pose_with_covariance_stamped.pose.pose.position.z
+      }
+      heightChart.data.datasets[1].data.push(xyPair);
+      heightChart.update();
     });
 
   
@@ -386,10 +417,10 @@ $(document).keydown(function(event){
 });
 
 $(document).ready(function() {
-    var ctx = document.getElementById("irChart").getContext('2d');
+    var ctx = document.getElementById("heightChart").getContext('2d');
     count = 0;
-    windowSize = 10;
-    irChart = new Chart(ctx, {
+    windowSize = 5;
+    heightChart = new Chart(ctx, {
         type: 'line',
         data: {
             datasets: [
@@ -398,9 +429,18 @@ $(document).ready(function() {
                 data: Array(0), // initialize array of length 0
                 borderWidth: 1.5,
                 pointRadius: 0,
-                fill: true,
-                borderColor: 'rgba(255, 0, 0, 1)',
-                backgroundColor: 'rgba(255, 0, 0, 0.05)'
+                fill: false,
+                borderColor: 'rgba(255, 0, 0, 0.8)',
+                backgroundColor: 'rgba(255, 0, 0, 0)'
+              },
+              {
+                label: 'UKF Filtered Height',
+                data: Array(0), // initialize array of length 0
+                borderWidth: 1.5,
+                pointRadius: 0,
+                fill: false,
+                borderColor: 'rgba(0, 255, 0, 0.8)',
+                backgroundColor: 'rgba(0, 255, 0, 0)'
               }
             ]
         },
@@ -426,7 +466,7 @@ $(document).ready(function() {
                     display: false,
                     ticks: {
                         min: 0,
-                        max: 10,
+                        max: windowSize,
                         stepSize: windowSize
                     }
                 }]
