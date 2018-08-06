@@ -134,30 +134,30 @@ function init() {
     irsub.subscribe(function(message) {
       //printProperties(message);
       //console.log("Range: " + message.range);
-      timeVal = message.header.stamp.secs + message.header.stamp.nsecs/1.0e9;
+      currTime = message.header.stamp.secs + message.header.stamp.nsecs/1.0e9;
       if (!gotFirstIR) {
           gotFirstIR = true;
-          startTime = timeVal;
+          startTime = currTime;
       }
-      xVal = timeVal - startTime;
+      tVal = currTime - startTime;
       // Have the plot scroll in time, showing a window of 10 seconds
-      if (xVal > 10) {
-          irChart.options.scales.xAxes[0].ticks.min = xVal - windowSize;
-          irChart.options.scales.xAxes[0].ticks.max = xVal;
+      if (tVal > windowSize) {
+          irChart.options.scales.xAxes[0].ticks.min = tVal - windowSize;
+          irChart.options.scales.xAxes[0].ticks.max = tVal;
           // Remove first element of array
           irChart.data.labels.splice(0, 1);
           irChart.data.datasets[0].data.splice(0, 1);
       }
       // Add new range reading to end of the data array
-      irChart.data.labels.push(xVal);
-      irChart.data.datasets[0].data.push(message.range);
-      // // x-y pair:
-      // var xyPair = {x: xVal,
-      //               y: message.range};
-      // irChart.data.datasets[0].data.push(xyPair);
+      // x-y pair
+      var xyPair = {
+          x: tVal,
+          y: message.range
+      }
+      irChart.data.datasets[0].data.push(xyPair);
       irChart.update();
       //console.log("Data: " + irChart.data.datasets[0].data);
-      //console.log('xVal: ' + xVal)
+      //console.log('tVal: ' + tVal)
 
     });
 
@@ -387,7 +387,6 @@ $(document).ready(function() {
     irChart = new Chart(ctx, {
         type: 'line',
         data: {
-            labels: Array(0), // initialize array of length 0
             datasets: [
               {
                 label: 'Raw IR Readings',
@@ -412,10 +411,12 @@ $(document).ready(function() {
                     }
                 }],
                 xAxes: [{
-                    display: false,
+                    type: 'linear',
+                    display: true,
                     ticks: {
                         min: 0,
-                        max: 10
+                        max: 10,
+                        stepSize: windowSize
                     }
                 }]
             },
