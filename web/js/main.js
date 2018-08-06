@@ -144,9 +144,14 @@ function init() {
       if (tVal > windowSize) {
           irChart.options.scales.xAxes[0].ticks.min = tVal - windowSize;
           irChart.options.scales.xAxes[0].ticks.max = tVal;
-          // Remove first element of array
-          irChart.data.labels.splice(0, 1);
-          irChart.data.datasets[0].data.splice(0, 1);
+          // irChart.options.scales.xAxes[0].ticks.min = undefined;
+          // irChart.options.scales.xAxes[0].ticks.max = undefined;
+          // Remove first element of array while difference compared to current
+          // time is greater than the windowSize
+          while (tVal - irChart.data.datasets[0].data[0].x > windowSize) {
+              irChart.data.datasets[0].data.splice(0, 1);
+          }
+          
       }
       // Add new range reading to end of the data array
       // x-y pair
@@ -393,8 +398,9 @@ $(document).ready(function() {
                 data: Array(0), // initialize array of length 0
                 borderWidth: 1.5,
                 pointRadius: 0,
-                fill: false,
-                borderColor: 'rgba(255, 0, 0, 1)'
+                fill: true,
+                borderColor: 'rgba(255, 0, 0, 1)',
+                backgroundColor: 'rgba(255, 0, 0, 0.05)'
               }
             ]
         },
@@ -407,12 +413,17 @@ $(document).ready(function() {
                     ticks: {
                         beginAtZero: true,
                         min: 0,
-                        max: 0.6
+                        max: 0.6,
+                        stepSize: 0.1
+                    },
+                    scaleLabel: {
+                        display: true,
+                        labelString: 'Height (meters)'
                     }
                 }],
                 xAxes: [{
                     type: 'linear',
-                    display: true,
+                    display: false,
                     ticks: {
                         min: 0,
                         max: 10,
@@ -421,7 +432,7 @@ $(document).ready(function() {
                 }]
             },
             legend: {
-              display: false
+              display: true
             },
         }
     });
