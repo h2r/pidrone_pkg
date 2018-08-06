@@ -179,21 +179,39 @@ function init() {
       tVal = currTime - startTime;
       // Have the plot scroll in time, showing a window of windowSize seconds
       if (tVal > windowSize) {
-          heightChart.options.scales.xAxes[0].ticks.min = tVal - windowSize;
-          heightChart.options.scales.xAxes[0].ticks.max = tVal;
+          // Avoid changing axis limits too often, to avoid shaky plotting?
+          // heightChart.options.scales.xAxes[0].ticks.min = tVal - windowSize;
+          // heightChart.options.scales.xAxes[0].ticks.max = tVal;
+          
           // Remove first element of array while difference compared to current
           // time is greater than the windowSize
           while (tVal - heightChart.data.datasets[1].data[0].x > windowSize) {
               heightChart.data.datasets[1].data.splice(0, 1);
+              heightChart.data.datasets[2].data.splice(0, 1);
+              heightChart.data.datasets[3].data.splice(0, 1);
           }
       }
-      // Add new range reading to end of the data array
+      // Add new height estimate to end of the data array
       // x-y pair
+      var zEstimate = message.pose_with_covariance_stamped.pose.pose.position.z;
       var xyPair = {
           x: tVal,
-          y: message.pose_with_covariance_stamped.pose.pose.position.z
+          y: zEstimate
       }
       heightChart.data.datasets[1].data.push(xyPair);
+      // Also plot +/- one standard deviation:
+      var heightVariance = message.pose_with_covariance_stamped.pose.covariance[14];
+      var heightStdDev = Math.sqrt(heightVariance);
+      var xyPairStdDevPlus = {
+          x: tVal,
+          y: zEstimate + heightStdDev
+      }
+      var xyPairStdDevMinus = {
+          x: tVal,
+          y: zEstimate - heightStdDev
+      }
+      heightChart.data.datasets[2].data.push(xyPairStdDevPlus);
+      heightChart.data.datasets[3].data.push(xyPairStdDevMinus);
       //heightChart.update(); // Avoid updating too often, to avoid shaky plotting?
     });
     
@@ -215,12 +233,14 @@ function init() {
       tVal = currTime - startTime;
       // Have the plot scroll in time, showing a window of windowSize seconds
       if (tVal > windowSize) {
-          heightChart.options.scales.xAxes[0].ticks.min = tVal - windowSize;
-          heightChart.options.scales.xAxes[0].ticks.max = tVal;
+          // Avoid changing axis limits too often, to avoid shaky plotting?
+          // heightChart.options.scales.xAxes[0].ticks.min = tVal - windowSize;
+          // heightChart.options.scales.xAxes[0].ticks.max = tVal;
+          
           // Remove first element of array while difference compared to current
           // time is greater than the windowSize
-          while (tVal - heightChart.data.datasets[2].data[0].x > windowSize) {
-              heightChart.data.datasets[2].data.splice(0, 1);
+          while (tVal - heightChart.data.datasets[4].data[0].x > windowSize) {
+              heightChart.data.datasets[4].data.splice(0, 1);
           }
       }
       // Add new range reading to end of the data array
@@ -229,7 +249,7 @@ function init() {
           x: tVal,
           y: message.range
       }
-      heightChart.data.datasets[2].data.push(xyPair);
+      heightChart.data.datasets[4].data.push(xyPair);
       //heightChart.update(); // Avoid updating too often, to avoid shaky plotting?
     });
 
@@ -466,8 +486,8 @@ $(document).ready(function() {
                 borderWidth: 1.5,
                 pointRadius: 0,
                 fill: false,
-                borderColor: 'rgba(255, 0, 0, 0.8)',
-                backgroundColor: 'rgba(255, 0, 0, 0)'
+                borderColor: 'rgba(255, 80, 0, 0.8)',
+                backgroundColor: 'rgba(255, 80, 0, 0)'
               },
               {
                 label: 'UKF Filtered Height',
@@ -475,8 +495,26 @@ $(document).ready(function() {
                 borderWidth: 1.5,
                 pointRadius: 0,
                 fill: false,
-                borderColor: 'rgba(0, 255, 0, 0.8)',
-                backgroundColor: 'rgba(0, 255, 0, 0)'
+                borderColor: 'rgba(49, 26, 140, 0.8)',
+                backgroundColor: 'rgba(49, 26, 140, 0.1)'
+              },
+              {
+                label: 'UKF +sigma',
+                data: Array(0), // initialize array of length 0
+                borderWidth: 0,
+                pointRadius: 0,
+                fill: '+1', // fill to the next dataset
+                borderColor: 'rgba(49, 26, 140, 0)', // full transparency
+                backgroundColor: 'rgba(49, 26, 140, 0.1)'
+              },
+              {
+                label: 'UKF -sigma',
+                data: Array(0), // initialize array of length 0
+                borderWidth: 0,
+                pointRadius: 0,
+                fill: false,
+                borderColor: 'rgba(49, 26, 140, 0)', // full transparency
+                //backgroundColor: 'rgba(49, 26, 140, 0.1)'
               },
               {
                 label: 'EMA-Smoothed IR Readings',
@@ -484,8 +522,8 @@ $(document).ready(function() {
                 borderWidth: 1.5,
                 pointRadius: 0,
                 fill: false,
-                borderColor: 'rgba(100, 0, 255, 0.8)',
-                backgroundColor: 'rgba(100, 0, 255, 0)'
+                borderColor: 'rgba(252, 70, 173, 0.8)',
+                backgroundColor: 'rgba(252, 70, 173, 0)'
               }
             ]
         },
@@ -517,7 +555,16 @@ $(document).ready(function() {
                 }]
             },
             legend: {
-              display: true
+              display: true,
+              labels: {
+                  // Filter out the datasets for UKF standard deviation, as
+                  // these would clutter the legend
+                  filter: function(itemInLegend, data) {
+                      var itemIndex = itemInLegend.datasetIndex;
+                      // Standard deviation datasets have indices 2 and 3
+                      return (itemIndex != 2 && itemIndex != 3);
+                  }
+              }
             },
         }
     });
