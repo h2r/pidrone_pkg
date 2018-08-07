@@ -30,6 +30,7 @@ var windowSize;
 var gotFirstHeight = false;
 var startTime;
 var heightChartPaused = false;
+var spanningFullWindow = false;
 
 function closeSession(){
   console.log("Closing connections.");
@@ -103,14 +104,16 @@ function init() {
       messageType : 'std_msgs/Empty'
     });
 
-    statesub = new ROSLIB.Topic({
+    // TODO: Merge with code that has Battery.msg
+    // (published from flight controller node)
+    batterysub = new ROSLIB.Topic({
       ros : ros,
-      name : '/pidrone/state',
-      messageType : 'pidrone_pkg/State',
+      name : '/pidrone/battery',
+      messageType : 'pidrone_pkg/Battery',
       queue_length : 2,
       throttle_rate : 2
     });
-    statesub.subscribe(function(message) {
+    batterysub.subscribe(function(message) {
       //printProperties(message);
       var mynumber = myround(message.vbat, 2);
       document.getElementById('vbat').innerHTML=mynumber
@@ -124,7 +127,6 @@ function init() {
 
     });
 
-
     irsub = new ROSLIB.Topic({
       ros : ros,
       name : '/pidrone/infrared_raw',
@@ -132,6 +134,8 @@ function init() {
       queue_length : 2,
       throttle_rate : 5
     });
+    var heightChartMinTime;
+    var heightChartMaxTime;
     irsub.subscribe(function(message) {
       //printProperties(message);
       //console.log("Range: " + message.range);
@@ -143,12 +147,13 @@ function init() {
       tVal = currTime - startTime;
       // Have the plot scroll in time, showing a window of windowSize seconds
       if (tVal > windowSize) {
-          heightChart.options.scales.xAxes[0].ticks.min = tVal - windowSize;
-          heightChart.options.scales.xAxes[0].ticks.max = tVal;
+          spanningFullWindow = true;
+          heightChartMinTime = tVal - windowSize;
+          heightChartMaxTime = tVal;
           // Remove first element of array while difference compared to current
           // time is greater than the windowSize
-          while (tVal - heightChart.data.datasets[0].data[0].x > windowSize) {
-              heightChart.data.datasets[0].data.splice(0, 1);
+          while (tVal - rawIrData[0].x > windowSize) {
+              rawIrData.splice(0, 1);
           }
       }
       // Add new range reading to end of the data array
@@ -157,9 +162,14 @@ function init() {
           x: tVal,
           y: message.range
       }
-      heightChart.data.datasets[0].data.push(xyPair);
+      rawIrData.push(xyPair)
       if (!heightChartPaused) {
+          heightChart.options.scales.xAxes[0].ticks.min = heightChartMinTime;
+          heightChart.options.scales.xAxes[0].ticks.max = heightChartMaxTime;
+          heightChart.data.datasets[0].data = rawIrData.slice();
           heightChart.update();
+      } else {
+          pulseIr();
       }
       //console.log("Data: " + heightChart.data.datasets[0].data);
       //console.log('tVal: ' + tVal)
@@ -182,16 +192,17 @@ function init() {
       tVal = currTime - startTime;
       // Have the plot scroll in time, showing a window of windowSize seconds
       if (tVal > windowSize) {
+          spanningFullWindow = true;
           // Avoid changing axis limits too often, to avoid shaky plotting?
-          // heightChart.options.scales.xAxes[0].ticks.min = tVal - windowSize;
-          // heightChart.options.scales.xAxes[0].ticks.max = tVal;
+          // heightChartMinTime = tVal - windowSize;
+          // heightChartMaxTime = tVal;
           
           // Remove first element of array while difference compared to current
           // time is greater than the windowSize
-          while (tVal - heightChart.data.datasets[1].data[0].x > windowSize) {
-              heightChart.data.datasets[1].data.splice(0, 1);
-              heightChart.data.datasets[2].data.splice(0, 1);
-              heightChart.data.datasets[3].data.splice(0, 1);
+          while (tVal - ukfData[0].x > windowSize) {
+              ukfData.splice(0, 1);
+              ukfPlusSigmaData.splice(0, 1);
+              ukfMinusSigmaData.splice(0, 1);
           }
       }
       // Add new height estimate to end of the data array
@@ -201,7 +212,7 @@ function init() {
           x: tVal,
           y: zEstimate
       }
-      heightChart.data.datasets[1].data.push(xyPair);
+      ukfData.push(xyPair);
       // Also plot +/- one standard deviation:
       var heightVariance = message.pose_with_covariance_stamped.pose.covariance[14];
       var heightStdDev = Math.sqrt(heightVariance);
@@ -213,12 +224,17 @@ function init() {
           x: tVal,
           y: zEstimate - heightStdDev
       }
-      heightChart.data.datasets[2].data.push(xyPairStdDevPlus);
-      heightChart.data.datasets[3].data.push(xyPairStdDevMinus);
-      // Avoid updating too often, to avoid shaky plotting?
-      // if (!heightChartPaused) {
-      //     heightChart.update();
-      // }
+      ukfPlusSigmaData.push(xyPairStdDevPlus);
+      ukfMinusSigmaData.push(xyPairStdDevMinus);
+      if (!heightChartPaused) {
+          // heightChart.options.scales.xAxes[0].ticks.min = heightChartMinTime;
+          // heightChart.options.scales.xAxes[0].ticks.max = heightChartMaxTime;
+          heightChart.data.datasets[1].data = ukfData.slice();
+          heightChart.data.datasets[2].data = ukfPlusSigmaData.slice();
+          heightChart.data.datasets[3].data = ukfMinusSigmaData.slice();
+          // Avoid updating too often, to avoid shaky plotting?
+          // heightChart.update();
+      }
     });
     
     emaIrSub = new ROSLIB.Topic({
@@ -239,14 +255,15 @@ function init() {
       tVal = currTime - startTime;
       // Have the plot scroll in time, showing a window of windowSize seconds
       if (tVal > windowSize) {
+          spanningFullWindow = true;
           // Avoid changing axis limits too often, to avoid shaky plotting?
-          // heightChart.options.scales.xAxes[0].ticks.min = tVal - windowSize;
-          // heightChart.options.scales.xAxes[0].ticks.max = tVal;
+          // heightChartMinTime = tVal - windowSize;
+          // heightChartMaxTime = tVal;
           
           // Remove first element of array while difference compared to current
           // time is greater than the windowSize
-          while (tVal - heightChart.data.datasets[4].data[0].x > windowSize) {
-              heightChart.data.datasets[4].data.splice(0, 1);
+          while (tVal - emaData[0].x > windowSize) {
+              emaData.splice(0, 1);
           }
       }
       // Add new range reading to end of the data array
@@ -255,11 +272,14 @@ function init() {
           x: tVal,
           y: message.range
       }
-      heightChart.data.datasets[4].data.push(xyPair);
-      // Avoid updating too often, to avoid shaky plotting?
-      // if (!heightChartPaused) {
-      //     heightChart.update();
-      // }
+      emaData.push(xyPair)
+      if (!heightChartPaused) {
+          // heightChart.options.scales.xAxes[0].ticks.min = heightChartMinTime;
+          // heightChart.options.scales.xAxes[0].ticks.max = heightChartMaxTime;
+          heightChart.data.datasets[4].data = emaData.slice();
+          // Avoid updating too often, to avoid shaky plotting?
+          // heightChart.update();
+      }
     });
 
   
@@ -315,6 +335,36 @@ function init() {
     var firstImage = document.getElementById('firstImage');
     firstImage.src = "http://" + document.getElementById('hostname').value + ":8080/stream?topic=/pidrone/picamera/first_image&quality=70";
 
+  }
+  
+  var irAlphaVal = 0;
+  var increasingAlpha = true;
+  function pulseIr() {
+      // Function to pulse the IR background color in the Height chart when
+      // paused, to indicate data are coming in
+      if (irAlphaVal <= 0.5 && increasingAlpha) {
+          irAlphaVal += 0.005
+      } else {
+          increasingAlpha = false;
+          irAlphaVal -= 0.005
+      }
+      if (irAlphaVal < 0) {
+          increasingAlpha = true;
+      }
+      
+      // Change gradient depending on whether or not the entire chart window
+      // is spanned with data
+      if (spanningFullWindow) {
+          irBackgroundGradient = ctx.createLinearGradient(300, 0, 600, 0);
+      } else {
+          irBackgroundGradient = ctx.createLinearGradient(0, 0, 600, 0);
+      }
+      
+      irBackgroundGradient.addColorStop(0, 'rgba(255, 80, 0, 0)');
+      irBackgroundGradient.addColorStop(1, 'rgba(255, 80, 0, '+irAlphaVal.toString()+')');
+      heightChart.data.datasets[0].backgroundColor = irBackgroundGradient;
+      heightChart.data.datasets[0].fill = true;
+      heightChart.update();
   }
 
   function markerUpdate() {
@@ -491,6 +541,7 @@ var rawIrDataset = {
   backgroundColor: 'rgba(255, 80, 0, 0)',
   itemID: 0
 };
+var rawIrData = Array(0);
 
 var ukfDataset = {
   label: 'UKF Filtered Height',
@@ -502,6 +553,7 @@ var ukfDataset = {
   backgroundColor: 'rgba(49, 26, 140, 0.1)',
   itemID: 1
 }
+var ukfData = Array(0);
 
 var ukfPlusSigmaDataset = {
   label: 'UKF +sigma',
@@ -513,6 +565,7 @@ var ukfPlusSigmaDataset = {
   backgroundColor: 'rgba(49, 26, 140, 0.1)',
   itemID: 2
 }
+var ukfPlusSigmaData = Array(0);
 
 var ukfMinusSigmaDataset = {
   label: 'UKF -sigma',
@@ -524,6 +577,7 @@ var ukfMinusSigmaDataset = {
   //backgroundColor: 'rgba(49, 26, 140, 0.1)'
   itemID: 3
 }
+var ukfMinusSigmaData = Array(0);
 
 var emaDataset = {
   label: 'EMA-Smoothed IR Readings',
@@ -535,9 +589,11 @@ var emaDataset = {
   backgroundColor: 'rgba(252, 70, 173, 0)',
   itemID: 4
 }
+var emaData = Array(0);
 
+var ctx;
 $(document).ready(function() {
-    var ctx = document.getElementById("heightChart").getContext('2d');
+    ctx = document.getElementById("heightChart").getContext('2d');
     count = 0;
     windowSize = 5;
     heightChart = new Chart(ctx, {
@@ -614,8 +670,11 @@ function togglePauseChart(btn) {
     heightChartPaused = !heightChartPaused;
     if (heightChartPaused) {
         btn.value = 'Play'
+        irAlphaVal = 0;
     } else {
         btn.value = 'Pause'
+        heightChart.data.datasets[0].backgroundColor = 'rgba(255, 80, 0, 0)';
+        heightChart.data.datasets[0].fill = false;
     }
 }
 
