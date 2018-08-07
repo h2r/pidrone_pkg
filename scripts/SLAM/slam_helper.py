@@ -30,7 +30,7 @@ PROB_THRESHOLD = 0.005
 KEYFRAME_DIST_THRESHOLD = CAMERA_HEIGHT
 KEYFRAME_YAW_THRESHOLD = 0.175
 
-pose_path = '/home/luke/ws/src/pidrone_pkg/scripts/pose_data.txt'
+pose_path = '/home/pi/ws/src/pidrone_pkg/scripts/pose_data.txt'
 
 
 class Particle:
@@ -106,8 +106,10 @@ class FastSLAM:
                                    self.z,
                                    abs(utils.normal(math.pi, 0.01))) for _ in range(num_particles)]
 
+        # Reset SLAM variables in case of restart
         self.num_particles = num_particles
-        self.key_kp, self.key_des = None, None
+        self.key_kp, self.key_des, self.most_recent_map = None, None, None
+        self.new_result = False
         self.weight = PROB_THRESHOLD
 
         return estimate_pose(self.particles)
@@ -157,7 +159,7 @@ class FastSLAM:
                 self.new_result = False
 
                 most_recent_particles = self.most_recent_map
-                for old, new in zip(self.particles, most_recent_particles[0]):
+                for old, new in zip(self.particles, most_recent_particles):
                     old.landmarks = new.landmarks
                     old.weight = new.weight
 
@@ -165,8 +167,8 @@ class FastSLAM:
                 if WEIGHT:
                     self.file.write(str([p.weight for p in self.particles]) + '\n')
 
-                # update the weight with the most recent thread result and resample
-                self.weight = most_recent_particles[1]
+                # update the weight and resample
+                self.weight = self.get_average_weight()
 
                 self.particles = resample_particles(self.particles)
 
@@ -245,9 +247,7 @@ class FastSLAM:
         for p in curr_particles:
             self.update_particle(p, kp, des)
 
-        weight = self.get_average_weight(curr_particles)
-
-        self.most_recent_map = (curr_particles, weight)
+        self.most_recent_map = curr_particles
         self.new_result = True
 
     def update_particle(self, particle, keypoints, descriptors):
@@ -267,11 +267,12 @@ class FastSLAM:
         if len(particle.landmarks) == 0:
             for kp, des in zip(keypoints, descriptors):
                 utils.add_landmark(particle, kp, des, self.sigma_observation, self.kp_to_measurement)
+                particle.weight += math.log(PROB_THRESHOLD)
         else:
             # find particle's landmarks in a close range, close_landmarks holds tuples of the landmark and its index
             close_landmarks = []
             for i, lm in enumerate(particle.landmarks):
-                if utils.distance(lm.x, lm.y, particle.pose[0], particle.pose[1]) <= self.perceptual_range:
+                if utils.distance(lm.x, lm.y, particle.pose[0], particle.pose[1]) <= self.perceptual_range * 1.2:
                     close_landmarks.append((lm, i))
 
             if len(close_landmarks) != 0:
@@ -280,31 +281,36 @@ class FastSLAM:
 
                 # we will set to true indices where a landmark is matched
                 matched_landmarks = [False] * len(close_landmarks)
+            else:
+                part_descriptors, matched_landmarks = None, None
 
-                for kp, des in zip(keypoints, descriptors):
-                    # length 1 list of the most likely match between this descriptor and all the particle's descriptors
+            for kp, des in zip(keypoints, descriptors):
+                # length 1 list of the most likely match between this descriptor and all the particle's descriptors
+                match = None
+                if part_descriptors is not None:
                     match = self.landmark_matcher.match(np.array([des]), np.array(part_descriptors))
 
-                    # there was no match
-                    if match[0].distance > DES_MATCH_THRESHOLD:
-                        utils.add_landmark(particle, kp, des, self.sigma_observation, self.kp_to_measurement)
+                # there was no match (short circuiting!)
+                if match is None or match[0].distance > DES_MATCH_THRESHOLD:
+                    utils.add_landmark(particle, kp, des, self.sigma_observation, self.kp_to_measurement)
 
-                        # 'punish' this particle since new landmarks decrease certainty
-                        particle.weight += math.log(PROB_THRESHOLD)
-                    else:
-                        # get the index of the matched landmark in close_landmarks
-                        close_index = match[0].trainIdx
-                        matched_landmarks[close_index] = True
-                        dated_landmark = close_landmarks[close_index]
+                    # 'punish' this particle since new landmarks decrease certainty
+                    particle.weight += math.log(PROB_THRESHOLD)
+                else:
+                    # get the index of the matched landmark in close_landmarks
+                    close_index = match[0].trainIdx
+                    matched_landmarks[close_index] = True
+                    dated_landmark = close_landmarks[close_index]
 
-                        # update the original landmark in this particle
-                        updated_landmark = utils.update_landmark(particle, dated_landmark[0], kp, des,
-                                                                 self.sigma_observation, self.kp_to_measurement)
-                        particle.landmarks[dated_landmark[1]] = updated_landmark
+                    # update the original landmark in this particle
+                    updated_landmark = utils.update_landmark(particle, dated_landmark[0], kp, des,
+                                                             self.sigma_observation, self.kp_to_measurement)
+                    particle.landmarks[dated_landmark[1]] = updated_landmark
 
-                        # 'reward' this particles since revisting landmarks increases certainty
-                        particle.weight += math.log(scale_weight(match[0].distance))
+                    # 'reward' this particles since revisting landmarks increases certainty
+                    particle.weight += math.log(scale_weight(match[0].distance))
 
+            if matched_landmarks is not None:
                 # increment counter for revisited particles, and decrement counter for non-revisited particles
                 removed = []
                 for i, match in enumerate(matched_landmarks):
@@ -322,13 +328,13 @@ class FastSLAM:
                 for rm in removed:
                     particle.landmarks.remove(rm)
 
-    def get_average_weight(self, particles):
+    def get_average_weight(self):
         """
         the average weight of all the particles
 
         :param particles: the set of particles whose weight will be averaged
         """
-        return np.sum([p.weight for p in particles]) / float(self.num_particles)
+        return np.sum([p.weight for p in self.particles]) / float(self.num_particles)
 
     def pixel_to_meter(self, px):
         """
@@ -362,7 +368,7 @@ class FastSLAM:
         computes the perceptual range of the drone: the distance from the center of the frame to the
         width-wise border of the frame
         """
-        self.perceptual_range = self.pixel_to_meter(CAMERA_HEIGHT / 2)
+        self.perceptual_range = self.pixel_to_meter(CAMERA_WIDTH / 2)
 
 
 def scale_weight(w):
