@@ -87,7 +87,7 @@ class FastSLAM:
         sigma_vx = 2
         sigma_vy = 2
         sigma_vz = 0.0
-        sigma_yaw = 2
+        sigma_yaw = 0.01
         self.covariance_motion = np.array([[sigma_vx ** 2, 0, 0, 0],
                                            [0, sigma_vy ** 2, 0, 0],
                                            [0, 0, sigma_vz ** 2, 0],

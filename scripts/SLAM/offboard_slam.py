@@ -23,8 +23,8 @@ CAMERA_HEIGHT = 240
 # assume a pixel in x and y has the same length
 CAMERA_CENTER = np.float32([(CAMERA_WIDTH - 1) / 2., (CAMERA_HEIGHT - 1) / 2.]).reshape(-1, 1, 2)
 MAX_BAD_COUNT = -100
-NUM_PARTICLE = 7
-NUM_FEATURES = 30
+NUM_PARTICLE = 20
+NUM_FEATURES = 50
 
 
 class AnalyzePhase:
@@ -39,6 +39,7 @@ class AnalyzePhase:
         rospy.Subscriber("/pidrone/toggle_transform", Empty, self.toggle_callback)
         rospy.Subscriber("/pidrone/infrared", Range, self.range_callback)
         rospy.Subscriber('/pidrone/angle', TwistStamped, self.angle_callback)
+        rospy.Subscriber('/pidrone/picamera/image_raw', Image, self.image_callback)
 
         self.pospub = rospy.Publisher('/pidrone/set_mode_vel', Mode, queue_size=1)
         self.first_image_pub = rospy.Publisher("/pidrone/picamera/first_image", Image, queue_size=1, latch=True)
@@ -79,7 +80,7 @@ class AnalyzePhase:
         self.hybrid_alpha = 0.3  # blend position with first frame and int
 
     def image_callback(self, data):
-        curr_img = np.reshape(np.fromstring(data, dtype=np.uint8), (CAMERA_HEIGHT, CAMERA_WIDTH, 3))
+        curr_img = self.bridge.imgmsg_to_cv2(data, desired_encoding="passthrough")
         curr_rostime = rospy.Time.now()
         curr_time = curr_rostime.to_sec()
 
