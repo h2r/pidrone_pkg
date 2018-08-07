@@ -40,7 +40,7 @@ def get_range():
 if __name__ == "__main__":
     rospy.init_node("infrared_pub")
     raw_pub = rospy.Publisher('/pidrone/infrared_raw', Range, queue_size=1)
-    pub = rospy.Publisher('/pidrone/infrared', Range, queue_size=1)
+    pub = rospy.Publisher('/pidrone/infrared_ema', Range, queue_size=1)
     # Raw range message for data logging and analysis purposes
     raw_rnge = Range()
     rnge = Range()

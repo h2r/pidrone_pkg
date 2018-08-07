@@ -200,7 +200,7 @@ if __name__ == '__main__':
     sc.prev_angt = time.time()
 
     mode_to_pub = Mode()
-    state_to_pub = State()
+    # state_to_pub = State()
     
     # Accelerometer parameters
     ##########################
@@ -223,20 +223,21 @@ if __name__ == '__main__':
         # Obtains data from the flight controller
         mw_data = sc.board.getData(MultiWii.ATTITUDE)
         analog_data = sc.board.getData(MultiWii.ANALOG)
+        sc.board.getData(MultiWii.RAW_IMU)
 
         # Publishes current battery voltage levels to display on the web interface
-        state_to_pub.vbat = sc.board.analog['vbat'] * 0.10
-        state_to_pub.amperage = sc.board.analog['amperage']
+        # state_to_pub.vbat = sc.board.analog['vbat'] * 0.10
+        # state_to_pub.amperage = sc.board.analog['amperage']
         
         curr_time = rospy.Time.now()
-        state_to_pub.header.stamp = curr_time
+        # state_to_pub.header.stamp = curr_time
         roll = sc.board.attitude['angx']
         pitch = sc.board.attitude['angy']
         print 'ROLL:', roll
         print 'PITCH:', pitch
         print 'HDG:', sc.board.attitude['heading']
-        state_to_pub.roll = roll
-        state_to_pub.pitch = pitch
+        # state_to_pub.roll = roll
+        # state_to_pub.pitch = pitch
         
         imu = Imu()
         quaternion = tf.transformations.quaternion_from_euler(np.deg2rad(roll), np.deg2rad(pitch), 0.0)
@@ -249,8 +250,8 @@ if __name__ == '__main__':
         imu.linear_acceleration.x = sc.board.rawIMU['ax'] * accRawToMss - accZeroX
         imu.linear_acceleration.y = sc.board.rawIMU['ay'] * accRawToMss - accZeroY
         imu.linear_acceleration.z = sc.board.rawIMU['az'] * accRawToMss - accZeroZ
-        imupub.publish(imu)        
-        statepub.publish(state_to_pub)
+        imupub.publish(imu)
+        # statepub.publish(state_to_pub)
 
         try:
             if not sc.current_mode == sc.DISARMED:

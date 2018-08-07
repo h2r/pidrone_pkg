@@ -71,7 +71,7 @@ class StateEstimation1D(object):
         # Subscribe to topics to which the drone publishes in order to get raw
         # data from sensors, which we can then filter
         rospy.Subscriber('/pidrone/imu', Imu, self.imu_data_callback)
-        rospy.Subscriber('/pidrone/infrared', Range, self.ir_data_callback) # TODO: infrared or raw_infrared?
+        rospy.Subscriber('/pidrone/infrared_raw', Range, self.ir_data_callback)
         
         # Create the publisher to publish state estimates
         self.state_pub = rospy.Publisher('/pidrone/state', State, queue_size=1,
@@ -125,7 +125,7 @@ class StateEstimation1D(object):
         
         # Initialize the process noise covariance matrix Q:
         # TODO: Tune appropriately. Currently just a guess
-        self.ukf.Q = np.eye(self.state_vector_dim)*0.000005
+        self.ukf.Q = np.diag([0.01, 1.0])*0.05
         
         # Initialize the measurement covariance matrix R
         # IR slant range variance (m^2), determined experimentally in a static
@@ -214,12 +214,12 @@ class StateEstimation1D(object):
             # state estimate to the same point in time as the measurement,
             # perform a measurement update with the slant range reading
             measurement_z = np.array([data.range])
-            print 'Prior:', self.ukf.x
-            print 'Measurement:', measurement_z[0]
+            # print 'Prior:', self.ukf.x
+            # print 'Measurement:', measurement_z[0]
             self.ukf.update(measurement_z)
-            print 'Posterior:', self.ukf.x
-            print 'Kalman Gain:', self.ukf.K
-            print
+            # print 'Posterior:', self.ukf.x
+            # print 'Kalman Gain:', self.ukf.K
+            # print
             self.publish_current_state()
         else:
             self.initialize_input_time(data)
@@ -263,14 +263,20 @@ class StateEstimation1D(object):
         twist_with_cov.twist.twist.linear.z = self.ukf.x[1]
         
         # Prepare covariance matrices
-        pose_cov_mat = np.full((6, 6), np.nan)
-        twist_cov_mat = np.full((6, 6), np.nan)
-        pose_cov_mat[2, 2] = self.ukf.P[0, 0] # z variance
-        twist_cov_mat[2, 2] = self.ukf.P[1, 1] # z velocity variance
+        # pose_cov_mat = np.full((6, 6), np.nan)
+        # twist_cov_mat = np.full((6, 6), np.nan)
+        # pose_cov_mat[2, 2] = self.ukf.P[0, 0] # z variance
+        # twist_cov_mat[2, 2] = self.ukf.P[1, 1] # z velocity variance
         
-        # TODO: Add covariances to message
-        # pose_with_cov.pose.covariance = list(pose_cov_mat)
-        # twist_with_cov.twist.covariance = list(twist_cov_mat)
+        # 36-element array, in a row-major order, according to ROS msg docs
+        pose_cov_mat = np.full((36,), np.nan)
+        twist_cov_mat = np.full((36,), np.nan)
+        pose_cov_mat[14] = self.ukf.P[0, 0] # z variance
+        twist_cov_mat[14] = self.ukf.P[1, 1] # z velocity variance
+        
+        # Add covariances to message
+        pose_with_cov.pose.covariance = pose_cov_mat
+        twist_with_cov.twist.covariance = twist_cov_mat
         
         state_msg = State()
         state_msg.pose_with_covariance_stamped = pose_with_cov
@@ -292,6 +298,8 @@ class StateEstimation1D(object):
         # Integrate control input acceleration to get a change in velocity
         change_from_control_input = np.array([0,
                                               u[0]*dt])
+        # change_from_control_input = np.array([0.5*u[0]*(dt**2.0),
+        #                                       u[0]*dt])
         x_output = np.dot(F, x) + change_from_control_input
         return x_output
         
