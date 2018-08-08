@@ -239,7 +239,7 @@ function init() {
     
     emaIrSub = new ROSLIB.Topic({
       ros : ros,
-      name : '/pidrone/infrared',
+      name : '/pidrone/infrared_ema',
       messageType : 'sensor_msgs/Range',
       queue_length : 2,
       throttle_rate : 5
@@ -281,7 +281,51 @@ function init() {
           // heightChart.update();
       }
     });
-
+    
+    stateGroundTruthSub = new ROSLIB.Topic({
+        ros : ros,
+        name : '/pidrone/state_ground_truth',
+        messageType : 'pidrone_pkg/StateGroundTruth',
+        queue_length : 2,
+        throttle_rate : 5
+    });
+    stateGroundTruthSub.subscribe(function(message) {
+      //printProperties(message);
+      currTime = message.pose_stamped.header.stamp.secs + message.pose_stamped.header.stamp.nsecs/1.0e9;
+      if (!gotFirstHeight) {
+          gotFirstHeight = true;
+          startTime = currTime;
+      }
+      tVal = currTime - startTime;
+      // Have the plot scroll in time, showing a window of windowSize seconds
+      if (tVal > windowSize) {
+          spanningFullWindow = true;
+          // Avoid changing axis limits too often, to avoid shaky plotting?
+          // heightChartMinTime = tVal - windowSize;
+          // heightChartMaxTime = tVal;
+          
+          // Remove first element of array while difference compared to current
+          // time is greater than the windowSize
+          while (tVal - stateGroundTruthData[0].x > windowSize) {
+              stateGroundTruthData.splice(0, 1);
+          }
+      }
+      // Add new height estimate to end of the data array
+      // x-y pair
+      var zEstimate = message.pose_stamped.pose.position.z;
+      var xyPair = {
+          x: tVal,
+          y: zEstimate
+      }
+      stateGroundTruthData.push(xyPair);
+      if (!heightChartPaused) {
+          // heightChart.options.scales.xAxes[0].ticks.min = heightChartMinTime;
+          // heightChart.options.scales.xAxes[0].ticks.max = heightChartMaxTime;
+          heightChart.data.datasets[5].data = stateGroundTruthData.slice();
+          // Avoid updating too often, to avoid shaky plotting?
+          // heightChart.update();
+      }
+    });
   
     var imu = document.getElementById("imu");
     empty(imu);
@@ -563,6 +607,7 @@ var ukfPlusSigmaDataset = {
   fill: '+1', // fill to the next dataset
   borderColor: 'rgba(49, 26, 140, 0)', // full transparency
   backgroundColor: 'rgba(49, 26, 140, 0.1)',
+  lineTension: 0, // remove smoothing
   itemID: 2
 }
 var ukfPlusSigmaData = Array(0);
@@ -575,6 +620,7 @@ var ukfMinusSigmaDataset = {
   fill: false,
   borderColor: 'rgba(49, 26, 140, 0)', // full transparency
   //backgroundColor: 'rgba(49, 26, 140, 0.1)'
+  lineTension: 0, // remove smoothing
   itemID: 3
 }
 var ukfMinusSigmaData = Array(0);
@@ -591,6 +637,19 @@ var emaDataset = {
 }
 var emaData = Array(0);
 
+var stateGroundTruthDataset = {
+  label: 'Ground Truth Height',
+  data: Array(0), // initialize array of length 0
+  borderWidth: 1.5,
+  pointRadius: 0,
+  fill: false,
+  borderColor: 'rgba(0, 0, 0, 0.8)',
+  backgroundColor: 'rgba(0, 0, 0, 0.1)',
+  itemID: 5
+}
+var stateGroundTruthData = Array(0);
+
+
 var ctx;
 $(document).ready(function() {
     ctx = document.getElementById("heightChart").getContext('2d');
@@ -604,7 +663,8 @@ $(document).ready(function() {
                 ukfDataset,
                 ukfPlusSigmaDataset,
                 ukfMinusSigmaDataset,
-                emaDataset
+                emaDataset,
+                stateGroundTruthDataset
             ]
         },
         options: {
