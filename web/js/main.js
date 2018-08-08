@@ -25,7 +25,6 @@ var modepub;
 var modeMsg;
 var heartbeatPub;
 var heightChart;
-var count;
 var windowSize;
 var gotFirstHeight = false;
 var startTime;
@@ -326,49 +325,7 @@ function init() {
           // heightChart.update();
       }
     });
-  
-    var imu = document.getElementById("imu");
-    empty(imu);
-
-    // Create the main viewer.
-    var imuviewer = new ROS3D.Viewer({
-      divID : 'imu',
-      width : 320,
-      height : 240,
-      antialias : true
-    });
-
-
-    // Setup a client to listen to TFs.
-    var tfClient = new ROSLIB.TFClient({
-      ros : ros,
-      angularThres : 0.01,
-      transThres : 0.01,
-      rate : 5.0,
-      fixedFrame : '/base'
-    });
-
-    // Setup the marker client.
-    markerClient = new ROS3D.MarkerClient({
-      ros : ros,
-      tfClient : tfClient,
-      topic : document.getElementById('imutopic').value,
-      rate : 5.0,
-      rootObject : imuviewer.scene
-    });
-
-
-    // Create the main viewer.
-//    var imageviewer = new MJPEGCANVAS.Viewer({
-//      divID : 'camera',
-//      host : '192.168.42.1',
-//      width : 320,
-//      height : 240,
-//      topic : '/pidrone/picamera/image_raw'
-//    });
-
-
-
+    
     imageStream();
   }
 
@@ -409,11 +366,6 @@ function init() {
       heightChart.data.datasets[0].backgroundColor = irBackgroundGradient;
       heightChart.data.datasets[0].fill = true;
       heightChart.update();
-  }
-
-  function markerUpdate() {
-    markerClient.topicName = document.getElementById('imutopic').value;
-    markerClient.subscribe();
   }
 
 function publishArm() {
@@ -644,16 +596,16 @@ var stateGroundTruthDataset = {
   pointRadius: 0,
   fill: false,
   borderColor: 'rgba(0, 0, 0, 0.8)',
-  backgroundColor: 'rgba(0, 0, 0, 0.1)',
+  backgroundColor: 'rgba(0, 0, 0, 0)',
   itemID: 5
 }
 var stateGroundTruthData = Array(0);
 
 
 var ctx;
+var xyctx;
 $(document).ready(function() {
     ctx = document.getElementById("heightChart").getContext('2d');
-    count = 0;
     windowSize = 5;
     heightChart = new Chart(ctx, {
         type: 'line',
@@ -709,6 +661,52 @@ $(document).ready(function() {
             },
         }
     });
+    
+    xyctx = document.getElementById("xyChart").getContext('2d');
+    xyChart = new Chart(xyctx, {
+        type: 'line',
+        data: {
+            datasets: [
+            ]
+        },
+        options: {
+            animation: {
+               duration: 0,
+            },
+            scales: {
+                yAxes: [{
+                    ticks: {
+                        beginAtZero: true,
+                        min: 0,
+                        max: 1,
+                        stepSize: 0.1
+                    },
+                    scaleLabel: {
+                        display: true,
+                        labelString: 'y position (meters)'
+                    }
+                }],
+                xAxes: [{
+                    type: 'linear',
+                    ticks: {
+                        beginAtZero: true,
+                        min: 0,
+                        max: 1,
+                        stepSize: 0.1,
+                        display: true
+                    },
+                    scaleLabel: {
+                        display: true,
+                        labelString: 'x position (meters)'
+                    }
+                }]
+            },
+            legend: {
+              display: true
+            },
+        }
+    });
+    
     init();
 });
 
@@ -726,7 +724,7 @@ function changeHeightChartYScaleMax() {
     heightChart.update();
 }
 
-function togglePauseChart(btn) {
+function togglePauseHeightChart(btn) {
     heightChartPaused = !heightChartPaused;
     if (heightChartPaused) {
         btn.value = 'Play'
@@ -736,6 +734,11 @@ function togglePauseChart(btn) {
         heightChart.data.datasets[0].backgroundColor = 'rgba(255, 80, 0, 0)';
         heightChart.data.datasets[0].fill = false;
     }
+}
+
+function togglePauseXYChart(btn) {
+    // TODO: Implement this function
+    console.log('Pause button pressed')
 }
 
 $(document).keyup(function(event){

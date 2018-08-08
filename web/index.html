@@ -49,18 +49,18 @@
               </ul>
             <div class="form-inline my-2 my-lg-0">
               <div class="form-group">
-                  <label for="hostname">Hostname</label>
-                  <input type="text" class="form-control mr-sm-2" id="hostname" value="192.168.42.1">
+                  <label for="hostname">Hostname:</label>
+                  <input type="text" class="form-control mr-sm-2 mx-2" id="hostname" value="192.168.42.1">
               </div>
               <input class="btn btn-primary my-2 my-sm-0" type="submit" value="Connect" name="submit" onclick="init()"/>
             </div>
           </div>
         </nav>
-        <div class="row">
+        <div class="row mt-2">
             <div class="col-sm text-center">
                 <div id="heightchart">
                     <h4>Height Readings</h4>
-                    <input class="btn btn-primary my-2 my-sm-0" type="submit" value="Pause" name="pauseBtn" onclick="togglePauseChart(this)"/>
+                    <input class="btn btn-primary my-2 my-sm-0" type="submit" value="Pause" name="heightPauseBtn" onclick="togglePauseHeightChart(this)"/>
                     <canvas id="heightChart" width="600" height="300"></canvas>
                 </div>
                 <div class="form-inline">
@@ -73,31 +73,27 @@
                 </div>
             </div>
             <div class="col-sm text-center">
+                <div id="xychart">
+                    <h4>Top View</h4>
+                    <input class="btn btn-primary my-2 my-sm-0" type="submit" value="Pause" name="xyPauseBtn" onclick="togglePauseXYChart(this)"/>
+                    <canvas id="xyChart" width="400" height="250"></canvas>
+                </div>
+            </div>
+        </div>
+        <hr>
+        <div class="row">
+            <div class="col-sm text-center">
                 <h4>Camera Image</h4>
                 <img id="cameraImage" alt="Camera image" src="nocamera.jpg" width=320/>
+                <div class="form-group">
+                    <small id="imagetopicHelp" class="form-text text-muted">Make sure you run <code>rosrun web_video_server web_video_server</code> and the image stream.</small>
+                </div>
             </div>
             <div class="col-sm text-center">
                 <h4>First Camera Image</h4>
                 <img id="firstImage" alt="First camera image" src="nocamera.jpg" width=320/>
             </div>
-        </div>
-        <div class="row">
-            <div class="col-sm text-center">
-                <h4>IMU Visualization</h4>
-                <div id="imu"></div>
-            </div>
-            <div class="col-sm text-center">
-                <h4>Topics</h4>
-                <div class="form-group">
-                    <label for="imutopic">IMU Topic</label>
-                    <input type="text" class="form-control" id="imutopic" value="/pidrone/imu_visualization_marker" onchange="markerUpdate()"/>
-                </div>
-                <div class="form-group">
-                    <label for="imagetopic">Camera Topic</label>
-                    <input type="text" class="form-control" id="imagetopic" value="/pidrone/picamera/image_raw" onchange="imageStream()"/>
-                    <small id="imagetopicHelp" class="form-text text-muted">Make sure you run <code>rosrun web_video_server web_video_server</code> and the image stream.</small>
-                </div>
-            </div>
+                
         </div>
         <div class="row">
             <div class="col-sm">
