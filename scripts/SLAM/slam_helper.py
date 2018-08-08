@@ -30,7 +30,7 @@ PROB_THRESHOLD = 0.005
 KEYFRAME_DIST_THRESHOLD = CAMERA_HEIGHT
 KEYFRAME_YAW_THRESHOLD = 0.175
 
-pose_path = '/home/pi/ws/src/pidrone_pkg/scripts/pose_data.txt'
+pose_path = '/home/luke/ws/src/pidrone_pkg/scripts/pose_data.txt'
 
 
 class Particle:
@@ -169,8 +169,7 @@ class FastSLAM:
 
                 # update the weight and resample
                 self.weight = self.get_average_weight()
-
-                self.particles = resample_particles(self.particles)
+                self.resample_particles()
 
         return estimate_pose(self.particles), self.weight
 
@@ -209,12 +208,13 @@ class FastSLAM:
             transform = utils.compute_transform(self.matcher, self.key_kp, self.key_des, kp, des)
 
             if transform is not None:
-                # distance since previous keyframe in PIXELS
-                x = -transform[0, 2]
-                y = transform[1, 2]
+                # distance since previous keyframe
+                x = self.pixel_to_meter(-transform[0, 2])
+                y = self.pixel_to_meter(transform[1, 2])
                 yaw = -np.arctan2(transform[1, 0], transform[0, 0])
 
-                if utils.distance(x, y, 0, 0) > KEYFRAME_DIST_THRESHOLD or yaw > KEYFRAME_YAW_THRESHOLD:
+                if utils.distance(x, y, 0, 0) > self.pixel_to_meter(KEYFRAME_DIST_THRESHOLD) \
+                        or yaw > KEYFRAME_YAW_THRESHOLD:
                     self.start_update_thread(kp, des)
             else:
                 # moved too far to transform from last keyframe, so set a new one
@@ -254,7 +254,7 @@ class FastSLAM:
         """
         Associate observed keypoints with an old particle's landmark set and update the EKF
         Increment the landmark's counter if it finds a match, otherwise add a new landmark
-        Dcrement the counter of a landmark which is close to this particle's pose and not observed
+        Decrement the counter of a landmark which is close to this particle's pose and not observed
 
         :param particle: the old particle to perform the data association on
         :param keypoints, descriptors: the lists of currently observed keypoints and descriptors
@@ -262,6 +262,8 @@ class FastSLAM:
 
         if DEBUG:
             print 'UPDATE'
+
+        particle.weight = PROB_THRESHOLD
 
         # if this particle has no landmarks, make all measurements into landmarks
         if len(particle.landmarks) == 0:
@@ -275,14 +277,13 @@ class FastSLAM:
                 if utils.distance(lm.x, lm.y, particle.pose[0], particle.pose[1]) <= self.perceptual_range * 1.2:
                     close_landmarks.append((lm, i))
 
+            part_descriptors, matched_landmarks = None, None
             if len(close_landmarks) != 0:
                 # get the descriptors of relevant landmarks
                 part_descriptors = [lm[0].des for lm in close_landmarks]
 
                 # we will set to true indices where a landmark is matched
                 matched_landmarks = [False] * len(close_landmarks)
-            else:
-                part_descriptors, matched_landmarks = None, None
 
             for kp, des in zip(keypoints, descriptors):
                 # length 1 list of the most likely match between this descriptor and all the particle's descriptors
@@ -307,7 +308,7 @@ class FastSLAM:
                                                              self.sigma_observation, self.kp_to_measurement)
                     particle.landmarks[dated_landmark[1]] = updated_landmark
 
-                    # 'reward' this particles since revisting landmarks increases certainty
+                    # 'reward' this particles since revisiting landmarks increases certainty
                     particle.weight += math.log(scale_weight(match[0].distance))
 
             if matched_landmarks is not None:
@@ -370,6 +371,39 @@ class FastSLAM:
         """
         self.perceptual_range = self.pixel_to_meter(CAMERA_WIDTH / 2)
 
+    def resample_particles(self):
+        """
+        resample particles according to their weight
+
+        :param particles: the set of particles to resample
+        :return: a new set of particles, resampled with replacement according to their weight
+        """
+
+        if DEBUG:
+            print 'RESAMPLE'
+
+        weight_sum = 0.0
+        new_particles = []
+        normal_weights = np.array([])
+
+        weights = [p.weight for p in self.particles]
+        lowest_weight = min(weights)
+
+        for w in weights:
+            x = 1 - (w / lowest_weight)
+            if x == 0:
+                x = PROB_THRESHOLD
+            normal_weights = np.append(normal_weights, x)
+            weight_sum += x
+
+        normal_weights /= weight_sum
+        samples = np.random.multinomial(self.num_particles, normal_weights)
+        for i, count in enumerate(samples):
+            for _ in range(count):
+                new_particles.append(copy.deepcopy(self.particles[i]))
+
+        self.particles = new_particles
+
 
 def scale_weight(w):
     """
@@ -382,37 +416,6 @@ def scale_weight(w):
     if scaled == 0:
         scaled = PROB_THRESHOLD
     return scaled
-
-
-def resample_particles(particles):
-    """
-    resample particles according to their weight
-
-    :param particles: the set of particles to resample
-    :return: a new set of particles, resampled with replacement according to their weight
-    """
-
-    if DEBUG:
-        print 'RESAMPLE'
-
-    weight_sum = 0.0
-    new_particles = []
-    normal_weights = np.array([])
-
-    for p in particles:
-        w = min(math.exp(p.weight), utils.max_float)
-        normal_weights = np.append(normal_weights, w)
-        weight_sum += w
-
-    normal_weights /= weight_sum
-    samples = np.random.multinomial(len(particles), normal_weights)
-    for i, count in enumerate(samples):
-        for _ in range(count):
-            p = copy.deepcopy(particles[i])
-            p.weight = PROB_THRESHOLD
-            new_particles.append(p)
-
-    return new_particles
 
 
 def estimate_pose(particles):
@@ -428,10 +431,15 @@ def estimate_pose(particles):
     weight_sum = 0.0
     normal_weights = np.array([])
 
-    for p in particles:
-        w = min(math.exp(p.weight), utils.max_float)
-        normal_weights = np.append(normal_weights, w)
-        weight_sum += w
+    weights = [p.weight for p in particles]
+    lowest_weight = min(weights)
+
+    for w in weights:
+        x = 1 - (w / lowest_weight)
+        if x == 0:
+            x = PROB_THRESHOLD
+        normal_weights = np.append(normal_weights, x)
+        weight_sum += x
 
     normal_weights /= weight_sum
 
