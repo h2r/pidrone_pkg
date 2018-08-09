@@ -46,12 +46,13 @@ class DroneSimulator(object):
             global PoseStamped
             global TwistStamped
             from sensor_msgs.msg import Imu, Range
-            # TODO: Create this custom message
             from pidrone_pkg.msg import StateGroundTruth
             from std_msgs.msg import Header
             from geometry_msgs.msg import PoseStamped, TwistStamped
             
-            rospy.init_node('drone_simulator')
+            # disable_signals=true seems to solve the issue of KeyboardInterrupt
+            # exceptions not getting raised while rospy.sleep() is occurring.
+            rospy.init_node('drone_simulator', disable_signals=True)
             self.init_pubs()
         if self.save_to_csv:
             global csv
@@ -267,9 +268,10 @@ class DroneSimulator(object):
                                       
     def create_state_ground_truth_msg(self):
         header = Header()
-        secs, nsecs = self.float_secs_to_time_pair(self.curr_time)
-        header.stamp.secs = secs
-        header.stamp.nsecs = nsecs
+        # secs, nsecs = self.float_secs_to_time_pair(self.curr_time)
+        # header.stamp.secs = secs
+        # header.stamp.nsecs = nsecs
+        header.stamp = rospy.Time.now()
         header.frame_id = 'global'
         
         pose_msg = PoseStamped()
@@ -418,6 +420,7 @@ class DroneSimulator1D(DroneSimulator):
         state_ground_truth_msg = self.create_state_ground_truth_msg()
         state_ground_truth_msg.pose_stamped.pose.position.z = self.actual_state[0]
         state_ground_truth_msg.twist_stamped.twist.linear.z = self.actual_state[1]
+        
         self.state_ground_truth_pub.publish(state_ground_truth_msg)
                             
     def generate_data(self, duration, time_std_dev):
@@ -438,13 +441,12 @@ class DroneSimulator1D(DroneSimulator):
             if self.publish_ros:
                 self.publish_actual_state()
             if self.publish_ros and len(self.serialized_times) > 0:
-                t0 = next_time_pair[0] + next_time_pair[1]*1e-9
-                print 'Duration: {0} / {1}\r'.format(round(t0-self.start_time, 4), duration),
+                print 'Duration: {0} / {1}\r'.format(round(self.curr_time-self.start_time, 4), duration),
                 t1 = self.serialized_times[0][1][0] + self.serialized_times[0][1][1]*1e-9
                 # Naively sleep for a certain amount of time, not taking into
                 # account the amount of time required to carry out operations in
                 # this loop
-                rospy.sleep(self.delay_rate*(t1-t0))
+                rospy.sleep(self.delay_rate*(t1-self.curr_time))
             if next_sample_id == self.ir_info['id']:
                 self.take_ir_sample()
                 if self.publish_ros:
@@ -475,9 +477,6 @@ class DroneSimulator2D(DroneSimulator):
                                                save_to_csv=save_to_csv,
                                                rate=rate,
                                                dim=2)
-        self.init_info()
-        self.init_state()
-        self.init_std_devs()
         if self.save_to_csv:
             self.init_csv_files()
         if self.publish_ros:
@@ -488,6 +487,9 @@ class DroneSimulator2D(DroneSimulator):
             self.optical_flow_pub = rospy.Publisher('/pidrone/plane_err',
                                                     TwistStamped,
                                                     queue_size=1)
+        self.init_info()
+        self.init_state()
+        self.init_std_devs()
         
     def init_info(self):
         '''
@@ -534,11 +536,255 @@ class DroneSimulator2D(DroneSimulator):
                            'imu' : self.imu_info,
                            'camera' : self.camera_info
                            }
-            
-        
+                           
     def init_state(self):
-        pass
+        '''
+        Initialize the simulated drone's actual state. For this 2D simulation,
+        we define the state as the drone's position and velocity in the xy-plane
+        and its yaw angle and yaw velocity.
+        '''
+        # State is in the global frame
+        # [x (meters), y (meters), yaw (rad), x_vel (m/s), y_vel (m/s), yaw_vel (rad/s)]
+        self.actual_state = [0.5, 0.5, 0.0, 0.0, 0.0, 0.0]
+        self.actual_accel_global_frame = [0.0, 0.0, 0.0] # m/s^2 along x-, y-, and z-axes (z accel should always be 0)
+        # To simulate random real-world disturbances:
+        # TODO: Implement this noise (perhaps make the noise optional?)
+        self.actual_accel_std_dev = 0.0001 # m/s^2
+        self.curr_time = self.start_time
+        # Orientation quaternion:
+        self.quat = tf.transformations.quaternion_from_euler(0, # roll
+                                                             0, # pitch
+                                                             0) # yaw
+                           
+    def step_state(self, next_time_pair):
+        '''
+        Perform a time step and update the drone's state
+        '''
+        self.prev_time = self.curr_time
+        self.curr_time = next_time_pair[0] + next_time_pair[1]*1e-9
+        time_step = self.curr_time - self.prev_time
+        # Simulating a near-zero acceleration model
+        self.actual_accel = self.actual_accel_std_dev * randn()
+        self.actual_state[1] += self.actual_accel * time_step
+        self.actual_state[0] += self.actual_state[1] * time_step
+        # Don't allow drone to go below 9 centimeters off of the ground
+        if self.actual_state[0] < 0.09:
+            self.actual_state[0] = 0.09
         
+    def init_std_devs(self):
+        self.z_accel_imu_measured_std_dev = 0.001 # meters/second^2
+        # Estimated standard deviation based on IR reading measured variance
+        self.z_pos_ir_measured_std_dev = np.sqrt(2.2221e-05) # meters
+    
+    def take_ir_sample(self):
+        self.z_pos_ir_measurement = self.z_pos_ir_measured_std_dev * randn() + self.actual_state[0]
+        self.ir_info['data_lists']['ir'].append([self.z_pos_ir_measurement])
+        
+    def take_imu_sample(self):
+        '''
+        Take a reading of acceleration along the z-axis
+        '''
+        self.z_accel_imu_measurement = self.z_accel_imu_measured_std_dev * randn() + self.actual_accel
+        self.imu_info['data_lists']['accel'].append([0.0, 0.0, self.z_accel_imu_measurement])
+        
+    def publish_ir(self):
+        '''
+        Publish simulated IR measurements
+        '''
+        range_msg = Range()
+        range_msg.header.stamp = rospy.Time.now()
+        range_msg.range = self.z_pos_ir_measurement
+        self.ir_pub.publish(range_msg)
+        
+    def publish_imu(self):
+        imu_msg = Imu()
+        imu_msg.header.stamp = rospy.Time.now()
+        imu_msg.linear_acceleration.z = self.z_accel_imu_measurement
+        self.imu_pub.publish(imu_msg)
+        
+    def publish_actual_state(self):
+        '''
+        Publish the current actual state from the simulation. This is
+        a StateGroundTruth message containing:
+            - PoseStamped
+            - TwistStamped
+        Note that some of these ROS message fields will be populated with NaN,
+        as the 2D simulation does not produce information on the entire state
+        space of the drone.
+        '''
+        state_ground_truth_msg = self.create_state_ground_truth_msg()
+        state_ground_truth_msg.pose_stamped.pose.position.x = self.actual_state[0]
+        state_ground_truth_msg.pose_stamped.pose.position.y = self.actual_state[1]
+        state_ground_truth_msg.pose_stamped.pose.position.z = np.nan
+        
+        state_ground_truth_msg.pose_stamped.pose.orientation.x = self.quat[0]
+        state_ground_truth_msg.pose_stamped.pose.orientation.y = self.quat[1]
+        state_ground_truth_msg.pose_stamped.pose.orientation.z = self.quat[2]
+        state_ground_truth_msg.pose_stamped.pose.orientation.w = self.quat[3]
+        
+        # x velocity, y velocity, and yaw velocity:
+        state_ground_truth_msg.twist_stamped.twist.linear.x = self.actual_state[3]
+        state_ground_truth_msg.twist_stamped.twist.linear.y = self.actual_state[4]
+        state_ground_truth_msg.twist_stamped.twist.angular.z = self.actual_state[5]
+        
+        # Fill the rest with NaN
+        state_ground_truth_msg.twist_stamped.twist.linear.z = np.nan
+        state_ground_truth_msg.twist_stamped.twist.angular.x = np.nan
+        state_ground_truth_msg.twist_stamped.twist.angular.y = np.nan
+        
+        self.state_ground_truth_pub.publish(state_ground_truth_msg)
+                            
+    def generate_data(self, duration, time_std_dev):
+        '''
+        Generate data from each sensor based on each sensor's average frequency
+        
+        duration : approximate number of seconds for which to generate data
+        time_std_dev : standard deviation to use for the noise in the time steps
+        '''
+        self.generate_times(duration, time_std_dev)
+        self.copy_times_lists()
+        self.serialize_times()
+        
+        actual_states_list = self.compute_states_from_cmds(time_step=0.03)
+        
+        # TODO: Implement sensor data generation based on actual_states_list
+        # Generate sample data in order of serialized times:
+        # while len(self.serialized_times) > 0:
+        #     next_sample_id, next_time_pair = self.serialized_times.pop(0)
+        #     self.step_state(next_time_pair)
+        #     if self.publish_ros:
+        #         self.publish_actual_state()
+        #     if self.publish_ros and len(self.serialized_times) > 0:
+        #         print 'Duration: {0} / {1}\r'.format(round(self.curr_time-self.start_time, 4), duration),
+        #         t1 = self.serialized_times[0][1][0] + self.serialized_times[0][1][1]*1e-9
+        #         # Naively sleep for a certain amount of time, not taking into
+        #         # account the amount of time required to carry out operations in
+        #         # this loop
+        #         rospy.sleep(self.delay_rate*(t1-self.curr_time))
+        #     if next_sample_id == self.ir_info['id']:
+        #         self.take_ir_sample()
+        #         if self.publish_ros:
+        #             self.publish_ir()
+        #     elif next_sample_id == self.imu_info['id']:
+        #         self.take_imu_sample()
+        #         if self.publish_ros:
+        #             self.publish_imu()
+                    
+    def yaw_cmd(self, yaw_vel, time_step):
+        '''
+        Command the simulated drone to perform a yawing motion
+        
+        :param yaw_vel: Yaw velocity in radians/second
+        :param time_step: Duration for which to execute command, in seconds
+        '''
+        self.actual_state[5] = yaw_vel
+        self.actual_state[2] += yaw_vel * time_step
+        # Orientation quaternion from yaw:
+        self.quat = tf.transformations.quaternion_from_euler(0, # roll
+                                                             0, # pitch
+                                                             self.actual_state[2]) # yaw
+        #self.update_translation(time_step)
+        
+    def translate_body_cmd(self, body_frame_accel, time_step):
+        '''
+        Command the simulated drone to perform an acceleration.
+        
+        :param body_frame_accel: A vector specifying the drone's acceleration
+        about the body-frame x and y axes
+        :param time_step: A number that is the time step over which to perform
+        this acceleration
+        '''
+        if len(body_frame_accel) == 2:
+            # Put 0 as the body-frame z-axis acceleration
+            body_frame_accel.append(0.0)
+        elif len(body_frame_accel) == 3:
+            if body_frame_accel[2] != 0:
+                body_frame_accel[2] = 0.0
+        else:
+            raise ValueError('Body frame acceleration vector must be given in either 2 or 3 dimensions.')
+            
+        # Use the quaternion self.quat, which represents the drone's current
+        # orientation, to rotate the body frame acceleration vector into the
+        # global frame. self.quat describes rotation from the global frame to
+        # the body frame, so take the quaternion's inverse by negating its
+        # real component (w)
+        self.quat_body_to_global = list(self.quat) # copy the quaternion object
+        self.quat_body_to_global[3] = -self.quat_body_to_global[3]
+        accel_vector_as_quaternion = list(body_frame_accel)
+        accel_vector_as_quaternion.append(0.0) # vector as a quaternion with w=0
+        # Apply quaternion rotation on a vector: q*v*q', where q is the rotation
+        # quaternion, v is the vector (a "pure" quaternion with w=0), and q' is
+        # the conjugate of the quaternion q
+        self.actual_accel_global_frame = tf.transformations.quaternion_multiply(
+                tf.transformations.quaternion_multiply(self.quat_body_to_global, accel_vector_as_quaternion),
+                tf.transformations.quaternion_conjugate(self.quat_body_to_global))
+        # Drop the real part w=0
+        self.actual_accel_global_frame = self.actual_accel_global_frame[:3]
+        self.update_translation(time_step)
+        
+    def update_translation(self, time_step):
+        # Integrate global-frame acceleration to yield change in velocity and
+        # position (constant-acceleration kinematics)
+        v0_x = self.actual_state[3]
+        v0_y = self.actual_state[4]
+        v1_x = v0_x + self.actual_accel_global_frame[0] * time_step
+        v1_y = v0_y + self.actual_accel_global_frame[1] * time_step
+        x1 = self.actual_state[0] + (v0_x * time_step) + (0.5 * self.actual_accel_global_frame[0] * (time_step**2))
+        y1 = self.actual_state[1] + (v0_y * time_step) + (0.5 * self.actual_accel_global_frame[1] * (time_step**2))
+        
+        self.actual_state[0] = x1
+        self.actual_state[1] = y1
+        self.actual_state[3] = v1_x
+        self.actual_state[4] = v1_y
+        
+    def compute_states_from_cmds(self, time_step=0.1):
+        states_list = []
+        states_list.append(list(self.actual_state))
+        drone_commands = [
+            {'duration' : 2,
+             'cmds' : [self.translate_body_cmd],
+             'args' : [{'body_frame_accel' : [0.01, 0]}]},
+            {'duration' : 2,
+             'cmds' : [self.translate_body_cmd],
+             'args' : [{'body_frame_accel' : [0.005, 0.007]}]},
+            {'duration' : 2,
+             'cmds' : [self.yaw_cmd],
+             'args' : [{'yaw_vel' : np.pi}]},
+            {'duration' : 10,
+             'cmds' : [self.yaw_cmd, self.translate_body_cmd],
+             'args' : [{'yaw_vel' : 0.3}, {'body_frame_accel' : [-0.005, -0.005]}]}
+            ]
+        # self.actual_state = [0.8, 0.2, 0.0, 0.0, 0.0, 0.0]
+        # drone_commands = [
+        #     {'duration' : 1,
+        #      'cmds' : [self.translate_body_cmd],
+        #      'args' : [{'body_frame_accel' : [0, 0.5]}]},
+        #     {'duration' : 2,
+        #      'cmds' : [self.translate_body_cmd],
+        #      'args' : [{'body_frame_accel' : [0, -0.5]}]},
+        #     {'duration' : 2,
+        #      'cmds' : [self.translate_body_cmd],
+        #      'args' : [{'body_frame_accel' : [0, 0.5]}]},
+        #     {'duration' : 2,
+        #      'cmds' : [self.translate_body_cmd],
+        #      'args' : [{'body_frame_accel' : [0, -0.5]}]},
+        #     {'duration' : 2,
+        #      'cmds' : [self.translate_body_cmd],
+        #      'args' : [{'body_frame_accel' : [0, 0.5]}]}
+        #     ]
+        for cmd_set in drone_commands:
+            time_spent_commanding = 0
+            while time_spent_commanding < cmd_set['duration']:
+                for num, cmd in enumerate(cmd_set['cmds']):
+                    cmd(time_step=time_step, **cmd_set['args'][num])
+                    states_list.append(list(self.actual_state))
+                time_spent_commanding += time_step
+                # TODO: Remove the publishing and sleeping from here and have it
+                #       occur in the data generation loop?
+                if self.publish_ros:
+                    self.publish_actual_state()
+                    rospy.sleep(time_step)
+        return states_list
         
 class DroneSimulator3D(DroneSimulator):
     

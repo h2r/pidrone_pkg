@@ -125,7 +125,7 @@ class StateEstimation1D(object):
         
         # Initialize the process noise covariance matrix Q:
         # TODO: Tune appropriately. Currently just a guess
-        self.ukf.Q = np.diag([0.01, 1.0])*0.05
+        self.ukf.Q = np.diag([0.01, 1.0])*0.005
         
         # Initialize the measurement covariance matrix R
         # IR slant range variance (m^2), determined experimentally in a static
@@ -261,6 +261,19 @@ class StateEstimation1D(object):
         # Get the current state estimate from self.ukf.x
         pose_with_cov.pose.pose.position.z = self.ukf.x[0]
         twist_with_cov.twist.twist.linear.z = self.ukf.x[1]
+        
+        # Fill the rest of the message with NaN
+        pose_with_cov.pose.pose.position.x = np.nan
+        pose_with_cov.pose.pose.position.y = np.nan
+        pose_with_cov.pose.pose.orientation.x = np.nan
+        pose_with_cov.pose.pose.orientation.y = np.nan
+        pose_with_cov.pose.pose.orientation.z = np.nan
+        pose_with_cov.pose.pose.orientation.w = np.nan
+        twist_with_cov.twist.twist.linear.x = np.nan
+        twist_with_cov.twist.twist.linear.y = np.nan
+        twist_with_cov.twist.twist.angular.x = np.nan
+        twist_with_cov.twist.twist.angular.y = np.nan
+        twist_with_cov.twist.twist.angular.z = np.nan
         
         # Prepare covariance matrices
         # pose_cov_mat = np.full((6, 6), np.nan)
