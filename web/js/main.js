@@ -151,7 +151,8 @@ function init() {
           heightChartMaxTime = tVal;
           // Remove first element of array while difference compared to current
           // time is greater than the windowSize
-          while (tVal - rawIrData[0].x > windowSize) {
+          while (rawIrData.length > 0 &&
+                 (tVal - rawIrData[0].x > windowSize)) {
               rawIrData.splice(0, 1);
           }
       }
@@ -198,7 +199,8 @@ function init() {
           
           // Remove first element of array while difference compared to current
           // time is greater than the windowSize
-          while (tVal - ukfData[0].x > windowSize) {
+          while (ukfData.length > 0 &&
+                 (tVal - ukfData[0].x > windowSize)) {
               ukfData.splice(0, 1);
               ukfPlusSigmaData.splice(0, 1);
               ukfMinusSigmaData.splice(0, 1);
@@ -225,6 +227,7 @@ function init() {
       }
       ukfPlusSigmaData.push(xyPairStdDevPlus);
       ukfMinusSigmaData.push(xyPairStdDevMinus);
+      //updateXYChart(message);
       if (!heightChartPaused) {
           // heightChart.options.scales.xAxes[0].ticks.min = heightChartMinTime;
           // heightChart.options.scales.xAxes[0].ticks.max = heightChartMaxTime;
@@ -235,6 +238,64 @@ function init() {
           // heightChart.update();
       }
     });
+    
+    function updateXYChart(msg) {
+        xPos = msg.pose_stamped.pose.position.x;
+        yPos = msg.pose_stamped.pose.position.y;
+        qx = msg.pose_stamped.pose.orientation.x;
+        qy = msg.pose_stamped.pose.orientation.y;
+        qz = msg.pose_stamped.pose.orientation.z;
+        qw = msg.pose_stamped.pose.orientation.w;
+        
+        if (xPos != null &&
+            yPos != null &&
+            qx != null &&
+            qy != null &&
+            qz != null &&
+            qw != null) {
+            
+            // Quaternion with which to rotate vectors to show the yaw of the
+            // drone (and perhaps also the roll and pitch)
+            global_to_body_quat = new Quaternion([qw, qx, qy, qz]);
+            // v1 = [1, 1, 0];
+            // v2 = [1, -1, 0];
+            // Drone marker vectors
+            v1 = [0.03, 0.03, 0];
+            v2 = [0.03, -0.03, 0];
+            v3 = [0.0, 0.05, 0];
+            rotatedv1 = global_to_body_quat.rotateVector(v1);
+            rotatedv2 = global_to_body_quat.rotateVector(v2);
+            rotatedv3 = global_to_body_quat.rotateVector(v3);
+            xyChart.data.datasets[0].data = [{
+                x: (xPos - rotatedv1[0]),
+                y: (yPos - rotatedv1[1])
+            },
+            {
+                x: (xPos + rotatedv1[0]),
+                y: (yPos + rotatedv1[1])
+            }
+            ];
+            xyChart.data.datasets[1].data = [{
+                x: (xPos - rotatedv2[0]),
+                y: (yPos - rotatedv2[1])
+            },
+            {
+                x: (xPos + rotatedv2[0]),
+                y: (yPos + rotatedv2[1])
+            }
+            ];
+            xyChart.data.datasets[2].data = [{
+                x: xPos,
+                y: yPos
+            },
+            {
+                x: (xPos + rotatedv3[0]),
+                y: (yPos + rotatedv3[1])
+            }
+            ];
+            xyChart.update()
+        }
+    }
     
     emaIrSub = new ROSLIB.Topic({
       ros : ros,
@@ -261,7 +322,8 @@ function init() {
           
           // Remove first element of array while difference compared to current
           // time is greater than the windowSize
-          while (tVal - emaData[0].x > windowSize) {
+          while (emaData.length > 0 &&
+                 (tVal - emaData[0].x > windowSize)) {
               emaData.splice(0, 1);
           }
       }
@@ -305,7 +367,8 @@ function init() {
           
           // Remove first element of array while difference compared to current
           // time is greater than the windowSize
-          while (tVal - stateGroundTruthData[0].x > windowSize) {
+          while (stateGroundTruthData.length > 0 &&
+                 (tVal - stateGroundTruthData[0].x > windowSize)) {
               stateGroundTruthData.splice(0, 1);
           }
       }
@@ -317,6 +380,7 @@ function init() {
           y: zEstimate
       }
       stateGroundTruthData.push(xyPair);
+      updateXYChart(message);
       if (!heightChartPaused) {
           // heightChart.options.scales.xAxes[0].ticks.min = heightChartMinTime;
           // heightChart.options.scales.xAxes[0].ticks.max = heightChartMaxTime;
@@ -667,6 +731,34 @@ $(document).ready(function() {
         type: 'line',
         data: {
             datasets: [
+                {
+                  data: Array(0), // initialize array of length 0
+                  borderWidth: 1.5,
+                  pointRadius: 0,
+                  fill: false,
+                  borderColor: 'rgba(0, 0, 0, 1)',
+                  backgroundColor: 'rgba(0, 0, 0, 0)',
+                  lineTension: 0, // remove smoothing
+              },
+              {
+                data: Array(0), // initialize array of length 0
+                borderWidth: 1.5,
+                pointRadius: 0,
+                fill: false,
+                borderColor: 'rgba(0, 0, 0, 1)',
+                backgroundColor: 'rgba(0, 0, 0, 0)',
+                lineTension: 0, // remove smoothing
+              },
+              {
+                data: Array(0), // initialize array of length 0
+                borderWidth: 1.5,
+                pointRadius: 0,
+                fill: false,
+                borderColor: 'rgba(0, 0, 0, 1)',
+                backgroundColor: 'rgba(0, 0, 0, 0)',
+                lineTension: 0, // remove smoothing
+              }
+            
             ]
         },
         options: {
@@ -691,7 +783,8 @@ $(document).ready(function() {
                     ticks: {
                         beginAtZero: true,
                         min: 0,
-                        max: 1,
+                        // max: 1,
+                        max: 400.0/250.0,
                         stepSize: 0.1,
                         display: true
                     },
@@ -702,7 +795,7 @@ $(document).ready(function() {
                 }]
             },
             legend: {
-              display: true
+              display: false
             },
         }
     });
