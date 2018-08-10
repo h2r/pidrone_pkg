@@ -73,14 +73,13 @@ class FlightController(object):
     # ROS subscriber callback methods:
     ##################################
     def commanded_mode_callback(self, msg):
-        ''' Set the current mode to the commanded mode
-        '''
+        """ Set the current mode to the commanded mode """
         self.prev_mode = self.curr_mode
         self.curr_mode = msg.mode
         self.update_command()
 
     def fly_commands_callback(self, msg):
-        ''' Store and send the flight commands if the current mode is FLYING '''
+        """ Store and send the flight commands if the current mode is FLYING """
         if self.curr_mode == 'FLYING':
             r = msg.roll
             p = msg.pitch
@@ -169,7 +168,12 @@ class FlightController(object):
         try:
             board = MultiWii('/dev/ttyUSB0')
         except SerialException:
-            board = MultiWii('/dev/ttyUSB1')
+            try:
+                board = MultiWii('/dev/ttyUSB1')
+            except SerialException:
+                print '\nCannot connect to the flight controller board.'
+                print 'The USB is unplugged. Please check connection.'
+                sys.exit()
         return board
 
     def send_cmd(self):
@@ -220,26 +224,30 @@ def main():
     signal.signal(signal.SIGINT, fc.ctrl_c_handler)
     # set the loop rate (Hz)
     r = rospy.Rate(100)
-    while not rospy.is_shutdown():
-        # update and publish flight controller readings
-        fc.update_battery_message()
-        fc.update_imu_message()
-        imupub.publish(fc.imu_message)
-        batpub.publish(fc.battery_message)
+    try:
+        while not rospy.is_shutdown():
+            # update and publish flight controller readings
+            fc.update_battery_message()
+            fc.update_imu_message()
+            imupub.publish(fc.imu_message)
+            batpub.publish(fc.battery_message)
 
-        # update and send the flight commands to the board
-        fc.update_command()
-        fc.send_cmd()
+            # update and send the flight commands to the board
+            fc.update_command()
+            fc.send_cmd()
 
-        # publish the current mode of the drone
-        fc.modepub.publish(fc.curr_mode)
+            # publish the current mode of the drone
+            fc.modepub.publish(fc.curr_mode)
 
-        # sleep for the remainder of the loop time
-        r.sleep()
+            # sleep for the remainder of the loop time
+            r.sleep()
 
-    print 'Shutdown received'
-    fc.board.sendCMD(8, MultiWii.SET_RAW_RC, cmds.disarm_cmd)
-    fc.board.receiveDataPacket()
+        print 'Shutdown received'
+        fc.board.sendCMD(8, MultiWii.SET_RAW_RC, cmds.disarm_cmd)
+        fc.board.receiveDataPacket()
+    except SerialException:
+        print '\nCannot connect to the flight controller board.'
+        print 'The USB is unplugged. Please check connection.'
 
 if __name__ == '__main__':
     main()
