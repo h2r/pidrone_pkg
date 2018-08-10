@@ -1,12 +1,13 @@
 #!/usr/bin/env python
 
 # ROS imports
-import rospy
-import tf
-from sensor_msgs.msg import Imu, Range
-from pidrone_pkg.msg import State
-from geometry_msgs.msg import PoseWithCovarianceStamped, TwistWithCovarianceStamped, TwistStamped
-from std_msgs.msg import Header
+# import rospy
+# import tf
+# from sensor_msgs.msg import Imu, Range
+# from pidrone_pkg.msg import State
+# from geometry_msgs.msg import PoseWithCovarianceStamped, TwistWithCovarianceStamped, TwistStamped
+# from std_msgs.msg import Header
+import roslibpy
 
 # UKF imports
 # The matplotlib imports and the matplotlib.use('Pdf') line make it so that the
@@ -39,7 +40,7 @@ class StateEstimation(object):
         self.ready_to_filter = False
         self.printed_filter_start_notice = False
         self.got_imu = False
-        self.got_optical_flow = False
+        self.got_optical_flow = True
         self.got_ir = False
         
         self.in_callback = False
@@ -70,21 +71,16 @@ class StateEstimation(object):
         '''
         node_name = 'state_estimation'
         print 'Initializing {} node...'.format(node_name)
-        rospy.init_node(node_name)
+        self.ros = roslibpy.Ros(host='tdrone-blue', port=9090)
         
-        # Subscribe to topics to which the drone publishes in order to get raw
-        # data from sensors, which we can then filter
-        rospy.Subscriber('/pidrone/imu', Imu, self.imu_data_callback)
-        rospy.Subscriber('/pidrone/plane_err', TwistStamped,
-                         self.optical_flow_data_callback)
-        rospy.Subscriber('/pidrone/infrared_raw', Range, self.ir_data_callback)
-        # TODO: Include position estimates from camera data from
-        #       estimateRigidTransform? Occurs in position hold and
-        #       localization
-        
-        # Create the publisher to publish state estimates
-        self.state_pub = rospy.Publisher('/pidrone/state', State, queue_size=1,
-                                        tcp_nodelay=False)
+        self.imu_sub = roslibpy.Topic(ros=self.ros, name='/pidrone/imu', message_type='sensor_msgs/Imu')
+        self.ir_sub = roslibpy.Topic(ros=self.ros, name='/pidrone/infrared_raw', message_type='sensor_msgs/Range')
+                
+    def start_subscribers(self):
+        print 'Starting subscribers...'
+        self.imu_sub.subscribe(self.imu_data_callback)
+        self.ir_sub.subscribe(self.ir_data_callback)
+        print 'Subscribers started'
         
     def initialize_ukf(self):
         '''
@@ -182,8 +178,8 @@ class StateEstimation(object):
               indicates the time at which the respective input was originally
               recorded
         '''
-        self.last_time_secs = msg.header.stamp.secs
-        self.last_time_nsecs = msg.header.stamp.nsecs
+        self.last_time_secs = msg['header']['stamp']['secs']
+        self.last_time_nsecs = msg['header']['stamp']['nsecs']
         new_time = self.last_time_secs + self.last_time_nsecs*1e-9
         # Compute the time interval since the last state transition / input
         self.dt = new_time - self.last_state_transition_time
@@ -200,8 +196,8 @@ class StateEstimation(object):
         
         msg : a ROS message that includes a header with a timestamp
         '''
-        self.last_time_secs = msg.header.stamp.secs
-        self.last_time_nsecs = msg.header.stamp.nsecs
+        self.last_time_secs = msg['header']['stamp']['secs']
+        self.last_time_nsecs = msg['header']['stamp']['nsecs']
         self.last_state_transition_time = (self.last_time_secs +
                                            self.last_time_nsecs*1e-9)
         
@@ -228,17 +224,20 @@ class StateEstimation(object):
         if self.in_callback:
             return
         self.in_callback = True
-        euler_angles = tf.transformations.euler_from_quaternion(
-                                                           [data.orientation.x,
-                                                            data.orientation.y,
-                                                            data.orientation.z,
-                                                            data.orientation.w])
-        roll = euler_angles[0]
-        pitch = euler_angles[1]
-        yaw = euler_angles[2]
-        self.last_control_input = np.array([data.linear_acceleration.x,
-                                            data.linear_acceleration.y,
-                                            data.linear_acceleration.z])
+        # euler_angles = tf.transformations.euler_from_quaternion(
+        #                                                    [data.orientation.x,
+        #                                                     data.orientation.y,
+        #                                                     data.orientation.z,
+        #                                                     data.orientation.w])
+        # roll = euler_angles[0]
+        # pitch = euler_angles[1]
+        # yaw = euler_angles[2]
+        roll = 0
+        pitch = 0
+        yaw = 0
+        self.last_control_input = np.array([data['linear_acceleration']['x'],
+                                            data['linear_acceleration']['y'],
+                                            data['linear_acceleration']['z']])
         if self.ready_to_filter:
             self.print_notice_if_first()
             self.update_input_time(data)
@@ -304,9 +303,9 @@ class StateEstimation(object):
             # velocity data in the TwistStamped message
             # TODO: Verify the units of these velocities that are being
             #       published
-            measurement_z = np.array([data.twist.linear.x, # x velocity
-                                      data.twist.linear.y, # y velocity
-                                      data.twist.angular.z]) # yaw velocity
+            measurement_z = np.array([data['twist']['linear']['x'], # x velocity
+                                      data['twist']['linear']['y'], # y velocity
+                                      data['twist']['angular']['z']]) # yaw velocity
             # Ensure that we are using subtraction to compute the residual
             #self.ukf.residual_z = np.subtract
             self.ukf.update(measurement_z,
@@ -316,9 +315,9 @@ class StateEstimation(object):
         else:
             self.initialize_input_time(data)
             # Update the initial state vector of the UKF
-            self.ukf.x[3] = data.twist.linear.x # x velocity
-            self.ukf.x[4] = data.twist.linear.y # y velocity
-            self.ukf.x[11] = data.twist.angular.z # yaw velocity
+            self.ukf.x[3] = data['twist']['linear']['x'] # x velocity
+            self.ukf.x[4] = data['twist']['linear']['y'] # y velocity
+            self.ukf.x[11] = data['twist']['angular']['z'] # yaw velocity
             # Update the state covariance matrix to reflect estimated
             # measurement error. Variance of the measurement -> variance of
             # the corresponding state variable
@@ -343,19 +342,19 @@ class StateEstimation(object):
         if self.ready_to_filter:
             self.print_notice_if_first()
             self.update_input_time(data)
-            print 'BEFORE PREDICT Z:', self.ukf.x[2]
+            #print 'BEFORE PREDICT Z:', self.ukf.x[2]
             self.ukf_predict()
                         
             # Now that a prediction has been formed to bring the current prior
             # state estimate to the same point in time as the measurement,
             # perform a measurement update with the slant range reading
-            measurement_z = np.array([data.range])
+            measurement_z = np.array([data['range']])
             # Ensure that we are using subtraction to compute the residual
             #self.ukf.residual_z = np.subtract
-            print 'AFTER PREDICT Z:', self.ukf.x[2]
+            #print 'BEFORE UPDATE Z:', self.ukf.x[2]
             # Multiply slant range by cos(roll)*cos(pitch) to get altitude estimate
             raw_slant_range_as_altitude = measurement_z[0]*np.cos(self.ukf.x[6])*np.cos(self.ukf.x[7])
-            print 'Raw slant range transformed to altitude:', raw_slant_range_as_altitude
+            #print 'Raw slant range transformed to altitude:', raw_slant_range_as_altitude
             #print 'Raw range:', measurement_z[0]
             self.ukf.update(measurement_z,
                             hx=self.measurement_function_ir,
@@ -366,7 +365,7 @@ class StateEstimation(object):
             # print 'TEMP RESIDUAL:', temp_residual
             # self.ukf.x = self.ukf.x_prior + np.dot(self.ukf.K, temp_residual)
             
-            print 'AFTER UPDATE Z:', self.ukf.x[2]
+            #print 'AFTER UPDATE Z:', self.ukf.x[2]
             #print 'KALMAN GAIN Z:', self.ukf.K[2]
             #print 'RESIDUAL:', self.ukf.y
             #print
@@ -379,7 +378,7 @@ class StateEstimation(object):
             self.initialize_input_time(data)
             # Got a raw slant range reading, so update the initial state
             # vector of the UKF
-            self.ukf.x[2] = data.range
+            self.ukf.x[2] = data['range']
             # Update the state covariance matrix to reflect estimated
             # measurement error. Variance of the measurement -> variance of
             # the corresponding state variable
@@ -394,13 +393,6 @@ class StateEstimation(object):
     def check_if_ready_to_filter(self):
         self.ready_to_filter = (self.got_imu and self.got_optical_flow and
                                 self.got_ir)
-                                
-    def get_quaternion_from_ukf_rpy(self):
-        # TODO: Should we use the raw roll, pitch, and yaw values that come in
-        #       at the same time step as the linear accelerations?
-        return tf.transformations.quaternion_from_euler(self.ukf.x[6],
-                                                        self.ukf.x[7],
-                                                        self.ukf.x[8])
                         
     def publish_current_state(self):
         '''
@@ -409,79 +401,61 @@ class StateEstimation(object):
             - PoseWithCovarianceStamped
             - TwistWithCovarianceStamped
         '''
-        header = Header()
-        header.stamp.secs = self.last_time_secs
-        header.stamp.nsecs = self.last_time_nsecs
-        header.frame_id = 'global'
-        
-        pose_with_cov = PoseWithCovarianceStamped()
-        twist_with_cov = TwistWithCovarianceStamped()
-        pose_with_cov.header = header
-        twist_with_cov.header = header
-        
-        quaternion = self.get_quaternion_from_ukf_rpy()
-        
-        # Get the current state estimate from self.ukf.x
-        pose_with_cov.pose.pose.position.x = self.ukf.x[0]
-        pose_with_cov.pose.pose.position.y = self.ukf.x[1]
-        pose_with_cov.pose.pose.position.z = self.ukf.x[2]
-        twist_with_cov.twist.twist.linear.x = self.ukf.x[3]
-        twist_with_cov.twist.twist.linear.y = self.ukf.x[4]
-        twist_with_cov.twist.twist.linear.z = self.ukf.x[5]
-        pose_with_cov.pose.pose.orientation.x = quaternion[0]
-        pose_with_cov.pose.pose.orientation.y = quaternion[1]
-        pose_with_cov.pose.pose.orientation.z = quaternion[2]
-        pose_with_cov.pose.pose.orientation.w = quaternion[3]
-        
-        # TODO: Look into RPY velocities versus angular velocities about x, y, z axes?
-        # For the time being, using Euler rates:
-        twist_with_cov.twist.twist.angular.x = self.ukf.x[9]    # roll rate
-        twist_with_cov.twist.twist.angular.y = self.ukf.x[10]   # pitch rate
-        twist_with_cov.twist.twist.angular.z = self.ukf.x[11]   # yaw rate
-        
-        # TODO: Uncomment if computation speed allows?
-        # Extract the relevant covariances from self.ukf.P, make into 36-element
-        # arrays, in row-major order, according to ROS msg docs
-        P = self.ukf.P
-        pose_with_cov.pose.covariance = np.concatenate(
-            (P[0, 0:3], P[0, 6:9], P[1, 0:3], P[1, 6:9], P[2, 0:3], P[2, 6:9],
-             P[6, 0:3], P[6, 6:9], P[7, 0:3], P[7, 6:9], P[8, 0:3], P[8, 6:9]),
-             axis=0)
-        twist_with_cov.twist.covariance = np.concatenate(
-            (P[3, 3:6], P[3, 9:12], P[4, 3:6], P[4, 9:12], P[5, 3:6], P[5, 9:12],
-             P[9, 3:6], P[9, 9:12], P[10, 3:6], P[10, 9:12], P[11, 3:6], P[11, 9:12]),
-             axis=0)
-        
-        state_msg = State()
-        state_msg.pose_with_covariance_stamped = pose_with_cov
-        state_msg.twist_with_covariance_stamped = twist_with_cov
-        self.state_pub.publish(state_msg)
+        print self.ukf.x[2]
+        # header = Header()
+        # header.stamp.secs = self.last_time_secs
+        # header.stamp.nsecs = self.last_time_nsecs
+        # header.frame_id = 'global'
+        #
+        # pose_with_cov = PoseWithCovarianceStamped()
+        # twist_with_cov = TwistWithCovarianceStamped()
+        # pose_with_cov.header = header
+        # twist_with_cov.header = header
+        #
+        # quaternion = self.get_quaternion_from_ukf_rpy()
+        #
+        # # Get the current state estimate from self.ukf.x
+        # pose_with_cov.pose.pose.position.x = self.ukf.x[0]
+        # pose_with_cov.pose.pose.position.y = self.ukf.x[1]
+        # pose_with_cov.pose.pose.position.z = self.ukf.x[2]
+        # twist_with_cov.twist.twist.linear.x = self.ukf.x[3]
+        # twist_with_cov.twist.twist.linear.y = self.ukf.x[4]
+        # twist_with_cov.twist.twist.linear.z = self.ukf.x[5]
+        # pose_with_cov.pose.pose.orientation.x = quaternion[0]
+        # pose_with_cov.pose.pose.orientation.y = quaternion[1]
+        # pose_with_cov.pose.pose.orientation.z = quaternion[2]
+        # pose_with_cov.pose.pose.orientation.w = quaternion[3]
+        #
+        # # TODO: Look into RPY velocities versus angular velocities about x, y, z axes?
+        # # For the time being, using Euler rates:
+        # twist_with_cov.twist.twist.angular.x = self.ukf.x[9]    # roll rate
+        # twist_with_cov.twist.twist.angular.y = self.ukf.x[10]   # pitch rate
+        # twist_with_cov.twist.twist.angular.z = self.ukf.x[11]   # yaw rate
+        #
+        # # TODO: Uncomment if computation speed allows?
+        # # Extract the relevant covariances from self.ukf.P, make into 36-element
+        # # arrays, in row-major order, according to ROS msg docs
+        # # P = self.ukf.P
+        # # pose_with_cov.pose.covariance = np.concatenate(
+        # #     (P[0, 0:3], P[0, 6:9], P[1, 0:3], P[1, 6:9], P[2, 0:3], P[2, 6:9],
+        # #      P[6, 0:3], P[6, 6:9], P[7, 0:3], P[7, 6:9], P[8, 0:3], P[8, 6:9]),
+        # #      axis=0)
+        # # twist_with_cov.twist.covariance = np.concatenate(
+        # #     (P[3, 3:6], P[3, 9:12], P[4, 3:6], P[4, 9:12], P[5, 3:6], P[5, 9:12],
+        # #      P[9, 3:6], P[9, 9:12], P[10, 3:6], P[10, 9:12], P[11, 3:6], P[11, 9:12]),
+        # #      axis=0)
+        #
+        # state_msg = State()
+        # state_msg.pose_with_covariance_stamped = pose_with_cov
+        # state_msg.twist_with_covariance_stamped = twist_with_cov
+        # self.state_pub.publish(state_msg)
 
     def apply_quaternion_vector_rotation(self, original_vector):
         '''
         Rotate a vector from the drone's body frame to the global frame using
         quaternion-vector multiplication
         '''
-        # Use quaternion-vector multiplication instead of a rotation matrix to
-        # rotate the vector.
-        # This quaternion describes rotation from the global frame to the body
-        # frame, so take the quaternion's inverse by negating its real
-        # component (w)
-        quat_global_to_body = self.get_quaternion_from_ukf_rpy()
-        quat_body_to_global = list(quat_global_to_body) # copy the quaternion
-        quat_body_to_global[3] = -quat_body_to_global[3]
-        original_vector_as_quat = list(original_vector)
-        original_vector_as_quat.append(0.0) # vector as quaternion with w=0
-        # Apply quaternion rotation on a vector: q*v*q', where q is the rotation
-        # quaternion, v is the vector (a "pure" quaternion with w=0), and q' is
-        # the conjugate of the quaternion q
-        original_vector_rotated = tf.transformations.quaternion_multiply(
-            tf.transformations.quaternion_multiply(quat_body_to_global,
-                                                   original_vector_as_quat),
-            tf.transformations.quaternion_conjugate(quat_body_to_global))
-        # Drop the real part w=0
-        original_vector_rotated = original_vector_rotated[:3]
-        return original_vector_rotated
+        return original_vector
 
     def state_transition_function(self, x, dt, u):
         '''
@@ -646,12 +620,16 @@ class StateEstimation(object):
         hx_output = np.dot(H, x)
         return hx_output
         
+    def run(self):
+        self.ros.on_ready(self.start_subscribers, run_in_thread=True)
+        self.ros.run_forever()
+        
         
 def main():
     se = StateEstimation()
     try:
         # Wait until node is halted
-        rospy.spin()
+        se.run()
     finally:
         # Upon termination of this script, print out a helpful message
         print 'State estimation node terminating.'

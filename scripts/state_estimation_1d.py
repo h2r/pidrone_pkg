@@ -111,7 +111,8 @@ class StateEstimation1D(object):
                                          dt=1.0,
                                          hx=self.measurement_function,
                                          fx=self.state_transition_function,
-                                         points=sigma_points)
+                                         points=sigma_points,
+                                         compute_log_likelihood=False)
         self.initialize_ukf_matrices()
 
     def initialize_ukf_matrices(self):
@@ -125,7 +126,7 @@ class StateEstimation1D(object):
         
         # Initialize the process noise covariance matrix Q:
         # TODO: Tune appropriately. Currently just a guess
-        self.ukf.Q = np.diag([0.01, 1.0])*0.005
+        self.ukf.Q = np.diag([0.01, 1.0])*0.0005
         
         # Initialize the measurement covariance matrix R
         # IR slant range variance (m^2), determined experimentally in a static
