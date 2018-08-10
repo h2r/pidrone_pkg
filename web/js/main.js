@@ -227,7 +227,7 @@ function init() {
       }
       ukfPlusSigmaData.push(xyPairStdDevPlus);
       ukfMinusSigmaData.push(xyPairStdDevMinus);
-      //updateXYChart(message);
+      updateXYChart(message);
       if (!heightChartPaused) {
           // heightChart.options.scales.xAxes[0].ticks.min = heightChartMinTime;
           // heightChart.options.scales.xAxes[0].ticks.max = heightChartMaxTime;
@@ -239,7 +239,7 @@ function init() {
       }
     });
     
-    function updateXYChart(msg) {
+    function updateGroundTruthXYChart(msg) {
         xPos = msg.pose_stamped.pose.position.x;
         yPos = msg.pose_stamped.pose.position.y;
         qx = msg.pose_stamped.pose.orientation.x;
@@ -285,6 +285,64 @@ function init() {
             }
             ];
             xyChart.data.datasets[2].data = [{
+                x: xPos,
+                y: yPos
+            },
+            {
+                x: (xPos + rotatedv3[0]),
+                y: (yPos + rotatedv3[1])
+            }
+            ];
+            xyChart.update()
+        }
+    }
+    
+    function updateXYChart(msg) {
+        xPos = msg.pose_with_covariance_stamped .pose.pose.position.x;
+        yPos = msg.pose_with_covariance_stamped .pose.pose.position.y;
+        qx = msg.pose_with_covariance_stamped .pose.pose.orientation.x;
+        qy = msg.pose_with_covariance_stamped .pose.pose.orientation.y;
+        qz = msg.pose_with_covariance_stamped .pose.pose.orientation.z;
+        qw = msg.pose_with_covariance_stamped .pose.pose.orientation.w;
+        
+        if (xPos != null &&
+            yPos != null &&
+            qx != null &&
+            qy != null &&
+            qz != null &&
+            qw != null) {
+            
+            // Quaternion with which to rotate vectors to show the yaw of the
+            // drone (and perhaps also the roll and pitch)
+            global_to_body_quat = new Quaternion([qw, qx, qy, qz]);
+            // v1 = [1, 1, 0];
+            // v2 = [1, -1, 0];
+            // Drone marker vectors
+            v1 = [0.03, 0.03, 0];
+            v2 = [0.03, -0.03, 0];
+            v3 = [0.0, 0.05, 0];
+            rotatedv1 = global_to_body_quat.rotateVector(v1);
+            rotatedv2 = global_to_body_quat.rotateVector(v2);
+            rotatedv3 = global_to_body_quat.rotateVector(v3);
+            xyChart.data.datasets[3].data = [{
+                x: (xPos - rotatedv1[0]),
+                y: (yPos - rotatedv1[1])
+            },
+            {
+                x: (xPos + rotatedv1[0]),
+                y: (yPos + rotatedv1[1])
+            }
+            ];
+            xyChart.data.datasets[4].data = [{
+                x: (xPos - rotatedv2[0]),
+                y: (yPos - rotatedv2[1])
+            },
+            {
+                x: (xPos + rotatedv2[0]),
+                y: (yPos + rotatedv2[1])
+            }
+            ];
+            xyChart.data.datasets[5].data = [{
                 x: xPos,
                 y: yPos
             },
@@ -375,12 +433,14 @@ function init() {
       // Add new height estimate to end of the data array
       // x-y pair
       var zEstimate = message.pose_stamped.pose.position.z;
-      var xyPair = {
-          x: tVal,
-          y: zEstimate
+      if (zEstimate != null) {
+          var xyPair = {
+              x: tVal,
+              y: zEstimate
+          }
+          stateGroundTruthData.push(xyPair);
       }
-      stateGroundTruthData.push(xyPair);
-      updateXYChart(message);
+      updateGroundTruthXYChart(message);
       if (!heightChartPaused) {
           // heightChart.options.scales.xAxes[0].ticks.min = heightChartMinTime;
           // heightChart.options.scales.xAxes[0].ticks.max = heightChartMaxTime;
@@ -757,8 +817,34 @@ $(document).ready(function() {
                 borderColor: 'rgba(0, 0, 0, 1)',
                 backgroundColor: 'rgba(0, 0, 0, 0)',
                 lineTension: 0, // remove smoothing
-              }
-            
+              },
+              {
+                data: Array(0), // initialize array of length 0
+                borderWidth: 1.5,
+                pointRadius: 0,
+                fill: false,
+                borderColor: 'rgba(49, 26, 140, 1)',
+                backgroundColor: 'rgba(0, 0, 0, 0)',
+                lineTension: 0, // remove smoothing
+              },
+              {
+                data: Array(0), // initialize array of length 0
+                borderWidth: 1.5,
+                pointRadius: 0,
+                fill: false,
+                borderColor: 'rgba(49, 26, 140, 1)',
+                backgroundColor: 'rgba(0, 0, 0, 0)',
+                lineTension: 0, // remove smoothing
+              },
+              {
+                data: Array(0), // initialize array of length 0
+                borderWidth: 1.5,
+                pointRadius: 0,
+                fill: false,
+                borderColor: 'rgba(49, 26, 140, 1)',
+                backgroundColor: 'rgba(0, 0, 0, 0)',
+                lineTension: 0, // remove smoothing
+              },
             ]
         },
         options: {
@@ -768,8 +854,7 @@ $(document).ready(function() {
             scales: {
                 yAxes: [{
                     ticks: {
-                        beginAtZero: true,
-                        min: 0,
+                        min: -1,
                         max: 1,
                         stepSize: 0.1
                     },
@@ -781,8 +866,7 @@ $(document).ready(function() {
                 xAxes: [{
                     type: 'linear',
                     ticks: {
-                        beginAtZero: true,
-                        min: 0,
+                        min: -400.0/250.0,
                         // max: 1,
                         max: 400.0/250.0,
                         stepSize: 0.1,
