@@ -54,7 +54,7 @@ if __name__ == '__main__':
     # Publishers
     ############
     desired_mode_pub = rospy.Publisher('/pidrone/desired/mode', Mode, queue_size=1)
-    desired_pose_pub = rospy.Publisher('/pidrone/desired/pose', Pose queue_size=1)
+    desired_pose_pub = rospy.Publisher('/pidrone/desired/pose', Pose, queue_size=1)
     desired_twist_pub = rospy.Publisher('/pidrone/desired/twist', Twist, queue_size=1)
     reset_transform_pub = rospy.Publisher('pidrone/reset_transform', Empty, queue_size=1)
     toggle_transform_pub = rospy.Publisher('pidrone/toggle_transform', Bool, queue_size=1)
