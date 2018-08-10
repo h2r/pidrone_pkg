@@ -109,6 +109,7 @@ class PIDController(object):
         self.desired_velocity.y = msg.linear.y
         self.desired_velocity.z = msg.linear.z
         self.calculate_travel_time()
+        print 'travel time'
 
     def current_mode_callback(self, msg):
         """ Update the current mode """
@@ -141,8 +142,6 @@ class PIDController(object):
         self.calc_error()
         if self.desired_velocity.magnitude() > 0:
             self.adjust_desired_velocity()
-            print 'adjusted', self.adjust_desired_velocity()
-            sys.exit()
         return self.pid.step(self.pid_error, self.yaw_velocity)
 
     # HELPER METHODS
@@ -275,14 +274,19 @@ class PIDController(object):
         calculate the error in order to move the drone the specified travel
         distance for a desired velocity
         '''
-        return self.desired_velocity_travel_distance/ self.desired_velocity.magnitude()
+        if self.desired_velocity.magnitude() > 0:
+            # tiime = distance / velocity
+            travel_time = self.desired_velocity_travel_distance / self.desired_velocity.magnitude()
+        else:
+            travel_time = 0.0
+        self.desired_velocity_travel_time = travel_time
+
 
     def reset(self):
         ''' Set desired_position to be current position, set
         filtered_desired_velocity to be zero, and reset both the PositionPID
         and VelocityPID
         '''
-# TODO test this
         # reset position control variables
         self.position_error = Error(0,0,0)
         self.desired_position = Position(self.current_position.x,self.current_position.y,0.3)
