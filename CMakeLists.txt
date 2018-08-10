@@ -48,9 +48,8 @@ find_package(catkin REQUIRED COMPONENTS
 add_message_files(
   FILES
   RC.msg
-  ERR.msg
-  axes_err.msg
   Mode.msg
+  Battery.msg
   State.msg
   StateGroundTruth.msg
 
@@ -75,6 +74,7 @@ generate_messages(
   DEPENDENCIES
   geometry_msgs
   std_msgs
+  geometry_msgs
 )
 catkin_package(CATKIN_DEPENDS message_runtime)
 

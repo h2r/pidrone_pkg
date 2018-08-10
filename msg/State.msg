@@ -1,2 +1,3 @@
-geometry_msgs/PoseWithCovarianceStamped pose_with_covariance_stamped
-geometry_msgs/TwistWithCovarianceStamped twist_with_covariance_stamped
+Header header
+geometry_msgs/PoseWithCovariance pose_with_covariance
+geometry_msgs/TwistWithCovariance twist_with_covariance
