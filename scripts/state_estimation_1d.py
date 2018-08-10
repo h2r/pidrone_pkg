@@ -70,8 +70,8 @@ class StateEstimation1D(object):
         
         # Subscribe to topics to which the drone publishes in order to get raw
         # data from sensors, which we can then filter
-        rospy.Subscriber('/pidrone/imu', Imu, self.imu_data_callback)
-        rospy.Subscriber('/pidrone/infrared_raw', Range, self.ir_data_callback)
+        rospy.Subscriber('/pidrone/imu_throttle', Imu, self.imu_data_callback)
+        rospy.Subscriber('/pidrone/infrared_raw_throttle', Range, self.ir_data_callback)
         
         # Create the publisher to publish state estimates
         self.state_pub = rospy.Publisher('/pidrone/state', State, queue_size=1,
@@ -126,7 +126,7 @@ class StateEstimation1D(object):
         
         # Initialize the process noise covariance matrix Q:
         # TODO: Tune appropriately. Currently just a guess
-        self.ukf.Q = np.diag([0.01, 1.0])*0.0005
+        self.ukf.Q = np.diag([0.01, 1.0])*0.005
         
         # Initialize the measurement covariance matrix R
         # IR slant range variance (m^2), determined experimentally in a static

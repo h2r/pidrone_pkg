@@ -74,10 +74,10 @@ class StateEstimation(object):
         
         # Subscribe to topics to which the drone publishes in order to get raw
         # data from sensors, which we can then filter
-        rospy.Subscriber('/pidrone/imu', Imu, self.imu_data_callback)
+        rospy.Subscriber('/pidrone/imu_throttle', Imu, self.imu_data_callback)
         rospy.Subscriber('/pidrone/plane_err', TwistStamped,
                          self.optical_flow_data_callback)
-        rospy.Subscriber('/pidrone/infrared_raw', Range, self.ir_data_callback)
+        rospy.Subscriber('/pidrone/infrared_raw_throttle', Range, self.ir_data_callback)
         # TODO: Include position estimates from camera data from
         #       estimateRigidTransform? Occurs in position hold and
         #       localization
@@ -137,7 +137,8 @@ class StateEstimation(object):
                                          dt=1.0,
                                          hx=self.measurement_function,
                                          fx=self.state_transition_function,
-                                         points=sigma_points)
+                                         points=sigma_points,
+                                         compute_log_likelihood=False)
                                          #residual_x=self.residual_x_account_for_angles)
         self.initialize_ukf_matrices()
 
