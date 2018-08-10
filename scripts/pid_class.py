@@ -1,242 +1,188 @@
+#!/usr/bin/env python
 from __future__ import division
 import rospy
-from std_msgs.msg import Float32
 
 
-class PositionPID(object):
-    '''A PID class for controlling position'''
-    def __init__(self):
-        self.integrated_error_x = 0
-        self.integrated_error_y = 0
-        self.integrated_error_z = 0
+#####################################################
+#						PID							#
+#####################################################
+class PIDaxis():
+    def __init__(self, kp, ki, kd, i_range=None, d_range=None, control_range=(1000, 2000), midpoint=1500, smoothing=True):
+        # Tuning
+        self.kp = kp
+        self.ki = ki
+        self.kd = kd
+        # Config
+        self.i_range = i_range
+        self.d_range = d_range
+        self.control_range = control_range
+        self.midpoint = midpoint
+        self.smoothing = smoothing
+        # Internal
+        self._old_err = None
+        self._p = 0
+        self._i = 0
+        self._d = 0
+        self._dd = 0
+        self._ddd = 0
 
-        self.cur_filt_d_err_z = 0
-        self.prev_d_err_z = 0
-        self.error_last = None
-        self.time = None
+    def step(self, err, time_elapsed):
+        if self._old_err is None:
+            # First time around prevent d term spike
+            self._old_err = err
 
-        self.kd_pub = rospy.Publisher('/pidrone/position/kd', Float32, queue_size=1)
-        self.kp_pub = rospy.Publisher('/pidrone/position/kp', Float32, queue_size=1)
-        self.ki_pub = rospy.Publisher('/pidrone/position/ki', Float32, queue_size=1)
-        self.zerr_pub = rospy.Publisher('/pidrone/position/zerr', Float32, queue_size=1)
+        # Find the p component
+        self._p = err * self.kp
 
-    def clip(self, num, lower, upper):
-        ''' Clips num to be between lower and upper '''
-        return max( min(upper, num), lower)
+        # Find the i component
+        self._i += err * self.ki * time_elapsed
+        if self.i_range is not None:
+            self._i = max(self.i_range[0], min(self._i, self.i_range[1]))
 
-    def step(self, error):
-        ''' Give flight controller outputs based on current and previous errors
-        '''
+        # Find the d component
+        self._d = (err - self._old_err) * self.kd / time_elapsed
+        if self.d_range is not None:
+            self._d = max(self.d_range[0], min(self._d, self.d_range[1]))
+        self._old_err = err
 
-        # Negative pitch points nose up
-        # Positive pitch points nose down
-        # Negative roll rolls left
-        # positive roll rolls right
+        # Smooth over the last three d terms
+        if self.smoothing:
+            self._d = (self._d * 8.0 + self._dd * 5.0 + self._ddd * 2.0)/15.0
+            self._ddd = self._dd
+            self._dd = self._d
 
-        # with the Motive Tracker setup on 4/25/2018, +Z is toward baxter
-        # and +X is left when facing baxter
+        # Calculate control output
+        raw_output = self._p + self._i + self._d
+        output = min(max(raw_output + self.midpoint, self.control_range[0]), self.control_range[1])
 
-        # with the drone facing baxter (flight controller pointing toward him),
-        # this means +pitch -> +Z, -roll -> +X
+        return output
 
-        if self.time is None:
+
+class PID:
+
+    height_factor = 1.238
+    battery_factor = 0.75
+
+    def __init__(self,
+
+                 roll=PIDaxis(6., 4.0, 0.5, control_range=(1400, 1600), midpoint=1500),
+                 roll_low=PIDaxis(4., 0.2, 0.0, control_range=(1400, 1600), midpoint=1500),
+
+                 pitch=PIDaxis(6., 4.0, 0.5, control_range=(1400, 1600), midpoint=1500),
+                 pitch_low=PIDaxis(4., 0.2, 0.0, control_range=(1400, 1600), midpoint=1500),
+
+                 yaw=PIDaxis(0.0, 0.0, 0.0),
+
+                 # Kv 2300 motors have midpoint 1300, Kv 2550 motors have midpoint 1250
+                 throttle=PIDaxis(1.0/height_factor * battery_factor, 0.5/height_factor * battery_factor,
+                                  2.0/height_factor * battery_factor, i_range=(-400, 400), control_range=(1200, 2000),
+                                  d_range=(-40, 40), midpoint=1250),
+                 throttle_low=PIDaxis(1.0/height_factor * battery_factor, 0.05/height_factor * battery_factor,
+                                      2.0/height_factor * battery_factor, i_range=(0, 400), control_range=(1200, 2000),
+                                      d_range=(-40, 40), midpoint=1250)
+                 ):
+
+        self.trim_controller_cap_plane = 0.05
+        self.trim_controller_thresh_plane = 0.0001
+
+        self.roll = roll
+        self.roll_low = roll_low
+
+        self.pitch = pitch
+        self.pitch_low = pitch_low
+
+        self.yaw = yaw
+
+        self.trim_controller_cap_throttle = 5.0
+        self.trim_controller_thresh_throttle = 5.0
+
+        self.throttle = throttle
+        self.throttle_low = throttle_low
+
+        self.sp = None
+        self._t = None
+
+        # Tuning values specific to each drone
+        self.roll_low._i = 0.0
+        self.pitch_low._i = 0.0
+
+        self.throttle_low.init_i = 60
+        self.throttle.init_i = 0.0
+        self.throttle.mw_angle_alt_scale = 1.0
+        self.reset()
+
+    def reset(self, state_controller=None):
+        self._t = None
+        self.throttle_low._i = self.throttle_low.init_i
+        self.throttle._i = self.throttle.init_i
+
+        if state_controller is not None:
+            state_controller.set_z = state_controller.initial_set_z
+
+    def step(self, error, cmd_yaw_velocity=0):
+        # First time around prevent time spike
+        if self._t is None:
             time_elapsed = 1
         else:
-            time_elapsed = rospy.get_time() - self.time
+            time_elapsed = rospy.get_time() - self._t
 
-        roll_midpoint = 1555
-        pitch_midpoint = 1531
-        yaw_midpoint = 1500
-        thrust_midpoint = 1320
+        self._t = rospy.get_time()
 
-        if self.error_last is not None:
-            d_err_x = error.x - self.error_last.x
-            d_err_y = error.y - self.error_last.y
-            d_err_z = error.z - self.error_last.z
+        # Compute roll command
+        if abs(error.x) < self.trim_controller_thresh_plane:
+            cmd_r = self.roll_low.step(error.x, time_elapsed)
+            self.roll._i = 0
         else:
-            d_err_x = 0
-            d_err_y = 0
-            d_err_z = 0
+            if error.x > self.trim_controller_cap_plane:
+                self.roll_low.step(self.trim_controller_cap_plane, time_elapsed)
+            elif error.x < -self.trim_controller_cap_plane:
+                self.roll_low.step(-self.trim_controller_cap_plane, time_elapsed)
+            else:
+                self.roll_low.step(error.x, time_elapsed)
 
+            cmd_r = self.roll_low._i + self.roll.step(error.x, time_elapsed)
 
-        c_cur_filt = .2
-        c_cmd = .6
-        cur_filt_d_err_z = c_cur_filt*self.cur_filt_d_err_z + c_cmd*(d_err_z + self.prev_d_err_z)
-
-        self.cur_filt_d_err_z = cur_filt_d_err_z
-        self.prev_d_err_z = d_err_z
-
-        d_err_z = cur_filt_d_err_z
-
-        self.error_last = error
-
-        kp_x = 0
-        kp_y = 0
-        kp_z = 0
-
-
-        ki_x = 0
-        ki_y = 0
-        ki_z = 0
-
-        kd_x = 0
-        kd_y = 0
-        kd_z = 0
-
-        # Limit integrated windup to +/- .1, 10% of the thrust
-        uc_integrated_error_x = self.integrated_error_x + ki_x*error.x*time_elapsed
-        self.integrated_error_x = self.clip(uc_integrated_error_x, -.1, .1)
-
-        uc_integrated_error_y = self.integrated_error_y + ki_y*error.y*time_elapsed
-        self.integrated_error_y = self.clip(uc_integrated_error_y, -.1, .1)
-
-        uc_integrated_error_z = self.integrated_error_z + ki_z*error.z*time_elapsed
-        self.integrated_error_z = self.clip(uc_integrated_error_z, -.1, .1)
-
-
-        # roll controls x (for now)
-        roll_factor = (kp_x*error.x + self.integrated_error_x + (kd_x*d_err_x)/time_elapsed)
-
-        # Pitch controls y (for now)
-        pitch_factor = (kp_y*error.y + self.integrated_error_y + (kd_y*d_err_y)/time_elapsed)
-
-        # Don't care about yaw (for now)
-        yaw_factor = 0
-
-        # Thrust controls z
-        thrust_factor = (kp_z*error.z + self.integrated_error_z + (kd_z*d_err_z)/time_elapsed)
-        self.zerr_pub.publish(error.z)
-        self.kp_pub.publish(kp_z*error.z)
-        self.ki_pub.publish(ki_z*self.integrated_error_z)
-        self.kd_pub.publish(kd_z*d_err_z)
-
-        cmd_r = roll_midpoint + int(self.clip(100*roll_factor, -100,100))
-        cmd_p = pitch_midpoint + int(self.clip(100*pitch_factor, -100,100))
-        cmd_yaw = yaw_midpoint + int(self.clip(100*yaw_factor, -100,100))
-        cmd_t = int(self.clip(thrust_midpoint + 100*thrust_factor, 1200,2000))
-        return [cmd_r, cmd_p, cmd_yaw, cmd_t]
-
-    def reset(self):
-        ''' Set integrated error to 0, and prev error (for D term) to 0 '''
-        self.time = None
-        self.integrated_error_x = 0
-        self.integrated_error_y = 0
-        self.integrated_error_z = 0
-        self.error_last = None
-
-
-class VelocityPID(object):
-    '''A PID class for controlling velocity'''
-    def __init__(self):
-        self.integrated_error_x = 0
-        self.integrated_error_y = 0
-        self.integrated_error_z = 0
-
-        self.cur_filt_d_err_z = 0
-        self.prev_d_err_z = 0
-        self.error_last = None
-
-        self.kd_pub = rospy.Publisher('/pidrone/velocity/kd', Float32, queue_size=1)
-        self.kp_pub = rospy.Publisher('/pidrone/velocity/kp', Float32, queue_size=1)
-        self.ki_pub = rospy.Publisher('/pidrone/velocity/ki', Float32, queue_size=1)
-        self.zerr_pub = rospy.Publisher('/pidrone/velocity/zerr', Float32, queue_size=1)
-
-    def clip(self, num, lower, upper):
-        ''' Clips num to be between lower and upper '''
-        return max( min(upper, num), lower)
-
-    def step(self, error):
-        ''' Give flight controller outputs based on current and previous errors
-        '''
-
-        # Negative pitch points nose up
-        # Positive pitch points nose down
-        # Negative roll rolls left
-        # positive roll rolls right
-
-        # with the Motive Tracker setup on 4/25/2018, +Z is toward baxter
-        # and +X is left when facing baxter
-
-        # with the drone facing baxter (flight controller pointing toward him),
-        # this means +pitch -> +Z, -roll -> +X
-
-        roll_midpoint = 1520
-        pitch_midpoint = 1600
-        yaw_midpoint = 1500
-        thrust_midpoint = 1380
-
-
-
-        if self.error_last is not None:
-            d_err_x = error.x - self.error_last.x
-            d_err_y = error.y - self.error_last.y
-            d_err_z = error.z - self.error_last.z
+        # Compute pitch command
+        if abs(error.y) < self.trim_controller_thresh_plane:
+            cmd_p = self.pitch_low.step(error.y, time_elapsed)
+            self.pitch._i = 0
         else:
-            d_err_x = 0
-            d_err_y = 0
-            d_err_z = 0
+            if error.y > self.trim_controller_cap_plane:
+                self.pitch_low.step(self.trim_controller_cap_plane, time_elapsed)
+            elif error.y < -self.trim_controller_cap_plane:
+                self.pitch_low.step(-self.trim_controller_cap_plane, time_elapsed)
+            else:
+                self.pitch_low.step(error.y, time_elapsed)
 
+            cmd_p = self.pitch_low._i + self.pitch.step(error.y, time_elapsed)
 
-        c_cur_filt = .2
-        c_cmd = .6
-        cur_filt_d_err_z = c_cur_filt*self.cur_filt_d_err_z + c_cmd*(d_err_z + self.prev_d_err_z)
+        # Compute yaw command
+        cmd_y = 1500 + cmd_yaw_velocity
 
-        self.cur_filt_d_err_z = cur_filt_d_err_z
-        self.prev_d_err_z = d_err_z
+        # Compute throttle command
+        if abs(error.z) < self.trim_controller_thresh_throttle:
+            cmd_t = self.throttle_low.step(error.z, time_elapsed)
+            self.throttle_low._i += self.throttle._i
+            self.throttle._i = 0
+        else:
+            if error.z > self.trim_controller_cap_throttle:
+                self.throttle_low.step(self.trim_controller_cap_throttle, time_elapsed)
+            elif error.z < -self.trim_controller_cap_throttle:
+                self.throttle_low.step(-self.trim_controller_cap_throttle, time_elapsed)
+            else:
+                self.throttle_low.step(error.z, time_elapsed)
 
-        d_err_z = cur_filt_d_err_z
+            cmd_t = self.throttle_low._i + self.throttle.step(error.z, time_elapsed)
 
-        self.error_last = error
+            # jgo: this seems to mostly make a difference before the I term has
+            # built enough to be stable, but it really seems better with it. To
+            # see the real difference, compare cmd_t / mw_angle_alt_scale to
+            # cmd_t * mw_angle_alt_scale and see how it sinks. That happens to
+            # a less noticeable degree with no modification.
+            cmd_t = min(cmd_t / max(0.5, self.throttle.mw_angle_alt_scale), 2000)
 
-        kp_x = .6
-        kp_y = .6
-        kp_z = 10
-
-
-        ki_x = 0
-        ki_y = 0
-        ki_z = .0005
-
-        kd_x = 2
-        kd_y = 2
-        kd_z = 180
-
-        # Limit integrated windup to +/- .1, 10% of the thrust
-        uc_integrated_error_x = self.integrated_error_x + ki_x*error.x
-        self.integrated_error_x = self.clip(uc_integrated_error_x, -.1, .1)
-
-        uc_integrated_error_y = self.integrated_error_y + ki_y*error.y
-        self.integrated_error_y = self.clip(uc_integrated_error_y, -.1, .1)
-
-        uc_integrated_error_z = self.integrated_error_z + ki_z*error.z
-        self.integrated_error_z = self.clip(uc_integrated_error_z, -.1, .1)
-
-
-        # roll controls x (for now)
-        roll_factor = (kp_x*error.x + self.integrated_error_x + kd_x*d_err_x)
-
-        # Pitch controls y (for now)
-        pitch_factor = kp_y*error.y + ki_y*self.integrated_error_y + kd_y*d_err_y
-
-        # Don't care about yaw (for now)
-        yaw_factor = 0
-
-        # Thrust controls z
-        thrust_factor = kp_z*error.z + self.integrated_error_z + kd_z*d_err_z
-        self.zerr_pub.publish(error.z)
-        self.kp_pub.publish(kp_z*error.z)
-        self.ki_pub.publish(ki_z*self.integrated_error_z)
-        self.kd_pub.publish(kd_z*d_err_z)
-
-        cmd_r = roll_midpoint + int(self.clip(100*roll_factor, -100,100))
-        cmd_p = pitch_midpoint + int(self.clip(100*pitch_factor, -100,100))
-        cmd_yaw = yaw_midpoint + int(self.clip(100*yaw_factor, -100,100))
-        cmd_t = int(self.clip(thrust_midpoint + 100*thrust_factor, 1200,2000))
-        return [cmd_r, cmd_p, cmd_yaw, cmd_t]
-
-    def reset(self):
-        ''' Set integrated error to 0, and prev error (for D term) to 0 '''
-        self.integrated_error_x = 0
-        self.integrated_error_y = 0
-        self.integrated_error_z = 0
-        self.error_last = None
+        # Print statements for the low and high i components
+        # print "Roll  low, hi:", self.roll_low._i, self.roll._i
+        # print "Pitch low, hi:", self.pitch_low._i, self.pitch._i
+        # print "Throttle low, hi:", self.throttle_low._i, self.throttle._i
+        return [cmd_r, cmd_p, cmd_y, cmd_t]

@@ -57,8 +57,7 @@ if __name__ == '__main__':
     desired_pose_pub = rospy.Publisher('/pidrone/desired/pose', Pose, queue_size=1)
     desired_twist_pub = rospy.Publisher('/pidrone/desired/twist', Twist, queue_size=1)
     reset_transform_pub = rospy.Publisher('pidrone/reset_transform', Empty, queue_size=1)
-    toggle_transform_pub = rospy.Publisher('pidrone/toggle_transform', Bool, queue_size=1)
-    position_control = False
+    position_control_pub = rospy.Publisher('pidrone/position_control', Bool, queue_size=1)
 
     publish_desired_mode('DISARMED', desired_mode_pub)
     signal.signal(signal.SIGINT, lambda x,y: ctrl_c_handler(x,y,desired_mode_pub))
@@ -82,8 +81,7 @@ if __name__ == '__main__':
                 # it's a position command
                 elif entry[0] == 'p':
                     # turn on position controll
-                    postion_control = True
-                    toggle_transform_pub.publish(position_control)
+                    position_control_pub.publish(True)
                     if len(entry) > 1:
                     # set the desired position
                         strs = entry.split()
@@ -95,8 +93,7 @@ if __name__ == '__main__':
 
                 # veloity commands take the form v <x> <y> <z> where x, y, and z are floats
                 elif entry[0] == 'v':
-                    position_control = False
-                    toggle_transform_pub.publish(position_control)
+                    position_control_pub.publish(False)
                     if len(entry) > 1:
                     # set the desired velocity
                         strs = entry.split()

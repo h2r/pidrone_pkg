@@ -6,7 +6,7 @@ import signal
 import traceback
 import numpy as np
 import command_values as cmds
-from old_pid_class import PID, PIDaxis
+from pid_class import PID, PIDaxis
 from geometry_msgs.msg import Pose, Twist
 from pidrone_pkg.msg import Mode, RC, State
 from std_msgs.msg import Float32, Empty, Bool
@@ -103,12 +103,12 @@ class PIDController(object):
         self.desired_position.y = msg.position.y
         self.desired_position.z = msg.position.z
 
-#TODO THE TIMES 4 IS FROM THE OLD CODE. TEST THIS AND TRY TO REMOVE THIS BY INCREASING P TERM
+#TODO IN THE OLD CODE, THIS WAS MULITPLIED BY 4. TEST THIS AND TRY TO REMOVE THIS BY INCREASING P TERM
     def desired_twist_callback(self, msg):
         """ Update the desired twist """
-        self.desired_velocity.x = msg.linear.x * 4.0
-        self.desired_velocity.y = msg.linear.y * 4.0
-        self.desirded_velocity.z = msg.linear.z * 4.0
+        self.desired_velocity.x = msg.linear.x
+        self.desired_velocity.y = msg.linear.y
+        self.desired_velocity.z = msg.linear.z
         self.calculate_travel_time()
 
     def current_mode_callback(self, msg):
@@ -119,7 +119,7 @@ class PIDController(object):
         """ Update the desired mode """
         self.desired_mode = msg.mode
 
-    def toggle_callback(self, msg):
+    def position_control_callback(self, msg):
         """ Set whether or not position control is enabled """
         self.position_control = msg.data
         print "Position Control", self.position_control
@@ -142,6 +142,8 @@ class PIDController(object):
         self.calc_error()
         if self.desired_velocity.magnitude() > 0:
             self.adjust_desired_velocity()
+            print 'adjusted', self.adjust_desired_velocity()
+            sys.exit()
         return self.pid.step(self.pid_error, self.yaw_velocity)
 
     # HELPER METHODS
@@ -277,7 +279,7 @@ class PIDController(object):
         calculate the error in order to move the drone the specified travel
         distance for a desired velocity
         '''
-        return self.velocity_command_travel_distance/ self.desired_velocity.magnitude()
+        return self.desired_velocity_travel_distance/ self.desired_velocity.magnitude()
 
     def reset(self):
         ''' Set desired_position to be current position, set
@@ -332,7 +334,7 @@ if __name__ == '__main__':
     rospy.Subscriber('/pidrone/desired/twist', Twist, pid_controller.desired_twist_callback)
     rospy.Subscriber('/pidrone/mode', Mode, pid_controller.current_mode_callback)
     rospy.Subscriber('/pidrone/desired/mode', Mode, pid_controller.desired_mode_callback)
-    rospy.Subscriber("/pidrone/toggle_transform", Bool, pid_controller.toggle_callback)
+    rospy.Subscriber("/pidrone/position_control", Bool, pid_controller.position_control_callback)
     rospy.Subscriber("/pidrone/reset_transform", Empty, pid_controller.reset_callback)
     rospy.Subscriber('/pidrone/picamera/transforming_on_first_image', Bool, pid_controller.tofi_callback)
 
