@@ -64,15 +64,15 @@ class ModeController(object):
             the last five seconds
         """
         disarm = False
-        if mc.vbat < mc.minimum_voltage:
-            print 'Safety Failure: low battery'
+        if mc.vbat != None and mc.vbat < mc.minimum_voltage:
+            print '\nSafety Failure: low battery\n'
             disarm = True
         if rospy.Time.now() - self.last_heartbeat > rospy.Duration.from_sec(5):
-            print 'Safety Failure: no heartbeat'
+            print '\nSafety Failure: no heartbeat\n'
             disarm = True
-        if rospy.Time.now() - self.last_mode_time > rospy.Duration.from_sec(5):
-            print 'Safety Failure: not receiving data from flight controller.'
-            print 'Check the flight_controller node'
+        if rospy.Time.now() - self.last_mode_time > rospy.Duration.from_sec(1):
+            print '\nSafety Failure: not receiving data from flight controller.'
+            print 'Check the flight_controller node\n'
             disarm = True
 
         return disarm
@@ -113,8 +113,10 @@ if __name__ == '__main__':
     r = rospy.Rate(100) # 100hz
     while not rospy.is_shutdown():
         try:
-            # Break the loop if a safety check has failed
-            if not mc.curr_mode == 'DISARMED':
+            # if the current or desired mode is anything other than disarmed
+            # preform as safety check
+            if mc.curr_mode != 'DISARMED' or mc.desired_mode != 'DISARMED':
+                # Break the loop if a safety check has failed
                 if mc.shouldIDisarm():
                     break
 
@@ -152,7 +154,8 @@ if __name__ == '__main__':
                     print 'Cannot transition from Mode %s to Mode %s' % (mc.curr_mode, mc.desired_mode)
 
         except:
-                raise
+                print 'there was an internal error'
+                sys.exit()
         r.sleep()
 
     mc.cmd_mode_pub.publish('DISARMED')
