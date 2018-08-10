@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 from __future__ import division
-from three_dim_vec import Error
 import rospy
 
 
@@ -8,18 +7,17 @@ import rospy
 #						PID							#
 #####################################################
 class PIDaxis():
-    def __init__(self, kp, ki, kd, kp_upper=None, i_range=None, d_range=None, control_range=(1000, 2000), midpoint=1500):
+    def __init__(self, kp, ki, kd, i_range=None, d_range=None, control_range=(1000, 2000), midpoint=1500, smoothing=True):
         # Tuning
         self.kp = kp
         self.ki = ki
         self.kd = kd
         # Config
-        self.kp_upper = kp_upper
         self.i_range = i_range
         self.d_range = d_range
         self.control_range = control_range
         self.midpoint = midpoint
-        self.smoothing = True
+        self.smoothing = smoothing
         # Internal
         self._old_err = None
         self._p = 0
@@ -34,10 +32,7 @@ class PIDaxis():
             self._old_err = err
 
         # Find the p component
-        if self.kp_upper is not None and err < 0:
-            self._p = err * self.kp_upper
-        else:
-            self._p = err * self.kp
+        self._p = err * self.kp
 
         # Find the i component
         self._i += err * self.ki * time_elapsed
@@ -67,7 +62,7 @@ class PID:
 
     height_factor = 1.238
     battery_factor = 0.75
-# TODO NOTE, THERE IS NO KP UPPER AS IN ORIGINAL CODE?
+
     def __init__(self,
 
                  roll=PIDaxis(6., 4.0, 0.5, control_range=(1400, 1600), midpoint=1500),
@@ -80,14 +75,14 @@ class PID:
 
                  # Kv 2300 motors have midpoint 1300, Kv 2550 motors have midpoint 1250
                  throttle=PIDaxis(1.0/height_factor * battery_factor, 0.5/height_factor * battery_factor,
-                                  2.0/height_factor * battery_factor, kp_upper=1.0/height_factor * battery_factor,
-                                  i_range=(-400, 400), control_range=(1200, 2000), d_range=(-40, 40), midpoint=1250),
+                                  2.0/height_factor * battery_factor, i_range=(-400, 400), control_range=(1200, 2000),
+                                  d_range=(-40, 40), midpoint=1250),
                  throttle_low=PIDaxis(1.0/height_factor * battery_factor, 0.05/height_factor * battery_factor,
-                                      2.0/height_factor * battery_factor, kp_upper=1.0/height_factor * battery_factor,
-                                      i_range=(0, 400), control_range=(1200, 2000), d_range=(-40, 40), midpoint=1250)
+                                      2.0/height_factor * battery_factor, i_range=(0, 400), control_range=(1200, 2000),
+                                      d_range=(-40, 40), midpoint=1250)
                  ):
 
-        self.trim_controller_cap_plane = 0.05 #5
+        self.trim_controller_cap_plane = 0.05
         self.trim_controller_thresh_plane = 0.0001
 
         self.roll = roll
@@ -107,9 +102,9 @@ class PID:
         self.sp = None
         self._t = None
 
-        # Steve005 presets
-        self.roll_low._i = 40
-        self.pitch_low._i = -6 #46.35
+        # Tuning values specific to each drone
+        self.roll_low._i = 0.0
+        self.pitch_low._i = 0.0
 
         self.throttle_low.init_i = 60
         self.throttle.init_i = 0.0
@@ -125,8 +120,6 @@ class PID:
             state_controller.set_z = state_controller.initial_set_z
 
     def step(self, error, cmd_yaw_velocity=0):
-        #print 'roll_low_i', self.roll_low._i
-        #print 'pitch_low_i', self.pitch_low._i
         # First time around prevent time spike
         if self._t is None:
             time_elapsed = 1
