@@ -99,7 +99,6 @@ class PID:
         self.throttle = throttle
         self.throttle_low = throttle_low
 
-        self.sp = None
         self._t = None
 
         # Tuning values specific to each drone
@@ -108,7 +107,6 @@ class PID:
 
         self.throttle_low.init_i = 60
         self.throttle.init_i = 0.0
-        self.throttle.mw_angle_alt_scale = 1.0
         self.reset()
 
     def reset(self, state_controller=None):
@@ -173,13 +171,6 @@ class PID:
                 self.throttle_low.step(error.z, time_elapsed)
 
             cmd_t = self.throttle_low._i + self.throttle.step(error.z, time_elapsed)
-
-            # jgo: this seems to mostly make a difference before the I term has
-            # built enough to be stable, but it really seems better with it. To
-            # see the real difference, compare cmd_t / mw_angle_alt_scale to
-            # cmd_t * mw_angle_alt_scale and see how it sinks. That happens to
-            # a less noticeable degree with no modification.
-            cmd_t = min(cmd_t / max(0.5, self.throttle.mw_angle_alt_scale), 2000)
 
         # Print statements for the low and high i components
         # print "Roll  low, hi:", self.roll_low._i, self.roll._i

@@ -69,7 +69,6 @@ class PIDController(object):
         # angle compensation values (to account for tilt of drone)
         self.mw_angle_comp_x = 0
         self.mw_angle_comp_y = 0
-        self.mw_angle_alt_scale = 1.0
         self.mw_angle_coeff = 0.2
 
         # Initialize the current and  previous roll, pitch, yaw values
@@ -185,9 +184,6 @@ class PIDController(object):
         vy = self.current_angular_velocity.y
         self.mw_angle_comp_x = vx * self.mw_angle_coeff
         self.mw_angle_comp_y = vy * self.mw_angle_coeff
-
-        self.mw_angle_alt_scale = np.cos(self.current_rpy.r) * np.cos(self.current_rpy.p)
-        self.pid.throttle.mw_angle_alt_scale = self.mw_angle_alt_scale
 
 # TODO THIS IS A PROTOTYPE METHOD THAT NEEDS TESTING
     def adjust_desired_velocity(self):
