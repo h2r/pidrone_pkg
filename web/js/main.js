@@ -131,7 +131,7 @@ function init() {
       name : '/pidrone/infrared_raw',
       messageType : 'sensor_msgs/Range',
       queue_length : 2,
-      throttle_rate : 5
+      throttle_rate : 80
     });
     var heightChartMinTime;
     var heightChartMaxTime;
@@ -175,12 +175,59 @@ function init() {
       //console.log('tVal: ' + tVal)
     });
     
+    imusub = new ROSLIB.Topic({
+      ros : ros,
+      name : '/pidrone/imu_throttle',
+      messageType : 'sensor_msgs/Imu',
+      queue_length : 2,
+      throttle_rate : 50
+    });
+    imusub.subscribe(function(message) {
+      //printProperties(message);
+      //console.log("Range: " + message.range);
+      currTime = message.header.stamp.secs + message.header.stamp.nsecs/1.0e9;
+      if (!gotFirstHeight) {
+          gotFirstHeight = true;
+          startTime = currTime;
+      }
+      tVal = currTime - startTime;
+      // Have the plot scroll in time, showing a window of windowSize seconds
+      if (tVal > windowSize) {
+          spanningFullWindow = true;
+          heightChartMinTime = tVal - windowSize;
+          heightChartMaxTime = tVal;
+          // Remove first element of array while difference compared to current
+          // time is greater than the windowSize
+          while (rawImuData.length > 0 &&
+                 (tVal - rawImuData[0].x > windowSize)) {
+              rawImuData.splice(0, 1);
+          }
+      }
+      // Add new z acceleration reading to end of the data array
+      // x-y pair
+      var xyPair = {
+          x: tVal,
+          y: message.linear_acceleration.z
+      }
+      rawImuData.push(xyPair)
+      if (!heightChartPaused) {
+          heightChart.options.scales.xAxes[0].ticks.min = heightChartMinTime;
+          heightChart.options.scales.xAxes[0].ticks.max = heightChartMaxTime;
+          heightChart.data.datasets[6].data = rawImuData.slice();
+          heightChart.update();
+      } else {
+          pulseIr();
+      }
+      //console.log("Data: " + heightChart.data.datasets[0].data);
+      //console.log('tVal: ' + tVal)
+    });
+    
     statesub = new ROSLIB.Topic({
         ros : ros,
         name : '/pidrone/state',
         messageType : 'pidrone_pkg/State',
         queue_length : 2,
-        throttle_rate : 5
+        throttle_rate : 80
     });
     statesub.subscribe(function(message) {
       //printProperties(message);
@@ -360,7 +407,7 @@ function init() {
       name : '/pidrone/infrared_ema',
       messageType : 'sensor_msgs/Range',
       queue_length : 2,
-      throttle_rate : 5
+      throttle_rate : 80
     });
     emaIrSub.subscribe(function(message) {
       //printProperties(message);
@@ -406,7 +453,7 @@ function init() {
         name : '/pidrone/state_ground_truth',
         messageType : 'pidrone_pkg/StateGroundTruth',
         queue_length : 2,
-        throttle_rate : 5
+        throttle_rate : 80
     });
     stateGroundTruthSub.subscribe(function(message) {
       //printProperties(message);
@@ -659,6 +706,7 @@ var rawIrDataset = {
   fill: false,
   borderColor: 'rgba(255, 80, 0, 0.8)',
   backgroundColor: 'rgba(255, 80, 0, 0)',
+  lineTension: 0, // remove smoothing
   itemID: 0
 };
 var rawIrData = Array(0);
@@ -671,6 +719,7 @@ var ukfDataset = {
   fill: false,
   borderColor: 'rgba(49, 26, 140, 0.8)',
   backgroundColor: 'rgba(49, 26, 140, 0.1)',
+  lineTension: 0, // remove smoothing
   itemID: 1
 }
 var ukfData = Array(0);
@@ -709,6 +758,7 @@ var emaDataset = {
   fill: false,
   borderColor: 'rgba(252, 70, 173, 0.8)',
   backgroundColor: 'rgba(252, 70, 173, 0)',
+  lineTension: 0, // remove smoothing
   itemID: 4
 }
 var emaData = Array(0);
@@ -721,9 +771,23 @@ var stateGroundTruthDataset = {
   fill: false,
   borderColor: 'rgba(0, 0, 0, 0.8)',
   backgroundColor: 'rgba(0, 0, 0, 0)',
+  lineTension: 0, // remove smoothing
   itemID: 5
 }
 var stateGroundTruthData = Array(0);
+
+var rawImuDataset = {
+  label: 'Raw IMU Z Acceleration (m/s^2)',
+  data: Array(0), // initialize array of length 0
+  borderWidth: 1.5,
+  pointRadius: 0,
+  fill: false,
+  borderColor: 'rgba(80, 255, 0, 0.8)',
+  backgroundColor: 'rgba(80, 255, 0, 0)',
+  lineTension: 0, // remove smoothing
+  itemID: 6
+};
+var rawImuData = Array(0);
 
 
 var ctx;
@@ -740,7 +804,8 @@ $(document).ready(function() {
                 ukfPlusSigmaDataset,
                 ukfMinusSigmaDataset,
                 emaDataset,
-                stateGroundTruthDataset
+                stateGroundTruthDataset,
+                rawImuDataset
             ]
         },
         options: {
