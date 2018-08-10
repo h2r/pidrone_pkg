@@ -109,13 +109,10 @@ class PID:
         self.throttle.init_i = 0.0
         self.reset()
 
-    def reset(self, state_controller=None):
+    def reset(self):
         self._t = None
         self.throttle_low._i = self.throttle_low.init_i
         self.throttle._i = self.throttle.init_i
-
-        if state_controller is not None:
-            state_controller.set_z = state_controller.initial_set_z
 
     def step(self, error, cmd_yaw_velocity=0):
         # First time around prevent time spike
