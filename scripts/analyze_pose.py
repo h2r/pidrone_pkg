@@ -18,13 +18,11 @@ class AnalyzePose(picamera.array.PiMotionAnalysis):
 
     Publisher:
     /pidrone/picamera/pose
-    /pidrone/desired/pose
-    /pidrone/toggle
     /pidrone/picamera/transforming_on_first_image
 
     Subscribers:
     /pidrone/reset_transform
-    /pidrone/toggle_transform
+    /pidrone/position_control
     /pidrone/state
     """
 
@@ -49,12 +47,11 @@ class AnalyzePose(picamera.array.PiMotionAnalysis):
         ###########
         # Publisher
         self.posepub = rospy.Publisher('/pidrone/picamera/pose', Pose, queue_size=1)
-        self.desired_pose_pub = rospy.Publisher('/pidrone/desired/pose', Pose, queue_size=1)
         self.transforming_on_first_image_pub = rospy.Publisher('/pidrone/picamera/transforming_on_first_image', \
                 Bool, queue_size=1, latch = True)
         # Subscribers
         rospy.Subscriber("/pidrone/reset_transform", Empty, self.reset_callback)
-        rospy.Subscriber("/pidrone/toggle_transform", Bool, self.toggle_callback)
+        rospy.Subscriber("/pidrone/position_control", Bool, self.position_control_callback)
 
     def write(self, data):
         ''' A method that is called everytime an image is taken '''
@@ -152,8 +149,8 @@ class AnalyzePose(picamera.array.PiMotionAnalysis):
         # reset the pose values
         self.pose = Pose()
 
-    # subscribe /pidrone/toggle_transform
-    def toggle_callback(self, msg):
-        ''' Toggle whether the phase is calculated and published '''
+    # subscribe /pidrone/position_control
+    def position_control_callback(self, msg):
+        ''' Set whether the pose is calculated and published '''
         self.position_control = msg.data
         print "Position Control", self.position_control

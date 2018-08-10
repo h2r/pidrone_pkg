@@ -119,7 +119,7 @@ class PIDController(object):
         """ Update the desired mode """
         self.desired_mode = msg.mode
 
-    def toggle_callback(self, msg):
+    def position_control_callback(self, msg):
         """ Set whether or not position control is enabled """
         self.position_control = msg.data
         print "Position Control", self.position_control
@@ -332,7 +332,7 @@ if __name__ == '__main__':
     rospy.Subscriber('/pidrone/desired/twist', Twist, pid_controller.desired_twist_callback)
     rospy.Subscriber('/pidrone/mode', Mode, pid_controller.current_mode_callback)
     rospy.Subscriber('/pidrone/desired/mode', Mode, pid_controller.desired_mode_callback)
-    rospy.Subscriber("/pidrone/toggle_transform", Bool, pid_controller.toggle_callback)
+    rospy.Subscriber("/pidrone/position_control", Bool, pid_controller.position_control_callback)
     rospy.Subscriber("/pidrone/reset_transform", Empty, pid_controller.reset_callback)
     rospy.Subscriber('/pidrone/picamera/transforming_on_first_image', Bool, pid_controller.tofi_callback)
 
