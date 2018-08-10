@@ -40,6 +40,7 @@ class ModeController(object):
 
     def mode_callback(self, msg):
         """Update the current mode of the drone"""
+        self.last_mode_time = rospy.Time.now()
         self.prev_mode = self.curr_mode
         self.curr_mode = msg.mode
         if self.prev_mode != self.curr_mode:
@@ -55,14 +56,26 @@ class ModeController(object):
         self.amperage = msg.amperage
 
     def shouldIDisarm(self):
-        """Disarm the drone if the battery values are too low or
-        if it has not received a heartbeat in the last five seconds
         """
+        Disarm the drone if:
+        the battery values are too low, or
+        self has not received a heartbeat in the last five seconds, or
+        self has not received a mode message from the flight controller within
+            the last five seconds
+        """
+        disarm = False
         if mc.vbat < mc.minimum_voltage:
             print 'Safety Failure: low battery'
+            disarm = True
         if rospy.Time.now() - self.last_heartbeat > rospy.Duration.from_sec(5):
             print 'Safety Failure: no heartbeat'
-        return (mc.vbat < mc.minimum_voltage or rospy.Time.now() - self.last_heartbeat > rospy.Duration.from_sec(5))
+            disarm = True
+        if rospy.Time.now() - self.last_mode_time > rospy.Duration.from_sec(5):
+            print 'Safety Failure: not receiving data from flight controller.'
+            print 'Check the flight_controller node'
+            disarm = True
+
+        return disarm
 
     def ctrl_c_handler(self, signal, frame):
         """Disarms the drone and exits the program if ctrl-c is pressed"""
@@ -79,43 +92,27 @@ if __name__ == '__main__':
     # Instantiate a ModeController object
     mc = ModeController()
     mc.last_heartbeat = rospy.Time.now()
+    mc.last_mode_time = rospy.Time.now()
 
     # Publishers
     ############
-    mc.cmd_mode_pub = rospy.Publisher('/pidrone/commanded_mode', Mode, queue_size=1)
+    mc.cmd_mode_pub = rospy.Publisher('/pidrone/commanded/mode', Mode, queue_size=1)
 
     # Subscribers
     #############
+    rospy.Subscriber("/pidrone/mode", Mode, mc.mode_callback)
+    rospy.Subscriber("/pidrone/desired/mode", Mode, mc.desired_mode_callback)
     rospy.Subscriber("/pidrone/heartbeat", String, mc.heartbeat_callback)
     rospy.Subscriber("/pidrone/battery", Battery, mc.battery_callback)
-    rospy.Subscriber("/pidrone/mode", Mode, mc.mode_callback)
-    rospy.Subscriber("/pidrone/desired_mode", Mode, mc.desired_mode_callback)
 
     # Non-ROS Setup
     ###############
     signal.signal(signal.SIGINT, mc.ctrl_c_handler)
 
-    # Variables and method used to check connection with flight controller node
-    mc.same_cmd_counter = 0
-    mc.last_cmd = 'dsm'
-    mc.curr_cmd = 'dsm'
-    def same_cmd_counter_update(cmd):
-        """Count the number of times sc has published the same command. This is
-        used to check if the flight_controller is receiving commands"""
-        mc.last_cmd = mc.curr_cmd
-        mc.curr_cmd = cmd
-        if mc.last_cmd == mc.curr_cmd:
-            mc.same_cmd_counter = mc.same_cmd_counter + 1
-
     print 'Controlling Mode'
     r = rospy.Rate(100) # 100hz
     while not rospy.is_shutdown():
         try:
-            # Break the loop if the flight controller isn't updating /pidrone/mode
-            if mc.same_cmd_counter > 10:
-                print ('\n\nThere was an error communicating with the flight controller.'
-                       '\nCheck if the flight controller node is active.\n\n')
-                break
             # Break the loop if a safety check has failed
             if not mc.curr_mode == 'DISARMED':
                 if mc.shouldIDisarm():
@@ -125,12 +122,11 @@ if __name__ == '__main__':
             ######################
             if mc.curr_mode == 'DISARMED':
                 if mc.desired_mode == 'DISARMED':
-                    pass
+                    mc.cmd_mode_pub.publish('DISARMED')
                 elif mc.desired_mode == 'ARMED':
                     print 'sending arm command'
                     mc.cmd_mode_pub.publish('ARMED')
                     rospy.sleep(1)
-                    same_cmd_counter_update('a')
                 else:
                     print 'Cannot transition from Mode %s to Mode %s' % (mc.curr_mode, mc.desired_mode)
 
@@ -143,7 +139,6 @@ if __name__ == '__main__':
                 elif mc.desired_mode == 'DISARMED':
                     print 'sending disarm command'
                     mc.cmd_mode_pub.publish('DISARMED')
-                    same_cmd_counter_update('d')
                 else:
                     print 'Cannot transition from Mode %s to Mode %s' % (mc.curr_mode, mc.desired_mode)
 

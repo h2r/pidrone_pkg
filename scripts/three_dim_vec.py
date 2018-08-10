@@ -16,6 +16,9 @@ class ThreeDimVec(object):
     def __rmul__(self, other):
         return self.__mul__(other)
 
+    def __div__(self, other):
+        return ThreeDimVec(self.x / other, self.y / other, self.z / other)
+
     def __add__(self, other):
         return ThreeDimVec(self.x + other.x, self.y + other.y, self.z + other.z)
 
@@ -54,3 +57,15 @@ class Error(ThreeDimVec):
     '''
     def __init__(self, x=0.0, y=0.0, z=0.0):
         super(Error, self).__init__(x,y,z)
+
+class RPY(ThreeDimVec):
+    ''' Struct to store the roll, pitch, and yaw values which is in the form
+    r : roll
+    p : pitch
+    y : kp_yaw
+    '''
+    def __init__(self, r=0.0, p=0.0, y=0.0):
+        super(RPY, self).__init__(r,p,y)
+        self.r = self.x
+        self.p = self.y
+        self.y = self.z

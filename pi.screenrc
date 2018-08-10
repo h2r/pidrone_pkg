@@ -69,7 +69,7 @@ stuff "python pid_controller.py\n"
 screen -t " state_estimator"
 stuff "source setup.sh\n"
 stuff "cd $(rospack find pidrone_pkg)/scripts/\n"
-stuff "python state_estimation_node_picam.py\n"
+stuff "python state_estimator_ema.py\n"
 
 screen -t " vision"
 stuff "source setup.sh\n"

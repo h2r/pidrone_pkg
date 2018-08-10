@@ -2,9 +2,9 @@
 import sys
 import rospy
 import signal
-from std_msgs.msg import Empty
 from pidrone_pkg.msg import Mode
-from geometry_msgs.msg import PoseWithCovarianceStamped, TwistWithCovarianceStamped
+from std_msgs.msg import Empty, Bool
+from geometry_msgs.msg import Pose, Twist
 
 
 def ctrl_c_handler(signal, frame, desired_mode_pub):
@@ -17,13 +17,11 @@ def publish_desired_pose(x, y, z, desired_pose_pub):
     x, y, z : the desired position coordinates of the drone
     '''
     # create the pose message
-    desired_pose_msg = PoseWithCovarianceStamped()
+    desired_pose_msg = Pose()
     # fill in the message fields:
-    desired_pose_msg.header.stamp = rospy.Time.now()
-    desired_pose_msg.header.frame_id = 'World'
-    desired_pose_msg.pose.pose.position.x = x
-    desired_pose_msg.pose.pose.position.y = y
-    desired_pose_msg.pose.pose.position.z = z
+    desired_pose_msg.position.x = x
+    desired_pose_msg.position.y = y
+    desired_pose_msg.position.z = z
     # publish desired pose
     desired_pose_pub.publish(desired_pose_msg)
 
@@ -32,13 +30,11 @@ def publish_desired_twist(vx, vy, vz, desired_twist_pub):
     vx, vy, vz : the desired velocities of the drone
     '''
     # create the twist message
-    desired_twist_msg = TwistWithCovarianceStamped()
+    desired_twist_msg = Twist()
     # fill in the message fields:
-    desired_twist_msg.header.stamp = rospy.Time.now()
-    desired_twist_msg.header.frame_id = 'World'
-    desired_twist_msg.twist.twist.linear.x = vx
-    desired_twist_msg.twist.twist.linear.y = vy
-    desired_twist_msg.twist.twist.linear.z = vz
+    desired_twist_msg.linear.x = vx
+    desired_twist_msg.linear.y = vy
+    desired_twist_msg.linear.z = vz
     # publish desired twist
     desired_twist_pub.publish(desired_twist_msg)
 
@@ -57,12 +53,13 @@ if __name__ == '__main__':
 
     # Publishers
     ############
-    desired_mode_pub = rospy.Publisher('/pidrone/desired_mode', Mode, queue_size=1)
-    desired_pose_pub = rospy.Publisher('/pidrone/desired_pose', PoseWithCovarianceStamped, queue_size=1)
-    desired_twist_pub = rospy.Publisher('/pidrone/desired_twist', TwistWithCovarianceStamped, queue_size=1)
+    desired_mode_pub = rospy.Publisher('/pidrone/desired/mode', Mode, queue_size=1)
+    desired_pose_pub = rospy.Publisher('/pidrone/desired/pose', Pose queue_size=1)
+    desired_twist_pub = rospy.Publisher('/pidrone/desired/twist', Twist, queue_size=1)
     reset_transform_pub = rospy.Publisher('pidrone/reset_transform', Empty, queue_size=1)
-    toggle_transform_pub = rospy.Publisher('pidrone/toggle_transform', Empty, queue_size=1)
+    toggle_transform_pub = rospy.Publisher('pidrone/toggle_transform', Bool, queue_size=1)
 
+    toggle = False
     publish_desired_mode('DISARMED', desired_mode_pub)
     signal.signal(signal.SIGINT, lambda x,y: ctrl_c_handler(x,y,desired_mode_pub))
     print('Valid modes are DISARMED, ARMED, and FLYING')
@@ -81,7 +78,8 @@ if __name__ == '__main__':
                 if entry[0] == 'r' and len(entry) == 1:
                     reset_transform_pub.publish(Empty())
                 elif entry[0] == 'p' and len(entry) == 1:
-                    toggle_transform_pub.publish(Empty())
+                    toggle = not toggle
+                    toggle_transform_pub.publish(toggle)
                 elif entry[0] == 'p':
                     # It's a position command
                     strs = entry.split()

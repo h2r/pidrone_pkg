@@ -108,10 +108,10 @@ class PID:
         self._t = None
 
         # Steve005 presets
-        self.roll_low._i = 50
+        self.roll_low._i = 40
         self.pitch_low._i = -6 #46.35
 
-        self.throttle_low.init_i = 50
+        self.throttle_low.init_i = 60
         self.throttle.init_i = 0.0
         self.throttle.mw_angle_alt_scale = 1.0
         self.reset()
@@ -125,8 +125,8 @@ class PID:
             state_controller.set_z = state_controller.initial_set_z
 
     def step(self, error, cmd_yaw_velocity=0):
-        print 'roll_low_i', self.roll_low._i
-        print 'pitch_low_i', self.pitch_low._i
+        #print 'roll_low_i', self.roll_low._i
+        #print 'pitch_low_i', self.pitch_low._i
         # First time around prevent time spike
         if self._t is None:
             time_elapsed = 1
@@ -186,7 +186,7 @@ class PID:
             # see the real difference, compare cmd_t / mw_angle_alt_scale to
             # cmd_t * mw_angle_alt_scale and see how it sinks. That happens to
             # a less noticeable degree with no modification.
-            cmd_t = cmd_t / max(0.5, self.throttle.mw_angle_alt_scale)
+            cmd_t = min(cmd_t / max(0.5, self.throttle.mw_angle_alt_scale), 2000)
 
         # Print statements for the low and high i components
         # print "Roll  low, hi:", self.roll_low._i, self.roll._i
