@@ -13,4 +13,5 @@ CMakeFiles/
 *.sv?
 *.sv?
 logs/*
+*.DS_Store
 
