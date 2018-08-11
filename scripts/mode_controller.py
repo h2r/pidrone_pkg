@@ -35,7 +35,7 @@ class ModeController(object):
     # ROS Callback Methods
     ######################
     def heartbeat_callback(self, msg):
-        """Updates the time of the most recent heartbeat sent from the web interface"""
+        """Update the time of the most recent heartbeat sent from the web interface"""
         self.last_heartbeat = rospy.Time.now()
 
     def mode_callback(self, msg):
@@ -51,7 +51,7 @@ class ModeController(object):
         self.desired_mode = msg.mode
 
     def battery_callback(self, msg):
-        """Updates the current vbat and amperage values"""
+        """Update the current vbat and amperage values"""
         self.vbat = msg.vbat
         self.amperage = msg.amperage
 

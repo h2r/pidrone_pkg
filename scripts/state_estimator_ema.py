@@ -90,7 +90,7 @@ class EMAStateEstimator(object):
         first image, or an estimate of the translation from the previous
         image
         """
-        self.transforming_on_first_image = msg.data
+        self.analyze_pose_is_transforming_on_first_image = msg.data
 
     # EMA Filtering Methods:
     ########################
@@ -104,7 +104,7 @@ class EMAStateEstimator(object):
         # raw measured translations and rotation by analyze_transform
         translation = pose.position
         # constant used for the EMA filter
-        alpha = 0.8
+        alpha = 0.2
         # if the measurement is based off of the first image
         if self.analyze_pose_is_transforming_on_first_image:
             # blend the new measurement with the old position using an EMA filter
@@ -138,7 +138,7 @@ class EMAStateEstimator(object):
     def filter_range(self, range_reading):
         """ Smoothe the range reading using and ema filter """
         # the ema filter constant
-        alpha = 0.2
+        alpha = 0.8
         # get the roll and pitch
         r,p,_ = self.get_r_p_y()
         # the z-position of the drone which is calculated by multiplying the

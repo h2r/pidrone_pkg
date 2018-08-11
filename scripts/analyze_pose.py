@@ -47,8 +47,7 @@ class AnalyzePose(picamera.array.PiMotionAnalysis):
         ###########
         # Publisher
         self.posepub = rospy.Publisher('/pidrone/picamera/pose', Pose, queue_size=1)
-        self.transforming_on_first_image_pub = rospy.Publisher('/pidrone/picamera/transforming_on_first_image', \
-                Bool, queue_size=1, latch = True)
+        self.transforming_on_first_image_pub = rospy.Publisher('/pidrone/picamera/transforming_on_first_image', Bool, queue_size=1, latch = True)
         # Subscribers
         rospy.Subscriber("/pidrone/reset_transform", Empty, self.reset_callback)
         rospy.Subscriber("/pidrone/position_control", Bool, self.position_control_callback)
@@ -138,7 +137,7 @@ class AnalyzePose(picamera.array.PiMotionAnalysis):
         print "Resetting Phase"
 
         # reset position control variables
-        self.transforming_on_first_image = False
+        self.transforming_on_first_image = True
         self.first = True
 
         # reset first image vars

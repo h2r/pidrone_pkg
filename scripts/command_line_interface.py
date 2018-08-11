@@ -70,6 +70,7 @@ if __name__ == '__main__':
         while not rospy.is_shutdown():
             raw_entry = raw_input('Type a mode and press enter:\t')
             entry = raw_entry.strip()
+            # make the entry case insensitive
             entry = entry.lower()
             if len(entry) == 0:
                 print 'invalid entry. try again.'
@@ -105,9 +106,9 @@ if __name__ == '__main__':
 
                 # mode commands take the form of a string or letter. possible
                 # entries are:
-                # disarm : 'DISARMED', 'D', 'x', 'X'
-                # arm : 'ARMED', 'A'
-                # fly : 'FLYING', 'F'
+                # disarm : 'DISARMED', 'd', 'D', 'x', 'X'
+                # arm : 'ARMED', 'a', 'A'
+                # fly : 'FLYING', 'f', 'F'
                 else:
                     # It's a mode command
                     if 'x' in entry: # This is the 'panic' command

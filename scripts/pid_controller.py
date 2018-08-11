@@ -54,17 +54,15 @@ class PIDController(object):
 
         # Initialize the 'position error to velocity error' PIDs:
         # left/right (roll) pid
-        self.lr_pid = PIDaxis(0.0500, -0.00000, 0.000, midpoint=0, control_range=(-10.0, 10.0))
+        self.lr_pid = PIDaxis(10, 0, 0.000, midpoint=0, control_range=(-10.0, 10.0))
         # front/back (pitch) pid
-        self.fb_pid = PIDaxis(-0.0500, 0.0000, -0.000, midpoint=0, control_range=(-10.0, 10.0))
-        ### # up/down (throttle) pid
-        ### self.ud_pid = PIDaxis(-0.0500, 0.0000, -0.000, midpoint=0, control_range=(-10.0, 10.0))
+        self.fb_pid = PIDaxis(10, 0, 0.000, midpoint=0, control_range=(-10.0, 10.0))
+
+        # Initialize the pose callback time
+        self.last_pose_time = None
 
         # Initialize the yaw velocity
         self.yaw_velocity = 0.0
-
-        # store the correction velocity constant
-        self.cvc_vel = 1.0
 
         # angle compensation values (to account for tilt of drone)
         self.mw_angle_comp_x = 0
@@ -98,9 +96,18 @@ class PIDController(object):
 
     def desired_pose_callback(self, msg):
         """ Update the desired pose """
-        self.desired_position.x = msg.position.x
-        self.desired_position.y = msg.position.y
-        self.desired_position.z = msg.position.z
+        # get the desired positions
+        x = msg.position.x
+        y = msg.position.y
+        z = msg.position.z
+        # prevent the x and y positions from being greater than 2 meters
+        if abs(x) <= 2:
+            self.desired_position.x = x
+        if abs(y) <= 2:
+            self.desired_position.y = y
+        # the desired z must be above z and below the range of the ir sensor (.55meters)
+        if 0 <= z <= .5:
+            self.desired_position.z = z
 
 #TODO IN THE OLD CODE, THIS WAS MULITPLIED BY 4. TEST THIS AND TRY TO REMOVE THIS BY INCREASING P TERM
     def desired_twist_callback(self, msg):
@@ -127,12 +134,6 @@ class PIDController(object):
     def reset_callback(self, empty):
         self.desired_position = Position(z=self.current_position.z)
         self.desired_velocity = Velocity()
-
-    # subscribe to /pidrone/picamera/transforming_on_first_image
-    def tofi_callback(self, msg):
-        """ Set the correction velocity constant based on if the pose estimate
-        is from transforming on the first image """
-        self.cvc_vel = 1.0 if msg.data else 3.0
 
 
     # Step Method
@@ -229,6 +230,11 @@ class PIDController(object):
         error from lr_pid and fb_pid to the velocity error to control the
         position of the drone
         """
+        # store the time difference
+        pose_dt = 0
+        if self.last_pose_time != None:
+            pose_dt = rospy.get_time() - self.last_pose_time
+        self.last_pose_time = rospy.get_time()
         # calculate the velocity error
         self.velocity_error = self.desired_velocity - self.current_velocity
         # calculate the z position error
@@ -245,17 +251,15 @@ class PIDController(object):
             self.position_error = self.desired_position - self.current_position
             # calculate a value to add to the velocity error based based on the
             # position error in the x (roll) direction
-            # the time step doesn't matter because this is a p only controller
-            lr_step = self.lr_pid.step(self.position_error.x, 1)
-            correction_vel_x = lr_step * self.cvc_vel
+            lr_step = self.lr_pid.step(self.position_error.x, pose_dt)
             # calculate a value to add to the velocity error based based on the
             # position error in the y (pitch) direction
-            # the time step doesn't matter because this is a p only controller
-            fb_step = self.fb_pid.step(self.position_error.y, 1)
-            correction_vel_y = fb_step * self.cvc_vel
+            fb_step = self.fb_pid.step(self.position_error.y, pose_dt)
 # TODO CHECK SIGNS
-            self.pid_error.x += correction_vel_x
-            self.pid_error.y += correction_vel_y
+            self.pid_error.x += lr_step
+            self.pid_error.y += fb_step
+
+
 
 # TODO THIS IS A PROTOTYPE METHOD THAT NEEDS TESTING
     def reduce_magnitude(self, error):
@@ -336,14 +340,13 @@ if __name__ == '__main__':
     rospy.Subscriber('/pidrone/desired/mode', Mode, pid_controller.desired_mode_callback)
     rospy.Subscriber("/pidrone/position_control", Bool, pid_controller.position_control_callback)
     rospy.Subscriber("/pidrone/reset_transform", Empty, pid_controller.reset_callback)
-    rospy.Subscriber('/pidrone/picamera/transforming_on_first_image', Bool, pid_controller.tofi_callback)
 
     # Non-ROS Setup
     ###############
     # set up ctrl-c handler
     signal.signal(signal.SIGINT, pid_controller.ctrl_c_handler)
     # set the loop rate (Hz)
-    loop_rate = rospy.Rate(10)
+    loop_rate = rospy.Rate(100)
     print 'PID Controller Started'
     while not rospy.is_shutdown():
         # Steps the PID. If we are not flying, this can be used to

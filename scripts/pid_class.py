@@ -65,10 +65,10 @@ class PID:
 
     def __init__(self,
 
-                 roll=PIDaxis(6., 4.0, 0.5, control_range=(1400, 1600), midpoint=1500),
+                 roll=PIDaxis(6., 4.0, 0.0, control_range=(1400, 1600), midpoint=1500),
                  roll_low=PIDaxis(4., 0.2, 0.0, control_range=(1400, 1600), midpoint=1500),
 
-                 pitch=PIDaxis(6., 4.0, 0.5, control_range=(1400, 1600), midpoint=1500),
+                 pitch=PIDaxis(6., 4.0, 0.0, control_range=(1400, 1600), midpoint=1500),
                  pitch_low=PIDaxis(4., 0.2, 0.0, control_range=(1400, 1600), midpoint=1500),
 
                  yaw=PIDaxis(0.0, 0.0, 0.0),
