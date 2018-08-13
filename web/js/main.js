@@ -128,7 +128,7 @@ function init() {
 
     irsub = new ROSLIB.Topic({
       ros : ros,
-      name : '/pidrone/infrared_raw',
+      name : '/pidrone/infrared',
       messageType : 'sensor_msgs/Range',
       queue_length : 2,
       throttle_rate : 80
@@ -175,52 +175,52 @@ function init() {
       //console.log('tVal: ' + tVal)
     });
     
-    imusub = new ROSLIB.Topic({
-      ros : ros,
-      name : '/pidrone/imu_throttle',
-      messageType : 'sensor_msgs/Imu',
-      queue_length : 2,
-      throttle_rate : 50
-    });
-    imusub.subscribe(function(message) {
-      //printProperties(message);
-      //console.log("Range: " + message.range);
-      currTime = message.header.stamp.secs + message.header.stamp.nsecs/1.0e9;
-      if (!gotFirstHeight) {
-          gotFirstHeight = true;
-          startTime = currTime;
-      }
-      tVal = currTime - startTime;
-      // Have the plot scroll in time, showing a window of windowSize seconds
-      if (tVal > windowSize) {
-          spanningFullWindow = true;
-          heightChartMinTime = tVal - windowSize;
-          heightChartMaxTime = tVal;
-          // Remove first element of array while difference compared to current
-          // time is greater than the windowSize
-          while (rawImuData.length > 0 &&
-                 (tVal - rawImuData[0].x > windowSize)) {
-              rawImuData.splice(0, 1);
-          }
-      }
-      // Add new z acceleration reading to end of the data array
-      // x-y pair
-      var xyPair = {
-          x: tVal,
-          y: message.linear_acceleration.z
-      }
-      rawImuData.push(xyPair)
-      if (!heightChartPaused) {
-          heightChart.options.scales.xAxes[0].ticks.min = heightChartMinTime;
-          heightChart.options.scales.xAxes[0].ticks.max = heightChartMaxTime;
-          heightChart.data.datasets[6].data = rawImuData.slice();
-          heightChart.update();
-      } else {
-          pulseIr();
-      }
-      //console.log("Data: " + heightChart.data.datasets[0].data);
-      //console.log('tVal: ' + tVal)
-    });
+    // imusub = new ROSLIB.Topic({
+    //   ros : ros,
+    //   name : '/pidrone/imu_throttle',
+    //   messageType : 'sensor_msgs/Imu',
+    //   queue_length : 2,
+    //   throttle_rate : 50
+    // });
+    // imusub.subscribe(function(message) {
+    //   //printProperties(message);
+    //   //console.log("Range: " + message.range);
+    //   currTime = message.header.stamp.secs + message.header.stamp.nsecs/1.0e9;
+    //   if (!gotFirstHeight) {
+    //       gotFirstHeight = true;
+    //       startTime = currTime;
+    //   }
+    //   tVal = currTime - startTime;
+    //   // Have the plot scroll in time, showing a window of windowSize seconds
+    //   if (tVal > windowSize) {
+    //       spanningFullWindow = true;
+    //       heightChartMinTime = tVal - windowSize;
+    //       heightChartMaxTime = tVal;
+    //       // Remove first element of array while difference compared to current
+    //       // time is greater than the windowSize
+    //       while (rawImuData.length > 0 &&
+    //              (tVal - rawImuData[0].x > windowSize)) {
+    //           rawImuData.splice(0, 1);
+    //       }
+    //   }
+    //   // Add new z acceleration reading to end of the data array
+    //   // x-y pair
+    //   var xyPair = {
+    //       x: tVal,
+    //       y: message.linear_acceleration.z
+    //   }
+    //   rawImuData.push(xyPair)
+    //   if (!heightChartPaused) {
+    //       heightChart.options.scales.xAxes[0].ticks.min = heightChartMinTime;
+    //       heightChart.options.scales.xAxes[0].ticks.max = heightChartMaxTime;
+    //       heightChart.data.datasets[6].data = rawImuData.slice();
+    //       heightChart.update();
+    //   } else {
+    //       pulseIr();
+    //   }
+    //   //console.log("Data: " + heightChart.data.datasets[0].data);
+    //   //console.log('tVal: ' + tVal)
+    // });
     
     statesub = new ROSLIB.Topic({
         ros : ros,
@@ -231,7 +231,7 @@ function init() {
     });
     statesub.subscribe(function(message) {
       //printProperties(message);
-      currTime = message.pose_with_covariance_stamped.header.stamp.secs + message.pose_with_covariance_stamped.header.stamp.nsecs/1.0e9;
+      currTime = message.header.stamp.secs + message.header.stamp.nsecs/1.0e9;
       if (!gotFirstHeight) {
           gotFirstHeight = true;
           startTime = currTime;
@@ -255,14 +255,14 @@ function init() {
       }
       // Add new height estimate to end of the data array
       // x-y pair
-      var zEstimate = message.pose_with_covariance_stamped.pose.pose.position.z;
+      var zEstimate = message.pose_with_covariance.pose.position.z;
       var xyPair = {
           x: tVal,
           y: zEstimate
       }
       ukfData.push(xyPair);
       // Also plot +/- one standard deviation:
-      var heightVariance = message.pose_with_covariance_stamped.pose.covariance[14];
+      var heightVariance = message.pose_with_covariance.covariance[14];
       var heightStdDev = Math.sqrt(heightVariance);
       var xyPairStdDevPlus = {
           x: tVal,
@@ -287,12 +287,12 @@ function init() {
     });
     
     function updateGroundTruthXYChart(msg) {
-        xPos = msg.pose_stamped.pose.position.x;
-        yPos = msg.pose_stamped.pose.position.y;
-        qx = msg.pose_stamped.pose.orientation.x;
-        qy = msg.pose_stamped.pose.orientation.y;
-        qz = msg.pose_stamped.pose.orientation.z;
-        qw = msg.pose_stamped.pose.orientation.w;
+        xPos = msg.pose.position.x;
+        yPos = msg.pose.position.y;
+        qx = msg.pose.orientation.x;
+        qy = msg.pose.orientation.y;
+        qz = msg.pose.orientation.z;
+        qw = msg.pose.orientation.w;
         
         if (xPos != null &&
             yPos != null &&
@@ -345,12 +345,12 @@ function init() {
     }
     
     function updateXYChart(msg) {
-        xPos = msg.pose_with_covariance_stamped .pose.pose.position.x;
-        yPos = msg.pose_with_covariance_stamped .pose.pose.position.y;
-        qx = msg.pose_with_covariance_stamped .pose.pose.orientation.x;
-        qy = msg.pose_with_covariance_stamped .pose.pose.orientation.y;
-        qz = msg.pose_with_covariance_stamped .pose.pose.orientation.z;
-        qw = msg.pose_with_covariance_stamped .pose.pose.orientation.w;
+        xPos = msg.pose_with_covariance.pose.position.x;
+        yPos = msg.pose_with_covariance.pose.position.y;
+        qx = msg.pose_with_covariance.pose.orientation.x;
+        qy = msg.pose_with_covariance.pose.orientation.y;
+        qz = msg.pose_with_covariance.pose.orientation.z;
+        qw = msg.pose_with_covariance.pose.orientation.w;
         
         if (xPos != null &&
             yPos != null &&
@@ -358,7 +358,10 @@ function init() {
             qy != null &&
             qz != null &&
             qw != null) {
-            
+            console.log('xpos')
+            console.log(xPos)
+            console.log('ypos')
+            console.log(yPos)
             // Quaternion with which to rotate vectors to show the yaw of the
             // drone (and perhaps also the roll and pitch)
             global_to_body_quat = new Quaternion([qw, qx, qy, qz]);
@@ -404,8 +407,8 @@ function init() {
     
     emaIrSub = new ROSLIB.Topic({
       ros : ros,
-      name : '/pidrone/infrared_ema',
-      messageType : 'sensor_msgs/Range',
+      name : '/pidrone/state_ema',
+      messageType : 'pidrone_pkg/State',
       queue_length : 2,
       throttle_rate : 80
     });
@@ -436,7 +439,7 @@ function init() {
       // x-y pair
       var xyPair = {
           x: tVal,
-          y: message.range
+          y: message.pose_with_covariance.pose.position.z
       }
       emaData.push(xyPair)
       if (!heightChartPaused) {
@@ -457,7 +460,7 @@ function init() {
     });
     stateGroundTruthSub.subscribe(function(message) {
       //printProperties(message);
-      currTime = message.pose_stamped.header.stamp.secs + message.pose_stamped.header.stamp.nsecs/1.0e9;
+      currTime = message.header.stamp.secs + message.header.stamp.nsecs/1.0e9;
       if (!gotFirstHeight) {
           gotFirstHeight = true;
           startTime = currTime;
@@ -479,7 +482,7 @@ function init() {
       }
       // Add new height estimate to end of the data array
       // x-y pair
-      var zEstimate = message.pose_stamped.pose.position.z;
+      var zEstimate = message.pose.position.z;
       if (zEstimate != null) {
           var xyPair = {
               x: tVal,
@@ -751,7 +754,7 @@ var ukfMinusSigmaDataset = {
 var ukfMinusSigmaData = Array(0);
 
 var emaDataset = {
-  label: 'EMA-Smoothed IR Readings',
+  label: 'EMA-Smoothed Altitude',
   data: Array(0), // initialize array of length 0
   borderWidth: 1.5,
   pointRadius: 0,
