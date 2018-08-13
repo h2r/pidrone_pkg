@@ -115,7 +115,7 @@ if __name__ == '__main__':
                         desired_mode = 'DISARMED'
                         publish_desired_mode(desired_mode, desired_mode_pub)
                         break
-                    elif (entry == 'DISARMED') or (entry == 'd'):
+                    elif (entry == 'DISARMED') or 'd' in entry:
                         desired_mode = 'DISARMED'
                         publish_desired_mode(desired_mode, desired_mode_pub)
                     elif (entry == 'ARMED') or (entry == 'a'):
