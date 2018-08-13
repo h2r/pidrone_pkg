@@ -102,7 +102,7 @@ class FlightController(object):
         pitch = np.deg2rad(self.board.attitude['angy'])
         heading = np.deg2rad(self.board.attitude['heading'])
         # transform heading (similar to yaw) to standard math conventions, which
-        # means angles are in radians and positive rotation is to the left
+        # means angles are in radians and positive rotation is CCW
         heading = ((np.pi / 2) - heading) % (2 * np.pi)
         # get the previous roll, pitch, heading values
         previous_quaternion = self.imu_message.orientation

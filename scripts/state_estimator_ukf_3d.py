@@ -5,7 +5,7 @@ import rospy
 import tf
 from sensor_msgs.msg import Imu, Range
 from pidrone_pkg.msg import State
-from geometry_msgs.msg import PoseWithCovarianceStamped, TwistWithCovarianceStamped, TwistStamped
+from geometry_msgs.msg import TwistStamped
 from std_msgs.msg import Header
 
 # UKF imports
@@ -20,9 +20,10 @@ from filterpy.kalman import MerweScaledSigmaPoints
 
 # Other imports
 import numpy as np
+import argparse
 
 
-class StateEstimation(object):
+class StateEstimation3D(object):
     '''
     Class that estimates the state of the drone using an Unscented Kalman Filter
     (UKF) applied to raw sensor data.
@@ -31,7 +32,7 @@ class StateEstimation(object):
     #       once it is in a complete enough state and can be placed in a shared
     #       location.
     
-    def __init__(self):
+    def __init__(self, ir_throttled=False, imu_throttled=False):
         # self.ready_to_filter is False until we get initial measurements in
         # order to be able to initialize the filter's state vector x and
         # covariance matrix P.
@@ -41,6 +42,15 @@ class StateEstimation(object):
         self.got_imu = False
         self.got_optical_flow = False
         self.got_ir = False
+        
+        self.ir_topic_str = '/pidrone/infrared'
+        self.imu_topic_str = '/pidrone/imu'
+        throttle_suffix = '_throttle'
+        
+        if ir_throttled:
+            self.ir_topic_str += throttle_suffix
+        if imu_throttled:
+            self.imu_topic_str += throttle_suffix
         
         self.in_callback = False
         
@@ -68,16 +78,16 @@ class StateEstimation(object):
         '''
         Initialize ROS-related objects, e.g., the node, subscribers, etc.
         '''
-        node_name = 'state_estimation'
-        print 'Initializing {} node...'.format(node_name)
-        rospy.init_node(node_name)
+        self.node_name = 'state_estimator_ukf_3d'
+        print 'Initializing {} node...'.format(self.node_name)
+        rospy.init_node(self.node_name)
         
         # Subscribe to topics to which the drone publishes in order to get raw
         # data from sensors, which we can then filter
-        rospy.Subscriber('/pidrone/imu_throttle', Imu, self.imu_data_callback)
-        rospy.Subscriber('/pidrone/plane_err', TwistStamped,
+        rospy.Subscriber(self.imu_topic_str, Imu, self.imu_data_callback)
+        rospy.Subscriber('/pidrone/picamera/twist', TwistStamped,
                          self.optical_flow_data_callback)
-        rospy.Subscriber('/pidrone/infrared_raw_throttle', Range, self.ir_data_callback)
+        rospy.Subscriber(self.ir_topic_str, Range, self.ir_data_callback)
         # TODO: Include position estimates from camera data from
         #       estimateRigidTransform? Occurs in position hold and
         #       localization
@@ -131,7 +141,8 @@ class StateEstimation(object):
         # Create the UKF object
         # Note that dt will get updated dynamically as sensor data comes in,
         # as will the measurement function, since measurements come in at
-        # distinct rates
+        # distinct rates. Setting compute_log_likelihood=False saves some
+        # computation.
         self.ukf = UnscentedKalmanFilter(dim_x=self.state_vector_dim,
                                          dim_z=self.measurement_vector_dim,
                                          dt=1.0,
@@ -407,55 +418,47 @@ class StateEstimation(object):
         '''
         Publish the current state estimate and covariance from the UKF. This is
         a State message containing:
-            - PoseWithCovarianceStamped
-            - TwistWithCovarianceStamped
+            - Header
+            - PoseWithCovariance
+            - TwistWithCovariance
         '''
-        header = Header()
-        header.stamp.secs = self.last_time_secs
-        header.stamp.nsecs = self.last_time_nsecs
-        header.frame_id = 'global'
-        
-        pose_with_cov = PoseWithCovarianceStamped()
-        twist_with_cov = TwistWithCovarianceStamped()
-        pose_with_cov.header = header
-        twist_with_cov.header = header
+        state_msg = State()
+        state_msg.header.stamp.secs = self.last_time_secs
+        state_msg.header.stamp.nsecs = self.last_time_nsecs
+        state_msg.header.frame_id = 'global'
         
         quaternion = self.get_quaternion_from_ukf_rpy()
         
         # Get the current state estimate from self.ukf.x
-        pose_with_cov.pose.pose.position.x = self.ukf.x[0]
-        pose_with_cov.pose.pose.position.y = self.ukf.x[1]
-        pose_with_cov.pose.pose.position.z = self.ukf.x[2]
-        twist_with_cov.twist.twist.linear.x = self.ukf.x[3]
-        twist_with_cov.twist.twist.linear.y = self.ukf.x[4]
-        twist_with_cov.twist.twist.linear.z = self.ukf.x[5]
-        pose_with_cov.pose.pose.orientation.x = quaternion[0]
-        pose_with_cov.pose.pose.orientation.y = quaternion[1]
-        pose_with_cov.pose.pose.orientation.z = quaternion[2]
-        pose_with_cov.pose.pose.orientation.w = quaternion[3]
+        state_msg.pose_with_covariance.pose.position.x = self.ukf.x[0]
+        state_msg.pose_with_covariance.pose.position.y = self.ukf.x[1]
+        state_msg.pose_with_covariance.pose.position.z = self.ukf.x[2]
+        state_msg.twist_with_covariance.twist.linear.x = self.ukf.x[3]
+        state_msg.twist_with_covariance.twist.linear.y = self.ukf.x[4]
+        state_msg.twist_with_covariance.twist.linear.z = self.ukf.x[5]
+        state_msg.pose_with_covariance.pose.orientation.x = quaternion[0]
+        state_msg.pose_with_covariance.pose.orientation.y = quaternion[1]
+        state_msg.pose_with_covariance.pose.orientation.z = quaternion[2]
+        state_msg.pose_with_covariance.pose.orientation.w = quaternion[3]
         
         # TODO: Look into RPY velocities versus angular velocities about x, y, z axes?
         # For the time being, using Euler rates:
-        twist_with_cov.twist.twist.angular.x = self.ukf.x[9]    # roll rate
-        twist_with_cov.twist.twist.angular.y = self.ukf.x[10]   # pitch rate
-        twist_with_cov.twist.twist.angular.z = self.ukf.x[11]   # yaw rate
+        state_msg.twist_with_covariance.twist.angular.x = self.ukf.x[9]    # roll rate
+        state_msg.twist_with_covariance.twist.angular.y = self.ukf.x[10]   # pitch rate
+        state_msg.twist_with_covariance.twist.angular.z = self.ukf.x[11]   # yaw rate
         
-        # TODO: Uncomment if computation speed allows?
         # Extract the relevant covariances from self.ukf.P, make into 36-element
         # arrays, in row-major order, according to ROS msg docs
         P = self.ukf.P
-        pose_with_cov.pose.covariance = np.concatenate(
+        state_msg.pose_with_covariance.covariance = np.concatenate(
             (P[0, 0:3], P[0, 6:9], P[1, 0:3], P[1, 6:9], P[2, 0:3], P[2, 6:9],
              P[6, 0:3], P[6, 6:9], P[7, 0:3], P[7, 6:9], P[8, 0:3], P[8, 6:9]),
              axis=0)
-        twist_with_cov.twist.covariance = np.concatenate(
+        state_msg.twist_with_covariance.covariance = np.concatenate(
             (P[3, 3:6], P[3, 9:12], P[4, 3:6], P[4, 9:12], P[5, 3:6], P[5, 9:12],
              P[9, 3:6], P[9, 9:12], P[10, 3:6], P[10, 9:12], P[11, 3:6], P[11, 9:12]),
              axis=0)
-        
-        state_msg = State()
-        state_msg.pose_with_covariance_stamped = pose_with_cov
-        state_msg.twist_with_covariance_stamped = twist_with_cov
+             
         self.state_pub.publish(state_msg)
 
     def apply_quaternion_vector_rotation(self, original_vector):
@@ -649,13 +652,23 @@ class StateEstimation(object):
         
         
 def main():
-    se = StateEstimation()
+    parser = argparse.ArgumentParser(description=('Estimate the drone\'s state '
+                                     'with a UKF in three spatial dimensions'))
+    # Arguments to determine if the throttle command is being used. E.g.:
+    #   rosrun topic_tools throttle messages /pidrone/infrared 40.0
+    parser.add_argument('--ir_throttled', action='store_true',
+                        help=('Use throttled infrared topic /pidrone/infrared_throttle'))
+    parser.add_argument('--imu_throttled', action='store_true',
+                        help=('Use throttled IMU topic /pidrone/imu_throttle'))
+    args = parser.parse_args()
+    se = StateEstimation3D(ir_throttled=args.ir_throttled,
+                         imu_throttled=args.imu_throttled)
     try:
         # Wait until node is halted
         rospy.spin()
     finally:
         # Upon termination of this script, print out a helpful message
-        print 'State estimation node terminating.'
+        print '{} node terminating.'.format(se.node_name)
         print 'Most recent state vector:'
         print se.ukf.x
         print 'NUM BAD UPDATES:', se.num_bad_updates

@@ -4,8 +4,6 @@
 import rospy
 from sensor_msgs.msg import Imu, Range
 from pidrone_pkg.msg import State
-from geometry_msgs.msg import PoseWithCovarianceStamped, TwistWithCovarianceStamped
-from std_msgs.msg import Header
 
 # UKF imports
 # The matplotlib imports and the matplotlib.use('Pdf') line make it so that the
@@ -19,6 +17,7 @@ from filterpy.kalman import MerweScaledSigmaPoints
 
 # Other imports
 import numpy as np
+import argparse
 
 
 class StateEstimation1D(object):
@@ -34,7 +33,7 @@ class StateEstimation1D(object):
     #       once it is in a complete enough state and can be placed in a shared
     #       location.
     
-    def __init__(self):
+    def __init__(self, ir_throttled=False, imu_throttled=False):
         # self.ready_to_filter is False until we get initial measurements in
         # order to be able to initialize the filter's state vector x and
         # covariance matrix P.
@@ -43,6 +42,15 @@ class StateEstimation1D(object):
         self.got_imu = False
         self.got_ir = False
         
+        self.ir_topic_str = '/pidrone/infrared'
+        self.imu_topic_str = '/pidrone/imu'
+        throttle_suffix = '_throttle'
+        
+        if ir_throttled:
+            self.ir_topic_str += throttle_suffix
+        if imu_throttled:
+            self.imu_topic_str += throttle_suffix
+            
         self.in_callback = False
 
         self.initialize_ukf()
@@ -64,14 +72,14 @@ class StateEstimation1D(object):
         '''
         Initialize ROS-related objects, e.g., the node, subscribers, etc.
         '''
-        node_name = 'state_estimation'
-        print 'Initializing {} node...'.format(node_name)
-        rospy.init_node(node_name)
+        self.node_name = 'state_estimator_ukf_1d'
+        print 'Initializing {} node...'.format(self.node_name)
+        rospy.init_node(self.node_name)
         
         # Subscribe to topics to which the drone publishes in order to get raw
         # data from sensors, which we can then filter
-        rospy.Subscriber('/pidrone/imu_throttle', Imu, self.imu_data_callback)
-        rospy.Subscriber('/pidrone/infrared_raw_throttle', Range, self.ir_data_callback)
+        rospy.Subscriber(self.imu_topic_str, Imu, self.imu_data_callback)
+        rospy.Subscriber(self.ir_topic_str, Range, self.ir_data_callback)
         
         # Create the publisher to publish state estimates
         self.state_pub = rospy.Publisher('/pidrone/state', State, queue_size=1,
@@ -105,7 +113,8 @@ class StateEstimation1D(object):
         # Create the UKF object
         # Note that dt will get updated dynamically as sensor data comes in,
         # as will the measurement function, since measurements come in at
-        # distinct rates
+        # distinct rates. Setting compute_log_likelihood=False saves some
+        # computation.
         self.ukf = UnscentedKalmanFilter(dim_x=self.state_vector_dim,
                                          dim_z=self.measurement_vector_dim,
                                          dt=1.0,
@@ -243,45 +252,36 @@ class StateEstimation1D(object):
         '''
         Publish the current state estimate and covariance from the UKF. This is
         a State message containing:
-            - PoseWithCovarianceStamped
-            - TwistWithCovarianceStamped
+            - Header
+            - PoseWithCovariance
+            - TwistWithCovariance
         Note that a lot of these ROS message fields will be left empty, as the
         1D UKF does not track information on the entire state space of the
         drone.
         '''
-        header = Header()
-        header.stamp.secs = self.last_time_secs
-        header.stamp.nsecs = self.last_time_nsecs
-        header.frame_id = 'global'
-        
-        pose_with_cov = PoseWithCovarianceStamped()
-        twist_with_cov = TwistWithCovarianceStamped()
-        pose_with_cov.header = header
-        twist_with_cov.header = header
+        state_msg = State()
+        state_msg.header.stamp.secs = self.last_time_secs
+        state_msg.header.stamp.nsecs = self.last_time_nsecs
+        state_msg.header.frame_id = 'global'
         
         # Get the current state estimate from self.ukf.x
-        pose_with_cov.pose.pose.position.z = self.ukf.x[0]
-        twist_with_cov.twist.twist.linear.z = self.ukf.x[1]
+        state_msg.pose_with_covariance.pose.position.z = self.ukf.x[0]
+        state_msg.twist_with_covariance.twist.linear.z = self.ukf.x[1]
         
         # Fill the rest of the message with NaN
-        pose_with_cov.pose.pose.position.x = np.nan
-        pose_with_cov.pose.pose.position.y = np.nan
-        pose_with_cov.pose.pose.orientation.x = np.nan
-        pose_with_cov.pose.pose.orientation.y = np.nan
-        pose_with_cov.pose.pose.orientation.z = np.nan
-        pose_with_cov.pose.pose.orientation.w = np.nan
-        twist_with_cov.twist.twist.linear.x = np.nan
-        twist_with_cov.twist.twist.linear.y = np.nan
-        twist_with_cov.twist.twist.angular.x = np.nan
-        twist_with_cov.twist.twist.angular.y = np.nan
-        twist_with_cov.twist.twist.angular.z = np.nan
+        state_msg.pose_with_covariance.pose.position.x = np.nan
+        state_msg.pose_with_covariance.pose.position.y = np.nan
+        state_msg.pose_with_covariance.pose.orientation.x = np.nan
+        state_msg.pose_with_covariance.pose.orientation.y = np.nan
+        state_msg.pose_with_covariance.pose.orientation.z = np.nan
+        state_msg.pose_with_covariance.pose.orientation.w = np.nan
+        state_msg.twist_with_covariance.twist.linear.x = np.nan
+        state_msg.twist_with_covariance.twist.linear.y = np.nan
+        state_msg.twist_with_covariance.twist.angular.x = np.nan
+        state_msg.twist_with_covariance.twist.angular.y = np.nan
+        state_msg.twist_with_covariance.twist.angular.z = np.nan
         
         # Prepare covariance matrices
-        # pose_cov_mat = np.full((6, 6), np.nan)
-        # twist_cov_mat = np.full((6, 6), np.nan)
-        # pose_cov_mat[2, 2] = self.ukf.P[0, 0] # z variance
-        # twist_cov_mat[2, 2] = self.ukf.P[1, 1] # z velocity variance
-        
         # 36-element array, in a row-major order, according to ROS msg docs
         pose_cov_mat = np.full((36,), np.nan)
         twist_cov_mat = np.full((36,), np.nan)
@@ -289,12 +289,9 @@ class StateEstimation1D(object):
         twist_cov_mat[14] = self.ukf.P[1, 1] # z velocity variance
         
         # Add covariances to message
-        pose_with_cov.pose.covariance = pose_cov_mat
-        twist_with_cov.twist.covariance = twist_cov_mat
+        state_msg.pose_with_covariance.covariance = pose_cov_mat
+        state_msg.twist_with_covariance.covariance = twist_cov_mat
         
-        state_msg = State()
-        state_msg.pose_with_covariance_stamped = pose_with_cov
-        state_msg.twist_with_covariance_stamped = twist_with_cov
         self.state_pub.publish(state_msg)
 
     def state_transition_function(self, x, dt, u):
@@ -332,13 +329,23 @@ class StateEstimation1D(object):
         
         
 def main():
-    se = StateEstimation1D()
+    parser = argparse.ArgumentParser(description=('Estimate the drone\'s state '
+                                     'with a UKF in one spatial dimension'))
+    # Arguments to determine if the throttle command is being used. E.g.:
+    #   rosrun topic_tools throttle messages /pidrone/infrared 40.0
+    parser.add_argument('--ir_throttled', action='store_true',
+            help=('Use throttled infrared topic /pidrone/infrared_throttle'))
+    parser.add_argument('--imu_throttled', action='store_true',
+            help=('Use throttled IMU topic /pidrone/imu_throttle'))
+    args = parser.parse_args()
+    se = StateEstimation1D(ir_throttled=args.ir_throttled,
+                         imu_throttled=args.imu_throttled)
     try:
         # Wait until node is halted
         rospy.spin()
     finally:
         # Upon termination of this script, print out a helpful message
-        print 'State estimation node terminating.'
+        print '{} node terminating.'.format(se.node_name)
         print 'Most recent state vector:'
         print se.ukf.x
         # print 'Most recent state covariance matrix:'

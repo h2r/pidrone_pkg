@@ -5,7 +5,7 @@ import numpy as np
 import picamera.array
 from h2rMultiWii import MultiWii
 from pidrone_pkg.msg import State
-from geometry_msgs.msg import Twist
+from geometry_msgs.msg import TwistStamped
 
 
 # RASPBERRY PI
@@ -28,14 +28,14 @@ class AnalyzeTwist(picamera.array.PiMotionAnalysis):
         ''' Initialize the instance variables '''
 
         # Initialize the current twist data
-        twist = Twist()
-        twist.linear.x = 0
-        twist.linear.y = 0
-        twist.linear.z = 0
-        twist.angular.x = 0
-        twist.angular.y = 0
-        twist.angular.z = 0
-        self.twist = twist
+        self.twist_stamped = TwistStamped()
+        self.twist_stamped.header.stamp = rospy.Time.now()
+        self.twist_stamped.twist.linear.x = 0
+        self.twist_stamped.twist.linear.y = 0
+        self.twist_stamped.twist.linear.z = 0
+        self.twist_stamped.twist.angular.x = 0
+        self.twist_stamped.twist.angular.y = 0
+        self.twist_stamped.twist.angular.z = 0
 
         # Initialize angular velocity variables:
         self.ang_t = 0          # current time
@@ -55,11 +55,11 @@ class AnalyzeTwist(picamera.array.PiMotionAnalysis):
         # ROS setup
         ###########
         # Publisher:
-        self.twistpub = rospy.Publisher('/pidrone/picamera/twist', Twist, queue_size=1)
+        self.twistpub = rospy.Publisher('/pidrone/picamera/twist', TwistStamped, queue_size=1)
 
     def analyse(self, a):
         ''' Analyze the frame, calculate the motion vectors, and publish the
-        twist message. This is implicitly called by the
+        TwistStamped message. This is implicitly called by the
 
         a : an array of the incoming motion data that is provided by the
             PiMotionAnalysis api
@@ -71,12 +71,12 @@ class AnalyzeTwist(picamera.array.PiMotionAnalysis):
         # calculate the planar and yaw motions (multiply by 100 for cm to m conversion)
         x_motion = 100 * np.sum(x) * self.flow_coeff + np.arctan(self.delta_angvx * self.ang_dt) * self.ang_coefficient
         y_motion = 100 * np.sum(y) * self.flow_coeff + np.arctan(self.delta_angvy * self.ang_dt) * self.ang_coefficient
-        twist = Twist()
-        twist.linear.x = self.near_zero(x_motion)
-        twist.linear.y = - self.near_zero(y_motion)
-        # twist.linear.z = self.near_zero(z_motion)
-        # twist.angular.z = self.near_zero(yaw_motion)
-        self.twist_msg = twist
+        self.twist_msg = TwistStamped()
+        self.twist_msg.header.stamp = rospy.Time.now()
+        self.twist_msg.twist.linear.x = self.near_zero(x_motion)
+        self.twist_msg.twist.linear.y = - self.near_zero(y_motion)
+        # self.twist_msg.twist.linear.z = self.near_zero(z_motion)
+        # self.twist_msg.twist.angular.z = self.near_zero(yaw_motion)
 
         # Update and publish the twist message
         self.twistpub.publish(self.twist_msg)
@@ -87,9 +87,9 @@ class AnalyzeTwist(picamera.array.PiMotionAnalysis):
     def state_callback(self, state):
         self.angdt = state.header.stamp - self.state.header.stamp
         angular_velocities = state.twist_with_covariance.twist.angular
-        self.delta_angvx = angular_velocities.x - self.twist.angular.x
-        self.delta_angvy = angular_velocities.y - self.twist.angular.y
-        self.twist.angular = angular_velocities
+        self.delta_angvx = angular_velocities.x - self.twist_stamped.twist.angular.x
+        self.delta_angvy = angular_velocities.y - self.twist_stamped.twist.angular.y
+        self.twist_stamped.twist.angular = angular_velocities
         time = rospy.get_time()
         self.ang_dt = 0 if self.ang_t is None else time - self.ang_t
         self.ang_t = time

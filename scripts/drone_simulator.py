@@ -42,13 +42,8 @@ class DroneSimulator(object):
             global Imu
             global Range
             global StateGroundTruth
-            global Header
-            global PoseStamped
-            global TwistStamped
             from sensor_msgs.msg import Imu, Range
             from pidrone_pkg.msg import StateGroundTruth
-            from std_msgs.msg import Header
-            from geometry_msgs.msg import PoseStamped, TwistStamped
             
             # disable_signals=true seems to solve the issue of KeyboardInterrupt
             # exceptions not getting raised while rospy.sleep() is occurring.
@@ -62,7 +57,7 @@ class DroneSimulator(object):
         '''
         Initialize ROS publishers
         '''
-        self.ir_pub = rospy.Publisher('/pidrone/infrared_raw', Range, queue_size=1)
+        self.ir_pub = rospy.Publisher('/pidrone/infrared', Range, queue_size=1)
         self.imu_pub = rospy.Publisher('/pidrone/imu', Imu, queue_size=1)
         
         # Create the publisher to publish state estimates
@@ -267,21 +262,9 @@ class DroneSimulator(object):
                                   data_list=info_dict['data_lists'][key])
                                       
     def create_state_ground_truth_msg(self):
-        header = Header()
-        # secs, nsecs = self.float_secs_to_time_pair(self.curr_time)
-        # header.stamp.secs = secs
-        # header.stamp.nsecs = nsecs
-        header.stamp = rospy.Time.now()
-        header.frame_id = 'global'
-        
-        pose_msg = PoseStamped()
-        twist_msg = TwistStamped()
-        pose_msg.header = header
-        twist_msg.header = header
-        
         state_ground_truth_msg = StateGroundTruth()
-        state_ground_truth_msg.pose_stamped = pose_msg
-        state_ground_truth_msg.twist_stamped = twist_msg
+        state_ground_truth_msg.header.stamp = rospy.Time.now()
+        state_ground_truth_msg.header.frame_id = 'global'
         return state_ground_truth_msg
                 
     def float_secs_to_time_pair(self, t):
@@ -328,7 +311,7 @@ class DroneSimulator1D(DroneSimulator):
         '''
         self.ir_info = {'id' : 0,
                         'hz' : 57,
-                        'topic' : '/pidrone/infrared_raw',
+                        'topic' : '/pidrone/infrared',
                         'times' : [],
                         'times_copy' : [],
                         'filenames' : {'ir' : 'ir_RAW'},
@@ -358,7 +341,7 @@ class DroneSimulator1D(DroneSimulator):
         self.actual_state = [0.4, 0.0] # [pos (meters), vel (m/s)]
         self.actual_accel = 0.0 # m/s^2 along the z-axis
         # To simulate random real-world disturbances:
-        self.actual_accel_std_dev = 0.0001 # m/s^2
+        self.actual_accel_std_dev = 0.01 # m/s^2
         self.curr_time = self.start_time
         
     def step_state(self, next_time_pair):
@@ -411,15 +394,16 @@ class DroneSimulator1D(DroneSimulator):
         '''
         Publish the current actual state from the simulation. This is
         a StateGroundTruth message containing:
-            - PoseStamped
-            - TwistStamped
+            - Header
+            - Pose
+            - Twist
         Note that a lot of these ROS message fields will be left empty, as the
         1D simulation does not produce information on the entire state space of
         the drone.
         '''
         state_ground_truth_msg = self.create_state_ground_truth_msg()
-        state_ground_truth_msg.pose_stamped.pose.position.z = self.actual_state[0]
-        state_ground_truth_msg.twist_stamped.twist.linear.z = self.actual_state[1]
+        state_ground_truth_msg.pose.position.z = self.actual_state[0]
+        state_ground_truth_msg.twist.linear.z = self.actual_state[1]
         
         self.state_ground_truth_pub.publish(state_ground_truth_msg)
                             
@@ -484,7 +468,7 @@ class DroneSimulator2D(DroneSimulator):
             import tf
             global TwistStamped
             from geometry_msgs.msg import TwistStamped
-            self.optical_flow_pub = rospy.Publisher('/pidrone/plane_err',
+            self.optical_flow_pub = rospy.Publisher('/pidrone/picamera/twist',
                                                     TwistStamped,
                                                     queue_size=1)
         self.init_info()
@@ -497,7 +481,7 @@ class DroneSimulator2D(DroneSimulator):
         '''
         self.ir_info = {'id' : 0,
                         'hz' : 57,
-                        'topic' : '/pidrone/infrared_raw',
+                        'topic' : '/pidrone/infrared',
                         'times' : [],
                         'times_copy' : [],
                         'filenames' : {'ir' : 'ir_RAW'},
@@ -524,7 +508,7 @@ class DroneSimulator2D(DroneSimulator):
                          }
         self.camera_info = {'id' : 2,
                             'hz' : 20,
-                            'topic' : '/pidrone/plane_err',
+                            'topic' : '/pidrone/picamera/twist',
                             'times' : [],
                             'times_copy' : [],
                             'filenames' : {'camera' : 'x_y_yaw_velocity_RAW'},
@@ -606,31 +590,32 @@ class DroneSimulator2D(DroneSimulator):
         '''
         Publish the current actual state from the simulation. This is
         a StateGroundTruth message containing:
-            - PoseStamped
-            - TwistStamped
+            - Header
+            - Pose
+            - Twist
         Note that some of these ROS message fields will be populated with NaN,
         as the 2D simulation does not produce information on the entire state
         space of the drone.
         '''
         state_ground_truth_msg = self.create_state_ground_truth_msg()
-        state_ground_truth_msg.pose_stamped.pose.position.x = self.actual_state[0]
-        state_ground_truth_msg.pose_stamped.pose.position.y = self.actual_state[1]
-        state_ground_truth_msg.pose_stamped.pose.position.z = np.nan
+        state_ground_truth_msg.pose.position.x = self.actual_state[0]
+        state_ground_truth_msg.pose.position.y = self.actual_state[1]
+        state_ground_truth_msg.pose.position.z = np.nan
         
-        state_ground_truth_msg.pose_stamped.pose.orientation.x = self.quat[0]
-        state_ground_truth_msg.pose_stamped.pose.orientation.y = self.quat[1]
-        state_ground_truth_msg.pose_stamped.pose.orientation.z = self.quat[2]
-        state_ground_truth_msg.pose_stamped.pose.orientation.w = self.quat[3]
+        state_ground_truth_msg.pose.orientation.x = self.quat[0]
+        state_ground_truth_msg.pose.orientation.y = self.quat[1]
+        state_ground_truth_msg.pose.orientation.z = self.quat[2]
+        state_ground_truth_msg.pose.orientation.w = self.quat[3]
         
         # x velocity, y velocity, and yaw velocity:
-        state_ground_truth_msg.twist_stamped.twist.linear.x = self.actual_state[3]
-        state_ground_truth_msg.twist_stamped.twist.linear.y = self.actual_state[4]
-        state_ground_truth_msg.twist_stamped.twist.angular.z = self.actual_state[5]
+        state_ground_truth_msg.twist.linear.x = self.actual_state[3]
+        state_ground_truth_msg.twist.linear.y = self.actual_state[4]
+        state_ground_truth_msg.twist.angular.z = self.actual_state[5]
         
         # Fill the rest with NaN
-        state_ground_truth_msg.twist_stamped.twist.linear.z = np.nan
-        state_ground_truth_msg.twist_stamped.twist.angular.x = np.nan
-        state_ground_truth_msg.twist_stamped.twist.angular.y = np.nan
+        state_ground_truth_msg.twist.linear.z = np.nan
+        state_ground_truth_msg.twist.angular.x = np.nan
+        state_ground_truth_msg.twist.angular.y = np.nan
         
         self.state_ground_truth_pub.publish(state_ground_truth_msg)
                             
@@ -803,7 +788,7 @@ class DroneSimulator3D(DroneSimulator):
             import tf
             global TwistStamped
             from geometry_msgs.msg import TwistStamped
-            self.optical_flow_pub = rospy.Publisher('/pidrone/plane_err',
+            self.optical_flow_pub = rospy.Publisher('/pidrone/picamera/twist',
                                                     TwistStamped,
                                                     queue_size=1)
                                                     
@@ -813,7 +798,7 @@ class DroneSimulator3D(DroneSimulator):
         '''
         self.ir_info = {'id' : 0,
                         'hz' : 57,
-                        'topic' : '/pidrone/infrared_raw',
+                        'topic' : '/pidrone/infrared',
                         'times' : [],
                         'times_copy' : [],
                         'filenames' : {'ir' : 'ir_RAW'},
@@ -840,7 +825,7 @@ class DroneSimulator3D(DroneSimulator):
                          }
         self.camera_info = {'id' : 2,
                             'hz' : 20,
-                            'topic' : '/pidrone/plane_err',
+                            'topic' : '/pidrone/picamera/twist',
                             'times' : [],
                             'times_copy' : [],
                             'filenames' : {'camera' : 'x_y_yaw_velocity_RAW'},

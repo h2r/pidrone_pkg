@@ -6,7 +6,7 @@ import signal
 import numpy as np
 from pidrone_pkg.msg import State
 from sensor_msgs.msg import Range, Imu
-from geometry_msgs.msg import Pose, Twist
+from geometry_msgs.msg import Pose, TwistStamped
 from std_msgs.msg import Header, Bool, Empty
 
 class EMAStateEstimator(object):
@@ -52,10 +52,10 @@ class EMAStateEstimator(object):
         Does not alter the angular velocities because these are set by imu
         """
         # update the header stamp
-        self.state.header.stamp = rospy.Time.now()
+        self.state.header.stamp = data.header.stamp
         # update linear twist data
-        self.state.twist_with_covariance.twist.linear = data.linear
-        # self.filter_twist(data)
+        self.state.twist_with_covariance.twist.linear = data.twist.linear
+        # self.filter_twist(data.twist)
         # update that data has been recieved
         self.received_twist_data = True
 
@@ -175,20 +175,20 @@ if __name__ == '__main__':
     # ROS setup
     ###########
     # Initialize the state estimator node
-    rospy.init_node('state_estimator')
+    rospy.init_node('state_estimator_ema')
 
     # Instantiate a PiCameraStateEstimator object
     state_estimator = EMAStateEstimator()
 
     # Publishers
     ############
-    statepub = rospy.Publisher('/pidrone/state', State, queue_size=1, tcp_nodelay=False)
+    statepub = rospy.Publisher('/pidrone/state_ema', State, queue_size=1, tcp_nodelay=False)
 
     # Subscribers
     #############
     rospy.Subscriber('/pidrone/picamera/transforming_on_first_image', Bool, state_estimator.tofi_callback)
     rospy.Subscriber("/pidrone/reset_transform", Empty, state_estimator.reset_callback)
-    rospy.Subscriber('/pidrone/picamera/twist', Twist, state_estimator.twist_callback)
+    rospy.Subscriber('/pidrone/picamera/twist', TwistStamped, state_estimator.twist_callback)
     rospy.Subscriber('/pidrone/picamera/pose', Pose, state_estimator.pose_callback)
     rospy.Subscriber('/pidrone/infrared', Range, state_estimator.range_callback)
     rospy.Subscriber('/pidrone/imu', Imu, state_estimator.imu_callback)
