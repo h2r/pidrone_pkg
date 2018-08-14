@@ -1,9 +1,0 @@
-![PARTS MOTORS] (pics/IMG_4624.JPG)
-![PARTS ESCS](pics/IMG_6559.JPG)
-![PARTS FRAME] (pics/IMG_3562.JPG)
-
-
-
-
-
-
