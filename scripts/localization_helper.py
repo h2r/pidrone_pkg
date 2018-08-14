@@ -10,8 +10,8 @@ import cv2
 
 
 # ---------- map parameters ----------- #
-MAP_PIXEL_WIDTH = 2048  # in pixel
-MAP_PIXEL_HEIGHT = 1616
+MAP_PIXEL_WIDTH = 3227  # in pixel
+MAP_PIXEL_HEIGHT = 2447
 MAP_REAL_WIDTH = 1.4  # in meter
 MAP_REAL_HEIGHT = 1.07
 # -------------------------- #

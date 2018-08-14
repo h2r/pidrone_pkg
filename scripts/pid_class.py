@@ -114,10 +114,10 @@ class PID:
         self._t = None
 
         # Steve005 presets
-        self.roll_low._i = 15 
-        self.pitch_low._i = 8 
+        self.roll_low._i = 23
+        self.pitch_low._i = -19
 
-        self.throttle_low.init_i = 130
+        self.throttle_low.init_i = 180
         self.throttle.init_i = 0.0
         self.throttle.mw_angle_alt_scale = 1.0
         self.reset()

@@ -19,27 +19,27 @@ import sys
 from pid_class import PIDaxis
 import camera_info_manager
 from geometry_msgs.msg import TwistStamped
-from global_position_estimator_distance import LocalizationParticleFilter, create_map, PROB_THRESHOLD
+from localization_helper import LocalizationParticleFilter, create_map, PROB_THRESHOLD
 
 # ---------- map parameters ----------- #
-MAP_PIXEL_WIDTH = 2048  # in pixel
-MAP_PIXEL_HEIGHT = 1616
+MAP_PIXEL_WIDTH = 3227  # in pixel
+MAP_PIXEL_HEIGHT = 2447
 MAP_REAL_WIDTH = 1.4  # in meter
 MAP_REAL_HEIGHT = 1.07
-# ----------------------------- #
+# ------------------------------------- #
 
 # ---------- camera parameters ----------- #
 CAMERA_WIDTH = 320
 CAMERA_HEIGHT = 240
 METER_TO_PIXEL = (float(MAP_PIXEL_WIDTH) / MAP_REAL_WIDTH + float(MAP_PIXEL_HEIGHT) / MAP_REAL_HEIGHT) / 2.
 CAMERA_CENTER = np.float32([(CAMERA_WIDTH - 1) / 2., (CAMERA_HEIGHT - 1) / 2.]).reshape(-1, 1, 2)
-# ----------------------------- #
+# ---------------------------------------- #
 
 # ---------- localization parameters ----------- #
 MAX_BAD_COUNT = -10
 NUM_PARTICLE = 30
 NUM_FEATURES = 200
-# ----------------------------- #
+# ---------------------------------------------- #
 
 
 class AnalyzePhase(picamera.array.PiMotionAnalysis):
@@ -174,18 +174,18 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
                               "base",
                               "world")
 
-    # update angle data when '/pidrone/angle' is published to
     def angle_callback(self, data):
+        """update angle data when '/pidrone/angle' is published to"""
         self.angle_x = data.twist.angular.x
         self.angle_y = data.twist.angular.y
 
-    # update z when '/pidrone/infrared' is published to
     def range_callback(self, data):
+        """update z when '/pidrone/infrared' is published to"""
         if data.range != -1:
             self.z = data.range
 
-    # start localization when '/pidrone/reset_transform' is published to (press 'r')
     def reset_callback(self, data):
+        """start localization when '/pidrone/reset_transform' is published to (press 'r')"""
         print "Start localization"
         self.locate_position = True
         self.first_locate = True
@@ -193,20 +193,19 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
         self.map_counter = 0
         self.max_map_counter = 0
 
-    # toggle position hold when '/pidrone/toggle_transform' is published to (press 'p')
     def toggle_callback(self, data):
+        """toggle position hold when '/pidrone/toggle_transform' is published to (press 'p')"""
         self.hold_position = not self.hold_position
         self.first_hold = True
         self.fb_pid._i = 0
         self.lr_pid._i = 0
         print "Position hold", "enabled." if self.hold_position else "disabled."
 
-    # called whenever '/pidrone/set_mode' is published to, velocity mode is default
     def mode_callback(self, data):
+        """called whenever '/pidrone/set_mode' is published to, velocity mode is default"""
         self.mode.mode = data.mode
         if not self.hold_position or data.mode == 4 or data.mode == 3:
             print "VELOCITY"
-            # TODO scale is not consistent, check index.html and pid_class.py
             data.z_velocity = data.z_velocity * 100
             self.pospub.publish(data)
         else:

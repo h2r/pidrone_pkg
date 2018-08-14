@@ -12,8 +12,7 @@ import cv2
 import threading
 from thread_queue import ThreadQueue
 
-# all for debugging
-DEBUG = False
+# set one these to true to save the poses or weights from the flight
 POSE  = False
 WEIGHT = False
 
@@ -21,15 +20,14 @@ WEIGHT = False
 CAMERA_SCALE = 290.
 CAMERA_WIDTH = 320.
 CAMERA_HEIGHT = 240.
-
-# ----- feature parameters DO NOT EDIT ------ #
-DES_MATCH_THRESHOLD = 55.
+MATCH_RATIO = 0.7
 
 # ----- SLAM parameters ------- #
 PROB_THRESHOLD = 0.005
 KEYFRAME_DIST_THRESHOLD = CAMERA_HEIGHT
 KEYFRAME_YAW_THRESHOLD = 0.175
 
+# ----- edit to where you want the pose data written --------- #
 pose_path = '/home/luke/ws/src/pidrone_pkg/scripts/pose_data.txt'
 
 
@@ -76,7 +74,6 @@ class FastSLAM:
         index_params = dict(algorithm=6, table_number=6, key_size=12, multi_probe_level=1)
         search_params = dict(checks=50)
         self.matcher = cv2.FlannBasedMatcher(index_params, search_params)
-        self.landmark_matcher = cv2.BFMatcher(cv2.NORM_HAMMING)
 
         # ------- parameters for noise on observations ----------- #
         self.sigma_d = 3
@@ -122,8 +119,6 @@ class FastSLAM:
         :param prev_kp, prev_des: are the keypoints and descriptors from the previous frame
         :param kp, des: the current keypoints and descriptors
         """
-        if DEBUG:
-            print 'RUN'
 
         # print the average number of landmarks per particles
         print "LM: ", np.sum([len(p.landmarks) for p in self.particles]) / float(self.num_particles)
@@ -183,8 +178,6 @@ class FastSLAM:
         :param particle:  the particle containing the robot's position information
         :param x, y, yaw: the "controls" computed by transforming the previous camera frame to this one
         """
-        if DEBUG:
-            print 'PREDICT'
 
         noisy_x_y_z_yaw = np.random.multivariate_normal([x, y, self.z, yaw], self.covariance_motion)
 
@@ -260,9 +253,6 @@ class FastSLAM:
         :param keypoints, descriptors: the lists of currently observed keypoints and descriptors
         """
 
-        if DEBUG:
-            print 'UPDATE'
-
         particle.weight = PROB_THRESHOLD
 
         # if this particle has no landmarks, make all measurements into landmarks
@@ -289,10 +279,10 @@ class FastSLAM:
                 # length 1 list of the most likely match between this descriptor and all the particle's descriptors
                 match = None
                 if part_descriptors is not None:
-                    match = self.landmark_matcher.match(np.array([des]), np.array(part_descriptors))
+                    match = self.matcher.knnMatch(np.array([des]), np.array(part_descriptors), k=2)
 
                 # there was no match (short circuiting!)
-                if match is None or match[0].distance > DES_MATCH_THRESHOLD:
+                if match is None or len(match) < 2 or match[0].distance > MATCH_RATIO * match[1].distance:
                     utils.add_landmark(particle, kp, des, self.sigma_observation, self.kp_to_measurement)
 
                     # 'punish' this particle since new landmarks decrease certainty
@@ -309,7 +299,7 @@ class FastSLAM:
                     particle.landmarks[dated_landmark[1]] = updated_landmark
 
                     # 'reward' this particles since revisiting landmarks increases certainty
-                    particle.weight += math.log(scale_weight(match[0].distance))
+                    particle.weight += math.log(scale_weight(match[0].distance, match[1].distance))
 
             if matched_landmarks is not None:
                 # increment counter for revisited particles, and decrement counter for non-revisited particles
@@ -379,9 +369,6 @@ class FastSLAM:
         :return: a new set of particles, resampled with replacement according to their weight
         """
 
-        if DEBUG:
-            print 'RESAMPLE'
-
         weight_sum = 0.0
         new_particles = []
         normal_weights = np.array([])
@@ -405,14 +392,14 @@ class FastSLAM:
         self.particles = new_particles
 
 
-def scale_weight(w):
+def scale_weight(match0, match1):
     """
-    scales a weight from (0, DES_THRESHOLD) to (0,1)
-    never returns 0 since we tale the logarithm of the weight
+    uses the distances of the two best matches to provide a weight scaled between 0 and 1
 
-    :param w: the weight to scale
+    :param match0: the hamming distance of the first best match
+    :param match1: the hamming distance of the second best match
     """
-    scaled = 1 - (w / DES_MATCH_THRESHOLD)
+    scaled = (match1 - match0) / float(match1)
     if scaled == 0:
         scaled = PROB_THRESHOLD
     return scaled
