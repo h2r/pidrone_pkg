@@ -1,10 +1,22 @@
+"""
+vision_localization.py
+
+Run this file for SLAM
+"""
+
+
 from onboard_localization import *
+from onboard_slam import *
 from cv_bridge import CvBridge, CvBridgeError
 import sys
 import camera_info_manager
 import rospy
 from sensor_msgs.msg import Image, Range, CameraInfo
 from analyze_flow import AnalyzeFlow
+
+# So the default mode is localization onboard
+DoSLAM = False
+DoOffboard = False
 
 
 def main():
@@ -25,11 +37,12 @@ def main():
             camera.resolution = (CAMERA_WIDTH, CAMERA_HEIGHT)
             with AnalyzeFlow(camera) as flow_analyzer:
                 flow_analyzer.setup(camera.resolution)
-                phase_analyzer = Localizer(camera, bridge)
-                rospy.Subscriber('/pidrone/reset_transform', Empty,
-                phase_analyzer.reset_callback)
-                rospy.Subscriber('/pidrone/state', State,
-                phase_analyzer.state_callback)
+                if DoSLAM:
+                    phase_analyzer = SLAM(camera, bridge)
+                else:
+                    phase_analyzer = Localizer(camera, bridge)
+                rospy.Subscriber('/pidrone/reset_transform', Empty, phase_analyzer.reset_callback)
+                rospy.Subscriber('/pidrone/state', State, phase_analyzer.state_callback)
 
                 camera.start_recording("/dev/null", format='h264', splitter_port=1, motion_output=flow_analyzer)
                 print "Starting Flow"

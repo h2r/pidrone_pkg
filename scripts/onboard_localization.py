@@ -1,3 +1,9 @@
+"""
+localization.py
+
+runs localization for the PiDrone
+"""
+
 import numpy as np
 import picamera
 import picamera.array
@@ -31,6 +37,7 @@ NUM_FEATURES = 200
 
 
 class Localizer(picamera.array.PiMotionAnalysis):
+
     def __init__(self, camera, bridge):
         picamera.array.PiMotionAnalysis.__init__(self, camera)
         self.bridge = bridge
@@ -97,7 +104,6 @@ class Localizer(picamera.array.PiMotionAnalysis):
                     self.posemsg.pose.orientation.w = w
 
                     self.posepub.publish(self.posemsg)
-
                     print 'first', particle
                 else:
                     particle = self.estimator.update(self.z, self.angle_x, self.angle_y, self.prev_kp, self.prev_des,
@@ -109,8 +115,9 @@ class Localizer(picamera.array.PiMotionAnalysis):
                                 self.z,
                                 self.alpha_yaw * particle.yaw() + (1.0 - self.alpha_yaw) * self.pos[3]]
 
-                    self.posemsg.pose.position.x, self.posemsg.pose.position.y, self.posemsg.pose.position.z = \
-                        self.pos[0], self.pos[1], self.pos[2]
+                    self.posemsg.pose.position.x = self.pos[0]
+                    self.posemsg.pose.position.y = self.pos[1]
+                    self.posemsg.pose.position.z = self.pos[2]
                     x, y, z, w = tf.transformations.quaternion_from_euler(0, 0, self.pos[3])
 
                     self.posemsg.pose.orientation.x = x  
