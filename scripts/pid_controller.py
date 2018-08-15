@@ -215,6 +215,14 @@ class PIDController(object):
         # rotation_matrix = rotation_matrix.transpose()
 
         rotated_current_position = current_position_matrix.dot(rotation_matrix)
+
+        # stefie10: Note that constructors are slow, calling
+        # Position() below.  This is a tradeoff between speed and
+        # readability; it would be faster to update an existing
+        # position object, but it's nicer code to create a new one
+        # from scratch because you don't have to wonder if you forgot
+        # to change something.
+        
         self.current_position = Position(rotated_current_position[0,0], rotated_current_position[0,1], rotated_current_position[0,2])
 
 #     def calc_z_velocity(self):
@@ -238,6 +246,12 @@ class PIDController(object):
         # calculate the z position error
         dz = self.desired_position.z - self.current_position.z
         # calculate the pid_error from the above values
+
+        # stefie10: Ditto; constructors are slow (calling Error every
+        # cycle).  I don't think you necessarilly need to fix this,
+        # but be aware and on the lookout if and when we profile this
+        # code.
+        
         err = Error()
         err.x = self.velocity_error.x
         err.y = self.velocity_error.y

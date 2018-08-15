@@ -147,7 +147,7 @@ class EMAStateEstimator(object):
         self.state.twist_with_covariance.twist.linear = velocity
 
     def filter_range(self, range_reading):
-        """ Smoothe the range reading using and ema filter """
+        """ Smooth the range reading using and ema filter """
         # the ema filter constant
         alpha = 0.8
         # get the roll and pitch
@@ -195,6 +195,12 @@ class EMAStateEstimator(object):
         sys.exit()
 
 if __name__ == '__main__':
+    # stefie10:  Please make all the mains just call the main method.
+    # the only thing here should be:
+    # main()
+    # which calls a function called main.
+
+    # The reason is that otherwise state_estimator is a global variable visible to the whole module.
 
     # ROS setup
     ###########

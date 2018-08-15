@@ -90,6 +90,9 @@ class FlightController(object):
     # Update methods:
     #################
     def update_imu_message(self):
+        """
+        Compute the ROS IMU message by reading data from the board.
+        """
         time = rospy.Time.now()
 
         # extract roll, pitch, heading
@@ -166,6 +169,9 @@ class FlightController(object):
         self.imu_message.linear_acceleration.z = lin_acc_z_drone_body
 
     def update_battery_message(self):
+        """
+        Compute the ROS battery message by reading data from the board.
+        """
         # extract vbat, amperage
         self.board.getData(MultiWii.ANALOG)
         # Update Battery message:
