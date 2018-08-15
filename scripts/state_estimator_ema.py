@@ -182,6 +182,7 @@ class EMAStateEstimator(object):
         angular_velocities = self.state.twist_with_covariance.twist.angular
         # v = w * r  :  (linear velocity = angular velocity * radius)
         self.mw_angle_comp_x = angular_velocities.x * altitude * self.mw_angle_coeff
+        self.mw_angle_comp_y = angular_velocities.y * altitude * self.mw_angle_coeff
 
     def near_zero(self, n):
         """ Set a number to zero if it is below a threshold value """
