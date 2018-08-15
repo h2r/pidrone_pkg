@@ -25,9 +25,6 @@ class AnalyzeFlow(picamera.array.PiMotionAnalysis):
         # Publisher:
         self.twistpub = rospy.Publisher('/pidrone/picamera/twist', TwistStamped, queue_size=1)
 
-        # Subscriber:
-        rospy.Subscriber('/pidrone/state', State, self.state_callback)
-
     def analyse(self, a):
         ''' Analyze the frame, calculate the motion vectors, and publish the
         twist message. This is implicitly called by the

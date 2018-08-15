@@ -72,7 +72,7 @@ class EMAStateEstimator(object):
         self.state.pose_with_covariance.pose.position.x = 0
         self.state.pose_with_covariance.pose.position.y = 0
         # reset the orientation
-        self.state.pose_with_covariance.pose.orientation = Pose().orientation
+        self.state.pose_with_covariance.pose.orientation = PoseStamped().orientation
 
     def pose_callback(self, data):
         """ Update the pose of the drone based on the translations published

@@ -67,9 +67,9 @@ class ModeController(object):
         if mc.vbat != None and mc.vbat < mc.minimum_voltage:
             print '\nSafety Failure: low battery\n'
             disarm = True
-        if rospy.Time.now() - self.last_heartbeat > rospy.Duration.from_sec(5):
-            print '\nSafety Failure: no heartbeat\n'
-            disarm = True
+        #if rospy.Time.now() - self.last_heartbeat > rospy.Duration.from_sec(5):
+            #print '\nSafety Failure: no heartbeat\n'
+            #disarm = True
         if rospy.Time.now() - self.last_mode_time > rospy.Duration.from_sec(1):
             print '\nSafety Failure: not receiving data from flight controller.'
             print 'Check the flight_controller node\n'
