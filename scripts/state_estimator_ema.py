@@ -9,6 +9,7 @@ from sensor_msgs.msg import Range, Imu
 from geometry_msgs.msg import PoseStamped, TwistStamped
 from std_msgs.msg import Header, Bool, Empty
 
+
 class EMAStateEstimator(object):
     ''' A class that subscribes to data from the picamera that is published by
     the vision node and filters the data using an estimated moving average
@@ -211,8 +212,8 @@ if __name__ == '__main__':
     #############
     rospy.Subscriber('/pidrone/picamera/transforming_on_first_image', Bool, state_estimator.tofi_callback)
     rospy.Subscriber("/pidrone/reset_transform", Empty, state_estimator.reset_callback)
-    rospy.Subscriber('/pidrone/picamera/twist', Twist, state_estimator.twist_callback)
-    rospy.Subscriber('/pidrone/picamera/pose', Pose, state_estimator.pose_callback)
+    rospy.Subscriber('/pidrone/picamera/twist', TwistStamped, state_estimator.twist_callback)
+    rospy.Subscriber('/pidrone/picamera/pose', PoseStamped, state_estimator.pose_callback)
     rospy.Subscriber('/pidrone/infrared', Range, state_estimator.range_callback)
     rospy.Subscriber('/pidrone/imu', Imu, state_estimator.imu_callback)
 
