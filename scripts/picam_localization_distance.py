@@ -66,7 +66,7 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
         self.z = 0.075
         self.iacc_yaw = 0.0
         self.hold_position = False
-        self.target_pos = [0, 0, 0]
+        self.target_pos = [0, 0, 0, 0]
         self.target_yaw = 0.0
         self.map_counter = 0
         self.max_map_counter = 0

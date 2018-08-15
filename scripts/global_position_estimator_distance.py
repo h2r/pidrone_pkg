@@ -126,7 +126,7 @@ class LocalizationParticleFilter:
 
     def measurement_model(self, kp, des):
         """
-        landmark_model_known_correspondence from probablistic robotics
+        landmark_model_known_correspondence from probablistic robotics 6.6
         """
         for i in range(self.particles.num_particles):
             position = self.particles.poses[i]
@@ -156,10 +156,9 @@ class LocalizationParticleFilter:
                 yaw_difference = noisy_pose[3] - position[3]
                 yaw_difference = adjustAngle(yaw_difference)
 
-                # TODO the log and addition for bearing and velocity ?
-                q = min(2., norm_pdf(noisy_pose[0] - position[0], 0, self.sigma_x)) \
-                    * min(2., norm_pdf(noisy_pose[1] - position[1], 0, self.sigma_y)) \
-                    * min(2., norm_pdf(yaw_difference, 0, self.sigma_yaw))
+                q = norm_pdf(noisy_pose[0] - position[0], 0, self.sigma_x) \
+                    * norm_pdf(noisy_pose[1] - position[1], 0, self.sigma_y) \
+                    * norm_pdf(yaw_difference, 0, self.sigma_yaw)
 
             self.particles.weights[i] = max(q, PROB_THRESHOLD)
 
@@ -176,6 +175,7 @@ class LocalizationParticleFilter:
 
         transform = self.compute_transform(prev_kp, prev_des, kp, des)
         if transform is not None:
+            # these are the differences, not global
             x = -transform[0, 2] * self.z / CAMERA_SCALE
             y = transform[1, 2] * self.z / CAMERA_SCALE
             yaw = -np.arctan2(transform[1, 0], transform[0, 0])
@@ -355,7 +355,7 @@ def create_map(file_name):
     # read image and extract features
     image = cv2.imread(file_name)
     # the edgeThreshold and patchSize can be tuned if the gap between cell is too large
-    detector = cv2.ORB(nfeatures=MAP_FEATURES, scoreType=cv2.ORB_FAST_SCORE, scaleFactor=1.3)
+    detector = cv2.ORB(nfeatures=MAP_FEATURES, scoreType=cv2.ORB_FAST_SCORE)
     maxTotalKeypoints = 500 * ORB_GRID_SIZE_X * ORB_GRID_SIZE_Y
     detector_grid = cv2.GridAdaptedFeatureDetector(detector, maxTotalKeypoints=maxTotalKeypoints,
                                                    gridCols=ORB_GRID_SIZE_X, gridRows=ORB_GRID_SIZE_Y)
