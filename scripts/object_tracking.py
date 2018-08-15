@@ -1,39 +1,21 @@
 from __future__ import division
-import numpy as np
 import cv2
-from pidrone_pkg.msg import Mode
-from sensor_msgs.msg import Image, Range
-from std_msgs.msg import Empty
+from pidrone_pkg.msg import State
+from sensor_msgs.msg import Image
+from std_msgs.msg import Empty, Pose
 import rospy
-from cv_bridge import CvBridge
-import sys
 import math
-from pid_class import PIDaxis
-import signal
-
-CAMERA_WIDTH = 320
-CAMERA_HEIGHT = 240
-CAMERA_CENTER = np.float32([(CAMERA_WIDTH - 1) / 2., (CAMERA_HEIGHT - 1) / 2.])
+from cv_bridge import CvBridge
 
 
-class AnalyzePhase:
+class ObjectTracker:
     def __init__(self):
-
-        rospy.Subscriber("/pidrone/reset_transform", Empty, self.reset_callback)
-        rospy.Subscriber("/pidrone/state", State, self.state_callback)
-        rospy.Subscriber("/pidrone/picamera/image_raw", Image, self.image_callback)
-
-        self.pospub = rospy.Publisher('/pidrone/set_mode_vel', Mode, queue_size=1)
-        self.first_image_pub = rospy.Publisher("/pidrone/picamera/first_image", Image, queue_size=1, latch=True)
-
         self.bridge = CvBridge()
 
-        self.detector = cv2.ORB(nfeatures=200, scoreType=cv2.ORB_FAST_SCORE)  # FAST_SCORE is a little faster to compute
+        self.obj_pos_pub = rospy.Publisher('/pidrone/desired/pose', Pose, queue_size=1)
 
-        self.prev_img = None
-        self.prev_time = None
-        self.prev_rostime = None
-        self.prev_obj_coordinates = None
+        self.detector = cv2.ORB(nfeatures=200, scoreType=cv2.ORB_FAST_SCORE)
+
         self.curr_obj_coordinates = None
 
         self.track_object = False
@@ -41,10 +23,8 @@ class AnalyzePhase:
         self.alpha = 0.70
         self.z = 0.16
 
-    def write(self, data):
-        curr_img = np.reshape(np.fromstring(data, dtype=np.uint8), (CAMERA_HEIGHT, CAMERA_WIDTH, 3))
-        curr_rostime = rospy.Time.now()
-        curr_time = curr_rostime.to_sec()
+    def image_callback(self, data):
+        curr_img = self.bridge.imgmsg_to_cv2(data, desired_encoding="passthrough")
 
         # start object tracking
         if self.track_object:
@@ -63,32 +43,20 @@ class AnalyzePhase:
                 if self.curr_obj_coordinates is not None:
                     self.curr_obj_coordinates[0] = self.alpha*self.curr_obj_coordinates[0] + (1-self.alpha)*obj_coordinates[0]
                     self.curr_obj_coordinates[1] = self.alpha*self.curr_obj_coordinates[1] + (1-self.alpha)*obj_coordinates[1]
-
-                    error = (np.subtract(self.curr_obj_coordinates, CAMERA_CENTER) * self.z) / 290.
-                    print "ERROR: ", error
-
-                    self.mode.x_velocity = self.lr_pid.step(error[0], curr_time - self.prev_time)
-                    print "CMD VELOCITY X: ", self.mode.x_velocity
-                    self.mode.y_velocity = self.fb_pid.step(error[1], curr_time-self.prev_time)
-                    print "CMD VELOCITY Y: ", self.mode.y_velocity
-                    self.mode.yaw_velocity = 0
-                    self.pospub.publish(self.mode)
-
                 else:
                     self.curr_obj_coordinates = obj_coordinates
 
+                self.curr_obj_coordinates = self.curr_obj_coordinates * self.z / 290.
                 print "object coordinates: ", self.curr_obj_coordinates
                 print "density: ", density
 
+                obj_pose = Pose()
+                obj_pose.position.x = self.curr_obj_coordinates[0]
+                obj_pose.position.y = self.curr_obj_coordinates[1]
+                self.obj_pose_pub.publish(obj_pose)
             else:
                 print "CANNOT FIND ANY FEATURES !!!!!"
 
-        self.prev_img = curr_img
-        self.prev_time = curr_time
-        self.prev_rostime = curr_rostime
-        self.prev_obj_coordinates = self.curr_obj_coordinates
-
-    # this happens when you press r
     def reset_callback(self, data):
         if not self.track_object:
             print "Start tracking object"
@@ -96,12 +64,10 @@ class AnalyzePhase:
             print "Stop tracking object"
 
         self.track_object = not self.track_object
-        self.lr_pid._i = 0
-        self.fb_pid._i = 0
-
+        self.curr_obj_coordinates = None
 
     def state_callback(self, data):
-        self.z = data.range
+        self.z = data.pose_with_covariance.pose.position.z
 
 
 def find_densest_point(x, y, r=50, max_density_point=None, max_density=None, iteration=0):
@@ -152,20 +118,16 @@ def find_densest_point(x, y, r=50, max_density_point=None, max_density=None, ite
 def calc_distance(x1, y1, x2, y2):
     return math.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2)
 
-def ctrl_c_handler(signal, frame):
-    print "Caught ctrl-c! About to Disarm!"
-    sys.exit(0)
-
 
 def main():
-    rospy.init_node('object_tracking')
-
-    signal.signal(signal.SIGINT, ctrl_c_handler)
-
-    phase_analyzer = AnalyzePhase()
-    print "Start"
+    rospy.init_node("object_tracking")
+    tracker = ObjectTracker()
+    rospy.Subscriber("/pidrone/reset_transform", Empty, tracker.reset_callback)
+    rospy.Subscriber("/pidrone/picamera/image_raw", Image, tracker.image_callback)
+    rospy.Subscriber("/pidrone/state", State, tracker.state_callback)
 
     rospy.spin()
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()
