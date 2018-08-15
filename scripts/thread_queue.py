@@ -5,6 +5,9 @@ We will use this class to manage threads in slam_helper, we should be able to si
 map_update thread we want to happen
 """
 
+#  stefie10: Oops.  Python threads are broken!  They don't actually
+#  run in parallel.  if you are trying to use threading to make things
+#  faster we should talk about it.  See Global Interpreter Lock.
 
 class ThreadQueue:
     """
