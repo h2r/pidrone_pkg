@@ -1,58 +1,42 @@
-"""""
+"""
 slam.py
 
 Runs fastSLAM algorithm for the PiDrone. Helper code located in slam_helper.py
-"""""
+"""
 
 import numpy as np
 import picamera
 import picamera.array
 import cv2
-from picam_flow_class import AnalyzeFlow
-from pidrone_pkg.msg import Mode
+from geometry_msgs.msg import PoseStamped
+from pidrone_pkg.msg import State
 from sensor_msgs.msg import Image, Range, CameraInfo
 from std_msgs.msg import Empty
 import rospy
 import tf
-from cv_bridge import CvBridge
-import sys
-from pid_class import PIDaxis
-import camera_info_manager
-from geometry_msgs.msg import TwistStamped
-from slam_helper import FastSLAM, PROB_THRESHOLD
-import math
+from slam_helper import FastSLAM
 
 # ---------- camera parameters DO NOT EDIT ----------- #
 CAMERA_WIDTH = 320
 CAMERA_HEIGHT = 240
 CAMERA_CENTER = np.float32([(CAMERA_WIDTH - 1) / 2., (CAMERA_HEIGHT - 1) / 2.]).reshape(-1, 1, 2)
-# --------------------- #
 
 # ---------- SLAM parameters ----------- #
 MAX_BAD_COUNT = -100
 NUM_PARTICLE = 7
 NUM_FEATURES = 30
-# --------------------- #
 
 
-class AnalyzePhase(picamera.array.PiMotionAnalysis):
+class SLAM(picamera.array.PiMotionAnalysis):
+
     def __init__(self, camera, bridge):
         picamera.array.PiMotionAnalysis.__init__(self, camera)
         self.bridge = bridge
         self.br = tf.TransformBroadcaster()
 
-        # bind method calls to subscribed topics
-        rospy.Subscriber("/pidrone/set_mode", Mode, self.mode_callback)
-        rospy.Subscriber("/pidrone/reset_transform", Empty, self.reset_callback)
-        rospy.Subscriber("/pidrone/toggle_transform", Empty, self.toggle_callback)
-        rospy.Subscriber("/pidrone/infrared", Range, self.range_callback)
-        rospy.Subscriber('/pidrone/angle', TwistStamped, self.angle_callback)
-
+        # setup publishers
         self.pospub = rospy.Publisher('/pidrone/set_mode_vel', Mode, queue_size=1)
         self.first_image_pub = rospy.Publisher("/pidrone/picamera/first_image", Image, queue_size=1, latch=True)
-
-        self.lr_pid = PIDaxis(10.0, 0.000, 0.0, midpoint=0, control_range=(-5.0, 5.0))
-        self.fb_pid = PIDaxis(10.0, 0.000, 0.0, midpoint=0, control_range=(-5.0, 5.0))
 
         self.detector = cv2.ORB(nfeatures=NUM_FEATURES, scoreType=cv2.ORB_FAST_SCORE)
         self.estimator = FastSLAM()
@@ -63,9 +47,6 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
         self.first_locate = True
         self.locate_position = False
 
-        self.first_hold = True
-        self.hold_position = False
-
         self.prev_img = None
         self.prev_kp = None
         self.prev_des = None
@@ -73,14 +54,8 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
 
         self.prev_rostime = None
         self.pos = [0, 0, 0, 0]
-        self.target_pos = [0, 0, 0, 0]
+        self.posemsg = PoseStamped()
         self.z = 0.0
-
-        self.map_counter = 0
-        self.max_map_counter = 0
-
-        self.mode = Mode()
-        self.mode.mode = 5
 
         # constant
         self.alpha_yaw = 0.1  # perceived yaw smoothing alpha
@@ -89,6 +64,7 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
     def write(self, data):
         curr_img = np.reshape(np.fromstring(data, dtype=np.uint8), (CAMERA_HEIGHT, CAMERA_WIDTH, 3))
         curr_rostime = rospy.Time.now()
+        self.posemsg.header.stamp = curr_rostime
         curr_time = curr_rostime.to_sec()
 
         # start SLAM
@@ -101,6 +77,18 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
                     pose = self.estimator.generate_particles(NUM_PARTICLE)
                     self.first_locate = False
                     self.pos = pose
+
+                    self.posemsg.pose.position.x = self.pos[0]
+                    self.posemsg.pose.position.y = self.pos[1]
+                    self.posemsg.pose.position.z = self.pos[2]
+                    x, y, z, w = tf.transformations.quaternion_from_euler(0, 0, self.pos[3])
+
+                    self.posemsg.pose.orientation.x = x
+                    self.posemsg.pose.orientation.y = y
+                    self.posemsg.pose.orientation.z = z
+                    self.posemsg.pose.orientation.w = w
+
+                    self.posepub.publish(self.posemsg)
                     print 'first', pose
                 else:
                     pose, weight = self.estimator.run(self.z, self.prev_kp, self.prev_des,
@@ -112,45 +100,20 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
                                 self.z,
                                 self.alpha_yaw * pose[3] + (1.0 - self.alpha_yaw) * self.pos[3]]
 
+                    self.posemsg.pose.position.x = self.pos[0]
+                    self.posemsg.pose.position.y = self.pos[1]
+                    self.posemsg.pose.position.z = self.pos[2]
+                    x, y, z, w = tf.transformations.quaternion_from_euler(0, 0, self.pos[3])
+
+                    self.posemsg.pose.orientation.x = x
+                    self.posemsg.pose.orientation.y = y
+                    self.posemsg.pose.orientation.z = z
+                    self.posemsg.pose.orientation.w = w
+
+                    self.posepub.publish(self.posemsg)
                     print '--pose', self.pos[0], self.pos[1], self.pos[3]
                     print '--weight', weight
 
-                    # if average weight is close to the worst possible weight
-                    if scale_weight(weight) < 0.2:
-                        self.map_counter = self.map_counter - 1
-                    elif self.map_counter <= 0:
-                        self.map_counter = 1
-                    else:
-                        self.map_counter = min(self.map_counter + 1, -MAX_BAD_COUNT)
-
-                    # if it's been a while without a high average particle weight
-                    if self.map_counter < MAX_BAD_COUNT:
-                        self.first_locate = True
-                        self.fb_pid._i = 0
-                        self.lr_pid._i = 0
-                        self.map_counter = 0
-                        self.mode.x_velocity = 0
-                        self.mode.y_velocity = 0
-                        self.mode.yaw_velocity = 0
-                        self.pospub.publish(self.mode)
-                        print 'Restart SLAM'
-                    else:
-                        if self.hold_position:
-                            if self.first_hold:
-                                self.target_pos = self.pos
-                                self.first_hold = False
-                                image_message = self.bridge.cv2_to_imgmsg(curr_img, encoding="bgr8")
-                                self.first_image_pub.publish(image_message)
-                            else:
-                                err_x = self.target_pos[0] - self.pos[0]
-                                err_y = self.target_pos[1] - self.pos[1]
-                                self.mode.x_velocity = self.lr_pid.step(err_x, curr_time - self.prev_time)
-                                self.mode.y_velocity = self.fb_pid.step(err_y, curr_time - self.prev_time)
-                                self.mode.yaw_velocity = 0
-                                self.pospub.publish(self.mode)
-                            print '--target', self.target_pos[0], self.target_pos[1], self.target_pos[3]
-
-                    print 'count', self.map_counter
             else:
                 print "CANNOT FIND ANY FEATURES !!!!!"
 
@@ -166,112 +129,16 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
                               "base",
                               "world")
 
-    def angle_callback(self, data):
-        """
-        updates angle data when '/pidrone/angle' is published to
-        """
-        self.angle_x = data.twist.angular.x
-        self.angle_y = data.twist.angular.y
-
-    def range_callback(self, data):
-        """
-        update z when '/pidrone/infrared' is published to
-        """
-        if data.range != -1:
-            self.z = data.range
+    def state_callback(self, data):
+        # TODO COMMENT
+        """update z when '/pidrone/infrared' is published to"""
+        self.z = data.pose_with_covariance.pose.position.z
+        self.angle_x = data.twist_with_covariance.twist.angular.x
+        self.angle_y = data.twist_with_covariance.twist.angular.y
 
     def reset_callback(self, data):
-        """
-        start localization when '/pidrone/reset_transform' is published to (press 'r')
-        """
-        print "Start SLAM"
+        """start localization when '/pidrone/reset_transform' is published to (press 'r')"""
+        print "Start localization"
         self.locate_position = True
         self.first_locate = True
-        self.hold_position = False
-        self.map_counter = 0
-        self.max_map_counter = 0
 
-    def toggle_callback(self, data):
-        """
-        toggle position hold when '/pidrone/toggle_transform' is published to (press 'p')
-        """
-        self.hold_position = not self.hold_position
-        self.first_hold = True
-        self.fb_pid._i = 0
-        self.lr_pid._i = 0
-        print "Position hold", "enabled." if self.hold_position else "disabled."
-
-    def mode_callback(self, data):
-        """
-        update the mode whenever '/pidrone/set_mode' is published to, velocity mode is default
-        """
-        self.mode.mode = data.mode
-        if not self.hold_position or data.mode == 4 or data.mode == 3:
-            print "VELOCITY"
-            # TODO scale is not consistent, check index.html and pid_class.py
-            data.z_velocity = data.z_velocity * 100
-            self.pospub.publish(data)
-        else:
-            self.target_pos[0] += data.x_velocity / 100.
-            self.target_pos[1] += data.y_velocity / 100.
-            print "Target position", self.target_pos
-
-
-def scale_weight(w):
-    """
-    :param w: the current average weight of the particles
-    :return: the weight scaled from the (0, worst_possible_weight) to (0,1)
-    """
-    worst_possible_weight = NUM_FEATURES * (math.log(PROB_THRESHOLD) + math.log(0.1*PROB_THRESHOLD))
-    # subtract from 1 so that higher is better
-    return 1 - (w / worst_possible_weight)
-
-
-def main():
-    rospy.init_node('localization')
-
-    image_pub = rospy.Publisher("/pidrone/picamera/image_raw", Image, queue_size=1, tcp_nodelay=False)
-    camera_info_pub = rospy.Publisher("/pidrone/picamera/camera_info", CameraInfo, queue_size=1, tcp_nodelay=False)
-
-    cim = camera_info_manager.CameraInfoManager("picamera", "package://pidrone_pkg/params/picamera.yaml")
-    cim.loadCameraInfo()
-    if not cim.isCalibrated():
-        rospy.logerr("warning, could not find calibration for the camera.")
-
-    try:
-        bridge = CvBridge()
-
-        with picamera.PiCamera(framerate=90) as camera:
-            camera.resolution = (CAMERA_WIDTH, CAMERA_HEIGHT)
-            with AnalyzeFlow(camera) as flow_analyzer:
-                flow_analyzer.setup(camera.resolution)
-                phase_analyzer = AnalyzePhase(camera, bridge)
-
-                camera.start_recording("/dev/null", format='h264', splitter_port=1, motion_output=flow_analyzer)
-                print "Starting Flow"
-                camera.start_recording(phase_analyzer, format='bgr', splitter_port=2)
-                last_time = None
-                while not rospy.is_shutdown():
-                    camera.wait_recording(1 / 100.0)
-
-                    if phase_analyzer.prev_img is not None and phase_analyzer.prev_time != last_time:
-                        image_message = bridge.cv2_to_imgmsg(phase_analyzer.prev_img, encoding="bgr8")
-                        image_message.header.stamp = phase_analyzer.prev_rostime
-                        last_time = phase_analyzer.prev_rostime
-                        image_pub.publish(image_message)
-                        camera_info_pub.publish(cim.getCameraInfo())
-
-                camera.stop_recording(splitter_port=1)
-                camera.stop_recording(splitter_port=2)
-        print "Shutdown Received"
-
-        # stefie10: avoid calling sys.exit; it's better to return from
-        # main as that way any exit callbacks will get run.  I would
-        # simply delete the following line.
-        sys.exit()
-    except Exception as e:
-        raise
-
-
-if __name__ == '__main__':
-    main()
