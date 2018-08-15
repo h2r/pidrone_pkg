@@ -2,86 +2,55 @@ import numpy as np
 import picamera
 import picamera.array
 import cv2
-from picam_flow_class import AnalyzeFlow
-from pidrone_pkg.msg import axes_err, Velocity, ERR
+from geometry_msgs.msg import PoseStamped
+from pidrone_pkg.msg import State
 from sensor_msgs.msg import Image, Range, CameraInfo
 from std_msgs.msg import Empty
 import rospy
 import tf
-from cv_bridge import CvBridge, CvBridgeError
-import sys
-from pid_class import PIDaxis
-import camera_info_manager
-from geometry_msgs.msg import TwistStamped
 from localization_helper import LocalizationParticleFilter, create_map, PROB_THRESHOLD
 
-<<<<<<< HEAD:scripts/onboard_localization.py
 # ---------- map parameters ----------- #
 MAP_PIXEL_WIDTH = 3227  # in pixel
 MAP_PIXEL_HEIGHT = 2447
 MAP_REAL_WIDTH = 1.4  # in meter
 MAP_REAL_HEIGHT = 1.07
-# ------------------------------------- #
 
 # ---------- camera parameters ----------- #
 CAMERA_WIDTH = 320
 CAMERA_HEIGHT = 240
-=======
 
-CAMERA_WIDTH = 320
-CAMERA_HEIGHT = 240
-# keep the ratio between pixel and meter is around 1024 (lower is better) for 0.7 meters
-MAP_PIXEL_WIDTH = 2048  # in pixel
-MAP_PIXEL_HEIGHT = 1616
-MAP_REAL_WIDTH = 1.4  # in meter
-MAP_REAL_HEIGHT = 1.07
 # assume a pixel in x and y has the same length
->>>>>>> new_architecture:scripts/picam_localization_distance.py
 METER_TO_PIXEL = (float(MAP_PIXEL_WIDTH) / MAP_REAL_WIDTH + float(MAP_PIXEL_HEIGHT) / MAP_REAL_HEIGHT) / 2.
 CAMERA_CENTER = np.float32([(CAMERA_WIDTH - 1) / 2., (CAMERA_HEIGHT - 1) / 2.]).reshape(-1, 1, 2)
-# ---------------------------------------- #
 
 # ---------- localization parameters ----------- #
 MAX_BAD_COUNT = -10
-<<<<<<< HEAD:scripts/onboard_localization.py
 NUM_PARTICLE = 30
 NUM_FEATURES = 200
-# ---------------------------------------------- #
-=======
-# change if too slow, stephanie says 50, lower number is lower accuracy but
-# quicker performance
-NUM_PARTICLE = 50
->>>>>>> new_architecture:scripts/picam_localization_distance.py
 
 
-class AnalyzePhase(picamera.array.PiMotionAnalysis):
+class Localizer(picamera.array.PiMotionAnalysis):
     def __init__(self, camera, bridge):
         picamera.array.PiMotionAnalysis.__init__(self, camera)
         self.bridge = bridge
         self.br = tf.TransformBroadcaster()
 
-        rospy.Subscriber("/pidrone/desired_vel", Velocity, self.vel_callback)
+        # bind method calls to subscribed topics
         rospy.Subscriber("/pidrone/reset_transform", Empty, self.reset_callback)
-        rospy.Subscriber("/pidrone/toggle_transform", Empty, self.toggle_callback)
-        rospy.Subscriber("/pidrone/infrared", Range, self.range_callback)
-        rospy.Subscriber('/pidrone/angle', TwistStamped, self.angle_callback)
-        self.set_vel_pub = rospy.Publisher('/pidrone/set_vel', Velocity, queue_size=1)
+        rospy.Subscriber("/pidrone/state", State, self.state_callback)
+
+        self.posepub = rospy.Publisher('/pidrone/picamera/pose', PoseStamped, queue_size=1)
         self.first_image_pub = rospy.Publisher("/pidrone/picamera/first_image", Image, queue_size=1, latch=True)
 
-        self.lr_pid = PIDaxis(10.0, 0.000, 0.0, midpoint=0, control_range=(-5.0, 5.0))
-        self.fb_pid = PIDaxis(10.0, 0.000, 0.0, midpoint=0, control_range=(-5.0, 5.0))
-
-<<<<<<< HEAD:scripts/onboard_localization.py
         self.detector = cv2.ORB(nfeatures=NUM_FEATURES, scoreType=cv2.ORB_FAST_SCORE)
-=======
-        self.detector = cv2.ORB(nfeatures=200, scoreType=cv2.ORB_FAST_SCORE)  # FAST_SCORE is a little faster to compute
->>>>>>> new_architecture:scripts/picam_localization_distance.py
+
         map_grid_kp, map_grid_des = create_map('map.jpg')
         self.estimator = LocalizationParticleFilter(map_grid_kp, map_grid_des)
 
         # [x, y, z, yaw]
         self.pos = [0, 0, 0, 0]
-        self.target_pos = [0, 0, 0, 0]
+        self.posemsg = PoseStamped()
 
         self.angle_x = 0.0
         self.angle_y = 0.0
@@ -89,10 +58,7 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
         self.z = 0.0
 
         self.first_locate = True
-        self.first_hold = True
-
         self.locate_position = False
-        self.hold_position = False
 
         self.prev_img = None
         self.prev_kp = None
@@ -102,14 +68,7 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
 
         self.map_counter = 0
         self.max_map_counter = 0
-<<<<<<< HEAD:scripts/onboard_localization.py
 
-        self.mode = Mode()
-        self.mode.mode = 5
-
-=======
-        self.set_vel = Velocity()
->>>>>>> new_architecture:scripts/picam_localization_distance.py
         # constant
         self.alpha_yaw = 0.1  # perceived yaw smoothing alpha
         self.hybrid_alpha = 0.3  # blend position with first frame and int
@@ -117,6 +76,7 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
     def write(self, data):
         curr_img = np.reshape(np.fromstring(data, dtype=np.uint8), (CAMERA_HEIGHT, CAMERA_WIDTH, 3))
         curr_rostime = rospy.Time.now()
+        self.posemsg.header.time = curr_rostime
         curr_time = curr_rostime.to_sec()
 
         # start MCL localization
@@ -129,6 +89,11 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
                     particle = self.estimator.initialize_particles(NUM_PARTICLE, curr_kp, curr_des)
                     self.first_locate = False
                     self.pos = [particle.x(), particle.y(), particle.z(), particle.yaw()]
+
+                    self.posemsg.pose.position.x, self.posemsg.pose.position.y, self.posemsg.pose.position.z = \
+                        particle.x(), particle.y(), particle.z()
+                    self.posemsg.pose.position.orientation = tf.transformations.quaternion_from_euler(0, 0, self.pos[3])
+                    self.posepub.publish(self.posemsg)
                     print 'first', particle
                 else:
                     particle = self.estimator.update(self.z, self.angle_x, self.angle_y, self.prev_kp, self.prev_des,
@@ -139,6 +104,11 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
                                 self.hybrid_alpha * particle.y() + (1.0 - self.hybrid_alpha) * self.pos[1],
                                 self.z,
                                 self.alpha_yaw * particle.yaw() + (1.0 - self.alpha_yaw) * self.pos[3]]
+
+                    self.posemsg.pose.position.x, self.posemsg.pose.position.y, self.posemsg.pose.position.z = \
+                        self.pos[0], self.pos[1], self.pos[2]
+                    self.posemsg.pose.position.orientation = tf.transformations.quaternion_from_euler(0, 0, self.pos[3])
+                    self.posepub.publish(self.posemsg)
                     print '--pose', self.pos[0], self.pos[1], self.pos[3]
 
                     # if all particles are not good estimations
@@ -149,46 +119,11 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
                     else:
                         self.map_counter = min(self.map_counter + 1, -MAX_BAD_COUNT)
 
-<<<<<<< HEAD:scripts/onboard_localization.py
                     # if it's been a while without a significant average weight
-=======
-                    # if no particles are good estimations, we should restart
->>>>>>> new_architecture:scripts/picam_localization_distance.py
                     if self.map_counter < MAX_BAD_COUNT:
                         self.first_locate = True
-                        self.fb_pid._i = 0
-                        self.lr_pid._i = 0
                         self.map_counter = 0
-                        self.set_vel.x_velocity = 0
-                        self.set_vel.y_velocity = 0
-                        self.set_vel.yaw_velocity = 0
-                        self.set_vel_pub.publish(self.set_vel)
                         print 'Restart localization'
-                    else:
-                        if self.hold_position:
-                            if self.first_hold:
-                                self.target_pos = self.pos
-                                self.first_hold = False
-                                image_message = self.bridge.cv2_to_imgmsg(curr_img, encoding="bgr8")
-                                self.first_image_pub.publish(image_message)
-                            else:
-                                err_x = self.target_pos[0] - self.pos[0]
-                                err_y = self.target_pos[1] - self.pos[1]
-<<<<<<< HEAD:scripts/onboard_localization.py
-                                self.mode.x_velocity = self.lr_pid.step(err_x, curr_time - self.prev_time)
-                                self.mode.y_velocity = self.fb_pid.step(err_y, curr_time - self.prev_time)
-                                self.mode.yaw_velocity = 0
-                                self.pospub.publish(self.mode)
-                            print '--target', self.target_pos[0], self.target_pos[1], self.target_pos[3]
-=======
-                                self.set_vel.x_velocity = self.lr_pid.step(err_x, curr_time - self.prev_time)
-                                self.set_vel.y_velocity = self.fb_pid.step(err_y, curr_time - self.prev_time)
-                                err_yaw = self.target_yaw - self.yaw
-                                self.iacc_yaw += err_yaw * self.ki_yaw
-                                self.set_vel.yaw_velocity = err_yaw * self.kp_yaw + self.iacc_yaw
-                                self.set_vel_pub.publish(self.set_vel)
-                            print '--target', self.target_pos[0], self.target_pos[1], self.target_yaw
->>>>>>> new_architecture:scripts/picam_localization_distance.py
 
                     print 'count', self.map_counter
             else:
@@ -206,103 +141,24 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
                               "base",
                               "world")
 
-<<<<<<< HEAD:scripts/onboard_localization.py
-=======
-    # the angle is just estimate
->>>>>>> new_architecture:scripts/picam_localization_distance.py
-    def angle_callback(self, data):
-        """update angle data when '/pidrone/angle' is published to"""
-        self.angle_x = data.twist.angular.x
-        self.angle_y = data.twist.angular.y
-
-    def range_callback(self, data):
+    def state_callback(self, data):
+        # TODO COMMENT
         """update z when '/pidrone/infrared' is published to"""
-        if data.range != -1:
-            self.z = data.range
+        self.z = data.pose_with_covariance.pose.position.z
+        self.angle_x = data.twist_with_covariance.twist.angular.x
+        self.angle_y = data.twist_with_covariance.twist.angular.y
 
-<<<<<<< HEAD:scripts/onboard_localization.py
-=======
-    # this happens when you press r
->>>>>>> new_architecture:scripts/picam_localization_distance.py
     def reset_callback(self, data):
         """start localization when '/pidrone/reset_transform' is published to (press 'r')"""
         print "Start localization"
         self.locate_position = True
         self.first_locate = True
-        self.hold_position = False
         self.map_counter = 0
         self.max_map_counter = 0
 
-<<<<<<< HEAD:scripts/onboard_localization.py
-=======
-    # this happens when you press p
->>>>>>> new_architecture:scripts/picam_localization_distance.py
-    def toggle_callback(self, data):
-        """toggle position hold when '/pidrone/toggle_transform' is published to (press 'p')"""
-        self.hold_position = not self.hold_position
-        self.first_hold = True
-        self.fb_pid._i = 0
-        self.lr_pid._i = 0
-        print "Position hold", "enabled." if self.hold_position else "disabled."
 
-    # this is the default mode ie velocity control
-    def vel_callback(self, data):
-        if not self.hold_position:
-            print "VELOCITY"
-            data.z_velocity = data.z_velocity * 100
-            self.set_vel_pub.publish(data)
-        else:
-            self.target_pos[0] += data.x_velocity / 100.
-            self.target_pos[1] += data.y_velocity / 100.
-            print "Target position", self.target_pos
-
-def is_almost_equal(x,y, epsilon=1*10**(-8)):
+def is_almost_equal(x, y):
+    epsilon = 1e-8
     return abs(x-y) <= epsilon
 
 
-def main():
-    rospy.init_node('localization')
-
-    image_pub = rospy.Publisher("/pidrone/picamera/image_raw", Image, queue_size=1, tcp_nodelay=False)
-    camera_info_pub = rospy.Publisher("/pidrone/picamera/camera_info", CameraInfo, queue_size=1, tcp_nodelay=False)
-
-    cim = camera_info_manager.CameraInfoManager("picamera", "package://pidrone_pkg/params/picamera.yaml")
-    cim.loadCameraInfo()
-    if not cim.isCalibrated():
-        rospy.logerr("warning, could not find calibration for the camera.")
-
-    try:
-        bridge = CvBridge()
-
-        with picamera.PiCamera(framerate=90) as camera:
-            camera.resolution = (CAMERA_WIDTH, CAMERA_HEIGHT)
-            with AnalyzeFlow(camera) as flow_analyzer:
-                flow_analyzer.setup(camera.resolution)
-                phase_analyzer = AnalyzePhase(camera, bridge)
-
-                camera.start_recording("/dev/null", format='h264', splitter_port=1, motion_output=flow_analyzer)
-                print "Starting Flow"
-                camera.start_recording(phase_analyzer, format='bgr', splitter_port=2)
-                last_time = None
-                while not rospy.is_shutdown():
-                    camera.wait_recording(1 / 100.0)
-
-                    if phase_analyzer.prev_img is not None and phase_analyzer.prev_time != last_time:
-                        image_message = bridge.cv2_to_imgmsg(phase_analyzer.prev_img, encoding="bgr8")
-                        image_message.header.stamp = phase_analyzer.prev_rostime
-                        # print "stamp", image_message.header.stamp
-                        last_time = phase_analyzer.prev_rostime
-                        image_pub.publish(image_message)
-                        camera_info_pub.publish(cim.getCameraInfo())
-
-		print 'camera told to stop'
-                camera.stop_recording(splitter_port=1)
-                camera.stop_recording(splitter_port=2)
-        print "Shutdown Received"
-        sys.exit()
-    except Exception as e:
-        raise
-
-
-if __name__ == '__main__':
-    main()
