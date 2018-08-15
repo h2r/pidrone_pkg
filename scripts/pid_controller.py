@@ -1,6 +1,7 @@
 #!/usr/bin/python
 import tf
 import sys
+import os
 import rospy
 import signal
 import traceback
@@ -323,16 +324,16 @@ class PIDController(object):
         msg.yaw = cmd[2]
         msg.throttle = cmd[3]
         self.cmdpub.publish(msg)
-
-
-if __name__ == '__main__':
-
+        
+    
+def main():
     # Verbosity between 0 and 2, 2 is most verbose
     verbose = 2
 
     # ROS Setup
     ###########
-    rospy.init_node('pid_controller')
+    node_name = os.path.splitext(os.path.basename(__file__))[0]
+    rospy.init_node(node_name)
 
     # create the PIDController object
     pid_controller = PIDController()
@@ -387,3 +388,7 @@ if __name__ == '__main__':
             print 'r,p,y,t:', fly_command
 
         loop_rate.sleep()
+        
+
+if __name__ == '__main__':
+    main()

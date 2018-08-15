@@ -16,6 +16,7 @@ from pid_class import PIDaxis
 from geometry_msgs.msg import PoseStamped
 from slam_helper import FastSLAM, PROB_THRESHOLD
 import math
+import os
 
 
 CAMERA_WIDTH = 320
@@ -141,7 +142,8 @@ class AnalyzePhase:
 
 
 def main():
-    rospy.init_node('camera_off_board')
+    node_name = os.path.splitext(os.path.basename(__file__))[0]
+    rospy.init_node(node_name)
 
     phase_analyzer = AnalyzePhase()
     rospy.Subscriber("/pidrone/reset_transform", Empty, phase_analyzer.reset_callback)

@@ -9,6 +9,7 @@ from onboard_localization import *
 from onboard_slam import *
 from cv_bridge import CvBridge, CvBridgeError
 import sys
+import os
 import camera_info_manager
 import rospy
 from sensor_msgs.msg import Image, Range, CameraInfo
@@ -20,7 +21,8 @@ DoOffboard = False
 
 
 def main():
-    rospy.init_node('localization')
+    node_name = os.path.splitext(os.path.basename(__file__))[0]
+    rospy.init_node(node_name)
 
     image_pub = rospy.Publisher("/pidrone/picamera/image_raw", Image, queue_size=1, tcp_nodelay=False)
     camera_info_pub = rospy.Publisher("/pidrone/picamera/camera_info", CameraInfo, queue_size=1, tcp_nodelay=False)

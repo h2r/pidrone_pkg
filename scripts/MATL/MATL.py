@@ -1,7 +1,7 @@
 """""
 MATL.py
 
-Runs "MATL" for the PiDrone, MATL being "Mapping and then Localization" (as opposed to "Simultaneous Mapping and 
+Runs "MATL" for the PiDrone, MATL being "Mapping and then Localization" (as opposed to "Simultaneous Mapping and
 Localization" for SLAM). To use, run the script and press 'm' to begin mapping. The image data are saved and then run
 through FastSLAM once you land and press 'm' a second time. Once the map is complete, press 'r' to start localization
 and fly around!
@@ -19,6 +19,7 @@ import rospy
 import tf
 from cv_bridge import CvBridge
 import sys
+import os
 from pid_class import PIDaxis
 import camera_info_manager
 from geometry_msgs.msg import TwistStamped
@@ -301,7 +302,8 @@ def is_almost_equal(x, y):
 
 
 def main():
-    rospy.init_node('localization')
+    node_name = os.path.splitext(os.path.basename(__file__))[0]
+    rospy.init_node(node_name)
 
     image_pub = rospy.Publisher("/pidrone/picamera/image_raw", Image, queue_size=1, tcp_nodelay=False)
     camera_info_pub = rospy.Publisher("/pidrone/picamera/camera_info", CameraInfo, queue_size=1, tcp_nodelay=False)

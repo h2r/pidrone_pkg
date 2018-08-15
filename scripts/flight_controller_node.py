@@ -13,6 +13,7 @@ from h2rMultiWii import MultiWii
 from serial import SerialException
 from geometry_msgs.msg import Quaternion
 from pidrone_pkg.msg import Battery, Mode, RC
+import os
 
 
 class FlightController(object):
@@ -225,11 +226,12 @@ class FlightController(object):
         print "Successfully Disarmed"
         sys.exit()
 
-def main():
 
+def main():
     # ROS Setup
     ###########
-    rospy.init_node('flight_controller')
+    node_name = os.path.splitext(os.path.basename(__file__))[0]
+    rospy.init_node(node_name)
 
     # create the FlightController object
     fc = FlightController()
@@ -277,6 +279,7 @@ def main():
     except SerialException:
         print '\nCannot connect to the flight controller board.'
         print 'The USB is unplugged. Please check connection.'
+
 
 if __name__ == '__main__':
     main()

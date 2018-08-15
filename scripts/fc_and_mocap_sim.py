@@ -3,10 +3,12 @@ import rospy
 from pidrone_pkg.msg import Mode, Battery
 from geometry_msgs.msg import PoseStamped
 from std_msgs.msg import String
+import os
 
-
-if __name__ == '__main__':
-    rospy.init_node('fake_fc')
+    
+def main():
+    node_name = os.path.splitext(os.path.basename(__file__))[0]
+    rospy.init_node(node_name)
     # extra e so its not interfeering
     current_position_pub = rospy.Publisher('vrpn_client_node/aarondrone/pose', PoseStamped, queue_size=1)
 
@@ -39,3 +41,7 @@ if __name__ == '__main__':
                 current_position_pub.publish(curr_pos_msg)
 
                 print 'published'
+
+
+if __name__ == '__main__':
+    main()

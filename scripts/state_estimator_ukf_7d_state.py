@@ -20,6 +20,7 @@ from filterpy.kalman import MerweScaledSigmaPoints
 # Other imports
 import numpy as np
 import argparse
+import os
 
 
 class StateEstimation(object):
@@ -74,7 +75,7 @@ class StateEstimation(object):
         '''
         Initialize ROS-related objects, e.g., the node, subscribers, etc.
         '''
-        self.node_name = 'state_estimator_ukf_test_4'
+        self.node_name = os.path.splitext(os.path.basename(__file__))[0]
         print 'Initializing {} node...'.format(self.node_name)
         rospy.init_node(self.node_name)
         

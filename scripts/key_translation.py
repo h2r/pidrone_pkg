@@ -2,10 +2,12 @@ import rospy
 from pidrone_pkg.msg import Mode
 import getch
 import time
+import os
 
 
 def main():
-    rospy.init_node("key_translation")
+    node_name = os.path.splitext(os.path.basename(__file__))[0]
+    rospy.init_node(node_name)
     import sys, tty, termios
     fd = sys.stdin.fileno()
     #attr = termios.tcgetattr(sys.stdin.fileno())
@@ -15,7 +17,7 @@ def main():
     modepub = rospy.Publisher('/pidrone/set_mode', Mode, queue_size=1)
     rate = rospy.Rate(10)
     msg = """
-Commands: 
+Commands:
 ;:  arm
 ' ' (spacebar):  disarm
 t:  takeoff
@@ -50,7 +52,7 @@ q:  quit
             elif ch == ";":
                 # arm
                 print "arm"
-                mode.mode = 0                
+                mode.mode = 0
                 mode.x_velocity = 0
                 mode.y_velocity = 0
                 mode.z_velocity = 0
@@ -68,7 +70,7 @@ q:  quit
             elif ch == "h":
                 # hover
                 print "hover"
-                mode.mode = 5                
+                mode.mode = 5
                 mode.x_velocity = 0
                 mode.y_velocity = 0
                 mode.z_velocity = 0
@@ -115,7 +117,7 @@ q:  quit
                 mode.yaw_velocity = 0
                 modepub.publish(mode)
             elif ch == "a":
-                print "yaw left"                
+                print "yaw left"
                 mode.mode = 5
                 mode.x_velocity = 0
                 mode.y_velocity = 0
@@ -123,7 +125,7 @@ q:  quit
                 mode.yaw_velocity = -50
                 modepub.publish(mode)
             elif ch == "d":
-                print "yaw right"                
+                print "yaw right"
                 mode.mode = 5
                 mode.x_velocity = 0
                 mode.y_velocity = 0
@@ -145,11 +147,11 @@ q:  quit
                 mode.y_velocity = 0
                 mode.z_velocity = -1
                 mode.yaw_velocity = 0
-                modepub.publish(mode)                                
+                modepub.publish(mode)
             elif ch == "q":
                 break
             elif ord(ch) == 3: # Ctrl-C
-                break            
+                break
             else:
                 print "unknown character: '%d'" % ord(ch)
                 pass

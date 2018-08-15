@@ -1,5 +1,6 @@
 #!/usr/bin/python
 import sys
+import os
 import rospy
 import signal
 from geometry_msgs.msg import PoseStamped, TwistStamped, AccelStamped
@@ -82,9 +83,9 @@ class Mocap(object):
         """ Stop subscribing to and publishing the mocap data """
         print "\nCaught ctrl-c. Stopping node."
         sys.exit()
-
-if __name__ == '__main__':
-
+        
+    
+def main():
     # Instantiate a Mocap object
     rigid_body_name = raw_input('Enter the name of the rigid body: ')
     mc = Mocap(rigid_body_name)
@@ -92,7 +93,8 @@ if __name__ == '__main__':
     # ROS setup
     ###########
     # Initialize the mocap node
-    rospy.init_node('mocap')
+    node_name = os.path.splitext(os.path.basename(__file__))[0]
+    rospy.init_node(node_name)
 
     # Publishers
     ############
@@ -119,6 +121,13 @@ if __name__ == '__main__':
     print mc.mocap_twist_topic
     print mc.mocap_accel_topic
 
-    # keep the node running for the callback methods
-    while not rospy.is_shutdown():
-        pass
+    try:
+        # Keep the node running for the callback methods
+        rospy.spin()
+    finally:
+        # Upon termination of this script, print out a message
+        print '{} node terminating.'.format(node_name)
+        
+
+if __name__ == '__main__':
+    main()

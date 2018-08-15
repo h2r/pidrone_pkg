@@ -13,6 +13,7 @@ import rospy
 import tf
 from cv_bridge import CvBridge, CvBridgeError
 import sys
+import os
 from pid_class import PIDaxis
 from geometry_msgs.msg import TwistStamped
 from localization_helper import LocalizationParticleFilter, create_map, PROB_THRESHOLD
@@ -209,7 +210,8 @@ def is_almost_equal(x, y):
 
 
 def main():
-    rospy.init_node('localization')
+    node_name = os.path.splitext(os.path.basename(__file__))[0]
+    rospy.init_node(node_name)
     
     phase_analyzer = AnalyzePhase()
 

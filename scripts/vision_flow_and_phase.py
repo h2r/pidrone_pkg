@@ -1,4 +1,5 @@
 import sys
+import os
 import rospy
 import picamera
 from analyze_flow import AnalyzeFlow
@@ -7,7 +8,8 @@ from analyze_phase import AnalyzePhase
 
 def main():
     ''' Start a ros node and start the twist and pose analyzers '''
-    rospy.init_node('camera_controller')
+    node_name = os.path.splitext(os.path.basename(__file__))[0]
+    rospy.init_node(node_name)
 
     print "Vision started"
 

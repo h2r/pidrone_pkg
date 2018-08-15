@@ -47,7 +47,8 @@ class DroneSimulator(object):
             
             # disable_signals=true seems to solve the issue of KeyboardInterrupt
             # exceptions not getting raised while rospy.sleep() is occurring.
-            rospy.init_node('drone_simulator', disable_signals=True)
+            self.node_name = os.path.splitext(os.path.basename(__file__))[0]
+            rospy.init_node(self.node_name, disable_signals=True)
             self.init_pubs()
         if self.save_to_csv:
             global csv
@@ -425,7 +426,11 @@ class DroneSimulator1D(DroneSimulator):
             if self.publish_ros:
                 self.publish_actual_state()
             if self.publish_ros and len(self.serialized_times) > 0:
-                print 'Duration: {0} / {1}\r'.format(round(self.curr_time-self.start_time, 4), duration),
+                print_str = '\rDuration: {:.4f} / {}'.format(
+                                    round(self.curr_time-self.start_time, 4),
+                                    duration)
+                sys.stdout.write(print_str)
+                sys.stdout.flush()
                 t1 = self.serialized_times[0][1][0] + self.serialized_times[0][1][1]*1e-9
                 # Naively sleep for a certain amount of time, not taking into
                 # account the amount of time required to carry out operations in
@@ -651,7 +656,10 @@ class DroneSimulator2D(DroneSimulator):
             self.take_optical_flow_sample()
             if self.publish_ros:
                 if len(self.commanded_times) > 0:
-                    print 'Duration: {0} / {1}\r'.format(round(next_time, 2), duration),
+                    print_str = '\rDuration: {:.4f} / {}'.format(
+                                                round(next_time, 2), duration)
+                    sys.stdout.write(print_str)
+                    sys.stdout.flush()
                 self.publish_actual_state()
                 self.publish_imu()
                 self.publish_optical_flow()

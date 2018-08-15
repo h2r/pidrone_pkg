@@ -3,6 +3,7 @@ from pidrone_pkg.msg import Mode
 from sensor_msgs.msg import Joy
 from std_msgs.msg import Empty
 import numpy as np
+import os
 
 z_total_steps = 24
 #z_counter = (z_total_steps / 4) - 1
@@ -78,7 +79,7 @@ def joy_callback(data):
         print "mode", mode
         modepub.publish(mode)
 
-    # should be able to do these at the same time 
+    # should be able to do these at the same time
     if data.buttons[1] == 1:
         print "resetting transform"
         resetpub.publish(Empty())
@@ -91,8 +92,12 @@ def joy_callback(data):
 #       mode.y_velocity = 0
 #       mode.z_velocity = 0
 
-
-if __name__ == "__main__":
-    rospy.init_node("joy_translation")
+def main():
+    node_name = os.path.splitext(os.path.basename(__file__))[0]
+    rospy.init_node(node_name)
     rospy.Subscriber("/joy", Joy, joy_callback)
     rospy.spin()
+    
+    
+if __name__ == "__main__":
+    main()

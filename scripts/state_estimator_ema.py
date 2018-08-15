@@ -1,6 +1,7 @@
 #!/usr/bin/python
 import tf
 import sys
+import os
 import rospy
 import signal
 import numpy as np
@@ -205,7 +206,8 @@ if __name__ == '__main__':
     # ROS setup
     ###########
     # Initialize the state estimator node
-    rospy.init_node('state_estimator_ema')
+    node_name = os.path.splitext(os.path.basename(__file__))[0]
+    rospy.init_node(node_name)
 
     # Instantiate a PiCameraStateEstimator object
     state_estimator = EMAStateEstimator()

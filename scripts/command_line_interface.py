@@ -1,5 +1,6 @@
 #!/usr/bin/python
 import sys
+import os
 import rospy
 import signal
 from pidrone_pkg.msg import Mode
@@ -46,10 +47,11 @@ def publish_desired_mode(mode, desired_mode_pub):
     desired_mode_msg.mode = mode
     desired_mode_pub.publish(desired_mode_msg)
 
-if __name__ == '__main__':
+def main():
     # ROS Setup
     ###########
-    rospy.init_node('aarons_terminal_mode_selector')
+    node_name = os.path.splitext(os.path.basename(__file__))[0]
+    rospy.init_node(node_name)
 
     # Publishers
     ############
@@ -131,3 +133,6 @@ if __name__ == '__main__':
         # Disarm drone on exception
         publish_desired_mode('DISARMED', desired_mode_pub)
         raise
+        
+if __name__ == '__main__':
+    main()
