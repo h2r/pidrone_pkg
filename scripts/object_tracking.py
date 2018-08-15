@@ -19,9 +19,8 @@ CAMERA_CENTER = np.float32([(CAMERA_WIDTH - 1) / 2., (CAMERA_HEIGHT - 1) / 2.])
 class AnalyzePhase:
     def __init__(self):
 
-        rospy.Subscriber("/pidrone/set_mode", Mode, self.mode_callback)
         rospy.Subscriber("/pidrone/reset_transform", Empty, self.reset_callback)
-        rospy.Subscriber("/pidrone/infrared", Range, self.infrared_callback)
+        rospy.Subscriber("/pidrone/state", State, self.state_callback)
         rospy.Subscriber("/pidrone/picamera/image_raw", Image, self.image_callback)
 
         self.pospub = rospy.Publisher('/pidrone/set_mode_vel', Mode, queue_size=1)
@@ -39,16 +38,10 @@ class AnalyzePhase:
 
         self.track_object = False
 
-        self.mode = Mode()
-        self.mode.mode = 5
-
-        self.lr_pid = PIDaxis(10., 0.0, 0.0, midpoint=0, control_range=(-5.0, 5.0))
-        self.fb_pid = PIDaxis(-10., 0.0, 0.0, midpoint=0, control_range=(-5.0, 5.0))
-
         self.alpha = 0.70
         self.z = 0.16
 
-    def image_callback(self, data):
+    def write(self, data):
         curr_img = self.bridge.imgmsg_to_cv2(data, desired_encoding="passthrough")
         curr_rostime = rospy.Time.now()
         curr_time = curr_rostime.to_sec()
