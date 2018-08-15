@@ -4,7 +4,7 @@ import sys
 import camera_info_manager
 import rospy
 from sensor_msgs.msg import Image, Range, CameraInfo
-from analyze_twist import AnalyzeTwist
+from analyze_flow import AnalyzeFlow
 
 
 def main():
@@ -23,11 +23,11 @@ def main():
 
         with picamera.PiCamera(framerate=90) as camera:
             camera.resolution = (CAMERA_WIDTH, CAMERA_HEIGHT)
-            with AnalyzeTwist(camera) as twist_analyzer:
-                twist_analyzer.setup(camera.resolution)
+            with AnalyzeFlow(camera) as flow_analyzer:
+                flow_analyzer.setup(camera.resolution)
                 phase_analyzer = Localizer(camera, bridge)
 
-                camera.start_recording("/dev/null", format='h264', splitter_port=1, motion_output=twist_analyzer)
+                camera.start_recording("/dev/null", format='h264', splitter_port=1, motion_output=flow_analyzer)
                 print "Starting Flow"
                 camera.start_recording(phase_analyzer, format='bgr', splitter_port=2)
                 last_time = None
