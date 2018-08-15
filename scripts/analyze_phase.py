@@ -3,7 +3,7 @@ import cv2
 import rospy
 import picamera
 import numpy as np
-from geometry_msgs.msg import Pose
+from geometry_msgs.msg import PoseStamped
 from std_msgs.msg import Empty, Bool
 
 
@@ -26,7 +26,7 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
     def setup(self):
 
         # initialize the Pose data
-        self.pose = Pose()
+        self.pose_msg = PoseStamped()
 
         # position hold is initialized as False
         self.position_control = False
@@ -43,7 +43,7 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
         # ROS Setup
         ###########
         # Publisher
-        self.posepub = rospy.Publisher('/pidrone/picamera/pose', Pose, queue_size=1)
+        self.posepub = rospy.Publisher('/pidrone/picamera/pose', PoseStamped, queue_size=1)
         self.transforming_on_first_image_pub = rospy.Publisher('/pidrone/picamera/transforming_on_first_image', Bool, queue_size=1, latch=True)
         # Subscribers
         rospy.Subscriber("/pidrone/reset_transform", Empty, self.reset_callback)
@@ -74,11 +74,11 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
                     # calculate the x,y, and yaw translations from the transformation
                     translation_first, yaw_first = self.translation_and_yaw(transform_first)
                     # use an EMA filter to smoothe the position and yaw values
-                    self.pose.position.x = translation_first[0]
-                    self.pose.position.y = translation_first[1]
+                    self.pose_msg.pose.position.x = translation_first[0]
+                    self.pose_msg.pose.position.y = translation_first[1]
                     _,_,z,w = tf.transformations.quaternion_from_euler(0,0,yaw_first)
-                    self.pose.orientation.z = z
-                    self.pose.orientation.w = w
+                    self.pose_msg.pose.orientation.z = z
+                    self.pose_msg.pose.orientation.w = w
                     # update first image data
                     self.first_image_counter += 1
                     self.max_first_counter = max(self.max_first_counter, self.first_image_counter)
@@ -99,11 +99,11 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
                         print "integrated", time_since_first
                         print "max_first_counter: ", self.max_first_counter
                         int_displacement, yaw_previous = self.translation_and_yaw(transform_previous)
-                        self.pose.position.x = int_displacement[0]
-                        self.pose.position.y = int_displacement[1]
+                        self.pose_msg.pose.position.x = int_displacement[0]
+                        self.pose_msg.pose.position.y = int_displacement[1]
                         _,_,z,w = tf.transformations.quaternion_from_euler(0,0,yaw_previous)
-                        self.pose.orientation.z = z
-                        self.pose.orientation.w = w
+                        self.pose_msg.pose.orientation.z = z
+                        self.pose_msg.pose.orientation.w = w
                         print "Lost the first image !"
                     # if the previous image wasn't visible (the transformation was not
                     # succesful), reset the pose and print lost
@@ -113,7 +113,7 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
 
             self.previous_image = image
 
-        self.posepub.publish(self.pose)
+        self.posepub.publish(self.pose_msg)
         self.transforming_on_first_image_pub.publish(self.transforming_on_first_image)
 
     # normalize image
@@ -143,7 +143,7 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
         self.last_first_time = None
 
         # reset the pose values
-        self.pose = Pose()
+        self.pose_msg = PoseStamped()
 
     # subscribe /pidrone/position_control
     def position_control_callback(self, msg):
