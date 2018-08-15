@@ -131,8 +131,8 @@ class EMAStateEstimator(object):
         velocity = self.state.twist_with_covariance.twist.linear
         # the constant for the ema filter
         alpha = 0.8
-        velocity.x = (1.0 - alpha) * velocity.x + alpha * new_vel.x * position.z
-        velocity.y = (1.0 - alpha) * velocity.y + alpha * new_vel.y * position.z
+        velocity.x = (1.0 - alpha) * velocity.x + alpha * new_vel.x * self.state.pose_with_covariance.pose.position.z
+        velocity.y = (1.0 - alpha) * velocity.y + alpha * new_vel.y * self.state.pose_with_covariance.pose.position.z
         self.state.twist_with_covariance.twist.linear = velocity
 
     def filter_range(self, range_reading):
@@ -196,8 +196,7 @@ if __name__ == '__main__':
     # set up ctrl-c handler
     signal.signal(signal.SIGINT, state_estimator.ctrl_c_handler)
     print 'waiting for velocity and range data'
-    while not state_estimator.received_twist_data and \
-          not state_estimator.received_range_data:
+    while not state_estimator.received_twist_data and not state_estimator.received_range_data:
         pass
     print 'Publishing State'
 
