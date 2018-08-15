@@ -199,14 +199,14 @@ if __name__ == '__main__':
     # ROS setup
     ###########
     # Initialize the state estimator node
-    rospy.init_node('state_estimator')
+    rospy.init_node('state_estimator_ema')
 
     # Instantiate a PiCameraStateEstimator object
     state_estimator = EMAStateEstimator()
 
     # Publishers
     ############
-    statepub = rospy.Publisher('/pidrone/state', State, queue_size=1, tcp_nodelay=False)
+    statepub = rospy.Publisher('/pidrone/state_ema', State, queue_size=1, tcp_nodelay=False)
 
     # Subscribers
     #############
