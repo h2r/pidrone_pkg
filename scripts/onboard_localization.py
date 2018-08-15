@@ -29,8 +29,6 @@ MAX_BAD_COUNT = -10
 NUM_PARTICLE = 30
 NUM_FEATURES = 200
 
-# TODO publish PoseStamped <- message type to /pidrone/picamera/pose
-
 
 class Localizer(picamera.array.PiMotionAnalysis):
     def __init__(self, camera, bridge):
@@ -52,6 +50,7 @@ class Localizer(picamera.array.PiMotionAnalysis):
 
         # [x, y, z, yaw]
         self.pos = [0, 0, 0, 0]
+        self.posemsg = PoseStamped()
 
         self.angle_x = 0.0
         self.angle_y = 0.0
@@ -59,7 +58,6 @@ class Localizer(picamera.array.PiMotionAnalysis):
         self.z = 0.0
 
         self.first_locate = True
-
         self.locate_position = False
 
         self.prev_img = None
@@ -78,6 +76,7 @@ class Localizer(picamera.array.PiMotionAnalysis):
     def write(self, data):
         curr_img = np.reshape(np.fromstring(data, dtype=np.uint8), (CAMERA_HEIGHT, CAMERA_WIDTH, 3))
         curr_rostime = rospy.Time.now()
+        self.posemsg.header.time = curr_rostime
         curr_time = curr_rostime.to_sec()
 
         # start MCL localization
@@ -90,6 +89,11 @@ class Localizer(picamera.array.PiMotionAnalysis):
                     particle = self.estimator.initialize_particles(NUM_PARTICLE, curr_kp, curr_des)
                     self.first_locate = False
                     self.pos = [particle.x(), particle.y(), particle.z(), particle.yaw()]
+
+                    self.posemsg.pose.position.x, self.posemsg.pose.position.y, self.posemsg.pose.position.z = \
+                        particle.x(), particle.y(), particle.z()
+                    self.posemsg.pose.position.orientation = tf.transformations.quaternion_from_euler(0, 0, self.pos[3])
+                    self.posepub.publish(self.posemsg)
                     print 'first', particle
                 else:
                     particle = self.estimator.update(self.z, self.angle_x, self.angle_y, self.prev_kp, self.prev_des,
@@ -100,6 +104,11 @@ class Localizer(picamera.array.PiMotionAnalysis):
                                 self.hybrid_alpha * particle.y() + (1.0 - self.hybrid_alpha) * self.pos[1],
                                 self.z,
                                 self.alpha_yaw * particle.yaw() + (1.0 - self.alpha_yaw) * self.pos[3]]
+
+                    self.posemsg.pose.position.x, self.posemsg.pose.position.y, self.posemsg.pose.position.z = \
+                        self.pos[0], self.pos[1], self.pos[2]
+                    self.posemsg.pose.position.orientation = tf.transformations.quaternion_from_euler(0, 0, self.pos[3])
+                    self.posepub.publish(self.posemsg)
                     print '--pose', self.pos[0], self.pos[1], self.pos[3]
 
                     # if all particles are not good estimations
