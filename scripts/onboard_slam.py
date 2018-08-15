@@ -264,6 +264,10 @@ def main():
                 camera.stop_recording(splitter_port=1)
                 camera.stop_recording(splitter_port=2)
         print "Shutdown Received"
+
+        # stefie10: avoid calling sys.exit; it's better to return from
+        # main as that way any exit callbacks will get run.  I would
+        # simply delete the following line.
         sys.exit()
     except Exception as e:
         raise

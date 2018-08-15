@@ -1,3 +1,10 @@
+
+# stefie10: I would make this a command line option to the main state
+# estimator class rather than an ascii menu.  I would make each state
+# estimator its own class, and which one is used is instantiated by
+# the option passed into the state estimator node. See the optparse
+# module.
+
 if __name__ == '__main__':
     print 'Select which state estimator you wish to use:\n'
     print '1. Motion Capture'
