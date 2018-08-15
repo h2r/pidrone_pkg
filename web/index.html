@@ -111,6 +111,11 @@
     emptyMsg = new ROSLIB.Message({
      });
 
+    mappub = new ROSLIB.Topic({
+        ros : ros,
+        name : '/pidrone/map',
+        messageType : 'std_msgs/Empty'
+    });
 
     heartbeatPub = new ROSLIB.Topic({
       ros : ros,
@@ -118,10 +123,6 @@
       messageType : 'std_msgs/String'
     });
     heartbeatpubmsg = new ROSLIB.Message({data: "Javascript API"})
-
-
-
-
 
     setInterval(function(){
       heartbeatPub.publish(heartbeatpubmsg);
@@ -328,31 +329,31 @@ for (i = 0; i < irChart.data.datasets[0].data.length; i++) {
 Keyboard Control (with focus in the input box)
 <br/>
 <div class="tooltip">
-<span class="tooltiptext">
-<ul>
-<li>;: Arm</li>
-<li>space bar: Disarm</li>
-<li>t: Takeoff</li>
-<li>a: Yaw left</li>
-<li>d: Yaw right</li>
-<li>w: up</li>
-<li>s: down</li>
-<li>j: left</li>
-<li>l: right</li>
-<li>i: forward</li>
-<li>k: backward</li>
-<li>h: zero velocity</li>
-<li>h: hover</li>
-<li>r: set or reset the image/transform used for position hold</li>
-<li>p: toggle whether to perform position hold or velocity zero</li>
+    <span class="tooltiptext">
+        <ul>
+            <li>;: Arm</li>
+            <li>space bar: Disarm</li>
+            <li>t: Takeoff</li>
+            <li>a: Yaw left</li>
+            <li>d: Yaw right</li>
+            <li>w: up</li>
+            <li>s: down</li>
+            <li>j: left</li>
+            <li>l: right</li>
+            <li>i: forward</li>
+            <li>k: backward</li>
+            <li>h: zero velocity</li>
+            <li>h: hover</li>
+            <li>m: toggle map building</li>
+            <li>r: set or reset the image/transform used for position hold</li>
+            <li>p: toggle whether to perform position hold or velocity zero</li>
+        </ul>
+    </span>
+    <br/>
+    <input type="submit" name="arm" value="Arm" onclick="publishArm()"/>
+    <input type="submit" name="disarm" value="Disarm" onclick="publishDisarm()"/>
 
-</ul>
-</span>
-<br/>
-<input type="submit" name="arm" value="Arm" onclick="publishArm()"/>
-<input type="submit" name="disarm" value="Disarm" onclick="publishDisarm()"/>
-
-<input type="text" name="keyboardCtrl" value="" onkeydown="keyDown()" onkeyup="keyUp()" onkeypress="keyPress()" />
+    <input type="text" name="keyboardCtrl" value="" onkeydown="keyDown()" onkeyup="keyUp()" onkeypress="keyPress()" />
 </div>
 <script type="text/javascript">
 
@@ -491,6 +492,9 @@ function publishYawRight() {
   modepub.publish(modeMsg);
 }
 
+function publishBuildMap() {
+    mappub.publish(emptyMsg);
+}
 
 
 function keyUp() {
@@ -517,6 +521,8 @@ function keyPress() {
     publishTakeoff();
   } else if (char == 'p') {
     publishToggleTransform();
+  } else if (char == 'm') {
+    publishBuildMap();
   }
 
   event.preventDefault();

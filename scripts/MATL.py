@@ -116,7 +116,6 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
             for i in range(1, len(self.map_data)):
                 self.SLAM_estimator.run(self.z_data[i-1], self.map_data[i-1][0], self.map_data[i-1][1], self.map_data[i][0],
                                         self.map_data[i][1])
-
                 # make a nice-looking progress bar
                 percent = int(round(float(i) / denominator, 2) * 100)
                 sys.stdout.write("\rIncorporated %d%% of data into map!" % percent)
