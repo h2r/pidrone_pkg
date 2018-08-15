@@ -32,7 +32,7 @@ class StateEstimation3D(object):
     #       once it is in a complete enough state and can be placed in a shared
     #       location.
     
-    def __init__(self, ir_throttled=False, imu_throttled=False):
+    def __init__(self, ir_throttled=False, imu_throttled=False, optical_flow_throttled=False):
         # self.ready_to_filter is False until we get initial measurements in
         # order to be able to initialize the filter's state vector x and
         # covariance matrix P.
@@ -40,17 +40,20 @@ class StateEstimation3D(object):
         self.ready_to_filter = False
         self.printed_filter_start_notice = False
         self.got_imu = False
-        self.got_optical_flow = False
+        self.got_optical_flow = True
         self.got_ir = False
         
         self.ir_topic_str = '/pidrone/infrared'
         self.imu_topic_str = '/pidrone/imu'
+        self.optical_flow_topic_str = '/pidrone/picamera/twist'
         throttle_suffix = '_throttle'
         
         if ir_throttled:
             self.ir_topic_str += throttle_suffix
         if imu_throttled:
             self.imu_topic_str += throttle_suffix
+        if optical_flow_throttled:
+            self.optical_flow_topic_str += throttle_suffix
         
         self.in_callback = False
         
@@ -85,8 +88,8 @@ class StateEstimation3D(object):
         # Subscribe to topics to which the drone publishes in order to get raw
         # data from sensors, which we can then filter
         rospy.Subscriber(self.imu_topic_str, Imu, self.imu_data_callback)
-        rospy.Subscriber('/pidrone/picamera/twist', TwistStamped,
-                         self.optical_flow_data_callback)
+        # rospy.Subscriber(self.optical_flow_topic_str, TwistStamped,
+        #                  self.optical_flow_data_callback)
         rospy.Subscriber(self.ir_topic_str, Range, self.ir_data_callback)
         # TODO: Include position estimates from camera data from
         #       estimateRigidTransform? Occurs in position hold and
@@ -660,9 +663,12 @@ def main():
                         help=('Use throttled infrared topic /pidrone/infrared_throttle'))
     parser.add_argument('--imu_throttled', action='store_true',
                         help=('Use throttled IMU topic /pidrone/imu_throttle'))
+    parser.add_argument('--optical_flow_throttled', action='store_true',
+                        help=('Use throttled optical flow topic /pidrone/picamera/twist_throttle'))
     args = parser.parse_args()
     se = StateEstimation3D(ir_throttled=args.ir_throttled,
-                         imu_throttled=args.imu_throttled)
+                         imu_throttled=args.imu_throttled,
+                         optical_flow_throttled=args.optical_flow_throttled)
     try:
         # Wait until node is halted
         rospy.spin()

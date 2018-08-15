@@ -461,19 +461,22 @@ class DroneSimulator2D(DroneSimulator):
                                                save_to_csv=save_to_csv,
                                                rate=rate,
                                                dim=2)
-        if self.save_to_csv:
-            self.init_csv_files()
         if self.publish_ros:
             global tf
             import tf
+            
+        self.init_info()
+        self.init_state()
+        self.init_std_devs()
+        
+        if self.save_to_csv:
+            self.init_csv_files()
+        if self.publish_ros:
             global TwistStamped
             from geometry_msgs.msg import TwistStamped
             self.optical_flow_pub = rospy.Publisher('/pidrone/picamera/twist',
                                                     TwistStamped,
                                                     queue_size=1)
-        self.init_info()
-        self.init_state()
-        self.init_std_devs()
         
     def init_info(self):
         '''
@@ -529,62 +532,66 @@ class DroneSimulator2D(DroneSimulator):
         '''
         # State is in the global frame
         # [x (meters), y (meters), yaw (rad), x_vel (m/s), y_vel (m/s), yaw_vel (rad/s)]
-        self.actual_state = [0.5, 0.5, 0.0, 0.0, 0.0, 0.0]
+        self.actual_state = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
         self.actual_accel_global_frame = [0.0, 0.0, 0.0] # m/s^2 along x-, y-, and z-axes (z accel should always be 0)
         # To simulate random real-world disturbances:
         # TODO: Implement this noise (perhaps make the noise optional?)
-        self.actual_accel_std_dev = 0.0001 # m/s^2
+        #self.actual_accel_std_dev = 0.0001 # m/s^2
+        # TEMP: No disturbances in commanded accels
+        self.actual_accel_std_dev = 0 # m/s^2
         self.curr_time = self.start_time
         # Orientation quaternion:
         self.quat = tf.transformations.quaternion_from_euler(0, # roll
                                                              0, # pitch
                                                              0) # yaw
-                           
-    def step_state(self, next_time_pair):
-        '''
-        Perform a time step and update the drone's state
-        '''
-        self.prev_time = self.curr_time
-        self.curr_time = next_time_pair[0] + next_time_pair[1]*1e-9
-        time_step = self.curr_time - self.prev_time
-        # Simulating a near-zero acceleration model
-        self.actual_accel = self.actual_accel_std_dev * randn()
-        self.actual_state[1] += self.actual_accel * time_step
-        self.actual_state[0] += self.actual_state[1] * time_step
-        # Don't allow drone to go below 9 centimeters off of the ground
-        if self.actual_state[0] < 0.09:
-            self.actual_state[0] = 0.09
         
     def init_std_devs(self):
-        self.z_accel_imu_measured_std_dev = 0.001 # meters/second^2
-        # Estimated standard deviation based on IR reading measured variance
-        self.z_pos_ir_measured_std_dev = np.sqrt(2.2221e-05) # meters
-    
-    def take_ir_sample(self):
-        self.z_pos_ir_measurement = self.z_pos_ir_measured_std_dev * randn() + self.actual_state[0]
-        self.ir_info['data_lists']['ir'].append([self.z_pos_ir_measurement])
+        self.imu_x_accel_stddev = 0.05 # meters/second^2
+        self.imu_y_accel_stddev = 0.05 # meters/second^2
+        self.imu_yaw_stddev = 0.02 # radians
+        self.optical_flow_x_vel_stddev = 0.1 # meters/second
+        self.optical_flow_y_vel_stddev = 0.1 # meters/second
+        self.optical_flow_yaw_vel_stddev = 0.1 # radians/second
         
     def take_imu_sample(self):
         '''
         Take a reading of acceleration along the z-axis
         '''
-        self.z_accel_imu_measurement = self.z_accel_imu_measured_std_dev * randn() + self.actual_accel
-        self.imu_info['data_lists']['accel'].append([0.0, 0.0, self.z_accel_imu_measurement])
+        self.x_accel_imu_measurement = self.imu_x_accel_stddev * randn() + self.actual_accel_global_frame[0]
+        self.y_accel_imu_measurement = self.imu_y_accel_stddev * randn() + self.actual_accel_global_frame[1]
+        self.imu_info['data_lists']['accel'].append([self.x_accel_imu_measurement, self.y_accel_imu_measurement, 0.0])
         
-    def publish_ir(self):
+    def take_optical_flow_sample(self):
         '''
-        Publish simulated IR measurements
+        Take a reading of x velocity, y velocity, and yaw velocity from optical
+        flow
         '''
-        range_msg = Range()
-        range_msg.header.stamp = rospy.Time.now()
-        range_msg.range = self.z_pos_ir_measurement
-        self.ir_pub.publish(range_msg)
+        self.x_vel_optical_flow_measurement = self.optical_flow_x_vel_stddev * randn() + self.actual_state[3]
+        self.y_vel_optical_flow_measurement = self.optical_flow_y_vel_stddev * randn() + self.actual_state[4]
+        self.yaw_vel_optical_flow_measurement = self.optical_flow_yaw_vel_stddev * randn() + self.actual_state[5]
+        self.camera_info['data_lists']['camera'].append([
+                                        self.x_vel_optical_flow_measurement,
+                                        self.y_vel_optical_flow_measurement,
+                                        self.yaw_vel_optical_flow_measurement])
         
     def publish_imu(self):
         imu_msg = Imu()
         imu_msg.header.stamp = rospy.Time.now()
-        imu_msg.linear_acceleration.z = self.z_accel_imu_measurement
+        imu_msg.linear_acceleration.x = self.x_accel_imu_measurement
+        imu_msg.linear_acceleration.y = self.y_accel_imu_measurement
+        imu_msg.orientation.x = self.quat[0]
+        imu_msg.orientation.y = self.quat[1]
+        imu_msg.orientation.z = self.quat[2]
+        imu_msg.orientation.w = self.quat[3]
         self.imu_pub.publish(imu_msg)
+        
+    def publish_optical_flow(self):
+        twist_msg = TwistStamped()
+        twist_msg.header.stamp = rospy.Time.now()
+        twist_msg.twist.linear.x = self.x_vel_optical_flow_measurement
+        twist_msg.twist.linear.y = self.y_vel_optical_flow_measurement
+        twist_msg.twist.angular.z = self.yaw_vel_optical_flow_measurement
+        self.optical_flow_pub.publish(twist_msg)
         
     def publish_actual_state(self):
         '''
@@ -630,30 +637,25 @@ class DroneSimulator2D(DroneSimulator):
         self.copy_times_lists()
         self.serialize_times()
         
-        actual_states_list = self.compute_states_from_cmds(time_step=0.03)
+        time_step = 0.1
+        actual_states_list = self.compute_states_from_cmds(time_step=time_step)
         
         # TODO: Implement sensor data generation based on actual_states_list
         # Generate sample data in order of serialized times:
-        # while len(self.serialized_times) > 0:
-        #     next_sample_id, next_time_pair = self.serialized_times.pop(0)
-        #     self.step_state(next_time_pair)
-        #     if self.publish_ros:
-        #         self.publish_actual_state()
-        #     if self.publish_ros and len(self.serialized_times) > 0:
-        #         print 'Duration: {0} / {1}\r'.format(round(self.curr_time-self.start_time, 4), duration),
-        #         t1 = self.serialized_times[0][1][0] + self.serialized_times[0][1][1]*1e-9
-        #         # Naively sleep for a certain amount of time, not taking into
-        #         # account the amount of time required to carry out operations in
-        #         # this loop
-        #         rospy.sleep(self.delay_rate*(t1-self.curr_time))
-        #     if next_sample_id == self.ir_info['id']:
-        #         self.take_ir_sample()
-        #         if self.publish_ros:
-        #             self.publish_ir()
-        #     elif next_sample_id == self.imu_info['id']:
-        #         self.take_imu_sample()
-        #         if self.publish_ros:
-        #             self.publish_imu()
+        while len(self.commanded_times) > 0:
+            next_time = self.commanded_times.pop(0)
+            self.actual_state, self.quat = actual_states_list.pop(0)
+            # For the time being, don't use different data rates. Use a set
+            # data rate defined by the command time steps (non-noisy)
+            self.take_imu_sample()
+            self.take_optical_flow_sample()
+            if self.publish_ros:
+                if len(self.commanded_times) > 0:
+                    print 'Duration: {0} / {1}\r'.format(round(next_time, 2), duration),
+                self.publish_actual_state()
+                self.publish_imu()
+                self.publish_optical_flow()
+                rospy.sleep(self.delay_rate * time_step)
                     
     def yaw_cmd(self, yaw_vel, time_step):
         '''
@@ -695,6 +697,8 @@ class DroneSimulator2D(DroneSimulator):
         # real component (w)
         self.quat_body_to_global = list(self.quat) # copy the quaternion object
         self.quat_body_to_global[3] = -self.quat_body_to_global[3]
+        # Introduce disturbances in body frame accelerations
+        body_frame_accel = [self.actual_accel_std_dev * randn() + a for a in body_frame_accel]
         accel_vector_as_quaternion = list(body_frame_accel)
         accel_vector_as_quaternion.append(0.0) # vector as a quaternion with w=0
         # Apply quaternion rotation on a vector: q*v*q', where q is the rotation
@@ -724,7 +728,7 @@ class DroneSimulator2D(DroneSimulator):
         
     def compute_states_from_cmds(self, time_step=0.1):
         states_list = []
-        states_list.append(list(self.actual_state))
+        states_list.append((list(self.actual_state), list(self.quat)))
         drone_commands = [
             {'duration' : 2,
              'cmds' : [self.translate_body_cmd],
@@ -739,36 +743,27 @@ class DroneSimulator2D(DroneSimulator):
              'cmds' : [self.yaw_cmd, self.translate_body_cmd],
              'args' : [{'yaw_vel' : 0.3}, {'body_frame_accel' : [-0.005, -0.005]}]}
             ]
-        # self.actual_state = [0.8, 0.2, 0.0, 0.0, 0.0, 0.0]
-        # drone_commands = [
-        #     {'duration' : 1,
-        #      'cmds' : [self.translate_body_cmd],
-        #      'args' : [{'body_frame_accel' : [0, 0.5]}]},
-        #     {'duration' : 2,
-        #      'cmds' : [self.translate_body_cmd],
-        #      'args' : [{'body_frame_accel' : [0, -0.5]}]},
-        #     {'duration' : 2,
-        #      'cmds' : [self.translate_body_cmd],
-        #      'args' : [{'body_frame_accel' : [0, 0.5]}]},
+        
+        # self.actual_state[4] = 0.5 # give initial positive y velocity
+        # drone_command_loop = [
         #     {'duration' : 2,
         #      'cmds' : [self.translate_body_cmd],
         #      'args' : [{'body_frame_accel' : [0, -0.5]}]},
         #     {'duration' : 2,
         #      'cmds' : [self.translate_body_cmd],
         #      'args' : [{'body_frame_accel' : [0, 0.5]}]}
-        #     ]
+        # ]
+        # drone_commands = drone_command_loop*20
+        
+        self.commanded_times = []
         for cmd_set in drone_commands:
             time_spent_commanding = 0
             while time_spent_commanding < cmd_set['duration']:
                 for num, cmd in enumerate(cmd_set['cmds']):
                     cmd(time_step=time_step, **cmd_set['args'][num])
-                    states_list.append(list(self.actual_state))
+                states_list.append((list(self.actual_state), list(self.quat)))
                 time_spent_commanding += time_step
-                # TODO: Remove the publishing and sleeping from here and have it
-                #       occur in the data generation loop?
-                if self.publish_ros:
-                    self.publish_actual_state()
-                    rospy.sleep(time_step)
+                self.commanded_times.append(time_spent_commanding)
         return states_list
         
 class DroneSimulator3D(DroneSimulator):

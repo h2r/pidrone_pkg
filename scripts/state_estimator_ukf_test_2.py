@@ -2,7 +2,9 @@
 
 # ROS imports
 import rospy
+import tf
 from sensor_msgs.msg import Imu, Range
+from geometry_msgs.msg import TwistStamped
 from pidrone_pkg.msg import State
 
 # UKF imports
@@ -20,35 +22,35 @@ import numpy as np
 import argparse
 
 
-class StateEstimation1D(object):
+class StateEstimation(object):
     '''
     Class that estimates the state of the drone using an Unscented Kalman Filter
-    (UKF) applied to raw sensor data. The filter only tracks the quadcopter's
-    motion along one dimension: the global frame z-axis. In this simplified
-    case, we assume that the drone's body frame orientation is aligned with the
-    world frame (i.e., no roll, pitch, or yaw), and that it is only offset along
-    the z-axis.
+    (UKF) applied to raw sensor data.
     '''
     # TODO: Make a reference to the UKF math document that is being written up,
     #       once it is in a complete enough state and can be placed in a shared
     #       location.
     
-    def __init__(self, ir_throttled=False, imu_throttled=False):
+    def __init__(self, ir_throttled=False, imu_throttled=False, optical_flow_throttled=False):
         # self.ready_to_filter is False until we get initial measurements in
         # order to be able to initialize the filter's state vector x and
         # covariance matrix P.
         self.ready_to_filter = False
         self.printed_filter_start_notice = False
         self.got_ir = False
+        self.got_optical_flow = False
         
         self.ir_topic_str = '/pidrone/infrared'
         self.imu_topic_str = '/pidrone/imu'
+        self.optical_flow_topic_str = '/pidrone/picamera/twist'
         throttle_suffix = '_throttle'
         
         if ir_throttled:
             self.ir_topic_str += throttle_suffix
         if imu_throttled:
             self.imu_topic_str += throttle_suffix
+        if optical_flow_throttled:
+            self.optical_flow_topic_str += throttle_suffix
             
         self.in_callback = False
 
@@ -62,8 +64,8 @@ class StateEstimation1D(object):
         # when the inputs come in
         self.dt = None
         
-        # Initialize the last control input as 0 m/s^2 along the z-axis
-        self.last_control_input = np.array([0.0])
+        # Initialize the last control input as 0 m/s^2 along each axis
+        self.last_control_input = np.array([0.0, 0.0, 0.0])
         
         self.initialize_ros()
         
@@ -71,7 +73,7 @@ class StateEstimation1D(object):
         '''
         Initialize ROS-related objects, e.g., the node, subscribers, etc.
         '''
-        self.node_name = 'state_estimator_ukf_1d'
+        self.node_name = 'state_estimator_ukf_test_2'
         print 'Initializing {} node...'.format(self.node_name)
         rospy.init_node(self.node_name)
         
@@ -79,6 +81,8 @@ class StateEstimation1D(object):
         # data from sensors, which we can then filter
         rospy.Subscriber(self.imu_topic_str, Imu, self.imu_data_callback)
         rospy.Subscriber(self.ir_topic_str, Range, self.ir_data_callback)
+        rospy.Subscriber(self.optical_flow_topic_str, TwistStamped,
+                         self.optical_flow_data_callback)
         
         # Create the publisher to publish state estimates
         self.state_pub = rospy.Publisher('/pidrone/state', State, queue_size=1,
@@ -91,16 +95,22 @@ class StateEstimation1D(object):
         '''
         
         # Number of state variables being tracked
-        self.state_vector_dim = 2
+        self.state_vector_dim = 6
         # The state vector consists of the following column vector.
         # Note that FilterPy initializes the state vector with zeros.
-        # [[z],
+        # [[x],
+        #  [y],
+        #  [z],
+        #  [x_vel],
+        #  [y_vel],
         #  [z_vel]]
         
         # Number of measurement variables that the drone receives
-        self.measurement_vector_dim = 1
+        self.measurement_vector_dim = 3
         # The measurement variables consist of the following vector:
-        # [[slant_range]]
+        # [[slant_range],
+        #  [x_vel],
+        #  [y_vel]]
         
         # Function to generate sigma points for the UKF
         # TODO: Modify these sigma point parameters appropriately. Currently
@@ -130,17 +140,18 @@ class StateEstimation1D(object):
         # Initialize state covariance matrix P:
         # TODO: Tune these initial values appropriately. Currently these are
         #       just guesses
-        self.ukf.P = np.diag([0.1, 0.2])
+        self.ukf.P = np.diag([0.1, 0.1, 0.1, 0.2, 0.2, 0.2])
         
         # Initialize the process noise covariance matrix Q:
         # TODO: Tune appropriately. Currently just a guess
-        self.ukf.Q = np.diag([0.01, 1.0])*0.005
+        self.ukf.Q = np.diag([0.01, 0.01, 0.01, 1.0, 1.0, 1.0])*0.005
         
         # Initialize the measurement covariance matrix R
         # IR slant range variance (m^2), determined experimentally in a static
         # setup with mean range around 0.335 m:
-        self.ukf.R = np.array([2.2221e-05])
-        
+        self.measurement_cov_ir = np.array([2.2221e-05])
+        self.measurement_cov_optical_flow = np.diag([0.01, 0.01])
+                
     def update_input_time(self, msg):
         '''
         Update the time at which we have received the most recent input, based
@@ -195,7 +206,12 @@ class StateEstimation1D(object):
         if self.in_callback:
             return
         self.in_callback = True
-        self.last_control_input = np.array([data.linear_acceleration.z])
+        self.last_control_input = np.array([data.linear_acceleration.x,
+                                            data.linear_acceleration.y,
+                                            data.linear_acceleration.z])
+        # self.last_control_input = np.array([0.0,
+        #                                     0.0,
+        #                                     data.linear_acceleration.z])
         if self.ready_to_filter:
             # Wait to predict until we get an initial IR measurement to
             # initialize our state vector
@@ -223,29 +239,71 @@ class StateEstimation1D(object):
             # state estimate to the same point in time as the measurement,
             # perform a measurement update with the slant range reading
             measurement_z = np.array([data.range])
-            # print 'Prior:', self.ukf.x
-            # print 'Measurement:', measurement_z[0]
-            self.ukf.update(measurement_z)
-            # print 'Posterior:', self.ukf.x
-            # print 'Kalman Gain:', self.ukf.K
-            # print
+            self.ukf.update(measurement_z,
+                            hx=self.measurement_function_ir,
+                            R=self.measurement_cov_ir)
             self.publish_current_state()
         else:
             self.initialize_input_time(data)
             # Got a raw slant range reading, so update the initial state
             # vector of the UKF
-            self.ukf.x[0] = data.range
-            self.ukf.x[1] = 0.0 # initialize velocity as 0 m/s
+            self.ukf.x[2] = data.range
+            self.ukf.x[5] = 0.0 # initialize velocity as 0 m/s
             # Update the state covariance matrix to reflect estimated
             # measurement error. Variance of the measurement -> variance of
             # the corresponding state variable
-            self.ukf.P[0, 0] = self.ukf.R[0]
+            self.ukf.P[2, 2] = self.measurement_cov_ir[0]
             self.got_ir = True
+            self.check_if_ready_to_filter()
+        self.in_callback = False
+        
+    def optical_flow_data_callback(self, data):
+        '''
+        Handle the receipt of a TwistStamped message from optical flow.
+        The message parts that we will be using:
+            - x velocity (m/s)
+            - y velocity (m/s)
+        
+        This method PREDICTS with the most recent control input and UPDATES.
+        '''
+        if self.in_callback:
+            return
+        self.in_callback = True
+        if self.ready_to_filter:
+            self.print_notice_if_first()
+            self.update_input_time(data)
+            self.ukf_predict()
+            
+            # Now that a prediction has been formed to bring the current prior
+            # state estimate to the same point in time as the measurement,
+            # perform a measurement update with x velocity, y velocity, and yaw
+            # velocity data in the TwistStamped message
+            # TODO: Verify the units of these velocities that are being
+            #       published
+            measurement_z = np.array([data.twist.linear.x,  # x velocity
+                                      data.twist.linear.y]) # y velocity
+            # Ensure that we are using subtraction to compute the residual
+            #self.ukf.residual_z = np.subtract
+            self.ukf.update(measurement_z,
+                            hx=self.measurement_function_optical_flow,
+                            R=self.measurement_cov_optical_flow)
+            self.publish_current_state()
+        else:
+            self.initialize_input_time(data)
+            # Update the initial state vector of the UKF
+            self.ukf.x[3] = data.twist.linear.x # x velocity
+            self.ukf.x[4] = data.twist.linear.y # y velocity
+            # Update the state covariance matrix to reflect estimated
+            # measurement error. Variance of the measurement -> variance of
+            # the corresponding state variable
+            self.ukf.P[3, 3] = self.measurement_cov_optical_flow[0, 0]
+            self.ukf.P[4, 4] = self.measurement_cov_optical_flow[1, 1]
+            self.got_optical_flow = True
             self.check_if_ready_to_filter()
         self.in_callback = False
             
     def check_if_ready_to_filter(self):
-        self.ready_to_filter = self.got_ir
+        self.ready_to_filter = (self.got_ir and self.got_optical_flow)
                         
     def publish_current_state(self):
         '''
@@ -263,29 +321,32 @@ class StateEstimation1D(object):
         state_msg.header.stamp.nsecs = self.last_time_nsecs
         state_msg.header.frame_id = 'global'
         
-        # Get the current state estimate from self.ukf.x
-        state_msg.pose_with_covariance.pose.position.z = self.ukf.x[0]
-        state_msg.twist_with_covariance.twist.linear.z = self.ukf.x[1]
-        
-        # Fill the rest of the message with NaN
-        state_msg.pose_with_covariance.pose.position.x = np.nan
-        state_msg.pose_with_covariance.pose.position.y = np.nan
-        state_msg.pose_with_covariance.pose.orientation.x = np.nan
-        state_msg.pose_with_covariance.pose.orientation.y = np.nan
-        state_msg.pose_with_covariance.pose.orientation.z = np.nan
-        state_msg.pose_with_covariance.pose.orientation.w = np.nan
-        state_msg.twist_with_covariance.twist.linear.x = np.nan
-        state_msg.twist_with_covariance.twist.linear.y = np.nan
+        # Get the current state estimate from self.ukf.x, and fill the rest of
+        # the message with NaN
+        state_msg.pose_with_covariance.pose.position.x = self.ukf.x[0]
+        state_msg.pose_with_covariance.pose.position.y = self.ukf.x[1]
+        state_msg.pose_with_covariance.pose.position.z = self.ukf.x[2]
+        # TODO: Leave commented if JS interface Top View animation is desired
+        # state_msg.pose_with_covariance.pose.orientation.x = np.nan
+        # state_msg.pose_with_covariance.pose.orientation.y = np.nan
+        # state_msg.pose_with_covariance.pose.orientation.z = np.nan
+        # state_msg.pose_with_covariance.pose.orientation.w = np.nan
+        # TODO: Leave following line if JS interface Top View animation is desired
+        state_msg.pose_with_covariance.pose.orientation.w = 1
+        state_msg.twist_with_covariance.twist.linear.x = self.ukf.x[3]
+        state_msg.twist_with_covariance.twist.linear.y = self.ukf.x[4]
+        state_msg.twist_with_covariance.twist.linear.z = self.ukf.x[5]
         state_msg.twist_with_covariance.twist.angular.x = np.nan
         state_msg.twist_with_covariance.twist.angular.y = np.nan
         state_msg.twist_with_covariance.twist.angular.z = np.nan
         
         # Prepare covariance matrices
+        # TODO: Finish populating these matrices, if deemed necessary
         # 36-element array, in a row-major order, according to ROS msg docs
         pose_cov_mat = np.full((36,), np.nan)
         twist_cov_mat = np.full((36,), np.nan)
-        pose_cov_mat[14] = self.ukf.P[0, 0] # z variance
-        twist_cov_mat[14] = self.ukf.P[1, 1] # z velocity variance
+        pose_cov_mat[14] = self.ukf.P[2, 2] # z variance
+        twist_cov_mat[14] = self.ukf.P[5, 5] # z velocity variance
         
         # Add covariances to message
         state_msg.pose_with_covariance.covariance = pose_cov_mat
@@ -302,16 +363,13 @@ class StateEstimation1D(object):
         dt : time step. A float
         u : control input. A NumPy array
         '''
-        # State transition matrix F
-        F = np.array([[1, dt],
-                      [0, 1]])
-        # Integrate control input acceleration to get a change in velocity
-        change_from_control_input = np.array([0,
-                                              u[0]*dt])
-        # change_from_control_input = np.array([0.5*u[0]*(dt**2.0),
-        #                                       u[0]*dt])
-        x_output = np.dot(F, x) + change_from_control_input
-        return x_output
+        dt2 = dt**2.0
+        return x + np.array([x[3]*dt + 0.5*u[0]*dt2,
+                             x[4]*dt + 0.5*u[1]*dt2,
+                             x[5]*dt + 0.5*u[2]*dt2,
+                             u[0]*dt,
+                             u[1]*dt,
+                             u[2]*dt])
         
     def measurement_function(self, x):
         '''
@@ -321,24 +379,30 @@ class StateEstimation1D(object):
         
         x : current state. A NumPy array
         '''
-        # Measurement update matrix H
-        H = np.array([[1, 0]])
-        hx_output = np.dot(H, x)
-        return hx_output
+        pass
+        
+    def measurement_function_ir(self, x):
+        return np.array([x[2]])
+        
+    def measurement_function_optical_flow(self, x):
+        return np.array([x[3], x[4]])
         
         
 def main():
     parser = argparse.ArgumentParser(description=('Estimate the drone\'s state '
-                                     'with a UKF in one spatial dimension'))
+                                     'with a UKF'))
     # Arguments to determine if the throttle command is being used. E.g.:
     #   rosrun topic_tools throttle messages /pidrone/infrared 40.0
     parser.add_argument('--ir_throttled', action='store_true',
             help=('Use throttled infrared topic /pidrone/infrared_throttle'))
     parser.add_argument('--imu_throttled', action='store_true',
             help=('Use throttled IMU topic /pidrone/imu_throttle'))
+    parser.add_argument('--optical_flow_throttled', action='store_true',
+                        help=('Use throttled optical flow topic /pidrone/picamera/twist_throttle'))
     args = parser.parse_args()
-    se = StateEstimation1D(ir_throttled=args.ir_throttled,
-                         imu_throttled=args.imu_throttled)
+    se = StateEstimation(ir_throttled=args.ir_throttled,
+                         imu_throttled=args.imu_throttled,
+                         optical_flow_throttled=args.optical_flow_throttled)
     try:
         # Wait until node is halted
         rospy.spin()

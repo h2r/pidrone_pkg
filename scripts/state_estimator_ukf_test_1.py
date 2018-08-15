@@ -2,6 +2,7 @@
 
 # ROS imports
 import rospy
+import tf
 from sensor_msgs.msg import Imu, Range
 from pidrone_pkg.msg import State
 
@@ -20,14 +21,10 @@ import numpy as np
 import argparse
 
 
-class StateEstimation1D(object):
+class StateEstimation(object):
     '''
     Class that estimates the state of the drone using an Unscented Kalman Filter
-    (UKF) applied to raw sensor data. The filter only tracks the quadcopter's
-    motion along one dimension: the global frame z-axis. In this simplified
-    case, we assume that the drone's body frame orientation is aligned with the
-    world frame (i.e., no roll, pitch, or yaw), and that it is only offset along
-    the z-axis.
+    (UKF) applied to raw sensor data.
     '''
     # TODO: Make a reference to the UKF math document that is being written up,
     #       once it is in a complete enough state and can be placed in a shared
@@ -62,8 +59,9 @@ class StateEstimation1D(object):
         # when the inputs come in
         self.dt = None
         
-        # Initialize the last control input as 0 m/s^2 along the z-axis
-        self.last_control_input = np.array([0.0])
+        # Initialize the last control input as 0 m/s^2 along the z-axis and 0
+        # radians of roll and pitch
+        self.last_control_input = np.array([0.0, 0.0, 0.0])
         
         self.initialize_ros()
         
@@ -71,7 +69,7 @@ class StateEstimation1D(object):
         '''
         Initialize ROS-related objects, e.g., the node, subscribers, etc.
         '''
-        self.node_name = 'state_estimator_ukf_1d'
+        self.node_name = 'state_estimator_ukf_test_1'
         print 'Initializing {} node...'.format(self.node_name)
         rospy.init_node(self.node_name)
         
@@ -91,11 +89,13 @@ class StateEstimation1D(object):
         '''
         
         # Number of state variables being tracked
-        self.state_vector_dim = 2
+        self.state_vector_dim = 4
         # The state vector consists of the following column vector.
         # Note that FilterPy initializes the state vector with zeros.
         # [[z],
-        #  [z_vel]]
+        #  [z_vel],
+        #  [roll],
+        #  [pitch]]
         
         # Number of measurement variables that the drone receives
         self.measurement_vector_dim = 1
@@ -130,11 +130,11 @@ class StateEstimation1D(object):
         # Initialize state covariance matrix P:
         # TODO: Tune these initial values appropriately. Currently these are
         #       just guesses
-        self.ukf.P = np.diag([0.1, 0.2])
+        self.ukf.P = np.diag([0.1, 0.2, 0.01, 0.01])
         
         # Initialize the process noise covariance matrix Q:
         # TODO: Tune appropriately. Currently just a guess
-        self.ukf.Q = np.diag([0.01, 1.0])*0.005
+        self.ukf.Q = np.diag([0.01, 1.0, 0.0001, 0.0001])*0.005
         
         # Initialize the measurement covariance matrix R
         # IR slant range variance (m^2), determined experimentally in a static
@@ -195,7 +195,16 @@ class StateEstimation1D(object):
         if self.in_callback:
             return
         self.in_callback = True
-        self.last_control_input = np.array([data.linear_acceleration.z])
+        euler_angles = tf.transformations.euler_from_quaternion(
+                                                           [data.orientation.x,
+                                                            data.orientation.y,
+                                                            data.orientation.z,
+                                                            data.orientation.w])
+        roll = euler_angles[0]
+        pitch = euler_angles[1]
+        self.last_control_input = np.array([data.linear_acceleration.z,
+                                            roll,
+                                            pitch])
         if self.ready_to_filter:
             # Wait to predict until we get an initial IR measurement to
             # initialize our state vector
@@ -246,6 +255,11 @@ class StateEstimation1D(object):
             
     def check_if_ready_to_filter(self):
         self.ready_to_filter = self.got_ir
+        
+    def get_quaternion_from_roll_pitch(self, roll, pitch):
+        return tf.transformations.quaternion_from_euler(roll,
+                                                        pitch,
+                                                        0.0)
                         
     def publish_current_state(self):
         '''
@@ -267,13 +281,15 @@ class StateEstimation1D(object):
         state_msg.pose_with_covariance.pose.position.z = self.ukf.x[0]
         state_msg.twist_with_covariance.twist.linear.z = self.ukf.x[1]
         
+        x,y,z,w = self.get_quaternion_from_roll_pitch(self.ukf.x[2], self.ukf.x[3])
+        
         # Fill the rest of the message with NaN
         state_msg.pose_with_covariance.pose.position.x = np.nan
         state_msg.pose_with_covariance.pose.position.y = np.nan
-        state_msg.pose_with_covariance.pose.orientation.x = np.nan
-        state_msg.pose_with_covariance.pose.orientation.y = np.nan
-        state_msg.pose_with_covariance.pose.orientation.z = np.nan
-        state_msg.pose_with_covariance.pose.orientation.w = np.nan
+        state_msg.pose_with_covariance.pose.orientation.x = x
+        state_msg.pose_with_covariance.pose.orientation.y = y
+        state_msg.pose_with_covariance.pose.orientation.z = z
+        state_msg.pose_with_covariance.pose.orientation.w = w
         state_msg.twist_with_covariance.twist.linear.x = np.nan
         state_msg.twist_with_covariance.twist.linear.y = np.nan
         state_msg.twist_with_covariance.twist.angular.x = np.nan
@@ -281,6 +297,7 @@ class StateEstimation1D(object):
         state_msg.twist_with_covariance.twist.angular.z = np.nan
         
         # Prepare covariance matrices
+        # TODO: Finish populating these matrices, if deemed necessary
         # 36-element array, in a row-major order, according to ROS msg docs
         pose_cov_mat = np.full((36,), np.nan)
         twist_cov_mat = np.full((36,), np.nan)
@@ -291,6 +308,7 @@ class StateEstimation1D(object):
         state_msg.pose_with_covariance.covariance = pose_cov_mat
         state_msg.twist_with_covariance.covariance = twist_cov_mat
         
+        print self.ukf.x
         self.state_pub.publish(state_msg)
 
     def state_transition_function(self, x, dt, u):
@@ -302,16 +320,10 @@ class StateEstimation1D(object):
         dt : time step. A float
         u : control input. A NumPy array
         '''
-        # State transition matrix F
-        F = np.array([[1, dt],
-                      [0, 1]])
-        # Integrate control input acceleration to get a change in velocity
-        change_from_control_input = np.array([0,
-                                              u[0]*dt])
-        # change_from_control_input = np.array([0.5*u[0]*(dt**2.0),
-        #                                       u[0]*dt])
-        x_output = np.dot(F, x) + change_from_control_input
-        return x_output
+        return np.array([x[0] + x[1]*dt,
+                         x[1] + u[0]*np.cos(u[1])*np.cos(u[2]),
+                         u[1],
+                         u[2]])
         
     def measurement_function(self, x):
         '''
@@ -322,14 +334,14 @@ class StateEstimation1D(object):
         x : current state. A NumPy array
         '''
         # Measurement update matrix H
-        H = np.array([[1, 0]])
+        H = np.array([[1.0/(np.cos(x[2])*np.cos(x[3])), 0, 0, 0]])
         hx_output = np.dot(H, x)
         return hx_output
         
         
 def main():
     parser = argparse.ArgumentParser(description=('Estimate the drone\'s state '
-                                     'with a UKF in one spatial dimension'))
+                                     'with a UKF'))
     # Arguments to determine if the throttle command is being used. E.g.:
     #   rosrun topic_tools throttle messages /pidrone/infrared 40.0
     parser.add_argument('--ir_throttled', action='store_true',
@@ -337,7 +349,7 @@ def main():
     parser.add_argument('--imu_throttled', action='store_true',
             help=('Use throttled IMU topic /pidrone/imu_throttle'))
     args = parser.parse_args()
-    se = StateEstimation1D(ir_throttled=args.ir_throttled,
+    se = StateEstimation(ir_throttled=args.ir_throttled,
                          imu_throttled=args.imu_throttled)
     try:
         # Wait until node is halted
