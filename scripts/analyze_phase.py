@@ -3,13 +3,11 @@ import cv2
 import rospy
 import picamera
 import numpy as np
-from pidrone_pkg.msg import State
 from geometry_msgs.msg import Pose
 from std_msgs.msg import Empty, Bool
 
 
-
-class AnalyzePose(picamera.array.PiMotionAnalysis):
+class AnalyzePhase(picamera.array.PiMotionAnalysis):
     """
     A class that uses OpenCV's estimateRigidTransform method to calculate
     the change in position of the drone.
@@ -23,10 +21,9 @@ class AnalyzePose(picamera.array.PiMotionAnalysis):
     Subscribers:
     /pidrone/reset_transform
     /pidrone/position_control
-    /pidrone/state
     """
 
-    def setup(self, camera_wh):
+    def setup(self):
 
         # initialize the Pose data
         self.pose = Pose()
@@ -47,7 +44,7 @@ class AnalyzePose(picamera.array.PiMotionAnalysis):
         ###########
         # Publisher
         self.posepub = rospy.Publisher('/pidrone/picamera/pose', Pose, queue_size=1)
-        self.transforming_on_first_image_pub = rospy.Publisher('/pidrone/picamera/transforming_on_first_image', Bool, queue_size=1, latch = True)
+        self.transforming_on_first_image_pub = rospy.Publisher('/pidrone/picamera/transforming_on_first_image', Bool, queue_size=1, latch=True)
         # Subscribers
         rospy.Subscriber("/pidrone/reset_transform", Empty, self.reset_callback)
         rospy.Subscriber("/pidrone/position_control", Bool, self.position_control_callback)
@@ -132,7 +129,7 @@ class AnalyzePose(picamera.array.PiMotionAnalysis):
         return translation_x_y, yaw
 
     # subscribe /pidrone/reset_transform
-    def reset_callback(self, msg=Empty()):
+    def reset_callback(self, msg):
         """ Reset the current position and orientation """
         print "Resetting Phase"
 

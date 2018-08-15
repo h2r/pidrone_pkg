@@ -1,35 +1,41 @@
 import sys
 import rospy
 import picamera
-from analyze_twist import AnalyzeTwist
-from analyze_pose import AnalyzePose
+from analyze_flow import AnalyzeFlow
+from analyze_phase import AnalyzePhase
+
 
 def main():
     ''' Start a ros node and start the twist and pose analyzers '''
     rospy.init_node('camera_controller')
-    print 'Vision started'
+
+    print "Vision started"
+
     try:
         with picamera.PiCamera(framerate=90) as camera:
             camera.resolution = (320, 240)
-            with AnalyzePose(camera) as pose_analyzer:
-                with AnalyzeTwist(camera) as twist_analyzer:
+            with AnalyzePhase(camera) as phase_analyzer:
+                with AnalyzeFlow(camera) as flow_analyzer:
                     # run the setup functions for each of the image callback classes
-                    twist_analyzer.setup(camera.resolution)
-                    pose_analyzer.setup(camera.resolution)
+                    flow_analyzer.setup(camera.resolution)
+                    phase_analyzer.setup()
                     # start the recordings for the image and the motion vectors
-                    camera.start_recording("/dev/null", format='h264', splitter_port=1, motion_output=twist_analyzer)
-                    camera.start_recording(pose_analyzer, format='bgr', splitter_port=2)
-                     # nonblocking wait
-                    while not rospy.is_shutdown(): camera.wait_recording(1/100.0)
+                    camera.start_recording("/dev/null", format='h264', splitter_port=1, motion_output=flow_analyzer)
+                    camera.start_recording(phase_analyzer, format='bgr', splitter_port=2)
+                    # nonblocking wait
+                    while not rospy.is_shutdown():
+                        camera.wait_recording(1/100.0)
 
                 camera.stop_recording(splitter_port=1)  # stop recording both the flow
             camera.stop_recording(splitter_port=2)      # and the images
 
-        print "Shutdown Recieved"
+        print "Shutdown Received"
         sys.exit()
 
     except Exception as e:
+        print "Camera Error!"
         raise
+
 
 if __name__ == '__main__':
     main()
