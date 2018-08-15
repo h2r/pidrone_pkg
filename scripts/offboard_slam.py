@@ -1,28 +1,25 @@
 """""
 offboard_slam.py
 
-Runs fastSLAM for the pidrone off board, on the pi run 'image_pub.py'
+Runs fastSLAM for the pidrone off board, on the pi run 'vision_offboard.py'
 """""
 
 import numpy as np
 import cv2
-from pidrone_pkg.msg import Mode
 from sensor_msgs.msg import Image, Range
 from std_msgs.msg import Empty
+from pidrone_pkg.msg import State
 import rospy
 import tf
 from cv_bridge import CvBridge
-from pid_class import PIDaxis
 from geometry_msgs.msg import PoseStamped
-from slam_helper import FastSLAM, PROB_THRESHOLD
-import math
+from slam_helper import FastSLAM
 
 
 CAMERA_WIDTH = 320
 CAMERA_HEIGHT = 240
 # assume a pixel in x and y has the same length
 CAMERA_CENTER = np.float32([(CAMERA_WIDTH - 1) / 2., (CAMERA_HEIGHT - 1) / 2.]).reshape(-1, 1, 2)
-MAX_BAD_COUNT = -100
 NUM_PARTICLE = 20
 NUM_FEATURES = 50
 
@@ -127,8 +124,7 @@ class AnalyzePhase:
                               "world")
 
     def state_callback(self, data):
-        # TODO COMMENT
-        """update z when '/pidrone/infrared' is published to"""
+        """ update z, angle x, and angle y data when /pidrone/state is published to """
         self.z = data.pose_with_covariance.pose.position.z
         self.angle_x = data.twist_with_covariance.twist.angular.x
         self.angle_y = data.twist_with_covariance.twist.angular.y
@@ -141,11 +137,12 @@ class AnalyzePhase:
 
 
 def main():
-    rospy.init_node('camera_off_board')
+    rospy.init_node('localization')
 
     phase_analyzer = AnalyzePhase()
     rospy.Subscriber("/pidrone/reset_transform", Empty, phase_analyzer.reset_callback)
     rospy.Subscriber('/pidrone/picamera/image_raw', Image, phase_analyzer.image_callback)
+    rospy.Subscriber('/pidrone/state', State, phase_analyzer.state_callback)
 
     print "Start"
 

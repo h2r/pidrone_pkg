@@ -9,9 +9,7 @@ import picamera
 import picamera.array
 import cv2
 from geometry_msgs.msg import PoseStamped
-from pidrone_pkg.msg import State
 from sensor_msgs.msg import Image, Range, CameraInfo
-from std_msgs.msg import Empty
 import rospy
 import tf
 from slam_helper import FastSLAM
@@ -22,7 +20,6 @@ CAMERA_HEIGHT = 240
 CAMERA_CENTER = np.float32([(CAMERA_WIDTH - 1) / 2., (CAMERA_HEIGHT - 1) / 2.]).reshape(-1, 1, 2)
 
 # ---------- SLAM parameters ----------- #
-MAX_BAD_COUNT = -100
 NUM_PARTICLE = 7
 NUM_FEATURES = 30
 
@@ -35,7 +32,7 @@ class SLAM(picamera.array.PiMotionAnalysis):
         self.br = tf.TransformBroadcaster()
 
         # setup publishers
-        self.pospub = rospy.Publisher('/pidrone/set_mode_vel', Mode, queue_size=1)
+        self.posepub = rospy.Publisher('/pidrone/picamera/pose', PoseStamped, queue_size=1)
         self.first_image_pub = rospy.Publisher("/pidrone/picamera/first_image", Image, queue_size=1, latch=True)
 
         self.detector = cv2.ORB(nfeatures=NUM_FEATURES, scoreType=cv2.ORB_FAST_SCORE)
@@ -130,8 +127,7 @@ class SLAM(picamera.array.PiMotionAnalysis):
                               "world")
 
     def state_callback(self, data):
-        # TODO COMMENT
-        """update z when '/pidrone/infrared' is published to"""
+        """ update z, angle x, and angle y data when /pidrone/state is published to """
         self.z = data.pose_with_covariance.pose.position.z
         self.angle_x = data.twist_with_covariance.twist.angular.x
         self.angle_y = data.twist_with_covariance.twist.angular.y

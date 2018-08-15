@@ -1,7 +1,7 @@
 """
 vision_localization.py
 
-Run this file for SLAM
+This file can run SLAM or localization on board
 """
 
 
@@ -13,10 +13,11 @@ import camera_info_manager
 import rospy
 from sensor_msgs.msg import Image, Range, CameraInfo
 from analyze_flow import AnalyzeFlow
+from std_msgs.msg import Empty
+from pidrone_pkg.msg import State
 
 # So the default mode is localization onboard
 DoSLAM = False
-DoOffboard = False
 
 
 def main():
@@ -37,10 +38,12 @@ def main():
             camera.resolution = (CAMERA_WIDTH, CAMERA_HEIGHT)
             with AnalyzeFlow(camera) as flow_analyzer:
                 flow_analyzer.setup(camera.resolution)
+
                 if DoSLAM:
                     phase_analyzer = SLAM(camera, bridge)
                 else:
                     phase_analyzer = Localizer(camera, bridge)
+
                 rospy.Subscriber('/pidrone/reset_transform', Empty, phase_analyzer.reset_callback)
                 rospy.Subscriber('/pidrone/state', State, phase_analyzer.state_callback)
 

@@ -1,7 +1,7 @@
 """
 localization.py
 
-runs localization for the PiDrone
+runs localization for the PiDrone, helper code located in localization_helper
 """
 
 import numpy as np
@@ -9,9 +9,7 @@ import picamera
 import picamera.array
 import cv2
 from geometry_msgs.msg import PoseStamped
-from pidrone_pkg.msg import State
 from sensor_msgs.msg import Image, Range, CameraInfo
-from std_msgs.msg import Empty
 import rospy
 import tf
 from localization_helper import LocalizationParticleFilter, create_map, PROB_THRESHOLD
@@ -159,8 +157,7 @@ class Localizer(picamera.array.PiMotionAnalysis):
                               "world")
 
     def state_callback(self, data):
-        # TODO COMMENT
-        """update z when '/pidrone/infrared' is published to"""
+        """ update z, angle x, and angle y data when /pidrone/state is published to """
         self.z = data.pose_with_covariance.pose.position.z
         self.angle_x = data.twist_with_covariance.twist.angular.x
         self.angle_y = data.twist_with_covariance.twist.angular.y

@@ -12,9 +12,8 @@ from std_msgs.msg import Empty
 import rospy
 import tf
 from cv_bridge import CvBridge, CvBridgeError
-import sys
-from pid_class import PIDaxis
-from geometry_msgs.msg import TwistStamped
+from geometry_msgs.msg import PoseStamped
+from pidrone_pkg.msg import State
 from localization_helper import LocalizationParticleFilter, create_map, PROB_THRESHOLD
 
 # ---------- map parameters ----------- #
@@ -44,11 +43,8 @@ class AnalyzePhase:
         self.bridge = CvBridge()
         self.br = tf.TransformBroadcaster()
 
-        self.pospub = rospy.Publisher('/pidrone/set_mode_vel', Mode, queue_size=1)
+        self.posepub = rospy.Publisher('/pidrone/picamera/pose', PoseStamped, queue_size=1)
         self.first_image_pub = rospy.Publisher("/pidrone/picamera/first_image", Image, queue_size=1, latch=True)
-
-        self.lr_pid = PIDaxis(10.0, 0.000, 0.0, midpoint=0, control_range=(-5.0, 5.0))
-        self.fb_pid = PIDaxis(10.0, 0.000, 0.0, midpoint=0, control_range=(-5.0, 5.0))
 
         self.detector = cv2.ORB(nfeatures=NUM_FEATURES, scoreType=cv2.ORB_FAST_SCORE)
         map_grid_kp, map_grid_des = create_map('map.jpg')
@@ -56,7 +52,7 @@ class AnalyzePhase:
 
         # [x, y, z, yaw]
         self.pos = [0, 0, 0, 0]
-        self.target_pos = [0, 0, 0, 0]
+        self.posemsg = PoseStamped()
 
         self.angle_x = 0.0
         self.angle_y = 0.0
@@ -64,10 +60,7 @@ class AnalyzePhase:
         self.z = 0.0
 
         self.first_locate = True
-        self.first_hold = True
-
         self.locate_position = False
-        self.hold_position = False
 
         self.prev_img = None
         self.prev_kp = None
@@ -78,9 +71,6 @@ class AnalyzePhase:
         self.map_counter = 0
         self.max_map_counter = 0
 
-        self.mode = Mode()
-        self.mode.mode = 5
-
         # constant
         self.alpha_yaw = 0.1  # perceived yaw smoothing alpha
         self.hybrid_alpha = 0.3  # blend position with first frame and int
@@ -88,6 +78,7 @@ class AnalyzePhase:
     def image_callback(self, data):
         curr_img = self.bridge.imgmsg_to_cv2(data, desired_encoding="passthrough")
         curr_rostime = rospy.Time.now()
+        self.posemsg.header.stamp = curr_rostime
         curr_time = curr_rostime.to_sec()
 
         # start MCL localization
@@ -100,6 +91,17 @@ class AnalyzePhase:
                     particle = self.estimator.initialize_particles(NUM_PARTICLE, curr_kp, curr_des)
                     self.first_locate = False
                     self.pos = [particle.x(), particle.y(), particle.z(), particle.yaw()]
+
+                    self.posemsg.pose.position.x = particle.x()
+                    self.posemsg.pose.position.y = particle.y()
+                    self.posemsg.pose.position.z = particle.z()
+                    x, y, z, w = tf.transformations.quaternion_from_euler(0, 0, self.pos[3])
+
+                    self.posemsg.pose.orientation.x = x
+                    self.posemsg.pose.orientation.y = y
+                    self.posemsg.pose.orientation.z = z
+                    self.posemsg.pose.orientation.w = w
+
                     print 'first', particle
                 else:
                     particle = self.estimator.update(self.z, self.angle_x, self.angle_y, self.prev_kp, self.prev_des,
@@ -110,9 +112,21 @@ class AnalyzePhase:
                                 self.hybrid_alpha * particle.y() + (1.0 - self.hybrid_alpha) * self.pos[1],
                                 self.z,
                                 self.alpha_yaw * particle.yaw() + (1.0 - self.alpha_yaw) * self.pos[3]]
+
+                    self.posemsg.pose.position.x = self.pos[0]
+                    self.posemsg.pose.position.y = self.pos[1]
+                    self.posemsg.pose.position.z = self.pos[2]
+                    x, y, z, w = tf.transformations.quaternion_from_euler(0, 0, self.pos[3])
+
+                    self.posemsg.pose.orientation.x = x
+                    self.posemsg.pose.orientation.y = y
+                    self.posemsg.pose.orientation.z = z
+                    self.posemsg.pose.orientation.w = w
+                    self.posepub.publish(self.posemsg)
+
                     print '--pose', self.pos[0], self.pos[1], self.pos[3]
 
-                    # if average particle weight is close to initial weight
+                    # if all particles are not good estimations
                     if is_almost_equal(particle.weight(), PROB_THRESHOLD):
                         self.map_counter = self.map_counter - 1
                     elif self.map_counter <= 0:
@@ -123,29 +137,8 @@ class AnalyzePhase:
                     # if it's been a while without a significant average weight
                     if self.map_counter < MAX_BAD_COUNT:
                         self.first_locate = True
-                        self.fb_pid._i = 0
-                        self.lr_pid._i = 0
                         self.map_counter = 0
-                        self.mode.x_velocity = 0
-                        self.mode.y_velocity = 0
-                        self.mode.yaw_velocity = 0
-                        self.pospub.publish(self.mode)
                         print 'Restart localization'
-                    else:
-                        if self.hold_position:
-                            if self.first_hold:
-                                self.target_pos = self.pos
-                                self.first_hold = False
-                                image_message = self.bridge.cv2_to_imgmsg(curr_img, encoding="bgr8")
-                                self.first_image_pub.publish(image_message)
-                            else:
-                                err_x = self.target_pos[0] - self.pos[0]
-                                err_y = self.target_pos[1] - self.pos[1]
-                                self.mode.x_velocity = self.lr_pid.step(err_x, curr_time - self.prev_time)
-                                self.mode.y_velocity = self.fb_pid.step(err_y, curr_time - self.prev_time)
-                                self.mode.yaw_velocity = 0
-                                self.pospub.publish(self.mode)
-                            print '--target', self.target_pos[0], self.target_pos[1], self.target_pos[3]
 
                     print 'count', self.map_counter
             else:
@@ -163,44 +156,18 @@ class AnalyzePhase:
                               "base",
                               "world")
 
-    def angle_callback(self, data):
-        """update angle data when '/pidrone/angle' is published to"""
-        self.angle_x = data.twist.angular.x
-        self.angle_y = data.twist.angular.y
-
-    def range_callback(self, data):
-        """update z when '/pidrone/infrared' is published to"""
-        if data.range != -1:
-            self.z = data.range
+    def state_callback(self, data):
+        """ update z, angle x, and angle y data when /pidrone/state is published to """
+        self.z = data.pose_with_covariance.pose.position.z
+        self.angle_x = data.twist_with_covariance.twist.angular.x
+        self.angle_y = data.twist_with_covariance.twist.angular.y
 
     def reset_callback(self, data):
         """start localization when '/pidrone/reset_transform' is published to (press 'r')"""
         print "Start localization"
-        self.locate_position = True
         self.first_locate = True
-        self.hold_position = False
         self.map_counter = 0
         self.max_map_counter = 0
-
-    def toggle_callback(self, data):
-        """toggle position hold when '/pidrone/toggle_transform' is published to (press 'p')"""
-        self.hold_position = not self.hold_position
-        self.first_hold = True
-        self.fb_pid._i = 0
-        self.lr_pid._i = 0
-        print "Position hold", "enabled." if self.hold_position else "disabled."
-
-    def mode_callback(self, data):
-        """called whenever '/pidrone/set_mode' is published to, velocity mode is default"""
-        self.mode.mode = data.mode
-        if not self.hold_position or data.mode == 4 or data.mode == 3:
-            print "VELOCITY"
-            data.z_velocity = data.z_velocity * 100
-            self.pospub.publish(data)
-        else:
-            self.target_pos[0] += data.x_velocity / 100.
-            self.target_pos[1] += data.y_velocity / 100.
-            print "Target position", self.target_pos
 
 
 def is_almost_equal(x, y):
@@ -210,16 +177,11 @@ def is_almost_equal(x, y):
 
 def main():
     rospy.init_node('localization')
-    
-    phase_analyzer = AnalyzePhase()
 
-    # bind method calls to subscribed topics
-    rospy.Subscriber("/pidrone/set_mode", Mode, phase_analyzer.mode_callback)
+    phase_analyzer = AnalyzePhase()
     rospy.Subscriber("/pidrone/reset_transform", Empty, phase_analyzer.reset_callback)
-    rospy.Subscriber("/pidrone/toggle_transform", Empty, phase_analyzer.toggle_callback)
-    rospy.Subscriber("/pidrone/infrared", Range, phase_analyzer.range_callback)
-    rospy.Subscriber('/pidrone/angle', TwistStamped, phase_analyzer.angle_callback)
     rospy.Subscriber('/pidrone/picamera/image_raw', Image, phase_analyzer.image_callback)
+    rospy.Subscriber('/pidrone/state', State, phase_analyzer.state_callback)
 
     print "Start"
 
