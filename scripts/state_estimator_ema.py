@@ -6,8 +6,9 @@ import signal
 import numpy as np
 from pidrone_pkg.msg import State
 from sensor_msgs.msg import Range, Imu
-from geometry_msgs.msg import Pose, Twist
+from geometry_msgs.msg import PoseStamped, TwistStamped
 from std_msgs.msg import Header, Bool, Empty
+
 
 class EMAStateEstimator(object):
     ''' A class that subscribes to data from the picamera that is published by
@@ -44,6 +45,11 @@ class EMAStateEstimator(object):
         # image in sight
         self.analyze_pose_is_transforming_on_first_image = False
 
+        # angle compensation values (to account for tilt of drone)
+        self.mw_angle_comp_x = 0
+        self.mw_angle_comp_y = 0
+        self.mw_angle_coeff = 0.2
+
 
     # ROS Subscriber Callback Methods:
     ##################################
@@ -52,10 +58,10 @@ class EMAStateEstimator(object):
         Does not alter the angular velocities because these are set by imu
         """
         # update the header stamp
-        self.state.header.stamp = rospy.Time.now()
+        self.state.header.stamp = data.header.stamp
         # update linear twist data
-        self.state.twist_with_covariance.twist.linear = data.linear
-        # self.filter_twist(data)
+#TODO TEST
+        self.filter_twist(data.twist)
         # update that data has been recieved
         self.received_twist_data = True
 
@@ -73,9 +79,9 @@ class EMAStateEstimator(object):
         by analyze_pose
         """
         # update the header stamp
-        self.state.header.stamp = rospy.Time.now()
+        self.state.header.stamp = data.header.stamp
         # update the pose data
-        self.filter_pose(data)
+        self.filter_pose(data.pose)
 
     def range_callback(self, data):
         """ Update the z-position of the drone """
@@ -125,14 +131,19 @@ class EMAStateEstimator(object):
 
     def filter_twist(self, twist):
         """ Run an ema filter on the velocity data and update the state velocity """
+        # current position of the drone
+        altitude = self.state.pose_with_covariance.pose.position.z
         # measured planar velocities of the drone
         new_vel = twist.linear
         # the current planar velocities of the drone
         velocity = self.state.twist_with_covariance.twist.linear
+        # update the angular velocity coefficients to account for the angular
+        # motion of the drone
+        self.calc_angle_comp_values()
         # the constant for the ema filter
-        alpha = 0.8
-        velocity.x = (1.0 - alpha) * velocity.x + alpha * new_vel.x * self.state.pose_with_covariance.pose.position.z
-        velocity.y = (1.0 - alpha) * velocity.y + alpha * new_vel.y * self.state.pose_with_covariance.pose.position.z
+        alpha = 0.4
+        velocity.x = self.near_zero((1.0 - alpha) * velocity.x + alpha * (new_vel.x * altitude - self.mw_angle_comp_x))
+        velocity.y = self.near_zero((1.0 - alpha) * velocity.y + alpha * (new_vel.y * altitude - self.mw_angle_comp_y))
         self.state.twist_with_covariance.twist.linear = velocity
 
     def filter_range(self, range_reading):
@@ -165,6 +176,19 @@ class EMAStateEstimator(object):
         r,p,y = tf.transformations.euler_from_quaternion(quaternion)
         return r,p,y
 
+    def calc_angle_comp_values(self):
+        """ Calculates angle compensation values to account for the tilt of the
+        drone when calculating the velocity error """
+        altitude = self.state.pose_with_covariance.pose.position.z
+        angular_velocities = self.state.twist_with_covariance.twist.angular
+        # v = w * r  :  (linear velocity = angular velocity * radius)
+        self.mw_angle_comp_x = angular_velocities.x * altitude * self.mw_angle_coeff
+        self.mw_angle_comp_y = angular_velocities.y * altitude * self.mw_angle_coeff
+
+    def near_zero(self, n):
+        """ Set a number to zero if it is below a threshold value """
+        return 0.0 if abs(n) < 1e-6 else n
+
     def ctrl_c_handler(self, signal, frame):
         """ Exit the program """
         print '\nCaught ctrl-c. Stopping node.'
@@ -188,8 +212,8 @@ if __name__ == '__main__':
     #############
     rospy.Subscriber('/pidrone/picamera/transforming_on_first_image', Bool, state_estimator.tofi_callback)
     rospy.Subscriber("/pidrone/reset_transform", Empty, state_estimator.reset_callback)
-    rospy.Subscriber('/pidrone/picamera/twist', Twist, state_estimator.twist_callback)
-    rospy.Subscriber('/pidrone/picamera/pose', Pose, state_estimator.pose_callback)
+    rospy.Subscriber('/pidrone/picamera/twist', TwistStamped, state_estimator.twist_callback)
+    rospy.Subscriber('/pidrone/picamera/pose', PoseStamped, state_estimator.pose_callback)
     rospy.Subscriber('/pidrone/infrared', Range, state_estimator.range_callback)
     rospy.Subscriber('/pidrone/imu', Imu, state_estimator.imu_callback)
 
