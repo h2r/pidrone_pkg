@@ -7,18 +7,17 @@ import rospy
 #						PID							#
 #####################################################
 class PIDaxis():
-    def __init__(self, kp, ki, kd, kp_upper=None, i_range=None, d_range=None, control_range=(1000, 2000), midpoint=1500):
+    def __init__(self, kp, ki, kd, i_range=None, d_range=None, control_range=(1000, 2000), midpoint=1500, smoothing=True):
         # Tuning
         self.kp = kp
         self.ki = ki
         self.kd = kd
         # Config
-        self.kp_upper = kp_upper
         self.i_range = i_range
         self.d_range = d_range
         self.control_range = control_range
         self.midpoint = midpoint
-        self.smoothing = True
+        self.smoothing = smoothing
         # Internal
         self._old_err = None
         self._p = 0
@@ -27,17 +26,13 @@ class PIDaxis():
         self._dd = 0
         self._ddd = 0
 
-    def step(self, err, time_elapsed, error=None):
-
+    def step(self, err, time_elapsed):
         if self._old_err is None:
             # First time around prevent d term spike
             self._old_err = err
 
         # Find the p component
-        if self.kp_upper is not None and err < 0:
-            self._p = err * self.kp_upper
-        else: 
-            self._p = err * self.kp
+        self._p = err * self.kp
 
         # Find the i component
         self._i += err * self.ki * time_elapsed
@@ -49,18 +44,12 @@ class PIDaxis():
         if self.d_range is not None:
             self._d = max(self.d_range[0], min(self._d, self.d_range[1]))
         self._old_err = err
- 
+
         # Smooth over the last three d terms
         if self.smoothing:
             self._d = (self._d * 8.0 + self._dd * 5.0 + self._ddd * 2.0)/15.0
             self._ddd = self._dd
             self._dd = self._d
-
-        # Update p, i, d fields for the error message
-        if error is not None:
-            error.p = self._p
-            error.i = self._i
-            error.d = self._d
 
         # Calculate control output
         raw_output = self._p + self._i + self._d
@@ -71,30 +60,30 @@ class PIDaxis():
 
 class PID:
 
-    height_factor = 1.238   
+    height_factor = 1.238
     battery_factor = 0.75
 
     def __init__(self,
 
-                 roll=PIDaxis(4., 4.0, 0.0, control_range=(1400, 1600), midpoint=1500),
+                 roll=PIDaxis(6., 4.0, 0.0, control_range=(1400, 1600), midpoint=1500),
                  roll_low=PIDaxis(4., 0.2, 0.0, control_range=(1400, 1600), midpoint=1500),
 
-                 pitch=PIDaxis(4., 4.0, 0.0, control_range=(1400, 1600), midpoint=1500),
+                 pitch=PIDaxis(6., 4.0, 0.0, control_range=(1400, 1600), midpoint=1500),
                  pitch_low=PIDaxis(4., 0.2, 0.0, control_range=(1400, 1600), midpoint=1500),
 
                  yaw=PIDaxis(0.0, 0.0, 0.0),
 
                  # Kv 2300 motors have midpoint 1300, Kv 2550 motors have midpoint 1250
                  throttle=PIDaxis(1.0/height_factor * battery_factor, 0.5/height_factor * battery_factor,
-                                  2.0/height_factor * battery_factor, kp_upper=1.0/height_factor * battery_factor,
-                                  i_range=(-400, 400), control_range=(1200, 2000), d_range=(-40, 40), midpoint=1250),
+                                  2.0/height_factor * battery_factor, i_range=(-400, 400), control_range=(1200, 2000),
+                                  d_range=(-40, 40), midpoint=1250),
                  throttle_low=PIDaxis(1.0/height_factor * battery_factor, 0.05/height_factor * battery_factor,
-                                      2.0/height_factor * battery_factor, kp_upper=1.0/height_factor * battery_factor,
-                                      i_range=(0, 400), control_range=(1200, 2000), d_range=(-40, 40), midpoint=1250)
+                                      2.0/height_factor * battery_factor, i_range=(0, 400), control_range=(1200, 2000),
+                                      d_range=(-40, 40), midpoint=1250)
                  ):
 
-        self.trim_controller_cap_plane = 5.0
-        self.trim_controller_thresh_plane = 0.01
+        self.trim_controller_cap_plane = 0.05
+        self.trim_controller_thresh_plane = 0.0001
 
         self.roll = roll
         self.roll_low = roll_low
@@ -110,25 +99,20 @@ class PID:
         self.throttle = throttle
         self.throttle_low = throttle_low
 
-        self.sp = None
         self._t = None
 
-        # Steve005 presets
-        self.roll_low._i = 23
-        self.pitch_low._i = -19
+        # Tuning values specific to each drone
+        self.roll_low._i = 0.0
+        self.pitch_low._i = 0.0
 
-        self.throttle_low.init_i = 180
+        self.throttle_low.init_i = 60
         self.throttle.init_i = 0.0
-        self.throttle.mw_angle_alt_scale = 1.0
         self.reset()
 
-    def reset(self, state_controller=None):
+    def reset(self):
         self._t = None
         self.throttle_low._i = self.throttle_low.init_i
         self.throttle._i = self.throttle.init_i
-
-        if state_controller is not None:
-            state_controller.set_z = state_controller.initial_set_z
 
     def step(self, error, cmd_yaw_velocity=0):
         # First time around prevent time spike
@@ -140,57 +124,50 @@ class PID:
         self._t = rospy.get_time()
 
         # Compute roll command
-        if abs(error.x.err) < self.trim_controller_thresh_plane:
-            cmd_r = self.roll_low.step(error.x.err, time_elapsed, error.x)
+        if abs(error.x) < self.trim_controller_thresh_plane:
+            cmd_r = self.roll_low.step(error.x, time_elapsed)
             self.roll._i = 0
         else:
-            if error.x.err > self.trim_controller_cap_plane:
-                self.roll_low.step(self.trim_controller_cap_plane, time_elapsed, error.x)
-            elif error.x.err < -self.trim_controller_cap_plane:
-                self.roll_low.step(-self.trim_controller_cap_plane, time_elapsed, error.x)
+            if error.x > self.trim_controller_cap_plane:
+                self.roll_low.step(self.trim_controller_cap_plane, time_elapsed)
+            elif error.x < -self.trim_controller_cap_plane:
+                self.roll_low.step(-self.trim_controller_cap_plane, time_elapsed)
             else:
-                self.roll_low.step(error.x.err, time_elapsed, error.x)
+                self.roll_low.step(error.x, time_elapsed)
 
-            cmd_r = self.roll_low._i + self.roll.step(error.x.err, time_elapsed, error.x)
+            cmd_r = self.roll_low._i + self.roll.step(error.x, time_elapsed)
 
         # Compute pitch command
-        if abs(error.y.err) < self.trim_controller_thresh_plane:
-            cmd_p = self.pitch_low.step(error.y.err, time_elapsed, error.y)
+        if abs(error.y) < self.trim_controller_thresh_plane:
+            cmd_p = self.pitch_low.step(error.y, time_elapsed)
             self.pitch._i = 0
         else:
-            if error.y.err > self.trim_controller_cap_plane:
-                self.pitch_low.step(self.trim_controller_cap_plane, time_elapsed, error.y)
-            elif error.y.err < -self.trim_controller_cap_plane:
-                self.pitch_low.step(-self.trim_controller_cap_plane, time_elapsed, error.y)
+            if error.y > self.trim_controller_cap_plane:
+                self.pitch_low.step(self.trim_controller_cap_plane, time_elapsed)
+            elif error.y < -self.trim_controller_cap_plane:
+                self.pitch_low.step(-self.trim_controller_cap_plane, time_elapsed)
             else:
-                self.pitch_low.step(error.y.err, time_elapsed, error.y)
+                self.pitch_low.step(error.y, time_elapsed)
 
-            cmd_p = self.pitch_low._i + self.pitch.step(error.y.err, time_elapsed, error.y)
+            cmd_p = self.pitch_low._i + self.pitch.step(error.y, time_elapsed)
 
         # Compute yaw command
         cmd_y = 1500 + cmd_yaw_velocity
 
         # Compute throttle command
-        if abs(error.z.err) < self.trim_controller_thresh_throttle:
-            cmd_t = self.throttle_low.step(error.z.err, time_elapsed, error.z)
+        if abs(error.z) < self.trim_controller_thresh_throttle:
+            cmd_t = self.throttle_low.step(error.z, time_elapsed)
             self.throttle_low._i += self.throttle._i
             self.throttle._i = 0
         else:
-            if error.z.err > self.trim_controller_cap_throttle:
-                self.throttle_low.step(self.trim_controller_cap_throttle, time_elapsed, error.z)
-            elif error.z.err < -self.trim_controller_cap_throttle:
-                self.throttle_low.step(-self.trim_controller_cap_throttle, time_elapsed, error.z)
+            if error.z > self.trim_controller_cap_throttle:
+                self.throttle_low.step(self.trim_controller_cap_throttle, time_elapsed)
+            elif error.z < -self.trim_controller_cap_throttle:
+                self.throttle_low.step(-self.trim_controller_cap_throttle, time_elapsed)
             else:
-                self.throttle_low.step(error.z.err, time_elapsed, error.z)
+                self.throttle_low.step(error.z, time_elapsed)
 
-            cmd_t = self.throttle_low._i + self.throttle.step(error.z.err, time_elapsed, error.z)
-
-            # jgo: this seems to mostly make a difference before the I term has
-            # built enough to be stable, but it really seems better with it. To
-            # see the real difference, compare cmd_t / mw_angle_alt_scale to
-            # cmd_t * mw_angle_alt_scale and see how it sinks. That happens to
-            # a less noticeable degree with no modification.
-            cmd_t = cmd_t / max(0.5, self.throttle.mw_angle_alt_scale)
+            cmd_t = self.throttle_low._i + self.throttle.step(error.z, time_elapsed)
 
         # Print statements for the low and high i components
         # print "Roll  low, hi:", self.roll_low._i, self.roll._i

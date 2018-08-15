@@ -30,7 +30,7 @@ multiuser on
 
 #acladd gen
 acladd oberlin
-acladd stefie10 
+acladd stefie10
 
 # Starts a new screen with title " MAKE"
 # this is basically equivalent to pressing the following from within screen:
@@ -46,55 +46,58 @@ stuff "source setup.sh"
 stuff "roscore"
 stuff ""
 
-screen -t " vim"
+screen -t " mode_controller"
 stuff "source setup.sh"
 stuff "cd $(rospack find pidrone_pkg)/scripts"
-stuff "vim -p flow_pub_transform.py state_controller.py pid_class.py"
+stuff "python mode_controller.py" # starting mode controller automatically is unsafe
 
-screen -t " emacs"
-stuff "source setup.sh"
-stuff "cd $(rospack find pidrone_pkg)/scripts"
-stuff "emacs"
+screen -t " command_line_interface"
+stuff "source setup.sh\n"
+stuff "cd $(rospack find pidrone_pkg)/scripts/\n"
+stuff "python command_line_interface.py\n"
 
-screen -t " flight"
-stuff "source setup.sh"
-stuff "cd $(rospack find pidrone_pkg)/scripts"
-stuff "python state_controller.py" # starting state controller automatically is unsafe
+screen -t " flight_controller"
+stuff "source setup.sh\n"
+stuff "cd $(rospack find pidrone_pkg)/scripts/\n"
+stuff "python flight_controller_node.py\n"
+
+screen -t " pid_controller"
+stuff "source setup.sh\n"
+stuff "cd $(rospack find pidrone_pkg)/scripts/\n"
+stuff "python pid_controller.py\n"
+
+screen -t " state_estimator"
+stuff "source setup.sh\n"
+stuff "cd $(rospack find pidrone_pkg)/scripts/\n"
+stuff "python state_estimator_ema.py\n"
 
 screen -t " vision"
-stuff "source setup.sh"
-stuff "cd $(rospack find pidrone_pkg)/scripts"
-stuff "python picam_localization_distance.py"
+stuff "source setup.sh\n"
+stuff "cd $(rospack find pidrone_pkg)/scripts\n"
+stuff "python vision_flow_and_phase.py\n"
 
 screen -t " infrared"
-stuff "source setup.sh"
-stuff "cd $(rospack find pidrone_pkg)/scripts/"
-stuff "python infrared_pub.py"
-
-screen -t " joy_node"
-stuff "source setup.sh"
-stuff "cd $(rospack find pidrone_pkg)/scripts/"
-stuff "python joy_translation.py"
-
-
-screen -t " key_node"
-stuff "source setup.sh"
-stuff "cd $(rospack find pidrone_pkg)/scripts/"
-stuff "python key_translation.py"
-
-
-
+stuff "source setup.sh\n"
+stuff "cd $(rospack find pidrone_pkg)/scripts/\n"
+stuff "python infrared_pub.py\n"
 
 screen -t " rosbridge"
 stuff "source setup.sh"
 stuff "sleep 10s && roslaunch rosbridge_server rosbridge_websocket.launch"
 
-
 screen -t " web_video_server"
 stuff "source setup.sh"
 stuff " rosrun web_video_server web_video_server"
 
+screen -t " vim"
+stuff "source setup.sh\n"
+stuff "cd $(rospack find pidrone_pkg)/scripts\n"
+stuff "vim -p flow_pub_transform.py state_controller.py pid_class.py\n"
 
+screen -t " emacs"
+stuff "source setup.sh\n"
+stuff "cd $(rospack find pidrone_pkg)/scripts\n"
+stuff "emacs\n"
 
 screen -t " free"
 stuff "source setup.sh"

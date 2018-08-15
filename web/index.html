@@ -63,9 +63,48 @@
 
   var markerClient;
   var ros;
-  var modepub;
   var modeMsg;
+  var modepub;
+  var cmdpub;
+  var cmdMsg;
   var heartbeatPub;
+
+  function arm_msg() {
+    // Create an arm command message
+    msg = new ROSLIB.Message({
+      //disarm_cmd
+      roll_cmd: 1500,
+      pitch_cmd: 1500,
+      yaw_cmd: 2000,
+      throttle_cmd: 900,
+     });
+     return msg;
+  }
+
+  function disarm_msg() {
+    // Create an arm command message
+    msg = new ROSLIB.Message({
+      //disarm_cmd
+      roll_cmd: 1500,
+      pitch_cmd: 1500,
+      yaw_cmd: 1000,
+      throttle_cmd: 900,
+     });
+     return msg;
+  }
+
+  function idle_msg() {
+    // Create an arm command message
+    msg = new ROSLIB.Message({
+      //disarm_cmd
+      roll_cmd: 1500,
+      pitch_cmd: 1500,
+      yaw_cmd: 1500,
+      throttle_cmd: 1000,
+     });
+     return msg;
+  }
+
   function init() {
     // Connect to ROS.
     var url = 'ws://' + document.getElementById('hostname').value + ':9090'
@@ -98,19 +137,32 @@
       document.getElementById('statusMessage').innerHTML="<p style='color:red'>Connection closed.</p>";
   });
 
-    modepub = new ROSLIB.Topic({
-      ros : ros,
-      name : '/pidrone/set_mode',
-      messageType : 'pidrone_pkg/Mode'
-    });
-
-    modeMsg = new ROSLIB.Message({
-      mode: 0,
+     modepub = new ROSLIB.Topic({
+       ros : ros,
+       name : '/pidrone/desired_mode',
+       messageType : 'pidrone_pkg/Mode',
      });
+
+     modeMsg = new ROSLIB.Message({
+       mode: 'DISARMED',
+      });
 
     emptyMsg = new ROSLIB.Message({
      });
 
+    velpub = new ROSLIB.Topic({
+      ros : ros,
+      name : '/pidrone/desired_vel',
+      messageType: 'pidrone_pkg/Velocity'
+    });
+
+    velMsg = new ROSLIB.Message({
+      //disarm_cmd
+      x_velocity: 0,
+      y_velocity: 0,
+      z_velocity: 0,
+      yaw_velocity: 0,
+     });
 
     heartbeatPub = new ROSLIB.Topic({
       ros : ros,
@@ -141,14 +193,14 @@
     });
 
 
-    statesub = new ROSLIB.Topic({
+    batterysub = new ROSLIB.Topic({
       ros : ros,
-      name : '/pidrone/state',
-      messageType : 'pidrone_pkg/State',
+      name : '/pidrone/battery',
+      messageType : 'pidrone_pkg/Battery',
       queue_length : 2,
       throttle_rate : 2
     });
-    statesub.subscribe(function(message) {
+    batterysub.subscribe(function(message) {
       //printProperties(message);
       var mynumber = myround(message.vbat, 2);
       document.getElementById('vbat').innerHTML=mynumber
@@ -358,12 +410,13 @@ Keyboard Control (with focus in the input box)
 
 function publishArm() {
   console.log("arm");
-  modeMsg.mode = 0
-  modeMsg.x_velocity = 0
-  modeMsg.y_velocity = 0
-  modeMsg.z_velocity = 0
-  modeMsg.yaw_velocity = 0
+  modeMsg.mode = 'ARMED'
   modepub.publish(modeMsg);
+  velMsg.x_velocity = 0
+  velMsg.y_velocity = 0
+  velMsg.z_velocity = 0
+  velMsg.yaw_velocity = 0
+  velpub.publish(velMsg);
 }
 function publishResetTransform() {
   console.log("reset transform");
@@ -378,117 +431,112 @@ function publishToggleTransform() {
 
 function publishDisarm() {
   console.log("disarm");
-  modeMsg.mode = 4
-  modeMsg.x_velocity = 0
-  modeMsg.y_velocity = 0
-  modeMsg.z_velocity = 0
-  modeMsg.yaw_velocity = 0
+  modeMsg.mode = 'DISARMED'
   modepub.publish(modeMsg);
+  cmdMsg = disarm_msg();
+  cmdpub.publish(cmdMsg);
+  velMsg.x_velocity = 0
+  velMsg.y_velocity = 0
+  velMsg.z_velocity = 0
+  velMsg.yaw_velocity = 0
+  velpub.publish(velMsg);
 }
 
 function publishZeroVelocity() {
   console.log("zero velocity");
-  modeMsg.mode = 5
-  modeMsg.x_velocity = 0
-  modeMsg.y_velocity = 0
-  modeMsg.z_velocity = 0
-  modeMsg.yaw_velocity = 0
-  modepub.publish(modeMsg);
+  velMsg.x_velocity = 0
+  velMsg.y_velocity = 0
+  velMsg.z_velocity = 0
+  velMsg.yaw_velocity = 0
+  velpub.publish(velMsg);
 }
 
 
 function publishTakeoff() {
   console.log("takeoff");
-  modeMsg.mode = 5
-  modeMsg.x_velocity = 0
-  modeMsg.y_velocity = 0
-  modeMsg.z_velocity = 0
-  modeMsg.yaw_velocity = 0
+  modeMsg.mode = 'FLYING'
   modepub.publish(modeMsg);
+  velMsg.x_velocity = 0
+  velMsg.y_velocity = 0
+  velMsg.z_velocity = 0
+  velMsg.yaw_velocity = 0
+  velpub.publish(velMsg);
 }
 
 
 function publishTranslateLeft() {
   console.log("translate left");
-  modeMsg.mode = 5
-  modeMsg.x_velocity = -10
-  modeMsg.y_velocity = 0
-  modeMsg.z_velocity = 0
-  modeMsg.yaw_velocity = 0
-  modepub.publish(modeMsg);
+  velMsg.x_velocity = -10
+  velMsg.y_velocity = 0
+  velMsg.z_velocity = 0
+  velMsg.yaw_velocity = 0
+  velpub.publish(velMsg);
 }
 
 function publishTranslateRight() {
   console.log("translate right");
-  modeMsg.mode = 5
-  modeMsg.x_velocity = 10
-  modeMsg.y_velocity = 0
-  modeMsg.z_velocity = 0
-  modeMsg.yaw_velocity = 0
-  modepub.publish(modeMsg);
+  velMsg.x_velocity = 10
+  velMsg.y_velocity = 0
+  velMsg.z_velocity = 0
+  velMsg.yaw_velocity = 0
+  velpub.publish(velMsg);
 }
 
 function publishTranslateForward() {
   console.log("translate forward");
-  modeMsg.mode = 5
-  modeMsg.x_velocity = 0
-  modeMsg.y_velocity = 10
-  modeMsg.z_velocity = 0
-  modeMsg.yaw_velocity = 0
-  modepub.publish(modeMsg);
+  velMsg.x_velocity = 0
+  velMsg.y_velocity = 10
+  velMsg.z_velocity = 0
+  velMsg.yaw_velocity = 0
+  velpub.publish(velMsg);
 
 }
 
 function publishTranslateBackward() {
   console.log("translate backward");
-  modeMsg.mode = 5
-  modeMsg.x_velocity = 0
-  modeMsg.y_velocity = -10
-  modeMsg.z_velocity = 0
-  modeMsg.yaw_velocity = 0
-  modepub.publish(modeMsg);
+  velMsg.x_velocity = 0
+  velMsg.y_velocity = -10
+  velMsg.z_velocity = 0
+  velMsg.yaw_velocity = 0
+  velpub.publish(velMsg);
 }
 
 
 function publishTranslateUp() {
   console.log("translate up");
-  modeMsg.mode = 5
-  modeMsg.x_velocity = 0
-  modeMsg.y_velocity = 0
-  modeMsg.z_velocity = 0.05
-  modeMsg.yaw_velocity = 0
-  modepub.publish(modeMsg);
+  velMsg.x_velocity = 0
+  velMsg.y_velocity = 0
+  velMsg.z_velocity = 0.05
+  velMsg.yaw_velocity = 0
+  velpub.publish(velMsg);
 }
 
 function publishTranslateDown() {
   console.log("translate down");
-  modeMsg.mode = 5
-  modeMsg.x_velocity = 0
-  modeMsg.y_velocity = 0
-  modeMsg.z_velocity = -0.05
-  modeMsg.yaw_velocity = 0
-  modepub.publish(modeMsg);
+  velMsg.x_velocity = 0
+  velMsg.y_velocity = 0
+  velMsg.z_velocity = -0.05
+  velMsg.yaw_velocity = 0
+  velpub.publish(velMsg);
 }
 
 
 function publishYawLeft() {
   console.log("yaw left");
-  modeMsg.mode = 5
-  modeMsg.x_velocity = 0
-  modeMsg.y_velocity = 0
-  modeMsg.z_velocity = 0
-  modeMsg.yaw_velocity = -50
-  modepub.publish(modeMsg);
+  velMsg.x_velocity = 0
+  velMsg.y_velocity = 0
+  velMsg.z_velocity = 0
+  velMsg.yaw_velocity = -50
+  velpub.publish(velMsg);
 }
 
 function publishYawRight() {
   console.log("yaw right");
-  modeMsg.mode = 5
-  modeMsg.x_velocity = 0
-  modeMsg.y_velocity = 0
-  modeMsg.z_velocity = 0
-  modeMsg.yaw_velocity = 50
-  modepub.publish(modeMsg);
+  velMsg.x_velocity = 0
+  velMsg.y_velocity = 0
+  velMsg.z_velocity = 0
+  velMsg.yaw_velocity = 50
+  velpub.publish(velMsg);
 }
 
 

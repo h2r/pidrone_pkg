@@ -1,17 +1,11 @@
-"""""
-picam_localization_distance
-
-implements Monte-Carlo Localization using the pi-camera
-"""""
-
 import numpy as np
 import picamera
 import picamera.array
 import cv2
 from geometry_msgs.msg import PoseStamped
 from pidrone_pkg.msg import State
-from sensor_msgs.msg import Image, CameraInfo
-from std_msgs.msg import Empty, Bool
+from sensor_msgs.msg import Image, Range, CameraInfo
+from std_msgs.msg import Empty
 import rospy
 import tf
 from localization_helper import LocalizationParticleFilter, create_map, PROB_THRESHOLD
@@ -25,6 +19,8 @@ MAP_REAL_HEIGHT = 1.07
 # ---------- camera parameters ----------- #
 CAMERA_WIDTH = 320
 CAMERA_HEIGHT = 240
+
+# assume a pixel in x and y has the same length
 METER_TO_PIXEL = (float(MAP_PIXEL_WIDTH) / MAP_REAL_WIDTH + float(MAP_PIXEL_HEIGHT) / MAP_REAL_HEIGHT) / 2.
 CAMERA_CENTER = np.float32([(CAMERA_WIDTH - 1) / 2., (CAMERA_HEIGHT - 1) / 2.]).reshape(-1, 1, 2)
 
@@ -50,6 +46,7 @@ class Localizer(picamera.array.PiMotionAnalysis):
         self.first_image_pub = rospy.Publisher("/pidrone/picamera/first_image", Image, queue_size=1, latch=True)
 
         self.detector = cv2.ORB(nfeatures=NUM_FEATURES, scoreType=cv2.ORB_FAST_SCORE)
+
         map_grid_kp, map_grid_des = create_map('map.jpg')
         self.estimator = LocalizationParticleFilter(map_grid_kp, map_grid_des)
 
@@ -105,7 +102,7 @@ class Localizer(picamera.array.PiMotionAnalysis):
                                 self.alpha_yaw * particle.yaw() + (1.0 - self.alpha_yaw) * self.pos[3]]
                     print '--pose', self.pos[0], self.pos[1], self.pos[3]
 
-                    # if average particle weight is close to initial weight
+                    # if all particles are not good estimations
                     if is_almost_equal(particle.weight(), PROB_THRESHOLD):
                         self.map_counter = self.map_counter - 1
                     elif self.map_counter <= 0:
@@ -136,7 +133,7 @@ class Localizer(picamera.array.PiMotionAnalysis):
                               "world")
 
     def state_callback(self, data):
-    # TODO COMMENT
+        # TODO COMMENT
         """update z when '/pidrone/infrared' is published to"""
         self.z = data.pose_with_covariance.pose.position.z
         self.angle_x = data.twist_with_covariance.twist.angular.x
@@ -154,6 +151,5 @@ class Localizer(picamera.array.PiMotionAnalysis):
 def is_almost_equal(x, y):
     epsilon = 1e-8
     return abs(x-y) <= epsilon
-
 
 
