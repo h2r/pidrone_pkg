@@ -36,10 +36,6 @@ class Localizer(picamera.array.PiMotionAnalysis):
         self.bridge = bridge
         self.br = tf.TransformBroadcaster()
 
-        # bind method calls to subscribed topics
-        rospy.Subscriber("/pidrone/reset_transform", Empty, self.reset_callback)
-        rospy.Subscriber("/pidrone/state", State, self.state_callback)
-
         self.posepub = rospy.Publisher('/pidrone/picamera/pose', PoseStamped, queue_size=1)
         self.first_image_pub = rospy.Publisher("/pidrone/picamera/first_image", Image, queue_size=1, latch=True)
 
@@ -76,7 +72,7 @@ class Localizer(picamera.array.PiMotionAnalysis):
     def write(self, data):
         curr_img = np.reshape(np.fromstring(data, dtype=np.uint8), (CAMERA_HEIGHT, CAMERA_WIDTH, 3))
         curr_rostime = rospy.Time.now()
-        self.posemsg.header.time = curr_rostime
+        self.posemsg.header.stamp = curr_rostime
         curr_time = curr_rostime.to_sec()
 
         # start MCL localization
@@ -90,10 +86,18 @@ class Localizer(picamera.array.PiMotionAnalysis):
                     self.first_locate = False
                     self.pos = [particle.x(), particle.y(), particle.z(), particle.yaw()]
 
-                    self.posemsg.pose.position.x, self.posemsg.pose.position.y, self.posemsg.pose.position.z = \
-                        particle.x(), particle.y(), particle.z()
-                    self.posemsg.pose.position.orientation = tf.transformations.quaternion_from_euler(0, 0, self.pos[3])
+                    self.posemsg.pose.position.x = particle.x()
+                    self.posemsg.pose.position.y = particle.y()
+                    self.posemsg.pose.position.z = particle.z()
+                    x, y, z, w = tf.transformations.quaternion_from_euler(0, 0, self.pos[3])
+
+                    self.posemsg.pose.orientation.x = x  
+                    self.posemsg.pose.orientation.y = y
+                    self.posemsg.pose.orientation.z = z
+                    self.posemsg.pose.orientation.w = w
+
                     self.posepub.publish(self.posemsg)
+
                     print 'first', particle
                 else:
                     particle = self.estimator.update(self.z, self.angle_x, self.angle_y, self.prev_kp, self.prev_des,
@@ -107,7 +111,13 @@ class Localizer(picamera.array.PiMotionAnalysis):
 
                     self.posemsg.pose.position.x, self.posemsg.pose.position.y, self.posemsg.pose.position.z = \
                         self.pos[0], self.pos[1], self.pos[2]
-                    self.posemsg.pose.position.orientation = tf.transformations.quaternion_from_euler(0, 0, self.pos[3])
+                    x, y, z, w = tf.transformations.quaternion_from_euler(0, 0, self.pos[3])
+
+                    self.posemsg.pose.orientation.x = x  
+                    self.posemsg.pose.orientation.y = y
+                    self.posemsg.pose.orientation.z = z
+                    self.posemsg.pose.orientation.w = w
+
                     self.posepub.publish(self.posemsg)
                     print '--pose', self.pos[0], self.pos[1], self.pos[3]
 
@@ -160,5 +170,8 @@ class Localizer(picamera.array.PiMotionAnalysis):
 def is_almost_equal(x, y):
     epsilon = 1e-8
     return abs(x-y) <= epsilon
+
+
+
 
 

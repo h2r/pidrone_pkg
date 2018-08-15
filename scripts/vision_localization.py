@@ -26,6 +26,10 @@ def main():
             with AnalyzeFlow(camera) as flow_analyzer:
                 flow_analyzer.setup(camera.resolution)
                 phase_analyzer = Localizer(camera, bridge)
+                rospy.Subscriber('/pidrone/reset_transform', Empty,
+                phase_analyzer.reset_callback)
+                rospy.Subscriber('/pidrone/state', State,
+                phase_analyzer.state_callback)
 
                 camera.start_recording("/dev/null", format='h264', splitter_port=1, motion_output=flow_analyzer)
                 print "Starting Flow"
