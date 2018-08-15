@@ -177,7 +177,7 @@ function init() {
     
     // imusub = new ROSLIB.Topic({
     //   ros : ros,
-    //   name : '/pidrone/imu_throttle',
+    //   name : '/pidrone/imu',
     //   messageType : 'sensor_msgs/Imu',
     //   queue_length : 2,
     //   throttle_rate : 50
@@ -358,10 +358,7 @@ function init() {
             qy != null &&
             qz != null &&
             qw != null) {
-            console.log('xpos')
-            console.log(xPos)
-            console.log('ypos')
-            console.log(yPos)
+            
             // Quaternion with which to rotate vectors to show the yaw of the
             // drone (and perhaps also the roll and pitch)
             global_to_body_quat = new Quaternion([qw, qx, qy, qz]);
