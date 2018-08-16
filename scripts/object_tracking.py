@@ -145,8 +145,8 @@ def main():
                 camera.stop_recording(splitter_port=1)
             camera.stop_recording(splitter_port=2)
         print "Shutdown Received"
-        sys.exit()
-    except Exception as e:
+    except Exception:
+        print "Camera Error!!"
         raise
 
 
