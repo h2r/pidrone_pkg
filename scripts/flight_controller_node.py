@@ -31,15 +31,20 @@ class FlightController(object):
     """
 
     def __init__(self):
+
         # Connect to the flight controller board
         self.board = self.getBoard()
+
         # stores the current and previous modes
         self.curr_mode = 'DISARMED'         #initialize as disarmed
         self.prev_mode = 'DISARMED'         #initialize as disarmed
+
         # store the command to send to the flight controller
         self.command = cmds.disarm_cmd      #initialize as disarmed
+
         # store the mode publisher
         self.modepub = None
+
         # store the time for angular velocity calculations
         self.time = rospy.Time.now()
 
@@ -62,6 +67,7 @@ class FlightController(object):
         ##########################
         rospack = rospkg.RosPack()
         path = rospack.get_path('pidrone_pkg')
+        # jroy1: Why is this json called "means"?
         with open("%s/params/multiwii.yaml" % path) as f:
             means = yaml.load(f)
         self.accRawToMss = 9.8 / means["az"]
@@ -101,13 +107,16 @@ class FlightController(object):
         roll = np.deg2rad(self.board.attitude['angx'])
         pitch = np.deg2rad(self.board.attitude['angy'])
         heading = np.deg2rad(self.board.attitude['heading'])
+
         # transform heading (similar to yaw) to standard math conventions, which
         # means angles are in radians and positive rotation is to the left
         heading = ((np.pi / 2) - heading) % (2 * np.pi)
+
         # get the previous roll, pitch, heading values
         previous_quaternion = self.imu_message.orientation
         quaternion_array = [previous_quaternion.x, previous_quaternion.y, previous_quaternion.z, previous_quaternion.w]
         previous_roll, previous_pitch, previous_heading = tf.transformations.euler_from_quaternion(quaternion_array)
+
         # calculate the angular velocities of roll, pitch, and yaw in rad/s
         dt = time.to_sec() - self.time.to_sec()
         dr = roll - previous_roll
@@ -120,6 +129,7 @@ class FlightController(object):
 
         # transform euler angles into quaternion
         quaternion = tf.transformations.quaternion_from_euler(roll, pitch, heading)
+
         # calculate the linear accelerations
         lin_acc_x = self.board.rawIMU['ax'] * self.accRawToMss - self.accZeroX
         lin_acc_y = self.board.rawIMU['ay'] * self.accRawToMss - self.accZeroY
@@ -145,6 +155,7 @@ class FlightController(object):
     def update_battery_message(self):
         # extract vbat, amperage
         self.board.getData(MultiWii.ANALOG)
+
         # Update Battery message:
         self.battery_message.vbat = self.board.analog['vbat'] * 0.10
         self.battery_message.amperage = self.board.analog['amperage']
@@ -163,16 +174,19 @@ class FlightController(object):
     #################
     def getBoard(self):
         """ Connect to the flight controller board """
-        # (if the flight cotroll usb is unplugged and plugged back in,
+        # (if the flight controller usb is unplugged and plugged back in,
         #  it becomes .../USB1)
+        # jroy1: This is definitely a good software fix. However, we might just
+        # want to do a hardware fix so we can avoid the disconnection problem
+        # in general. Maybe physically attaching the usb to the port somehow?
         try:
             board = MultiWii('/dev/ttyUSB0')
         except SerialException:
             try:
                 board = MultiWii('/dev/ttyUSB1')
             except SerialException:
-                print '\nCannot connect to the flight controller board.'
-                print 'The USB is unplugged. Please check connection.'
+                print('\nCannot(connect to the flight controller board.')
+                print('The USB is unplugged. Please check connection.')
                 sys.exit()
         return board
 
@@ -180,20 +194,23 @@ class FlightController(object):
         """ Send commands to the flight controller board """
         self.board.sendCMD(8, MultiWii.SET_RAW_RC, self.command)
         self.board.receiveDataPacket()
-        print 'command sent:', self.command
+        print('command sent:', self.command)
 
     def near_zero(self, n):
+        # jroy1: This theshold value should be passed into near_zero as an
+        # argument. The actual value should be set as a class variable. That
+        # way everything is more general, and there are less "magic numbers"
         """ Set a number to zero if it is below a threshold value """
         return 0 if abs(n) < 0.0001 else n
 
     def ctrl_c_handler(self, signal, frame):
         """ Disarm the drone and quits the flight controller node """
-        print "\nCaught ctrl-c! About to Disarm!"
+        print("\nCaught ctrl-c! About to Disarm!")
         self.board.sendCMD(8, MultiWii.SET_RAW_RC, cmds.disarm_cmd)
         self.board.receiveDataPacket()
         rospy.sleep(1)
         self.modepub.publish('DISARMED')
-        print "Successfully Disarmed"
+        print("Successfully Disarmed")
         sys.exit()
 
 def main():
@@ -210,10 +227,10 @@ def main():
     imupub = rospy.Publisher('/pidrone/imu', Imu, queue_size=1, tcp_nodelay=False)
     batpub = rospy.Publisher('/pidrone/battery', Battery, queue_size=1, tcp_nodelay=False)
     fc.modepub = rospy.Publisher('/pidrone/mode', Mode, queue_size=1, tcp_nodelay=False)
-    print 'Publishing:'
-    print '/pidrone/imu'
-    print '/pidrone/battery'
-    print '/pidrone/mode'
+    print('Publishing:')
+    print('/pidrone/imu')
+    print('/pidrone/battery')
+    print('/pidrone/mode')
 
     # Subscriber
     ############
@@ -242,12 +259,12 @@ def main():
             # sleep for the remainder of the loop time
             r.sleep()
 
-        print 'Shutdown received'
+        print('Shutdown received')
         fc.board.sendCMD(8, MultiWii.SET_RAW_RC, cmds.disarm_cmd)
         fc.board.receiveDataPacket()
     except SerialException:
-        print '\nCannot connect to the flight controller board.'
-        print 'The USB is unplugged. Please check connection.'
+        print('\nCannot connect to the flight controller board.')
+        print('The USB is unplugged. Please check connection.')
 
 if __name__ == '__main__':
     main()
