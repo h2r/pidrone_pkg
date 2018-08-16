@@ -2,7 +2,6 @@ from __future__ import division
 import rospy
 import numpy as np
 import picamera.array
-from pidrone_pkg.msg import State
 from geometry_msgs.msg import TwistStamped
 
 
@@ -40,6 +39,7 @@ class AnalyzeFlow(picamera.array.PiMotionAnalysis):
         x_motion = 100 * np.sum(x) * self.flow_coeff
         y_motion = 100 * np.sum(y) * self.flow_coeff
         twist_msg = TwistStamped()
+        twist_msg.header.stamp = rospy.Time.now()
         twist_msg.twist.linear.x = self.near_zero(x_motion)
         twist_msg.twist.linear.y = - self.near_zero(y_motion)
 
