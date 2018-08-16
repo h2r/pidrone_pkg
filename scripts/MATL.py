@@ -22,7 +22,7 @@ import sys
 from pid_class import PIDaxis
 import camera_info_manager
 from geometry_msgs.msg import TwistStamped
-from slam_helper import FastSLAM
+from MATL_slam_helper import FastSLAM
 from MATL_helper import PROB_THRESHOLD, LocalizationParticleFilter
 
 # ---------- camera parameters DO NOT EDIT ----------- #
