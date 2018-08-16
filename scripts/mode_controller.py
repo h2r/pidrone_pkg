@@ -44,7 +44,7 @@ class ModeController(object):
         self.prev_mode = self.curr_mode
         self.curr_mode = msg.mode
         if self.prev_mode != self.curr_mode:
-            print self.curr_mode
+            print(self.curr_mode)
 
     def desired_mode_callback(self, msg):
         """Update the current mode of the drone"""
@@ -64,22 +64,25 @@ class ModeController(object):
             the last five seconds
         """
         disarm = False
+        # jroy1: If possible, it would be nice to enforce that mc.vbat is
+        # *always* something and never none. that may be a larger change to the
+        # code
         if mc.vbat != None and mc.vbat < mc.minimum_voltage:
-            print '\nSafety Failure: low battery\n'
+            print('\nSafety Failure: low battery\n')
             disarm = True
         if rospy.Time.now() - self.last_heartbeat > rospy.Duration.from_sec(5):
-            print '\nSafety Failure: no heartbeat\n'
+            print('\nSafety Failure: no heartbeat\n')
             disarm = True
         if rospy.Time.now() - self.last_mode_time > rospy.Duration.from_sec(1):
-            print '\nSafety Failure: not receiving data from flight controller.'
-            print 'Check the flight_controller node\n'
+            print('\nSafety Failure: not receiving data from flight controller.')
+            print('Check the flight_controller node\n')
             disarm = True
 
         return disarm
 
     def ctrl_c_handler(self, signal, frame):
         """Disarms the drone and exits the program if ctrl-c is pressed"""
-        print "\nCaught ctrl-c! About to Disarm!"
+        print("\nCaught ctrl-c! About to Disarm!")
         self.cmd_mode_pub.publish('DISARMED')
         sys.exit()
 
@@ -91,6 +94,9 @@ if __name__ == '__main__':
 
     # Instantiate a ModeController object
     mc = ModeController()
+    # jroy1: For proper Object Oriented design, these would be set with a setter
+    # function. Better yet, they should be set in __init__, and updated with
+    # setters only if needed (such as when resetting)
     mc.last_heartbeat = rospy.Time.now()
     mc.last_mode_time = rospy.Time.now()
 
@@ -109,7 +115,7 @@ if __name__ == '__main__':
     ###############
     signal.signal(signal.SIGINT, mc.ctrl_c_handler)
 
-    print 'Controlling Mode'
+    print('Controlling Mode')
     r = rospy.Rate(100) # 100hz
     while not rospy.is_shutdown():
         try:
@@ -123,41 +129,56 @@ if __name__ == '__main__':
             # Finite State Machine
             ######################
             if mc.curr_mode == 'DISARMED':
+
+                # DISARMED -> DISARMED
                 if mc.desired_mode == 'DISARMED':
                     mc.cmd_mode_pub.publish('DISARMED')
+
+                # DISARMED -> ARMED
                 elif mc.desired_mode == 'ARMED':
-                    print 'sending arm command'
+                    print('sending arm command')
                     mc.cmd_mode_pub.publish('ARMED')
                     rospy.sleep(1)
                 else:
-                    print 'Cannot transition from Mode %s to Mode %s' % (mc.curr_mode, mc.desired_mode)
+                    print('Cannot transition from Mode %s to Mode %s' % (mc.curr_mode, mc.desired_mode))
 
             elif mc.curr_mode == 'ARMED':
+
+                # ARMED -> ARMED
                 if mc.desired_mode == 'ARMED':
                     mc.cmd_mode_pub.publish('ARMED')
+
+                # ARMED -> FLYING
                 elif mc.desired_mode == 'FLYING':
-                    print 'sending fly command'
+                    print('sending fly command')
                     mc.cmd_mode_pub.publish('FLYING')
+
+                # ARMED -> DISARMED
                 elif mc.desired_mode == 'DISARMED':
-                    print 'sending disarm command'
+                    print('sending disarm command')
                     mc.cmd_mode_pub.publish('DISARMED')
                 else:
-                    print 'Cannot transition from Mode %s to Mode %s' % (mc.curr_mode, mc.desired_mode)
+                    print('Cannot transition from Mode %s to Mode %s' % (mc.curr_mode, mc.desired_mode))
 
             elif mc.curr_mode == 'FLYING':
+
+                # FLYING -> FLYING
                 if mc.desired_mode == 'FLYING':
                     mc.cmd_mode_pub.publish('FLYING')
+
+                # FLYING -> DISARMED
                 elif mc.desired_mode == 'DISARMED':
-                    print 'sending disarm command'
+                    print('sending disarm command')
                     mc.cmd_mode_pub.publish('DISARMED')
                 else:
-                    print 'Cannot transition from Mode %s to Mode %s' % (mc.curr_mode, mc.desired_mode)
+                    print('Cannot transition from Mode %s to Mode %s' % (mc.curr_mode, mc.desired_mode))
 
-        except:
-                print 'there was an internal error'
+        except Exception as e:
+                print('there was an internal error')
+                print(e)
                 sys.exit()
         r.sleep()
 
     mc.cmd_mode_pub.publish('DISARMED')
-    print 'Shutdown Received'
-    print 'Sending DISARM command'
+    print('Shutdown Received')
+    print('Sending DISARM command')
