@@ -18,10 +18,12 @@ def publish_desired_pose(x, y, z, desired_pose_pub):
     '''
     # create the pose message
     desired_pose_msg = Pose()
+
     # fill in the message fields:
     desired_pose_msg.position.x = x
     desired_pose_msg.position.y = y
     desired_pose_msg.position.z = z
+
     # publish desired pose
     desired_pose_pub.publish(desired_pose_msg)
 
@@ -31,10 +33,12 @@ def publish_desired_twist(vx, vy, vz, desired_twist_pub):
     '''
     # create the twist message
     desired_twist_msg = Twist()
+
     # fill in the message fields:
     desired_twist_msg.linear.x = vx
     desired_twist_msg.linear.y = vy
     desired_twist_msg.linear.z = vz
+
     # publish desired twist
     desired_twist_pub.publish(desired_twist_msg)
 
@@ -73,7 +77,7 @@ if __name__ == '__main__':
             # make the entry case insensitive
             entry = entry.lower()
             if len(entry) == 0:
-                print 'invalid entry. try again.'
+                print('invalid entry. try again.')
             else:
                 # position commands take the form p <x> <y> <z> where x, y, and z are floats
                 if entry[0] == 'r' and len(entry) == 1:
@@ -125,7 +129,7 @@ if __name__ == '__main__':
                         desired_mode = 'FLYING'
                         publish_desired_mode(desired_mode, desired_mode_pub)
                     else:
-                        print 'invalid command. try again'
+                        print('invalid command. try again')
 
     except Exception as ex:
         # Disarm drone on exception
