@@ -10,7 +10,6 @@ import rospy
 import picamera
 import picamera.array
 import numpy as np
-import sys
 
 CAMERA_WIDTH = 320
 CAMERA_HEIGHT = 240
