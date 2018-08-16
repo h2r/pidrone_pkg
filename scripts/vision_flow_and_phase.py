@@ -2,6 +2,7 @@ import sys
 import os
 import rospy
 import picamera
+from sensor_msgs.msg import Image
 from analyze_flow import AnalyzeFlow
 from analyze_phase import AnalyzePhase
 from cv_bridge import CvBridge
