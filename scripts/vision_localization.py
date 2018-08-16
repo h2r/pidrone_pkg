@@ -1,12 +1,13 @@
 """
 vision_localization.py
 
-This file can run SLAM or localization on board
+This file can run SLAM or localization on board, offline or online
 """
 
 
 from onboard_localization import *
 from onboard_slam import *
+from MATL import *
 from cv_bridge import CvBridge, CvBridgeError
 import sys
 import os
@@ -16,12 +17,19 @@ from sensor_msgs.msg import Image, Range, CameraInfo
 from analyze_flow import AnalyzeFlow
 from std_msgs.msg import Empty
 from pidrone_pkg.msg import State
-
-# So the default mode is localization onboard
-DoSLAM = False
+import argparse
 
 
 def main():
+    parser = argparse.ArgumentParser(description='Estimate the drone\'s pose with SLAM or localization')
+    # Arguments to determine if the throttle command is being used. E.g.:
+    #   rosrun topic_tools throttle messages /pidrone/infrared 40.0
+    parser.add_argument('--SLAM', action='store_true',
+                        help=('Do you want to do SLAM?'))
+    parser.add_argument('--offline', action='store_true',
+                        help=('Run offline?'))
+    args = parser.parse_args()
+
     node_name = os.path.splitext(os.path.basename(__file__))[0]
     rospy.init_node(node_name)
 
@@ -41,8 +49,12 @@ def main():
             with AnalyzeFlow(camera) as flow_analyzer:
                 flow_analyzer.setup(camera.resolution)
 
-                if DoSLAM:
-                    phase_analyzer = SLAM(camera, bridge)
+                if args.SLAM:
+                    if args.offline:
+                        phase_analyzer = MATL(camera, bridge)
+                        rospy.Subscriber('/pidrone/map', Empty, phase_analyzer.map_callback)
+                    else:
+                        phase_analyzer = SLAM(camera, bridge)
                 else:
                     phase_analyzer = Localizer(camera, bridge)
 
