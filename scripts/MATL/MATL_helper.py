@@ -101,8 +101,8 @@ class LocalizationParticleFilter:
         self.map_grid_size_y = None
         self.min_x, self.min_y = None, None
 
-        sigma_vx = 0.01
-        sigma_vy = 0.01
+        sigma_vx = 2
+        sigma_vy = 2
         sigma_vz = 0.0
         sigma_yaw = 0.01
         self.covariance_motion = np.array([[sigma_vx ** 2, 0, 0, 0],
@@ -124,8 +124,8 @@ class LocalizationParticleFilter:
         transform = self.compute_transform(prev_kp, prev_des, kp, des)
 
         if transform is not None:
-            x = self.pixel_to_meter(-transform[0, 2])
-            y = self.pixel_to_meter(transform[1, 2])
+            x = -transform[0, 2]
+            y = transform[1, 2]
             yaw = -np.arctan2(transform[1, 0], transform[0, 0])
 
             self.sample_motion_model(x, y, yaw)
@@ -168,9 +168,8 @@ class LocalizationParticleFilter:
 
         for i in range(self.particles.num_particles):
             pose = self.particles.poses[i]
-            old_yaw = pose[3]
-            pose[0] += (noisy_x_y_z_yaw[0] * np.cos(old_yaw) + noisy_x_y_z_yaw[1] * np.sin(old_yaw))
-            pose[1] += (noisy_x_y_z_yaw[0] * np.sin(old_yaw) + noisy_x_y_z_yaw[1] * np.cos(old_yaw))
+            pose[0] += self.pixel_to_meter(noisy_x_y_z_yaw[0])
+            pose[1] += self.pixel_to_meter(noisy_x_y_z_yaw[1])
             pose[2] = self.z
             pose[3] += noisy_x_y_z_yaw[3]
             pose[3] = adjust_angle(pose[3])

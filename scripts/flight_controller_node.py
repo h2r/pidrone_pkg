@@ -13,6 +13,7 @@ from h2rMultiWii import MultiWii
 from serial import SerialException
 from geometry_msgs.msg import Quaternion
 from pidrone_pkg.msg import Battery, Mode, RC
+import os
 
 
 class FlightController(object):
@@ -90,6 +91,9 @@ class FlightController(object):
     # Update methods:
     #################
     def update_imu_message(self):
+        """
+        Compute the ROS IMU message by reading data from the board.
+        """
         time = rospy.Time.now()
 
         # extract roll, pitch, heading
@@ -99,11 +103,14 @@ class FlightController(object):
 
         # calculate values to update imu_message:
         roll = np.deg2rad(self.board.attitude['angx'])
-        pitch = np.deg2rad(self.board.attitude['angy'])
+        pitch = -np.deg2rad(self.board.attitude['angy'])
         heading = np.deg2rad(self.board.attitude['heading'])
+        # Note that at pitch angles near 90 degrees, the roll angle reading can
+        # fluctuate a lot
         # transform heading (similar to yaw) to standard math conventions, which
-        # means angles are in radians and positive rotation is to the left
-        heading = ((np.pi / 2) - heading) % (2 * np.pi)
+        # means angles are in radians and positive rotation is CCW
+        heading = (-heading) % (2 * np.pi)
+        # When first powered up, heading should read near 0
         # get the previous roll, pitch, heading values
         previous_quaternion = self.imu_message.orientation
         quaternion_array = [previous_quaternion.x, previous_quaternion.y, previous_quaternion.z, previous_quaternion.w]
@@ -124,6 +131,26 @@ class FlightController(object):
         lin_acc_x = self.board.rawIMU['ax'] * self.accRawToMss - self.accZeroX
         lin_acc_y = self.board.rawIMU['ay'] * self.accRawToMss - self.accZeroY
         lin_acc_z = self.board.rawIMU['az'] * self.accRawToMss - self.accZeroZ
+        
+        # Rotate the IMU frame to align with our convention for the drone's body
+        # frame. IMU: x is forward, y is left, z is up. We want: x is right,
+        # y is forward, z is up.
+        lin_acc_x_drone_body = -lin_acc_y
+        lin_acc_y_drone_body = lin_acc_x
+        lin_acc_z_drone_body = lin_acc_z
+        
+        # Account for gravity's affect on linear acceleration values when roll
+        # and pitch are nonzero. When the drone is pitched at 90 degrees, for
+        # example, the z acceleration reads out as -9.8 m/s^2. This makes sense,
+        # as the IMU, when powered up / when the calibration script is called,
+        # zeros the body-frame z-axis acceleration to 0, but when it's pitched
+        # 90 degrees, the body-frame z-axis is perpendicular to the force of
+        # gravity, so, as if the drone were in free-fall (which was roughly
+        # confirmed experimentally), the IMU reads -9.8 m/s^2 along the z-axis.
+        g = 9.8
+        lin_acc_x_drone_body = lin_acc_x_drone_body + g*np.sin(roll)*np.cos(pitch)
+        lin_acc_y_drone_body = lin_acc_y_drone_body + g*np.cos(roll)*(-np.sin(pitch))
+        lin_acc_z_drone_body = lin_acc_z_drone_body + g*(1 - np.cos(roll)*np.cos(pitch))
 
         # Update the imu_message:
         # header stamp
@@ -138,11 +165,14 @@ class FlightController(object):
         self.imu_message.angular_velocity.y = angvy
         self.imu_message.angular_velocity.z = angvz
         # linear accelerations
-        self.imu_message.linear_acceleration.x = lin_acc_x
-        self.imu_message.linear_acceleration.y = lin_acc_y
-        self.imu_message.linear_acceleration.z = lin_acc_z
+        self.imu_message.linear_acceleration.x = lin_acc_x_drone_body
+        self.imu_message.linear_acceleration.y = lin_acc_y_drone_body
+        self.imu_message.linear_acceleration.z = lin_acc_z_drone_body
 
     def update_battery_message(self):
+        """
+        Compute the ROS battery message by reading data from the board.
+        """
         # extract vbat, amperage
         self.board.getData(MultiWii.ANALOG)
         # Update Battery message:
@@ -196,11 +226,12 @@ class FlightController(object):
         print "Successfully Disarmed"
         sys.exit()
 
-def main():
 
+def main():
     # ROS Setup
     ###########
-    rospy.init_node('flight_controller')
+    node_name = os.path.splitext(os.path.basename(__file__))[0]
+    rospy.init_node(node_name)
 
     # create the FlightController object
     fc = FlightController()
@@ -248,6 +279,7 @@ def main():
     except SerialException:
         print '\nCannot connect to the flight controller board.'
         print 'The USB is unplugged. Please check connection.'
+
 
 if __name__ == '__main__':
     main()

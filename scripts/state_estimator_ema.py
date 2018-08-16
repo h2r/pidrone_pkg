@@ -1,6 +1,7 @@
 #!/usr/bin/python
 import tf
 import sys
+import os
 import rospy
 import signal
 import numpy as np
@@ -147,7 +148,7 @@ class EMAStateEstimator(object):
         self.state.twist_with_covariance.twist.linear = velocity
 
     def filter_range(self, range_reading):
-        """ Smoothe the range reading using and ema filter """
+        """ Smooth the range reading using and ema filter """
         # the ema filter constant
         alpha = 0.8
         # get the roll and pitch
@@ -195,18 +196,25 @@ class EMAStateEstimator(object):
         sys.exit()
 
 if __name__ == '__main__':
+    # stefie10:  Please make all the mains just call the main method.
+    # the only thing here should be:
+    # main()
+    # which calls a function called main.
+
+    # The reason is that otherwise state_estimator is a global variable visible to the whole module.
 
     # ROS setup
     ###########
     # Initialize the state estimator node
-    rospy.init_node('state_estimator')
+    node_name = os.path.splitext(os.path.basename(__file__))[0]
+    rospy.init_node(node_name)
 
     # Instantiate a PiCameraStateEstimator object
     state_estimator = EMAStateEstimator()
 
     # Publishers
     ############
-    statepub = rospy.Publisher('/pidrone/state', State, queue_size=1, tcp_nodelay=False)
+    statepub = rospy.Publisher('/pidrone/state_ema', State, queue_size=1, tcp_nodelay=False)
 
     # Subscribers
     #############

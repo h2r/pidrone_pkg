@@ -22,7 +22,7 @@ import sys
 from pid_class import PIDaxis
 import camera_info_manager
 from geometry_msgs.msg import TwistStamped
-from slam_helper import FastSLAM
+from MATL_slam_helper import FastSLAM
 from MATL_helper import PROB_THRESHOLD, LocalizationParticleFilter
 
 # ---------- camera parameters DO NOT EDIT ----------- #
@@ -93,6 +93,7 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
         self.mode.mode = 5
 
         self.map_data = []
+        self.z_data = []
         self.fp = open("/home/pi/ws/src/pidrone_pkg/scripts/map.txt", 'w')
 
         # constant
@@ -113,9 +114,8 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
 
             # run stored map data through fastSLAM to produce a map
             for i in range(1, len(self.map_data)):
-                self.SLAM_estimator.run(self.z, self.map_data[i-1][0], self.map_data[i-1][1], self.map_data[i][0],
+                self.SLAM_estimator.run(self.z_data[i-1], self.map_data[i-1][0], self.map_data[i-1][1], self.map_data[i][0],
                                         self.map_data[i][1])
-
                 # make a nice-looking progress bar
                 percent = int(round(float(i) / denominator, 2) * 100)
                 sys.stdout.write("\rIncorporated %d%% of data into map!" % percent)
@@ -147,6 +147,7 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
 
                 if self.state == "MAPPING":
                     self.map_data.append((curr_kp, curr_des))
+                    self.z_data.append(self.z)
                 elif self.state == "LOCALIZING":
                         if self.first_locate:
                             particle = self.localization_estimator.initialize_particles(LOCALIZATION_PARTICLE, curr_kp,

@@ -1,11 +1,15 @@
+"""
+localization.py
+
+runs localization for the PiDrone, helper code located in localization_helper
+"""
+
 import numpy as np
 import picamera
 import picamera.array
 import cv2
 from geometry_msgs.msg import PoseStamped
-from pidrone_pkg.msg import State
 from sensor_msgs.msg import Image, Range, CameraInfo
-from std_msgs.msg import Empty
 import rospy
 import tf
 from localization_helper import LocalizationParticleFilter, create_map, PROB_THRESHOLD
@@ -31,6 +35,7 @@ NUM_FEATURES = 200
 
 
 class Localizer(picamera.array.PiMotionAnalysis):
+
     def __init__(self, camera, bridge):
         picamera.array.PiMotionAnalysis.__init__(self, camera)
         self.bridge = bridge
@@ -97,7 +102,6 @@ class Localizer(picamera.array.PiMotionAnalysis):
                     self.posemsg.pose.orientation.w = w
 
                     self.posepub.publish(self.posemsg)
-
                     print 'first', particle
                 else:
                     particle = self.estimator.update(self.z, self.angle_x, self.angle_y, self.prev_kp, self.prev_des,
@@ -109,8 +113,9 @@ class Localizer(picamera.array.PiMotionAnalysis):
                                 self.z,
                                 self.alpha_yaw * particle.yaw() + (1.0 - self.alpha_yaw) * self.pos[3]]
 
-                    self.posemsg.pose.position.x, self.posemsg.pose.position.y, self.posemsg.pose.position.z = \
-                        self.pos[0], self.pos[1], self.pos[2]
+                    self.posemsg.pose.position.x = self.pos[0]
+                    self.posemsg.pose.position.y = self.pos[1]
+                    self.posemsg.pose.position.z = self.pos[2]
                     x, y, z, w = tf.transformations.quaternion_from_euler(0, 0, self.pos[3])
 
                     self.posemsg.pose.orientation.x = x  
@@ -152,8 +157,7 @@ class Localizer(picamera.array.PiMotionAnalysis):
                               "world")
 
     def state_callback(self, data):
-        # TODO COMMENT
-        """update z when '/pidrone/infrared' is published to"""
+        """ update z, angle x, and angle y data when /pidrone/state is published to """
         self.z = data.pose_with_covariance.pose.position.z
         self.angle_x = data.twist_with_covariance.twist.angular.x
         self.angle_y = data.twist_with_covariance.twist.angular.y

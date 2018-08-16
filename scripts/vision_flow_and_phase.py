@@ -1,4 +1,5 @@
 import sys
+import os
 import rospy
 import picamera
 from analyze_flow import AnalyzeFlow
@@ -8,7 +9,8 @@ from cv_bridge import CvBridge
 
 def main():
     ''' Start a ros node and start the twist and pose analyzers '''
-    rospy.init_node('camera_controller')
+    node_name = os.path.splitext(os.path.basename(__file__))[0]
+    rospy.init_node(node_name)
 
     image_pub = rospy.Publisher("/pidrone/picamera/image_raw", Image, queue_size=1, tcp_nodelay=False)
 

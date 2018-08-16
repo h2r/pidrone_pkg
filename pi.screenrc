@@ -66,10 +66,10 @@ stuff "source setup.sh\n"
 stuff "cd $(rospack find pidrone_pkg)/scripts/\n"
 stuff "python pid_controller.py\n"
 
-screen -t " state_estimator"
+screen -t " state_estimator_ukf"
 stuff "source setup.sh\n"
 stuff "cd $(rospack find pidrone_pkg)/scripts/\n"
-stuff "python state_estimator_ema.py\n"
+stuff "python state_estimator_ukf_7d_state.py\n"
 
 screen -t " vision"
 stuff "source setup.sh\n"
@@ -102,3 +102,18 @@ stuff "emacs\n"
 screen -t " free"
 stuff "source setup.sh"
 stuff "cd $(rospack find pidrone_pkg)/scripts/"
+
+screen -t " throttle_ir"
+stuff "source setup.sh\n"
+stuff "cd $(rospack find pidrone_pkg)/scripts\n"
+stuff "rosrun topic_tools throttle messages /pidrone/infrared 10.0\n"
+
+screen -t " throttle_imu"
+stuff "source setup.sh\n"
+stuff "cd $(rospack find pidrone_pkg)/scripts\n"
+stuff "rosrun topic_tools throttle messages /pidrone/imu 10.0\n"
+
+screen -t " throttle_optical_flow"
+stuff "source setup.sh\n"
+stuff "cd $(rospack find pidrone_pkg)/scripts\n"
+stuff "rosrun topic_tools throttle messages /pidrone/picamera/twist 10.0\n"

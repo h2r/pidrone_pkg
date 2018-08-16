@@ -2,6 +2,7 @@ import tf
 import tf2_ros
 import rospy
 import rospkg
+import os
 
 import geometry_msgs.msg
   
@@ -61,7 +62,7 @@ def publishStaticTransforms():
     transform = identity()
     transform.header.frame_id = "base_link"
     transform.child_frame_id = "ir_link"
-    transforms.append(transform)    
+    transforms.append(transform)
     
     sbr.sendTransform(transforms)
 
@@ -69,7 +70,8 @@ def publishStaticTransforms():
 
     
 def main():
-    rospy.init_node('ros_stuff')
+    node_name = os.path.splitext(os.path.basename(__file__))[0]
+    rospy.init_node(node_name)
     setRosParams()
     r = rospy.Rate(60)
 

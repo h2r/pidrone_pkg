@@ -1,4 +1,5 @@
 import sys
+import os
 import rospy
 import signal
 import Adafruit_ADS1x15
@@ -51,7 +52,8 @@ def main():
 
     # ROS Setup
     ###########
-    rospy.init_node("infrared_pub")
+    node_name = os.path.splitext(os.path.basename(__file__))[0]
+    rospy.init_node(node_name)
 
     # Publishers
     ############

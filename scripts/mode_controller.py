@@ -1,6 +1,7 @@
 #!/usr/bin/python
 import tf
 import sys
+import os
 import rospy
 import signal
 import numpy as np
@@ -82,12 +83,13 @@ class ModeController(object):
         print "\nCaught ctrl-c! About to Disarm!"
         self.cmd_mode_pub.publish('DISARMED')
         sys.exit()
-
-if __name__ == '__main__':
-
+        
+    
+def main():
     # ROS Setup
     ###########
-    rospy.init_node('mode_controller')
+    node_name = os.path.splitext(os.path.basename(__file__))[0]
+    rospy.init_node(node_name)
 
     # Instantiate a ModeController object
     mc = ModeController()
@@ -161,3 +163,7 @@ if __name__ == '__main__':
     mc.cmd_mode_pub.publish('DISARMED')
     print 'Shutdown Received'
     print 'Sending DISARM command'
+    
+
+if __name__ == '__main__':
+    main()

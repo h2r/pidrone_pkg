@@ -14,6 +14,7 @@ import tf
 import time
 from cv_bridge import CvBridge, CvBridgeError
 import camera_info_manager
+import os
 
 
 CAMERA_WIDTH = 320
@@ -70,7 +71,8 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
         mw_data = self.board.getData(MultiWii.ATTITUDE)
 
 def main():
-    rospy.init_node('flow_pub')
+    node_name = os.path.splitext(os.path.basename(__file__))[0]
+    rospy.init_node(node_name)
 
     image_pub = rospy.Publisher("/pidrone/picamera/image_raw", Image, queue_size=1, tcp_nodelay=False)
     camera_info_pub = rospy.Publisher("/pidrone/picamera/camera_info", CameraInfo, queue_size=1, tcp_nodelay=False)

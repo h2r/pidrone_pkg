@@ -1,11 +1,19 @@
+"""
+offboard_vision
+
+Run this file for SLAM or localization offboard (run it on the pi)
+"""
+
+
 import numpy as np
 import picamera
 import picamera.array
-from picam_flow_class import AnalyzeFlow
+from analyze_flow import AnalyzeFlow
 from sensor_msgs.msg import Image, Range, CameraInfo
 import rospy
 from cv_bridge import CvBridge, CvBridgeError
 import sys
+import os
 import camera_info_manager
 
 CAMERA_WIDTH = 320
@@ -28,7 +36,8 @@ class CameraTransmitter(picamera.array.PiMotionAnalysis):
 
 
 def main():
-    rospy.init_node('camera_on_board')
+    node_name = os.path.splitext(os.path.basename(__file__))[0]
+    rospy.init_node(node_name)
 
     image_pub = rospy.Publisher("/pidrone/picamera/image_raw", Image, queue_size=1, tcp_nodelay=False)
     camera_info_pub = rospy.Publisher("/pidrone/picamera/camera_info", CameraInfo, queue_size=1, tcp_nodelay=False)
