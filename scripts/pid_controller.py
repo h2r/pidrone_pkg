@@ -98,6 +98,7 @@ class PIDController(object):
 
         new_desired_position = Position()
         # prevent the x and y positions from being greater than 2 meters
+        # jroy1: What's the reasoning behind this?
         if abs(x) <= 2:
             new_desired_position.x = x
         if abs(y) <= 2:
@@ -113,7 +114,7 @@ class PIDController(object):
             self.desired_position = new_desired_position
             # the drone is moving between desired positions
             self.moving = True
-            print 'moving'
+            print('moving')
 
     def desired_twist_callback(self, msg):
         """ Update the desired twist """
@@ -121,7 +122,7 @@ class PIDController(object):
         self.desired_velocity.y = msg.linear.y
         self.desired_velocity.z = msg.linear.z
         self.calculate_travel_time()
-        print 'travel time'
+        print('travel time')
 
     def current_mode_callback(self, msg):
         """ Update the current mode """
@@ -134,7 +135,7 @@ class PIDController(object):
     def position_control_callback(self, msg):
         """ Set whether or not position control is enabled """
         self.position_control = msg.data
-        print "Position Control", self.position_control
+        print("Position Control", self.position_control)
 
     def reset_callback(self, empty):
         self.desired_position = Position(z=self.current_position.z)
@@ -152,7 +153,7 @@ class PIDController(object):
                     self.pid_error -= self.velocity_error * 100
                 else:
                     self.moving = False
-                    print 'not moving'
+                    print('not moving')
         else:
             if self.desired_velocity.magnitude() > 0:
                 self.adjust_desired_velocity()
@@ -267,6 +268,7 @@ class PIDController(object):
         return Error(error_array[0], error_array[1], error_array[2])
 
 # TODO THIS IS A PROTOTYPE METHOD THAT NEEDS TESTING
+# jroy1: Has this beeen tested? It is being called
     def calculate_travel_time(self):
         ''' return the amount of time that desired velocity should be used to
         calculate the error in order to move the drone the specified travel
@@ -298,7 +300,7 @@ class PIDController(object):
 
     def ctrl_c_handler(self, signal, frame):
         """ Gracefully handles ctrl-c """
-        print 'Caught ctrl-c\n Stopping Controller'
+        print('Caught ctrl-c\n Stopping Controller')
         sys.exit()
 
     def publish_cmd(self, cmd):
@@ -343,7 +345,7 @@ if __name__ == '__main__':
     signal.signal(signal.SIGINT, pid_controller.ctrl_c_handler)
     # set the loop rate (Hz)
     loop_rate = rospy.Rate(100)
-    print 'PID Controller Started'
+    print('PID Controller Started')
     while not rospy.is_shutdown():
         # Steps the PID. If we are not flying, this can be used to
         # examine the behavior of the PID based on published values
@@ -361,15 +363,15 @@ if __name__ == '__main__':
 
         if verbose >= 2:
             if pid_controller.position_control:
-                print 'current position:', pid_controller.current_position
-                print 'desired position:', pid_controller.desired_position
-                print 'position error:', pid_controller.position_error
+                print('current position:', pid_controller.current_position)
+                print('desired position:', pid_controller.desired_position)
+                print('position error:', pid_controller.position_error)
             else:
-                print 'current velocity:', pid_controller.current_velocity
-                print 'desired velocity:', pid_controller.desired_velocity
-                print 'velocity error:  ', pid_controller.velocity_error
-            print 'pid_error:       ', pid_controller.pid_error
+                print('current velocity:', pid_controller.current_velocity)
+                print('desired velocity:', pid_controller.desired_velocity)
+                print('velocity error:  ', pid_controller.velocity_error)
+            print('pid_error:       ', pid_controller.pid_error)
         if verbose >= 1:
-            print 'r,p,y,t:', fly_command
+            print('r,p,y,t:', fly_command)
 
         loop_rate.sleep()
