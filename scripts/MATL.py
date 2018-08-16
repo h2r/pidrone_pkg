@@ -1,7 +1,7 @@
 """""
 MATL.py
 
-Runs "MATL" for the PiDrone, MATL being "Mapping and then Localization" (as opposed to "Simultaneous Mapping and
+Runs "MATL" for the PiDrone, MATL being "Mapping and then Localization" (as opposed to "Simultaneous Mapping and 
 Localization" for SLAM). To use, run the script and press 'm' to begin mapping. The image data are saved and then run
 through FastSLAM once you land and press 'm' a second time. Once the map is complete, press 'r' to start localization
 and fly around!
@@ -19,11 +19,10 @@ import rospy
 import tf
 from cv_bridge import CvBridge
 import sys
-import os
 from pid_class import PIDaxis
 import camera_info_manager
 from geometry_msgs.msg import TwistStamped
-from slam_helper import FastSLAM
+from MATL_slam_helper import FastSLAM
 from MATL_helper import PROB_THRESHOLD, LocalizationParticleFilter
 
 # ---------- camera parameters DO NOT EDIT ----------- #
@@ -117,7 +116,6 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
             for i in range(1, len(self.map_data)):
                 self.SLAM_estimator.run(self.z_data[i-1], self.map_data[i-1][0], self.map_data[i-1][1], self.map_data[i][0],
                                         self.map_data[i][1])
-
                 # make a nice-looking progress bar
                 percent = int(round(float(i) / denominator, 2) * 100)
                 sys.stdout.write("\rIncorporated %d%% of data into map!" % percent)
@@ -304,8 +302,7 @@ def is_almost_equal(x, y):
 
 
 def main():
-    node_name = os.path.splitext(os.path.basename(__file__))[0]
-    rospy.init_node(node_name)
+    rospy.init_node('localization')
 
     image_pub = rospy.Publisher("/pidrone/picamera/image_raw", Image, queue_size=1, tcp_nodelay=False)
     camera_info_pub = rospy.Publisher("/pidrone/picamera/camera_info", CameraInfo, queue_size=1, tcp_nodelay=False)

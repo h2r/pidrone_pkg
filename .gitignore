@@ -14,3 +14,5 @@ CMakeFiles/
 *.sv?
 logs/*
 *.DS_Store
+*.idea/
+
