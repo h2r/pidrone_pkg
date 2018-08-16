@@ -195,14 +195,8 @@ class EMAStateEstimator(object):
         print '\nCaught ctrl-c. Stopping node.'
         sys.exit()
 
-if __name__ == '__main__':
-    # stefie10:  Please make all the mains just call the main method.
-    # the only thing here should be:
-    # main()
-    # which calls a function called main.
 
-    # The reason is that otherwise state_estimator is a global variable visible to the whole module.
-
+def main():
     # ROS setup
     ###########
     # Initialize the state estimator node
@@ -237,3 +231,7 @@ if __name__ == '__main__':
     while not rospy.is_shutdown():
         statepub.publish(state_estimator.state)
         rate.sleep()
+
+
+if __name__ == '__main__':
+    main()
