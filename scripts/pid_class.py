@@ -19,6 +19,9 @@ class PIDaxis():
         self.midpoint = midpoint
         self.smoothing = smoothing
         # Internal
+        self.reset()
+
+    def reset(self):
         self._old_err = None
         self._p = 0
         self._i = 0
@@ -65,11 +68,11 @@ class PID:
 
     def __init__(self,
 
-                 roll=PIDaxis(6., 4.0, 0.0, control_range=(1400, 1600), midpoint=1500),
-                 roll_low=PIDaxis(4., 0.2, 0.0, control_range=(1400, 1600), midpoint=1500),
+                 roll=PIDaxis(4.0, 4.0, 0.05, control_range=(1400, 1600), midpoint=1500, i_range=(-100, 100)),
+                 roll_low=PIDaxis(0.0, 0.2, 0.0, control_range=(1400, 1600), midpoint=1500, i_range=(-150, 150)),
 
-                 pitch=PIDaxis(6., 4.0, 0.0, control_range=(1400, 1600), midpoint=1500),
-                 pitch_low=PIDaxis(4., 0.2, 0.0, control_range=(1400, 1600), midpoint=1500),
+                 pitch=PIDaxis(4.0, 4.0, 0.05, control_range=(1400, 1600), midpoint=1500, i_range=(-100, 100)),
+                 pitch_low=PIDaxis(0.0, 0.2, 0.0, control_range=(1400, 1600), midpoint=1500, i_range=(-150, 150)),
 
                  yaw=PIDaxis(0.0, 0.0, 0.0),
 
@@ -102,19 +105,33 @@ class PID:
         self._t = None
 
         # Tuning values specific to each drone
-        self.roll_low._i = 0.0
-        self.pitch_low._i = 0.0
-
+        self.roll_low.init_i = 0.0
+        self.pitch_low.init_i = 0.0
         self.throttle_low.init_i = 60
-        self.throttle.init_i = 0.0
         self.reset()
 
     def reset(self):
+        """ Reset each pid and restore the initial i terms """
+        # reset time variable
         self._t = None
+
+        # reset individual PIDs
+        self.roll.reset()
+        self.roll_low.reset()
+        self.pitch.reset()
+        self.pitch_low.reset()
+        self.throttle.reset()
+        self.throttle_low.reset()
+
+        # restore tuning values
+        self.roll_low._i = self.roll_low.init_i
+        self.pitch_low._i = self.pitch_low.init_i
         self.throttle_low._i = self.throttle_low.init_i
-        self.throttle._i = self.throttle.init_i
 
     def step(self, error, cmd_yaw_velocity=0):
+        """ Compute the control variables from the error using the step methods
+        of each axis pid.
+        """
         # First time around prevent time spike
         if self._t is None:
             time_elapsed = 1
@@ -124,9 +141,14 @@ class PID:
         self._t = rospy.get_time()
 
         # Compute roll command
+        ######################
+        # if the x velocity error is within the threshold
         if abs(error.x) < self.trim_controller_thresh_plane:
-            cmd_r = self.roll_low.step(error.x, time_elapsed)
+            # pass the high rate i term off to the low rate pid
+            self.roll_low._i += self.roll._i
             self.roll._i = 0
+            # set the roll value to just the output of the low rate pid
+            cmd_r = self.roll_low.step(error.x, time_elapsed)
         else:
             if error.x > self.trim_controller_cap_plane:
                 self.roll_low.step(self.trim_controller_cap_plane, time_elapsed)
@@ -138,9 +160,11 @@ class PID:
             cmd_r = self.roll_low._i + self.roll.step(error.x, time_elapsed)
 
         # Compute pitch command
+        #######################
         if abs(error.y) < self.trim_controller_thresh_plane:
-            cmd_p = self.pitch_low.step(error.y, time_elapsed)
+            self.pitch_low._i += self.pitch._i
             self.pitch._i = 0
+            cmd_p = self.pitch_low.step(error.y, time_elapsed)
         else:
             if error.y > self.trim_controller_cap_plane:
                 self.pitch_low.step(self.trim_controller_cap_plane, time_elapsed)
@@ -156,9 +180,9 @@ class PID:
 
         # Compute throttle command
         if abs(error.z) < self.trim_controller_thresh_throttle:
-            cmd_t = self.throttle_low.step(error.z, time_elapsed)
             self.throttle_low._i += self.throttle._i
             self.throttle._i = 0
+            cmd_t = self.throttle_low.step(error.z, time_elapsed)
         else:
             if error.z > self.trim_controller_cap_throttle:
                 self.throttle_low.step(self.trim_controller_cap_throttle, time_elapsed)
