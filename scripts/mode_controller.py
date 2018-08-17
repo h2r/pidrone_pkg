@@ -56,24 +56,34 @@ class ModeController(object):
         self.vbat = msg.vbat
         self.amperage = msg.amperage
 
+    def fly_commands_callback(self, msg):
+        """Update last_fly_command_time to check if the pid controller is running"""
+        self.last_fly_command_time = rospy.Time.now()
+
     def shouldIDisarm(self):
         """
         Disarm the drone if:
-        the battery values are too low, or
-        self has not received a heartbeat in the last five seconds, or
-        self has not received a mode message from the flight controller within
+        - the battery values are too low
+        - has not received a heartbeat in the last five seconds, or
+        - has not received a mode message from the flight controller within
             the last five seconds
+        - has not received fly commands from the pid
         """
+        curr_time = rospy.Time.now()
         disarm = False
         if mc.vbat != None and mc.vbat < mc.minimum_voltage:
             print '\nSafety Failure: low battery\n'
             disarm = True
-        #if rospy.Time.now() - self.last_heartbeat > rospy.Duration.from_sec(5):
-            #print '\nSafety Failure: no heartbeat\n'
-            #disarm = True
-        if rospy.Time.now() - self.last_mode_time > rospy.Duration.from_sec(1):
+        if curr_time - self.last_heartbeat > rospy.Duration.from_sec(5):
+            print '\nSafety Failure: no heartbeat\n'
+            disarm = True
+        if curr_time - self.last_mode_time > rospy.Duration.from_sec(1):
             print '\nSafety Failure: not receiving data from flight controller.'
             print 'Check the flight_controller node\n'
+            disarm = True
+        if curr_time - self.last_fly_command_time > rospy.Duration.from_sec(1):
+            print '\nSafety Failure: not receiving flight commands.'
+            print 'Check the pid_controller node\n'
             disarm = True
 
         return disarm
@@ -106,6 +116,7 @@ def main():
     rospy.Subscriber("/pidrone/desired/mode", Mode, mc.desired_mode_callback)
     rospy.Subscriber("/pidrone/heartbeat", String, mc.heartbeat_callback)
     rospy.Subscriber("/pidrone/battery", Battery, mc.battery_callback)
+    rospy.Subscriber("/pidrone/fly_commands", RC, mc.fly_commands_callback)
 
     # Non-ROS Setup
     ###############
