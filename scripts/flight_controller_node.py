@@ -8,9 +8,9 @@ import signal
 import numpy as np
 import command_values as cmds
 from sensor_msgs.msg import Imu
-from std_msgs.msg import Header
 from h2rMultiWii import MultiWii
 from serial import SerialException
+from std_msgs.msg import Header, Empty
 from geometry_msgs.msg import Quaternion
 from pidrone_pkg.msg import Battery, Mode, RC
 import os
@@ -131,14 +131,14 @@ class FlightController(object):
         lin_acc_x = self.board.rawIMU['ax'] * self.accRawToMss - self.accZeroX
         lin_acc_y = self.board.rawIMU['ay'] * self.accRawToMss - self.accZeroY
         lin_acc_z = self.board.rawIMU['az'] * self.accRawToMss - self.accZeroZ
-        
+
         # Rotate the IMU frame to align with our convention for the drone's body
         # frame. IMU: x is forward, y is left, z is up. We want: x is right,
         # y is forward, z is up.
         lin_acc_x_drone_body = -lin_acc_y
         lin_acc_y_drone_body = lin_acc_x
         lin_acc_z_drone_body = lin_acc_z
-        
+
         # Account for gravity's affect on linear acceleration values when roll
         # and pitch are nonzero. When the drone is pitched at 90 degrees, for
         # example, the z acceleration reads out as -9.8 m/s^2. This makes sense,
@@ -241,10 +241,12 @@ def main():
     imupub = rospy.Publisher('/pidrone/imu', Imu, queue_size=1, tcp_nodelay=False)
     batpub = rospy.Publisher('/pidrone/battery', Battery, queue_size=1, tcp_nodelay=False)
     fc.modepub = rospy.Publisher('/pidrone/mode', Mode, queue_size=1, tcp_nodelay=False)
+    fc.heartbeat_pub = rospy.Publisher('/pidrone/heartbeat/flight_controller', Empty, queue_size=1, tcp_nodelay=False)
     print 'Publishing:'
     print '/pidrone/imu'
-    print '/pidrone/battery'
     print '/pidrone/mode'
+    print '/pidrone/battery'
+    print '/heartbeat/flight_controller'
 
     # Subscriber
     ############
@@ -257,6 +259,7 @@ def main():
     r = rospy.Rate(100)
     try:
         while not rospy.is_shutdown():
+            fc.heartbeat_pub.publish(Empty())
             # update and publish flight controller readings
             fc.update_battery_message()
             fc.update_imu_message()
