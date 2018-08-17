@@ -93,8 +93,8 @@ class ModeController(object):
         print "\nCaught ctrl-c! About to Disarm!"
         self.cmd_mode_pub.publish('DISARMED')
         sys.exit()
-        
-    
+
+
 def main():
     # ROS Setup
     ###########
@@ -103,8 +103,10 @@ def main():
 
     # Instantiate a ModeController object
     mc = ModeController()
-    mc.last_heartbeat = rospy.Time.now()
-    mc.last_mode_time = rospy.Time.now()
+    curr_time = rospy.Time.now()
+    mc.last_heartbeat = curr_time
+    mc.last_mode_time = curr_time
+    mc.last_fly_command_time = curr_time
 
     # Publishers
     ############
@@ -174,7 +176,7 @@ def main():
     mc.cmd_mode_pub.publish('DISARMED')
     print 'Shutdown Received'
     print 'Sending DISARM command'
-    
+
 
 if __name__ == '__main__':
     main()
