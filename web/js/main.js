@@ -476,11 +476,12 @@ function init() {
     
     emaIrSub = new ROSLIB.Topic({
       ros : ros,
-      name : '/pidrone/state_ema',
+      name : '/pidrone/state/ema',
       messageType : 'pidrone_pkg/State',
       queue_length : 2,
       throttle_rate : 80
     });
+
     emaIrSub.subscribe(function(message) {
       //printProperties(message);
       //console.log("Range: " + message.range);

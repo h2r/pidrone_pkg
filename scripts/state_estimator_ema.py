@@ -68,7 +68,7 @@ class EMAStateEstimator(object):
         # update the header stamp
         self.state.header.stamp = data.header.stamp
         # update linear twist data
-#TODO TEST
+        # TODO TEST
         self.filter_twist(data.twist)
         # update that data has been recieved
         self.received_twist_data = True
