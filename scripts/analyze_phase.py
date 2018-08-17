@@ -45,6 +45,7 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
         ###########
         # Publisher
         self.posepub = rospy.Publisher('/pidrone/picamera/pose', PoseStamped, queue_size=1)
+        self.lostpub = rospy.Publisher('/pidrone/picamera/lost', Bool, queue_size=1)
         # Subscribers
         rospy.Subscriber("/pidrone/reset_transform", Empty, self.reset_callback)
         rospy.Subscriber("/pidrone/position_control", Bool, self.position_control_callback)
@@ -71,6 +72,7 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
 
                 # if the first image was visible (the transformation was succesful) :
                 if transform_first is not None:
+                    self.lostpub.publish(False)
                     # calculate the x,y, and yaw translations from the transformation
                     translation_first, yaw_first = self.translation_and_yaw(transform_first)
                     # use an EMA filter to smooth the position and yaw values
@@ -94,6 +96,7 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
                     # if the previous image was visible (the transformation was succesful)
                     # calculate the position by integrating
                     if transform_previous is not None:
+                        self.lostpub.publish(False)
                         if self.last_first_time is None:
                             self.last_first_time = rospy.get_time()
                         time_since_first = rospy.get_time() - self.last_first_time
@@ -110,7 +113,7 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
                     # succesful), reset the pose and print lost
                     else:
                         print "Lost!"
-                        #self.reset_callback()
+                        self.lostpub.publish(True)
 
             self.previous_image = image
 
@@ -145,12 +148,14 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
         # reset the pose values
         self.pose_msg = PoseStamped()
 
+        self.lostpub.publish(False)
+
     # subscribe /pidrone/position_control
     def position_control_callback(self, msg):
         ''' Set whether the pose is calculated and published '''
         self.position_control = msg.data
         print "Position Control", self.position_control
-        
+
     def state_callback(self, msg):
         """
         Store z position (altitude) reading from State, along with most recent
