@@ -30,6 +30,11 @@ class ThreeDimVec(object):
 
     def magnitude(self):
         return np.sqrt(self.x * self.x + self.y * self.y + self.z * self.z)
+
+    def planar_magnitude(self):
+        return np.sqrt(self.x * self.x + self.y * self.y)
+
+
 # TODO EDIT ALL DATA DESCRIPTIONS
 class Position(ThreeDimVec):
     ''' Struct to store postion components x,y,yaw
