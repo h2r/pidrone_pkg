@@ -115,7 +115,7 @@ class FastSLAM:
         """
 
         # print the average number of landmarks per particles
-        print "LM: ", np.sum([len(p.landmarks) for p in self.particles]) / float(self.num_particles)
+        # print "LM: ", np.sum([len(p.landmarks) for p in self.particles]) / float(self.num_particles)
 
         # write poses to a text file to be animated
         if POSE:
@@ -249,6 +249,7 @@ class FastSLAM:
                 # there was no match (short circuiting!)
                 if match is None or len(match) < 2 or match[0].distance > MATCH_RATIO * match[1].distance:
                     utils.add_landmark(particle, kp, des, self.sigma_observation, self.kp_to_measurement)
+                    print "adding this landmark: ", kp.pt
 
                     # 'punish' this particle since new landmarks decrease certainty
                     particle.weight += math.log(PROB_THRESHOLD)

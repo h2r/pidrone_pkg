@@ -88,7 +88,7 @@ class StateEstimation(object):
         
         # Create the publisher to publish state estimates
         self.state_pub = rospy.Publisher('/pidrone/state', State, queue_size=1,
-                                        tcp_nodelay=False)
+                                         tcp_nodelay=False)
         
     def initialize_ukf(self):
         '''
@@ -308,7 +308,7 @@ class StateEstimation(object):
             measurement_z = np.array([data.twist.linear.x,  # x velocity
                                       data.twist.linear.y]) # y velocity
             # Ensure that we are using subtraction to compute the residual
-            #self.ukf.residual_z = np.subtract
+            # self.ukf.residual_z = np.subtract
             self.ukf.update(measurement_z,
                             hx=self.measurement_function_optical_flow,
                             R=self.measurement_cov_optical_flow)
@@ -369,8 +369,8 @@ class StateEstimation(object):
         # 36-element array, in a row-major order, according to ROS msg docs
         pose_cov_mat = np.full((36,), np.nan)
         twist_cov_mat = np.full((36,), np.nan)
-        pose_cov_mat[14] = self.ukf.P[2, 2] # z variance
-        twist_cov_mat[14] = self.ukf.P[5, 5] # z velocity variance
+        pose_cov_mat[14] = self.ukf.P[2, 2]   # z variance
+        twist_cov_mat[14] = self.ukf.P[5, 5]  # z velocity variance
         
         # Add covariances to message
         state_msg.pose_with_covariance.covariance = pose_cov_mat
@@ -480,6 +480,7 @@ def main():
         print se.ukf.x
         # print 'Most recent state covariance matrix:'
         # print se.ukf.P
-        
+
+
 if __name__ == '__main__':
     main()
