@@ -66,10 +66,10 @@ stuff "source setup.sh\n"
 stuff "cd $(rospack find pidrone_pkg)/scripts/\n"
 stuff "python pid_controller.py\n"
 
-screen -t " state_estimator_ukf"
+screen -t " state_estimator"
 stuff "source setup.sh\n"
 stuff "cd $(rospack find pidrone_pkg)/scripts/\n"
-stuff "python state_estimator_ukf_7d_state.py\n"
+stuff "python state_estimator.py\n"
 
 screen -t " vision"
 stuff "source setup.sh\n"

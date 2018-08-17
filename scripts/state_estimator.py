@@ -127,7 +127,7 @@ class StateEstimator(object):
         
         self.state_msg.pose_with_covariance.pose.position.x = x
         self.state_msg.pose_with_covariance.pose.position.y = y
-        self.state_msg.pose_with_covariance.pose.position.x = z
+        self.state_msg.pose_with_covariance.pose.position.z = z
         self.state_msg.pose_with_covariance.pose.orientation = orientation
         self.state_msg.twist_with_covariance.twist.linear.x = vel_x
         self.state_msg.twist_with_covariance.twist.linear.y = vel_y

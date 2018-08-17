@@ -24,7 +24,7 @@ import argparse
 import os
 
 
-class StateEstimation3D(object):
+class UKFStateEstimator12D(object):
     '''
     Class that estimates the state of the drone using an Unscented Kalman Filter
     (UKF) applied to raw sensor data.
@@ -667,7 +667,7 @@ def main():
     parser.add_argument('--optical_flow_throttled', action='store_true',
                         help=('Use throttled optical flow topic /pidrone/picamera/twist_throttle'))
     args = parser.parse_args()
-    se = StateEstimation3D(ir_throttled=args.ir_throttled,
+    se = UKFStateEstimator12D(ir_throttled=args.ir_throttled,
                          imu_throttled=args.imu_throttled,
                          optical_flow_throttled=args.optical_flow_throttled)
     try:

@@ -23,7 +23,7 @@ import argparse
 import os
 
 
-class StateEstimation(object):
+class UKFStateEstimator7D(object):
     '''
     Class that estimates the state of the drone using an Unscented Kalman Filter
     (UKF) applied to raw sensor data. This script tests the addition of position
@@ -528,7 +528,7 @@ def main():
     parser.add_argument('--optical_flow_throttled', action='store_true',
                         help=('Use throttled optical flow topic /pidrone/picamera/twist_throttle'))
     args = parser.parse_args()
-    se = StateEstimation(ir_throttled=args.ir_throttled,
+    se = UKFStateEstimator7D(ir_throttled=args.ir_throttled,
                          imu_throttled=args.imu_throttled,
                          optical_flow_throttled=args.optical_flow_throttled)
     try:
