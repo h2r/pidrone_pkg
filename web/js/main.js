@@ -83,9 +83,10 @@ function init() {
 
     heartbeatPub = new ROSLIB.Topic({
       ros : ros,
-      name : '/pidrone/heartbeat',
+      name : '/pidrone/heartbeat/web_interface',
       messageType : 'std_msgs/String'
     });
+
     heartbeatpubmsg = new ROSLIB.Message({data: "Javascript API"})
 
     setInterval(function(){
@@ -473,7 +474,7 @@ function init() {
             xyChart.update()
         }
     }
-    
+
     emaIrSub = new ROSLIB.Topic({
       ros : ros,
       name : '/pidrone/state/ema',
