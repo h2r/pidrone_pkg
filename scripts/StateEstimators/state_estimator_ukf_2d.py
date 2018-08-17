@@ -20,14 +20,14 @@ import numpy as np
 import argparse
 
 
-class StateEstimation1D(object):
+class UKFStateEstimator2D(object):
     '''
     Class that estimates the state of the drone using an Unscented Kalman Filter
     (UKF) applied to raw sensor data. The filter only tracks the quadcopter's
-    motion along one dimension: the global frame z-axis. In this simplified
-    case, we assume that the drone's body frame orientation is aligned with the
-    world frame (i.e., no roll, pitch, or yaw), and that it is only offset along
-    the z-axis.
+    motion along one spatial dimension: the global frame z-axis. In this
+    simplified case, we assume that the drone's body frame orientation is
+    aligned with the world frame (i.e., no roll, pitch, or yaw), and that it is
+    only offset along the z-axis.
     '''
     # TODO: Make a reference to the UKF math document that is being written up,
     #       once it is in a complete enough state and can be placed in a shared
@@ -71,7 +71,7 @@ class StateEstimation1D(object):
         '''
         Initialize ROS-related objects, e.g., the node, subscribers, etc.
         '''
-        self.node_name = 'state_estimator_ukf_1d'
+        self.node_name = os.path.splitext(os.path.basename(__file__))[0]
         print 'Initializing {} node...'.format(self.node_name)
         rospy.init_node(self.node_name)
         
@@ -81,8 +81,8 @@ class StateEstimation1D(object):
         rospy.Subscriber(self.ir_topic_str, Range, self.ir_data_callback)
         
         # Create the publisher to publish state estimates
-        self.state_pub = rospy.Publisher('/pidrone/state', State, queue_size=1,
-                                        tcp_nodelay=False)
+        self.state_pub = rospy.Publisher('/pidrone/state/ukf_2d', State, queue_size=1,
+                                         tcp_nodelay=False)
         
     def initialize_ukf(self):
         '''
@@ -223,19 +223,14 @@ class StateEstimation1D(object):
             # state estimate to the same point in time as the measurement,
             # perform a measurement update with the slant range reading
             measurement_z = np.array([data.range])
-            # print 'Prior:', self.ukf.x
-            # print 'Measurement:', measurement_z[0]
             self.ukf.update(measurement_z)
-            # print 'Posterior:', self.ukf.x
-            # print 'Kalman Gain:', self.ukf.K
-            # print
             self.publish_current_state()
         else:
             self.initialize_input_time(data)
             # Got a raw slant range reading, so update the initial state
             # vector of the UKF
             self.ukf.x[0] = data.range
-            self.ukf.x[1] = 0.0 # initialize velocity as 0 m/s
+            self.ukf.x[1] = 0.0  # initialize velocity as 0 m/s
             # Update the state covariance matrix to reflect estimated
             # measurement error. Variance of the measurement -> variance of
             # the corresponding state variable
@@ -255,7 +250,7 @@ class StateEstimation1D(object):
             - PoseWithCovariance
             - TwistWithCovariance
         Note that a lot of these ROS message fields will be left empty, as the
-        1D UKF does not track information on the entire state space of the
+        2D UKF does not track information on the entire state space of the
         drone.
         '''
         state_msg = State()
@@ -284,8 +279,8 @@ class StateEstimation1D(object):
         # 36-element array, in a row-major order, according to ROS msg docs
         pose_cov_mat = np.full((36,), np.nan)
         twist_cov_mat = np.full((36,), np.nan)
-        pose_cov_mat[14] = self.ukf.P[0, 0] # z variance
-        twist_cov_mat[14] = self.ukf.P[1, 1] # z velocity variance
+        pose_cov_mat[14] = self.ukf.P[0, 0]  # z variance
+        twist_cov_mat[14] = self.ukf.P[1, 1]  # z velocity variance
         
         # Add covariances to message
         state_msg.pose_with_covariance.covariance = pose_cov_mat
@@ -337,7 +332,7 @@ def main():
     parser.add_argument('--imu_throttled', action='store_true',
             help=('Use throttled IMU topic /pidrone/imu_throttle'))
     args = parser.parse_args()
-    se = StateEstimation1D(ir_throttled=args.ir_throttled,
+    se = UKFStateEstimator2D(ir_throttled=args.ir_throttled,
                          imu_throttled=args.imu_throttled)
     try:
         # Wait until node is halted
@@ -347,8 +342,6 @@ def main():
         print '{} node terminating.'.format(se.node_name)
         print 'Most recent state vector:'
         print se.ukf.x
-        # print 'Most recent state covariance matrix:'
-        # print se.ukf.P
         
 if __name__ == '__main__':
     main()

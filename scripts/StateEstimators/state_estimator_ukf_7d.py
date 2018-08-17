@@ -23,7 +23,7 @@ import argparse
 import os
 
 
-class StateEstimation(object):
+class UKFStateEstimator7D(object):
     '''
     Class that estimates the state of the drone using an Unscented Kalman Filter
     (UKF) applied to raw sensor data. This script tests the addition of position
@@ -86,8 +86,8 @@ class StateEstimation(object):
         rospy.init_node(self.node_name)
         
         # Create the publisher to publish state estimates
-        self.state_pub = rospy.Publisher('/pidrone/state', State, queue_size=1,
-                                        tcp_nodelay=False)
+        self.state_pub = rospy.Publisher('/pidrone/state/ukf_7d', State, queue_size=1,
+                                         tcp_nodelay=False)
         
         # Subscribe to topics to which the drone publishes in order to get raw
         # data from sensors, which we can then filter
@@ -528,7 +528,7 @@ def main():
     parser.add_argument('--optical_flow_throttled', action='store_true',
                         help=('Use throttled optical flow topic /pidrone/picamera/twist_throttle'))
     args = parser.parse_args()
-    se = StateEstimation(ir_throttled=args.ir_throttled,
+    se = UKFStateEstimator7D(ir_throttled=args.ir_throttled,
                          imu_throttled=args.imu_throttled,
                          optical_flow_throttled=args.optical_flow_throttled)
     try:

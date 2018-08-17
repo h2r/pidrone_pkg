@@ -6,10 +6,9 @@ import rospy
 import signal
 import numpy as np
 import command_values as cmds
-from std_msgs.msg import String
 from serial import SerialException
-from sensor_msgs.msg import Range, Imu
-from pidrone_pkg.msg import Mode, Battery, RC
+from std_msgs.msg import String, Empty
+from pidrone_pkg.msg import Mode, Battery
 
 
 class ModeController(object):
@@ -35,13 +34,8 @@ class ModeController(object):
 
     # ROS Callback Methods
     ######################
-    def heartbeat_callback(self, msg):
-        """Update the time of the most recent heartbeat sent from the web interface"""
-        self.last_heartbeat = rospy.Time.now()
-
     def mode_callback(self, msg):
         """Update the current mode of the drone"""
-        self.last_mode_time = rospy.Time.now()
         self.prev_mode = self.curr_mode
         self.curr_mode = msg.mode
         if self.prev_mode != self.curr_mode:
@@ -56,34 +50,54 @@ class ModeController(object):
         self.vbat = msg.vbat
         self.amperage = msg.amperage
 
-    def fly_commands_callback(self, msg):
-        """Update last_fly_command_time to check if the pid controller is running"""
-        self.last_fly_command_time = rospy.Time.now()
+    # Heartbeat Callbacks: These update the last time that data was received
+    #                       from a node
+    def heartbeat_web_interface_callback(self, msg):
+        """Update web_interface heartbeat"""
+        self.heartbeat_web_interface = rospy.Time.now()
+
+    def heartbeat_command_line_interface_callback(self, msg):
+        """Update command_line_interface heartbeat"""
+        self.heartbeat_command_line_interface = rospy.Time.now()
+
+    def heartbeat_flight_controller_callback(self, msg):
+        """Update the flight_controller heartbeat"""
+        self.heartbeat_flight_controller = rospy.Time.now()
+
+    def heartbeat_pid_controller_callback(self, msg):
+        """Update pid_controller heartbeat"""
+        self.heartbeat_pid_controller = rospy.Time.now()
+
+    def heartbeat_infrared_callback(self, msg):
+        """Update ir sensor heartbeat"""
+        self.heartbeat_infrared = rospy.Time.now()
 
     def shouldIDisarm(self):
         """
-        Disarm the drone if:
-        - the battery values are too low
-        - has not received a heartbeat in the last five seconds, or
-        - has not received a mode message from the flight controller within
-            the last five seconds
-        - has not received fly commands from the pid
+        Disarm the drone if the battery values are too low or if there is a
+        missing heartbeat
         """
         curr_time = rospy.Time.now()
         disarm = False
-        if mc.vbat != None and mc.vbat < mc.minimum_voltage:
-            print '\nSafety Failure: low battery\n'
+        if self.vbat != None and self.vbat < self.minimum_voltage:
+            print('\nSafety Failure: low battery\n')
             disarm = True
-        if curr_time - self.last_heartbeat > rospy.Duration.from_sec(5):
-            print '\nSafety Failure: no heartbeat\n'
+        if ((curr_time - self.heartbeat_web_interface) > rospy.Duration.from_sec(5) and
+        (curr_time - self.heartbeat_command_line_interface) > rospy.Duration.from_sec(5)):
+            print('\nSafety Failure: user interface heartbeat\n')
+            print('Ensure that either the web interface or command line interface is running')
             disarm = True
-        if curr_time - self.last_mode_time > rospy.Duration.from_sec(1):
-            print '\nSafety Failure: not receiving data from flight controller.'
-            print 'Check the flight_controller node\n'
+        if curr_time - self.heartbeat_flight_controller > rospy.Duration.from_sec(1):
+            print('\nSafety Failure: not receiving data from flight controller.')
+            print('Check the flight_controller node\n')
             disarm = True
-        if curr_time - self.last_fly_command_time > rospy.Duration.from_sec(1):
-            print '\nSafety Failure: not receiving flight commands.'
-            print 'Check the pid_controller node\n'
+        if curr_time - self.heartbeat_pid_controller > rospy.Duration.from_sec(1):
+            print('\nSafety Failure: not receiving flight commands.')
+            print('Check the pid_controller node\n')
+            disarm = True
+        if curr_time - self.heartbeat_infrared > rospy.Duration.from_sec(1):
+            print('\nSafety Failure: not receiving data from the IR sensor.')
+            print('Check the infrared node\n')
             disarm = True
 
         return disarm
@@ -104,9 +118,11 @@ def main():
     # Instantiate a ModeController object
     mc = ModeController()
     curr_time = rospy.Time.now()
-    mc.last_heartbeat = curr_time
-    mc.last_mode_time = curr_time
-    mc.last_fly_command_time = curr_time
+    mc.heartbeat_infrared = curr_time
+    mc.heartbeat_web_interface= curr_time
+    mc.heartbeat_pid_controller = curr_time
+    mc.heartbeat_flight_controller = curr_time
+    mc.heartbeat_command_line_interface = curr_time
 
     # Publishers
     ############
@@ -116,9 +132,14 @@ def main():
     #############
     rospy.Subscriber("/pidrone/mode", Mode, mc.mode_callback)
     rospy.Subscriber("/pidrone/desired/mode", Mode, mc.desired_mode_callback)
-    rospy.Subscriber("/pidrone/heartbeat", String, mc.heartbeat_callback)
     rospy.Subscriber("/pidrone/battery", Battery, mc.battery_callback)
-    rospy.Subscriber("/pidrone/fly_commands", RC, mc.fly_commands_callback)
+    # heartbeat subscribers
+    rospy.Subscriber("/pidrone/heartbeat/infrared", Empty, mc.heartbeat_infrared_callback)
+    rospy.Subscriber("/pidrone/heartbeat/web_interface", Empty, mc.heartbeat_web_interface_callback)
+    rospy.Subscriber("/pidrone/heartbeat/pid_controller", Empty, mc.heartbeat_pid_controller_callback)
+    rospy.Subscriber("/pidrone/heartbeat/flight_controller", Empty, mc.heartbeat_flight_controller_callback)
+    rospy.Subscriber("/pidrone/heartbeat/command_line_interface", Empty, mc.heartbeat_command_line_interface_callback)
+
 
     # Non-ROS Setup
     ###############
