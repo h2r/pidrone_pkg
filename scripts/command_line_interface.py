@@ -60,6 +60,7 @@ def main():
     desired_twist_pub = rospy.Publisher('/pidrone/desired/twist', Twist, queue_size=1)
     reset_transform_pub = rospy.Publisher('pidrone/reset_transform', Empty, queue_size=1)
     position_control_pub = rospy.Publisher('pidrone/position_control', Bool, queue_size=1)
+    map_pub = rospy.Publisher('/pidrone/map', Empty, queue_size=1)
 
     publish_desired_mode('DISARMED', desired_mode_pub)
     signal.signal(signal.SIGINT, lambda x,y: ctrl_c_handler(x,y,desired_mode_pub))
@@ -80,6 +81,8 @@ def main():
                 # position commands take the form p <x> <y> <z> where x, y, and z are floats
                 if entry[0] == 'r' and len(entry) == 1:
                     reset_transform_pub.publish(Empty())
+                elif entry[0] == 'm' and len(entry) == 1:
+                    map_pub.publish(Empty())
 
                 # it's a position command
                 elif entry[0] == 'p':
