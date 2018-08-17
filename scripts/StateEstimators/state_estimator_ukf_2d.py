@@ -81,8 +81,8 @@ class StateEstimation1D(object):
         rospy.Subscriber(self.ir_topic_str, Range, self.ir_data_callback)
         
         # Create the publisher to publish state estimates
-        self.state_pub = rospy.Publisher('/pidrone/state', State, queue_size=1,
-                                        tcp_nodelay=False)
+        self.state_pub = rospy.Publisher('/pidrone/state/ukf_2d', State, queue_size=1,
+                                         tcp_nodelay=False)
         
     def initialize_ukf(self):
         '''

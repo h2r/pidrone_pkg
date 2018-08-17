@@ -25,7 +25,7 @@ class EMAStateEstimator(object):
     /pidrone/picamera/twist
     '''
 
-    def __init__(self, primary_state_estimator=False):
+    def __init__(self):
         ''' A constructor for EMAStateEstimator
         '''
         # Initialize the State:
@@ -34,12 +34,7 @@ class EMAStateEstimator(object):
         header.stamp = rospy.Time.now()
         header.frame_id = 'Body'
         
-        # TODO: have main state estimator selector node pass in this boolean
-        # as True
-        if primary_state_estimator:
-            self.state_topic_str = '/pidrone/state'
-        else:
-            self.state_topic_str = '/pidrone/state/ema'
+        self.state_topic_str = '/pidrone/state/ema'
 
         self.state = State()
         self.state.header = header
@@ -68,7 +63,7 @@ class EMAStateEstimator(object):
         # update the header stamp
         self.state.header.stamp = data.header.stamp
         # update linear twist data
-#TODO TEST
+        # TODO TEST
         self.filter_twist(data.twist)
         # update that data has been recieved
         self.received_twist_data = True
@@ -209,7 +204,8 @@ def main():
 
     # Publishers
     ############
-    statepub = rospy.Publisher(state_estimator.state_topic_str, State, queue_size=1, tcp_nodelay=False)
+    statepub = rospy.Publisher(state_estimator.state_topic_str, State,
+                               queue_size=1, tcp_nodelay=False)
 
     # Subscribers
     #############

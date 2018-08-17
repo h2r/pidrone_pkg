@@ -86,8 +86,8 @@ class StateEstimation(object):
         rospy.init_node(self.node_name)
         
         # Create the publisher to publish state estimates
-        self.state_pub = rospy.Publisher('/pidrone/state', State, queue_size=1,
-                                        tcp_nodelay=False)
+        self.state_pub = rospy.Publisher('/pidrone/state/ukf_7d', State, queue_size=1,
+                                         tcp_nodelay=False)
         
         # Subscribe to topics to which the drone publishes in order to get raw
         # data from sensors, which we can then filter

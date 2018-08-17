@@ -1,15 +1,17 @@
 /**
 * Setup all visualization elements when the page is loaded.
 */
+
 function empty(element) {
-while (element.firstChild) {
-  element.removeChild(element.firstChild);
+    while (element.firstChild) {
+      element.removeChild(element.firstChild);
+    }
 }
-}
+
 function printProperties(obj) {
-for(var propt in obj){
-  console.log(propt + ': ' + obj[propt]);
-}
+    for(var propt in obj){
+      console.log(propt + ': ' + obj[propt]);
+    }
 }
 
 function myround(number, precision) {
@@ -44,26 +46,26 @@ function init() {
         url : url
     });
 
-  ros.on('error', function(error) {
+    ros.on('error', function(error) {
       console.log('ROS Master:  Error, check console.');
       //printProperties(error);
       document.getElementById('statusMessage').innerHTML='Error detected; check console.';
       $('#statusMessage').addClass('alert-danger').removeClass('alert-success');
-  });
+    });
 
-  ros.on('connection', function() {
+    ros.on('connection', function() {
       console.log('ROS Master:  Connected.');
       //printProperties(error);
       document.getElementById('statusMessage').innerHTML="Connected";
       $('#statusMessage').addClass('alert-success').removeClass('alert-danger');
-  });
+    });
 
-  ros.on('close', function() {
+    ros.on('close', function() {
       console.log('ROS Master:  Connection closed.');
       //printProperties(error);
       document.getElementById('statusMessage').innerHTML="Disconnected";
       $('#statusMessage').addClass('alert-danger').removeClass('alert-success');
-  });
+    });
 
     modepub = new ROSLIB.Topic({
       ros : ros,
@@ -112,6 +114,7 @@ function init() {
       queue_length : 2,
       throttle_rate : 2
     });
+
     batterysub.subscribe(function(message) {
       //printProperties(message);
       var mynumber = myround(message.vbat, 2);
@@ -473,11 +476,12 @@ function init() {
     
     emaIrSub = new ROSLIB.Topic({
       ros : ros,
-      name : '/pidrone/state_ema',
+      name : '/pidrone/state/ema',
       messageType : 'pidrone_pkg/State',
       queue_length : 2,
       throttle_rate : 80
     });
+
     emaIrSub.subscribe(function(message) {
       //printProperties(message);
       //console.log("Range: " + message.range);
