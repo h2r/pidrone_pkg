@@ -166,6 +166,7 @@ class AnalyzePhase:
     def reset_callback(self, data):
         """start localization when '/pidrone/reset_transform' is published to (press 'r')"""
         print "Start localization"
+        self.locate_position = True
         self.first_locate = True
         self.map_counter = 0
         self.max_map_counter = 0

@@ -274,7 +274,7 @@ function init() {
       }
       ukfPlusSigmaData.push(xyPairStdDevPlus);
       ukfMinusSigmaData.push(xyPairStdDevMinus);
-      updateXYChart(message);
+      updateUkfXYChart(message);
       if (!heightChartPaused) {
           // heightChart.options.scales.xAxes[0].ticks.min = heightChartMinTime;
           // heightChart.options.scales.xAxes[0].ticks.max = heightChartMaxTime;
@@ -284,6 +284,17 @@ function init() {
           // Avoid updating too often, to avoid shaky plotting?
           // heightChart.update();
       }
+    });
+    
+    cameraPoseSub = new ROSLIB.Topic({
+        ros : ros,
+        name : '/pidrone/picamera/pose',
+        messageType : 'geometry_msgs/PoseStamped',
+        queue_length : 2,
+        throttle_rate : 80
+    });
+    cameraPoseSub.subscribe(function(message) {
+        updateCameraPoseXYChart(message);
     });
     
     function updateGroundTruthXYChart(msg) {
@@ -344,7 +355,65 @@ function init() {
         }
     }
     
-    function updateXYChart(msg) {
+    function updateCameraPoseXYChart(msg) {
+        xPos = msg.pose.position.x;
+        yPos = msg.pose.position.y;
+        qx = msg.pose.orientation.x;
+        qy = msg.pose.orientation.y;
+        qz = msg.pose.orientation.z;
+        qw = msg.pose.orientation.w;
+        
+        if (xPos != null &&
+            yPos != null &&
+            qx != null &&
+            qy != null &&
+            qz != null &&
+            qw != null) {
+            
+            // Quaternion with which to rotate vectors to show the yaw of the
+            // drone (and perhaps also the roll and pitch)
+            global_to_body_quat = new Quaternion([qw, qx, qy, qz]);
+            // v1 = [1, 1, 0];
+            // v2 = [1, -1, 0];
+            // Drone marker vectors
+            v1 = [0.03, 0.03, 0];
+            v2 = [0.03, -0.03, 0];
+            v3 = [0.0, 0.05, 0];
+            rotatedv1 = global_to_body_quat.rotateVector(v1);
+            rotatedv2 = global_to_body_quat.rotateVector(v2);
+            rotatedv3 = global_to_body_quat.rotateVector(v3);
+            xyChart.data.datasets[6].data = [{
+                x: (xPos - rotatedv1[0]),
+                y: (yPos - rotatedv1[1])
+            },
+            {
+                x: (xPos + rotatedv1[0]),
+                y: (yPos + rotatedv1[1])
+            }
+            ];
+            xyChart.data.datasets[7].data = [{
+                x: (xPos - rotatedv2[0]),
+                y: (yPos - rotatedv2[1])
+            },
+            {
+                x: (xPos + rotatedv2[0]),
+                y: (yPos + rotatedv2[1])
+            }
+            ];
+            xyChart.data.datasets[8].data = [{
+                x: xPos,
+                y: yPos
+            },
+            {
+                x: (xPos + rotatedv3[0]),
+                y: (yPos + rotatedv3[1])
+            }
+            ];
+            xyChart.update()
+        }
+    }
+    
+    function updateUkfXYChart(msg) {
         xPos = msg.pose_with_covariance.pose.position.x;
         yPos = msg.pose_with_covariance.pose.position.y;
         qx = msg.pose_with_covariance.pose.orientation.x;
@@ -907,6 +976,33 @@ $(document).ready(function() {
                 pointRadius: 0,
                 fill: false,
                 borderColor: 'rgba(49, 26, 140, 1)',
+                backgroundColor: 'rgba(0, 0, 0, 0)',
+                lineTension: 0, // remove smoothing
+              },
+              {
+                data: Array(0), // initialize array of length 0
+                borderWidth: 1.5,
+                pointRadius: 0,
+                fill: false,
+                borderColor: 'rgba(255, 80, 0, 1)',
+                backgroundColor: 'rgba(0, 0, 0, 0)',
+                lineTension: 0, // remove smoothing
+              },
+              {
+                data: Array(0), // initialize array of length 0
+                borderWidth: 1.5,
+                pointRadius: 0,
+                fill: false,
+                borderColor: 'rgba(255, 80, 0, 1)',
+                backgroundColor: 'rgba(0, 0, 0, 0)',
+                lineTension: 0, // remove smoothing
+              },
+              {
+                data: Array(0), // initialize array of length 0
+                borderWidth: 1.5,
+                pointRadius: 0,
+                fill: false,
+                borderColor: 'rgba(255, 80, 0, 1)',
                 backgroundColor: 'rgba(0, 0, 0, 0)',
                 lineTension: 0, // remove smoothing
               },

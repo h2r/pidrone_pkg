@@ -21,7 +21,7 @@ class AnalyzeFlow(picamera.array.PiMotionAnalysis):
         self.flow_scale = .165
         self.flow_coeff = self.flow_scale / self.max_flow
         
-        self.altitude = None
+        self.altitude = 0.0
 
         # Publisher:
         self.twistpub = rospy.Publisher('/pidrone/picamera/twist', TwistStamped, queue_size=1)
@@ -33,21 +33,20 @@ class AnalyzeFlow(picamera.array.PiMotionAnalysis):
         a : an array of the incoming motion data that is provided by the
             PiMotionAnalysis api
         '''
-        if self.altitude is not None:
-            # signed 1-byte values
-            x = a['x']
-            y = a['y']
+        # signed 1-byte values
+        x = a['x']
+        y = a['y']
 
-            # calculate the planar and yaw motions (multiply by 100 for cm to m conversion)
-            x_motion = 100 * np.sum(x) * self.flow_coeff * self.altitude
-            y_motion = 100 * np.sum(y) * self.flow_coeff * self.altitude
-            twist_msg = TwistStamped()
-            twist_msg.header.stamp = rospy.Time.now()
-            twist_msg.twist.linear.x = self.near_zero(x_motion)
-            twist_msg.twist.linear.y = - self.near_zero(y_motion)
+        # calculate the planar and yaw motions (multiply by 100 for cm to m conversion)
+        x_motion = 100 * np.sum(x) * self.flow_coeff * self.altitude
+        y_motion = 100 * np.sum(y) * self.flow_coeff * self.altitude
+        twist_msg = TwistStamped()
+        twist_msg.header.stamp = rospy.Time.now()
+        twist_msg.twist.linear.x = self.near_zero(x_motion)
+        twist_msg.twist.linear.y = - self.near_zero(y_motion)
 
-            # Update and publish the twist message
-            self.twistpub.publish(twist_msg)
+        # Update and publish the twist message
+        self.twistpub.publish(twist_msg)
 
     def near_zero(self, n):
         return 0 if abs(n) < 0.001 else n

@@ -28,7 +28,7 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
 
         # initialize the Pose data
         self.pose_msg = PoseStamped()
-        self.got_state_data = False
+        self.altitude = 0.0
 
         # position hold is initialized as False
         self.position_control = False
@@ -74,19 +74,18 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
                     # calculate the x,y, and yaw translations from the transformation
                     translation_first, yaw_first = self.translation_and_yaw(transform_first)
                     # use an EMA filter to smooth the position and yaw values
-                    if self.got_state_data:
-                        self.pose_msg.pose.position.x = translation_first[0]*self.altitude
-                        self.pose_msg.pose.position.y = translation_first[1]*self.altitude
-                        # With just a yaw, the x and y components of the
-                        # quaternion are 0
-                        _,_,z,w = tf.transformations.quaternion_from_euler(0,0,yaw_first)
-                        self.pose_msg.pose.orientation.z = z
-                        self.pose_msg.pose.orientation.w = w
-                        # update first image data
-                        self.first_image_counter += 1
-                        self.max_first_counter = max(self.max_first_counter, self.first_image_counter)
-                        self.last_first_time = rospy.get_time()
-                        print "count:", self.first_image_counter
+                    self.pose_msg.pose.position.x = translation_first[0]*self.altitude
+                    self.pose_msg.pose.position.y = translation_first[1]*self.altitude
+                    # With just a yaw, the x and y components of the
+                    # quaternion are 0
+                    _,_,z,w = tf.transformations.quaternion_from_euler(0,0,yaw_first)
+                    self.pose_msg.pose.orientation.z = z
+                    self.pose_msg.pose.orientation.w = w
+                    # update first image data
+                    self.first_image_counter += 1
+                    self.max_first_counter = max(self.max_first_counter, self.first_image_counter)
+                    self.last_first_time = rospy.get_time()
+                    print "count:", self.first_image_counter
                 # else the first image was not visible (the transformation was not succesful) :
                 else:
                     # try to estimate the transformation from the previous image
@@ -101,12 +100,11 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
                         print "integrated", time_since_first
                         print "max_first_counter: ", self.max_first_counter
                         int_displacement, yaw_previous = self.translation_and_yaw(transform_previous)
-                        if self.got_state_data:
-                            self.pose_msg.pose.position.x = self.x_position_from_state + (int_displacement[0]*self.altitude)
-                            self.pose_msg.pose.position.y = self.y_position_from_state + (int_displacement[1]*self.altitude)
-                            _,_,z,w = tf.transformations.quaternion_from_euler(0,0,yaw_previous)
-                            self.pose_msg.pose.orientation.z = z
-                            self.pose_msg.pose.orientation.w = w
+                        self.pose_msg.pose.position.x = self.x_position_from_state + (int_displacement[0]*self.altitude)
+                        self.pose_msg.pose.position.y = self.y_position_from_state + (int_displacement[1]*self.altitude)
+                        _,_,z,w = tf.transformations.quaternion_from_euler(0,0,yaw_previous)
+                        self.pose_msg.pose.orientation.z = z
+                        self.pose_msg.pose.orientation.w = w
                         print "Lost the first image !"
                     # if the previous image wasn't visible (the transformation was not
                     # succesful), reset the pose and print lost
@@ -158,7 +156,6 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
         Store z position (altitude) reading from State, along with most recent
         x and y position estimate
         """
-        self.got_state_data = True
         self.altitude = msg.pose_with_covariance.pose.position.z
         self.x_position_from_state = msg.pose_with_covariance.pose.position.x
         self.y_position_from_state = msg.pose_with_covariance.pose.position.y

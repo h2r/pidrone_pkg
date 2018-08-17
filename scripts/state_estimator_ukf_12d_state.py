@@ -40,8 +40,8 @@ class StateEstimation3D(object):
         self.num_bad_updates = 0
         self.ready_to_filter = False
         self.printed_filter_start_notice = False
-        self.got_imu = False
-        self.got_optical_flow = True
+        self.got_imu = True
+        self.got_optical_flow = False
         self.got_ir = False
         
         self.ir_topic_str = '/pidrone/infrared'
@@ -88,9 +88,9 @@ class StateEstimation3D(object):
         
         # Subscribe to topics to which the drone publishes in order to get raw
         # data from sensors, which we can then filter
-        rospy.Subscriber(self.imu_topic_str, Imu, self.imu_data_callback)
-        # rospy.Subscriber(self.optical_flow_topic_str, TwistStamped,
-        #                  self.optical_flow_data_callback)
+        # rospy.Subscriber(self.imu_topic_str, Imu, self.imu_data_callback)
+        rospy.Subscriber(self.optical_flow_topic_str, TwistStamped,
+                         self.optical_flow_data_callback)
         rospy.Subscriber(self.ir_topic_str, Range, self.ir_data_callback)
         # TODO: Include position estimates from camera data from
         #       estimateRigidTransform? Occurs in position hold and
