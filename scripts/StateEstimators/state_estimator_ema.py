@@ -33,7 +33,7 @@ class EMAStateEstimator(object):
         header = Header()
         header.stamp = rospy.Time.now()
         header.frame_id = 'Body'
-        
+
         self.state_topic_str = '/pidrone/state/ema'
 
         self.state = State()
@@ -43,10 +43,6 @@ class EMAStateEstimator(object):
         # (pose is not necessary to fly, only to fly with position control)
         self.received_twist_data = False
         self.received_range_data = False
-
-        # whether or not estimate_rigid_transform is called with the first
-        # image in sight
-        self.analyze_pose_is_transforming_on_first_image = False
 
         # angle compensation values (to account for tilt of drone)
         self.mw_angle_comp_x = 0
@@ -92,14 +88,6 @@ class EMAStateEstimator(object):
         self.filter_range(data.range)
         # set received range data to True
         self.received_range_data = True
-
-    def tofi_callback(self, msg):
-        """ Store whether or not the pose data is from the first image. This
-        determines whether the pose data is a position esitimate based on the
-        first image, or an estimate of the translation from the previous
-        image
-        """
-        self.analyze_pose_is_transforming_on_first_image = msg.data
 
     # EMA Filtering Methods:
     ########################
@@ -209,7 +197,6 @@ def main():
 
     # Subscribers
     #############
-    rospy.Subscriber('/pidrone/picamera/transforming_on_first_image', Bool, state_estimator.tofi_callback)
     rospy.Subscriber("/pidrone/reset_transform", Empty, state_estimator.reset_callback)
     rospy.Subscriber('/pidrone/picamera/twist', TwistStamped, state_estimator.twist_callback)
     rospy.Subscriber('/pidrone/picamera/pose', PoseStamped, state_estimator.pose_callback)
