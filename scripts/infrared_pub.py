@@ -3,6 +3,7 @@ import os
 import rospy
 import signal
 import Adafruit_ADS1x15
+from std_msgs.msg import Empty
 from sensor_msgs.msg import Range
 
 
@@ -31,7 +32,7 @@ class IR(object):
             print "ERROR: BAD VOLTAGE!!!"
         self.distance = ((1.0 / voltage) * self.m + self.b) / 100.0 # 100 is for cm -> m
 
-    def publish_range(self, range, publisher):
+    def publish_range(self, range):
         """Create and publish the Range message to publisher."""
         msg = Range()
         msg.header.stamp = rospy.get_rostime()
@@ -39,7 +40,7 @@ class IR(object):
         msg.min_range = 0
         msg.range = range
         msg.header.frame_id = "base"
-        publisher.publish(msg)
+        self.range_pub.publish(msg)
 
     def ctrl_c_handler(self, signal, frame):
         """Gracefully quit the infrared_pub node"""
@@ -55,23 +56,26 @@ def main():
     node_name = os.path.splitext(os.path.basename(__file__))[0]
     rospy.init_node(node_name)
 
+    # create IR object
+    ir = IR()
+
     # Publishers
     ############
-    rangepub = rospy.Publisher('/pidrone/infrared', Range, queue_size=1)
+    ir.range_pub = rospy.Publisher('/pidrone/infrared', Range, queue_size=1)
+    ir.heartbeat_pub = rospy.Publisher('/pidrone/heartbeat/infrared', Empty, queue_size=1)
     print 'Publishing IR'
 
     # Non-ROS Setup
     ###############
-    # create IR object
-    ir = IR()
     # set the while loop frequency
     r = rospy.Rate(100)
     # set up the ctrl-c handler
     signal.signal(signal.SIGINT, ir.ctrl_c_handler)
 
     while not rospy.is_shutdown():
+        ir.heartbeat_pub.publish(Empty())
         ir.get_range()
-        ir.publish_range(ir.distance, rangepub)
+        ir.publish_range(ir.distance)
         r.sleep()
 
 if __name__ == "__main__":

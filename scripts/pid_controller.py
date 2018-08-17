@@ -302,8 +302,8 @@ class PIDController(object):
         msg.yaw = cmd[2]
         msg.throttle = cmd[3]
         self.cmdpub.publish(msg)
-        
-    
+
+
 def main():
     # Verbosity between 0 and 2, 2 is most verbose
     verbose = 2
@@ -320,6 +320,7 @@ def main():
     ############
     pid_controller.cmdpub = rospy.Publisher('/pidrone/fly_commands', RC, queue_size=1)
     pid_controller.position_control_pub = rospy.Publisher('/pidrone/position_control', Bool, queue_size=1)
+    pid_controller.heartbeat_pub = rospy.Publisher('/pidrone/heartbeat/pid_controller', Empty, queue_size=1)
 
     # Subscribers
     #############
@@ -339,6 +340,7 @@ def main():
     loop_rate = rospy.Rate(100)
     print 'PID Controller Started'
     while not rospy.is_shutdown():
+        pid_controller.heartbeat_pub.publish(Empty())
         # Steps the PID. If we are not flying, this can be used to
         # examine the behavior of the PID based on published values
         fly_command = pid_controller.step()
@@ -372,7 +374,7 @@ def main():
             print 'r,p,y,t:', fly_command
 
         loop_rate.sleep()
-        
+
 
 if __name__ == '__main__':
     main()
