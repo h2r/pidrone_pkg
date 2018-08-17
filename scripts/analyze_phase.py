@@ -3,8 +3,9 @@ import cv2
 import rospy
 import picamera
 import numpy as np
-from geometry_msgs.msg import PoseStamped
+from pidrone_pkg.msg import State
 from std_msgs.msg import Empty, Bool
+from geometry_msgs.msg import PoseStamped
 
 
 class AnalyzePhase(picamera.array.PiMotionAnalysis):
@@ -27,10 +28,10 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
 
         # initialize the Pose data
         self.pose_msg = PoseStamped()
+        self.got_state_data = False
 
         # position hold is initialized as False
         self.position_control = False
-        self.transforming_on_first_image = False
         self.first_image = None
         self.previous_image = None
 
@@ -44,10 +45,10 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
         ###########
         # Publisher
         self.posepub = rospy.Publisher('/pidrone/picamera/pose', PoseStamped, queue_size=1)
-        self.transforming_on_first_image_pub = rospy.Publisher('/pidrone/picamera/transforming_on_first_image', Bool, queue_size=1, latch=True)
         # Subscribers
         rospy.Subscriber("/pidrone/reset_transform", Empty, self.reset_callback)
         rospy.Subscriber("/pidrone/position_control", Bool, self.position_control_callback)
+        rospy.Subscriber("/pidrone/state", State, self.state_callback)
 
     def write(self, data):
         ''' A method that is called everytime an image is taken '''
@@ -70,23 +71,24 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
 
                 # if the first image was visible (the transformation was succesful) :
                 if transform_first is not None:
-                    self.transforming_on_first_image = True
                     # calculate the x,y, and yaw translations from the transformation
                     translation_first, yaw_first = self.translation_and_yaw(transform_first)
-                    # use an EMA filter to smoothe the position and yaw values
-                    self.pose_msg.pose.position.x = translation_first[0]
-                    self.pose_msg.pose.position.y = translation_first[1]
-                    _,_,z,w = tf.transformations.quaternion_from_euler(0,0,yaw_first)
-                    self.pose_msg.pose.orientation.z = z
-                    self.pose_msg.pose.orientation.w = w
-                    # update first image data
-                    self.first_image_counter += 1
-                    self.max_first_counter = max(self.max_first_counter, self.first_image_counter)
-                    self.last_first_time = rospy.get_time()
-                    print "count:", self.first_image_counter
+                    # use an EMA filter to smooth the position and yaw values
+                    if self.got_state_data:
+                        self.pose_msg.pose.position.x = translation_first[0]*self.altitude
+                        self.pose_msg.pose.position.y = translation_first[1]*self.altitude
+                        # With just a yaw, the x and y components of the
+                        # quaternion are 0
+                        _,_,z,w = tf.transformations.quaternion_from_euler(0,0,yaw_first)
+                        self.pose_msg.pose.orientation.z = z
+                        self.pose_msg.pose.orientation.w = w
+                        # update first image data
+                        self.first_image_counter += 1
+                        self.max_first_counter = max(self.max_first_counter, self.first_image_counter)
+                        self.last_first_time = rospy.get_time()
+                        print "count:", self.first_image_counter
                 # else the first image was not visible (the transformation was not succesful) :
                 else:
-                    self.transforming_on_first_image = False
                     # try to estimate the transformation from the previous image
                     transform_previous = cv2.estimateRigidTransform(self.previous_image, image, False)
 
@@ -99,11 +101,12 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
                         print "integrated", time_since_first
                         print "max_first_counter: ", self.max_first_counter
                         int_displacement, yaw_previous = self.translation_and_yaw(transform_previous)
-                        self.pose_msg.pose.position.x = int_displacement[0]
-                        self.pose_msg.pose.position.y = int_displacement[1]
-                        _,_,z,w = tf.transformations.quaternion_from_euler(0,0,yaw_previous)
-                        self.pose_msg.pose.orientation.z = z
-                        self.pose_msg.pose.orientation.w = w
+                        if self.got_state_data:
+                            self.pose_msg.pose.position.x = self.x_position_from_state + (int_displacement[0]*self.altitude)
+                            self.pose_msg.pose.position.y = self.y_position_from_state + (int_displacement[1]*self.altitude)
+                            _,_,z,w = tf.transformations.quaternion_from_euler(0,0,yaw_previous)
+                            self.pose_msg.pose.orientation.z = z
+                            self.pose_msg.pose.orientation.w = w
                         print "Lost the first image !"
                     # if the previous image wasn't visible (the transformation was not
                     # succesful), reset the pose and print lost
@@ -113,8 +116,8 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
 
             self.previous_image = image
 
+        self.pose_msg.header.stamp = rospy.Time.now()
         self.posepub.publish(self.pose_msg)
-        self.transforming_on_first_image_pub.publish(self.transforming_on_first_image)
 
     # normalize image
     def translation_and_yaw(self, transform):
@@ -134,7 +137,6 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
         print "Resetting Phase"
 
         # reset position control variables
-        self.transforming_on_first_image = True
         self.first = True
 
         # reset first image vars
@@ -150,3 +152,13 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
         ''' Set whether the pose is calculated and published '''
         self.position_control = msg.data
         print "Position Control", self.position_control
+        
+    def state_callback(self, msg):
+        """
+        Store z position (altitude) reading from State, along with most recent
+        x and y position estimate
+        """
+        self.got_state_data = True
+        self.altitude = msg.pose_with_covariance.pose.position.z
+        self.x_position_from_state = msg.pose_with_covariance.pose.position.x
+        self.y_position_from_state = msg.pose_with_covariance.pose.position.y

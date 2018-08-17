@@ -25,7 +25,7 @@ class EMAStateEstimator(object):
     /pidrone/picamera/twist
     '''
 
-    def __init__(self):
+    def __init__(self, primary_state_estimator=False):
         ''' A constructor for EMAStateEstimator
         '''
         # Initialize the State:
@@ -33,6 +33,13 @@ class EMAStateEstimator(object):
         header = Header()
         header.stamp = rospy.Time.now()
         header.frame_id = 'Body'
+        
+        # TODO: have main state estimator selector node pass in this boolean
+        # as True
+        if primary_state_estimator:
+            self.state_topic_str = '/pidrone/state'
+        else:
+            self.state_topic_str = '/pidrone/state/ema'
 
         self.state = State()
         self.state.header = header
@@ -106,24 +113,18 @@ class EMAStateEstimator(object):
         using an EMA filter if the pose is based off of the first image, or by
         integrating if the pose is based off the previous image
         """
-        # current position of the drone
-        position = self.state.pose_with_covariance.pose.position
+        # last position of the drone
+        last_position = self.state.pose_with_covariance.pose.position
         # raw measured translations and rotation by analyze_transform
-        translation = pose.position
+        position_reading = pose.position
         # constant used for the EMA filter
         alpha = 0.2
-        # if the measurement is based off of the first image
-        if self.analyze_pose_is_transforming_on_first_image:
-            # blend the new measurement with the old position using an EMA filter
-            position.x = (1.0 - alpha) * position.x + alpha * translation.x * position.z
-            position.y = (1.0 - alpha) * position.y + alpha * translation.y * position.z
-        # else the measurement is based off of the previous image
-        else:
-            # calculate the new position by integrating the new measurement
-            position.x += translation.x * position.z
-            position.y += translation.y * position.z
+        # blend the new measurement with the old position using an EMA filter
+        smoothed_x = (1.0 - alpha) * last_position.x + alpha * position_reading.x
+        smoothed_y = (1.0 - alpha) * last_position.y + alpha * position_reading.y
 
-        self.state.pose_with_covariance.pose.position = position
+        self.state.pose_with_covariance.pose.position.x = smoothed_x
+        self.state.pose_with_covariance.pose.position.y = smoothed_y
 
     def imu_callback(self, data):
         """ Update the attitude of the drone """
@@ -143,8 +144,8 @@ class EMAStateEstimator(object):
         self.calc_angle_comp_values()
         # the constant for the ema filter
         alpha = 0.4
-        velocity.x = self.near_zero((1.0 - alpha) * velocity.x + alpha * (new_vel.x * altitude - self.mw_angle_comp_x))
-        velocity.y = self.near_zero((1.0 - alpha) * velocity.y + alpha * (new_vel.y * altitude - self.mw_angle_comp_y))
+        velocity.x = self.near_zero((1.0 - alpha) * velocity.x + alpha * (new_vel.x - self.mw_angle_comp_x))
+        velocity.y = self.near_zero((1.0 - alpha) * velocity.y + alpha * (new_vel.y - self.mw_angle_comp_y))
         self.state.twist_with_covariance.twist.linear = velocity
 
     def filter_range(self, range_reading):
@@ -203,12 +204,12 @@ def main():
     node_name = os.path.splitext(os.path.basename(__file__))[0]
     rospy.init_node(node_name)
 
-    # Instantiate a PiCameraStateEstimator object
+    # Instantiate an EMAStateEstimator object
     state_estimator = EMAStateEstimator()
 
     # Publishers
     ############
-    statepub = rospy.Publisher('/pidrone/state_ema', State, queue_size=1, tcp_nodelay=False)
+    statepub = rospy.Publisher(state_estimator.state_topic_str, State, queue_size=1, tcp_nodelay=False)
 
     # Subscribers
     #############
