@@ -211,7 +211,7 @@ def main():
     print 'Publishing State'
 
     # set the publishing rate (Hz)
-    rate = rospy.Rate(100)
+    rate = rospy.Rate(60)
     while not rospy.is_shutdown():
         statepub.publish(state_estimator.state)
         rate.sleep()
