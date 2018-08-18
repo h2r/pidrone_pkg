@@ -45,6 +45,9 @@ function init() {
     ros = new ROSLIB.Ros({
         url : url
     });
+    
+    var velocityBtn = document.getElementById("velocityBtn");
+    velocityBtn.addEventListener("click", toggleVelocityPositionController);
 
     ros.on('error', function(error) {
       console.log('ROS Master:  Error, check console.');
@@ -83,9 +86,10 @@ function init() {
 
     heartbeatPub = new ROSLIB.Topic({
       ros : ros,
-      name : '/pidrone/heartbeat',
+      name : '/pidrone/heartbeat/web_interface',
       messageType : 'std_msgs/String'
     });
+
     heartbeatpubmsg = new ROSLIB.Message({data: "Javascript API"})
 
     setInterval(function(){
@@ -426,7 +430,7 @@ function init() {
             xyChart.update()
         }
     }
-    
+
     emaIrSub = new ROSLIB.Topic({
       ros : ros,
       name : '/pidrone/state/ema',
@@ -1020,6 +1024,10 @@ function togglePauseHeightChart(btn) {
 function togglePauseXYChart(btn) {
     // TODO: Implement this function
     console.log('Pause button pressed')
+}
+
+function toggleVelocityPositionController() {
+    console.log('Toggled velocity position controller');
 }
 
 $(document).keyup(function(event){

@@ -25,7 +25,7 @@ class StateEstimator(object):
     this script is terminating, there is a finally clause that will attempt to
     terminate the subprocesses. Note that this needs to be tested well, and that
     the shell=True argument for these subprocesses could be a security hazard
-    that should probably be investigated further.
+    that should be investigated further.
     """
     
     def __init__(self, primary, others):
