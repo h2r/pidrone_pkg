@@ -256,7 +256,7 @@ def main():
 
     signal.signal(signal.SIGINT, fc.ctrl_c_handler)
     # set the loop rate (Hz)
-    r = rospy.Rate(100)
+    r = rospy.Rate(60)
     try:
         while not rospy.is_shutdown():
             fc.heartbeat_pub.publish(Empty())

@@ -2,6 +2,7 @@ from __future__ import division
 import rospy
 import numpy as np
 import picamera.array
+from pidrone_pkg.msg import State
 from geometry_msgs.msg import TwistStamped
 
 
@@ -20,11 +21,15 @@ class AnalyzeFlow(picamera.array.PiMotionAnalysis):
         self.max_flow = camera_wh[0] / 16.0 * camera_wh[1] / 16.0 * 2**7
         self.flow_scale = .165
         self.flow_coeff = self.flow_scale / self.max_flow
-        
+
         self.altitude = 0.0
 
+        # ROS setup:
+        ############
         # Publisher:
         self.twistpub = rospy.Publisher('/pidrone/picamera/twist', TwistStamped, queue_size=1)
+        # Subscriber:
+        rospy.Subscriber("/pidrone/state", State, self.state_callback)
 
     def analyse(self, a):
         ''' Analyze the frame, calculate the motion vectors, and publish the
@@ -50,7 +55,7 @@ class AnalyzeFlow(picamera.array.PiMotionAnalysis):
 
     def near_zero(self, n):
         return 0 if abs(n) < 0.001 else n
-        
+
     def state_callback(self, msg):
         """
         Store z position (altitude) reading from State
