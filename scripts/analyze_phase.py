@@ -29,11 +29,17 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
         # initialize the Pose data
         self.pose_msg = PoseStamped()
         self.altitude = 0.0
+        self.x_position_from_state = 0.0
+        self.y_position_from_state = 0.0
 
         # position hold is initialized as False
         self.position_control = False
         self.first_image = None
         self.previous_image = None
+
+        # used as a safety check for position control
+        self.consecutive_lost_counter = 0
+        self.lost = False
 
         # first image vars
         self.first = True
@@ -72,7 +78,7 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
 
                 # if the first image was visible (the transformation was succesful) :
                 if transform_first is not None:
-                    self.lostpub.publish(False)
+                    self.lost = False
                     # calculate the x,y, and yaw translations from the transformation
                     translation_first, yaw_first = self.translation_and_yaw(transform_first)
                     # use an EMA filter to smooth the position and yaw values
@@ -96,7 +102,7 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
                     # if the previous image was visible (the transformation was succesful)
                     # calculate the position by integrating
                     if transform_previous is not None:
-                        self.lostpub.publish(False)
+                        self.lost = False
                         if self.last_first_time is None:
                             self.last_first_time = rospy.get_time()
                         time_since_first = rospy.get_time() - self.last_first_time
@@ -113,10 +119,24 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
                     # succesful), reset the pose and print lost
                     else:
                         print "Lost!"
-                        self.lostpub.publish(True)
+                        if self.lost:
+                            self.consecutive_lost_counter += 1
+                        else:
+                            self.lost = True
 
             self.previous_image = image
 
+        # if the camera is lost over ten times in a row, then publish lost
+        # to disable position control
+        if self.lost:
+            if self.consecutive_lost_counter >= 10:
+                self.lostpub.publish(True)
+                self.consecutive_lost_counter = 0
+        else:
+            self.consecutive_lost_counter = 0
+            self.lostpub.publish(False)
+
+        # publish the pose message
         self.pose_msg.header.stamp = rospy.Time.now()
         self.posepub.publish(self.pose_msg)
 
