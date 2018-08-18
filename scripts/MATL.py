@@ -175,13 +175,7 @@ class MATL(picamera.array.PiMotionAnalysis):
                             # if it's been a while without a significant average weight
                             if self.map_counter < MAX_BAD_COUNT:
                                 self.first_locate = True
-                                self.fb_pid._i = 0
-                                self.lr_pid._i = 0
                                 self.map_counter = 0
-                                self.mode.x_velocity = 0
-                                self.mode.y_velocity = 0
-                                self.mode.yaw_velocity = 0
-                                self.pospub.publish(self.mode)
                                 print 'Restart localization'
                             print 'count', self.map_counter
 

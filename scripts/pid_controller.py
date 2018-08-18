@@ -343,7 +343,7 @@ def main():
     # set up ctrl-c handler
     signal.signal(signal.SIGINT, pid_controller.ctrl_c_handler)
     # set the loop rate (Hz)
-    loop_rate = rospy.Rate(100)
+    loop_rate = rospy.Rate(60)
     print 'PID Controller Started'
     while not rospy.is_shutdown():
         pid_controller.heartbeat_pub.publish(Empty())

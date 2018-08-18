@@ -249,7 +249,6 @@ class FastSLAM:
                 # there was no match (short circuiting!)
                 if match is None or len(match) < 2 or match[0].distance > MATCH_RATIO * match[1].distance:
                     utils.add_landmark(particle, kp, des, self.sigma_observation, self.kp_to_measurement)
-                    print "adding this landmark: ", kp.pt
 
                     # 'punish' this particle since new landmarks decrease certainty
                     particle.weight += math.log(PROB_THRESHOLD)
