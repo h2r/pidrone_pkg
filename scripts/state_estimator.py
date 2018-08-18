@@ -54,7 +54,10 @@ class StateEstimator(object):
         self.mocap_topic = '/pidrone/state/mocap'
         # TODO: Get the drone_simulator to publish State messages to this topic
         self.simulator_topic = '/pidrone/state/simulator'
-        
+
+        self.state_pub = rospy.Publisher('/pidrone/state', State, queue_size=1,
+                                         tcp_nodelay=False)
+
         self.start_estimator_subprocess_cmds()
         self.initialize_ros()
 
@@ -62,8 +65,6 @@ class StateEstimator(object):
         node_name = os.path.splitext(os.path.basename(__file__))[0]
         rospy.init_node(node_name)
 
-        self.state_pub = rospy.Publisher('/pidrone/state', State, queue_size=1,
-                                         tcp_nodelay=False)
         rospy.spin()
     
     def start_estimator_subprocess_cmds(self):

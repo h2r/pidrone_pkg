@@ -7,7 +7,7 @@ import signal
 import numpy as np
 import command_values as cmds
 from serial import SerialException
-from std_msgs.msg import String, Empty
+from std_msgs.msg import Empty
 from pidrone_pkg.msg import Mode, Battery
 
 

@@ -329,8 +329,8 @@ def main():
     rospy.Subscriber('/pidrone/desired/twist', Twist, pid_controller.desired_twist_callback)
     rospy.Subscriber('/pidrone/mode', Mode, pid_controller.current_mode_callback)
     rospy.Subscriber('/pidrone/desired/mode', Mode, pid_controller.desired_mode_callback)
-    rospy.Subscriber("/pidrone/position_control", Bool, pid_controller.position_control_callback)
-    rospy.Subscriber("/pidrone/reset_transform", Empty, pid_controller.reset_callback)
+    rospy.Subscriber('/pidrone/position_control', Bool, pid_controller.position_control_callback)
+    rospy.Subscriber('/pidrone/reset_transform', Empty, pid_controller.reset_callback)
 
     # Non-ROS Setup
     ###############

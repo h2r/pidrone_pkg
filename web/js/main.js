@@ -25,6 +25,12 @@ var markerClient;
 var ros;
 var modepub;
 var modeMsg;
+var positionMsg;
+var twistMsg;
+var poseMsg;
+var positionPub;
+var positionControlPub;
+var velocityControlPub;
 var heartbeatPub;
 var heightChart;
 var windowSize;
@@ -46,8 +52,11 @@ function init() {
         url : url
     });
     
-    var velocityBtn = document.getElementById("velocityBtn");
-    velocityBtn.addEventListener("click", toggleVelocityPositionController);
+    var velocityBtn = document.getElementById('velocityBtn');
+    velocityBtn.addEventListener("click", publishVelocityMode, false);
+
+    var positionBtn = document.getElementById('positionBtn');
+    positionBtn.addEventListener("click", publishPositionMode, false);
 
     ros.on('error', function(error) {
       console.log('ROS Master:  Error, check console.');
@@ -83,17 +92,65 @@ function init() {
     emptyMsg = new ROSLIB.Message({
      });
 
-
     heartbeatPub = new ROSLIB.Topic({
       ros : ros,
       name : '/pidrone/heartbeat/web_interface',
-      messageType : 'std_msgs/String'
+      messageType : 'std_msgs/Empty'
     });
 
-    heartbeatpubmsg = new ROSLIB.Message({data: "Javascript API"})
+    positionPub = new ROSLIB.Topic({
+        ros : ros,
+        name : '/pidrone/position_control',
+        messageType : 'std_msgs/Bool'
+    });
+
+    velocityControlPub = new ROSLIB.Topic({
+        ros : ros,
+        name : '/pidrone/desired/twist',
+        messageType : 'geometry_msgs/Twist'
+    });
+
+    positionControlPub = new ROSLIB.Topic({
+        ros : ros,
+        name : '/pidrone/desired/pose',
+        messageType : 'geometry_msgs/Pose'
+    });
+
+    positionMsg = new ROSLIB.Message({
+        // default is velocity mode
+        data : false
+    });
+
+    poseMsg = new ROSLIB.Message({
+        position : {
+            x : 0.0,
+            y : 0.0,
+            z : 0.0
+        },
+        orientation : {
+            x : 0.0,
+            y : 0.0,
+            z : 0.0,
+            w : 0.0
+        }
+    });
+
+    twistMsg = new ROSLIB.Message({
+        linear : {
+            x : 0.0,
+            y : 0.0,
+            z : 0.0
+        },
+        angular : {
+            x : 0.0,
+            y : 0.0,
+            z : 0.0
+        }
+    });
+
 
     setInterval(function(){
-      heartbeatPub.publish(heartbeatpubmsg);
+      heartbeatPub.publish(emptyMsg);
       //console.log("heartbeat");
     }, 1000);
 
@@ -1026,8 +1083,32 @@ function togglePauseXYChart(btn) {
     console.log('Pause button pressed')
 }
 
-function toggleVelocityPositionController() {
-    console.log('Toggled velocity position controller');
+function publishVelocityMode() {
+    positionMsg.data = false;
+    positionPub.publish(positionMsg)
+}
+
+function publishPositionMode() {
+    positionMsg.data = true;
+    positionPub.publish(positionMsg)
+}
+
+function setControls () {
+    x = document.getElementById("controlX").value;
+    y = document.getElementById("controlY").value;
+    z = document.getElementById("controlZ").value;
+
+    if (positionMsg.data == true) {
+        poseMsg.position.x = Number(parseFloat(x));
+        poseMsg.position.y = Number(parseFloat(y));
+        poseMsg.position.z = Number(parseFloat(z));
+        positionControlPub.publish(poseMsg);
+    } else {
+        twistMsg.linear.x = Number(parseFloat(x));
+        twistMsg.linear.y = Number(parseFloat(y));
+        twistMsg.linear.z = Number(parseFloat(z));
+        velocityControlPub.publish(twistMsg);
+    }
 }
 
 $(document).keyup(function(event){
