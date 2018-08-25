@@ -1,0 +1,248 @@
+﻿right 4,fly east 4 cells
+right 5,go 5 blocks to the east
+right 2,go 3 spaces to the right
+left 6,go left 6 cells
+right 2,move right for 2 spaces
+right 5,move 5 blocks to the right
+left 3,move 3 spaces to the left
+back 6,fly 6 units to the south
+forward 4,fly forward 4 spaces
+forward 5,move 5 squares north
+left 4,fly left 4 spaces
+forward 5,fly forward 5 spaces
+back 4,fly to the south 4 spaces
+down 1,come down 1 block
+forward 6,move forward 6 spaces
+down 2,fly up 2 spaces
+forward 1,fly north 1 spot
+right 3,fly to the right 3 spaces
+back 1,move south 1 space
+left 6,fly 6 blocks west
+right 6,move 6 spaces to the right
+down 1,move down 1 space
+back 1,move 1 grid unit backward
+back 1,go south 1 space
+left 6,move 5 spaces to the left
+left 5,fly left 5 spaces
+left 1,move 1 space to the left
+forward 2,go forward 2 feet
+right 1,move right 1 space
+down 3,descend 3 spaces
+back 6,move backward 6 spaces
+up 3,go 3 steps higher
+forward 3,move 1 space forward
+up 2,move upwards for two grid blocks
+forward 4,move forward 4 spaces
+forward 5,go forward 5 units
+right 4,travel right 4 cells
+back 1,move back 1 space
+right 5,move 5 units east
+forward 3,go forward 3 cells
+right 1,move right 1 cell
+right 3,fly east 3 squares
+back 3,moves south 3 tiles
+back 5,move 5 spaces backward
+down 1,go down 1 space
+forward 5,fly north 5 cells
+forward 2,move two blocks forward
+right 6,fly 6 spaces to the right
+forward 5,move forward 5 blocks
+left 6,go left 6 blocks
+forward 1,fly 1 cell north
+left 2,fly 2 spaces to the left
+right 6,move six blocks east
+back 5,go south 5 spaces
+right 5,move to the right for 5 spaces
+left 6,move 6 spaces left
+left 4,fly west for 4 squares
+back 6,fly backwards 6 spaces
+down 2,move 2 squares down
+left 3,move east 3 spots
+right 5,fly east 5 spots
+right 6,go 6 spaces to the right
+forward 1,go 1 cell forward
+left 2,move left 2 steps
+up 3,fly 3 steps towards the ceiling
+up 2,increase altitude by 2 blocks
+forward 6,move forward for 6 spaces
+forward 3,move up 3 spaces
+up 1,fly 1 level up vertically
+back 4,move back for 4 blocks
+back 2,go south and stop after 2 squares
+left 5,move five spaces to the left
+right 6,fly 6 blocks to the right
+right 5,strafe sideways 5 cells to the right
+right 6,go 6 spaces to the right
+forward 1,move 1 space forward
+right 2,move 2 spaces right
+forward 1,fly to the north one space
+right 3,move right 3 cells
+right 6,fly 6 spaces to the right
+forward 1,go north 1 space
+up 1,ascend 1 block
+back 6,move 6 spaces backward
+left 3,move 3 spaces west
+right 5,move five spaces to the right
+back 4,move backwards for 4 spaces
+forward 3,go north for 3 blocks
+back 6,move backward 6 spaces and stop
+back 5,go 5 spaces backward
+left 5,fly left 5 spaces
+down 1,fly 1 unit downwards
+take_photo 0,take a picture
+left 4,go 4 blocks to the west
+right 4,fly 4 spaces to the right
+back 1,move backward a single space
+back 3,go 3 blocks south
+right 2,fly for 2 squares towards the east
+forward 2,fly 2 spaces to the north
+forward 4,proceed straight ahead for 4 blocks
+back 5,move 5 spaces backward
+up 3,fly 3 spaces up
+right 1,move 1 block to the right
+right 6,move right for six steps
+down 2,fly down 2 cells
+up 2,fly up 2 space
+left 1,fly left 1 square
+forward 5,fly 5 spaces to the north
+left 4,move 4 spaces to the left
+back 4,fly 4 tiles back
+right 3,go 3 spaces east
+back 1,move backwards 1 space
+back 6,move backwards 6 spaces
+right 4,move 4 spaces to the right
+left 3,move left for three steps
+forward 6,"move up one block , then go to the edge of the blue room"
+forward 4,fly forward 4 spaces
+right 2,move 2 spaces to the right
+forward 3,fly 3 spaces to the north
+forward 4,move forward for 4 steps
+right 3,go east 3 spaces
+left 4,fly 4 spaces to the left
+right 3,fly east 3 cells
+forward 6,move 6 squares forward
+forward 4,move foward 4 spaces
+back 5,move backwards 5 spaces
+back 5,fly 5 units to the south
+forward 2,fly north for 2 cells
+left 1,move 1 space to the left
+left 4,move four spaces to the left
+forward 1,move forward 1 block
+left 1,fly west 1 cell
+forward 4,fly north 4 spots
+back 6,fly 6 spaces backwards
+back 4,go 4 blocks south
+take_photo 0,capture an image of current location
+left 6,go 6 blocks west
+right 5,move right 5 spaces
+take_photo 0,take a photo
+back 6,move 6 spaces backward
+back 4,fly 4 spaces to the south
+forward 5,move 5 spaces north
+back 4,move backwards for 4 steps
+back 4,fly backward 4 spaces
+right 3,fly 3 squares right
+forward 5,fly north for 5 spaces
+take_photo 0,take an image
+down 3,fly down 3 blocks
+forward 3,fly north 3 spaces
+left 1,go west 1 space
+back 3,move back 3 spaces
+right 6,go 6 spaces to the right
+back 4,fly backward 4 cells
+take_photo 0,take a photo
+right 3,fly right 3 spaces
+up 2,go 2 blocks up in elevation
+back 2,fly south 2 cells
+right 2,fly 2 spots east
+right 1,move 1 cell to the right
+left 1,fly 1 space to the left
+right 3,fly 3 spaces to the right
+forward 5,fly forward 5 units
+right 2,fly east 2 cells
+forward 6,fly 6 squares forward
+right 5,fly 5 spaces to the right
+back 4,fly 4 cells backwards
+right 1,move sideways to the right one step
+back 6,move back 6 spaces and stop
+left 1,move left 1 block
+back 3,move backward 3 spaces
+right 5,fly 5 cells to the right
+right 2,move right 2 blocks
+left 3,fly 3 spaces west
+forward 6,fly forward 6 spaces
+down 1,descend 1 block
+up 2,go up to height 3
+left 3,move 3 spaces to the left
+left 3,head 3 blocks to the left
+left 1,fly 1 space to the left
+left 5,fly 5 spaces west
+left 2,move 2 spaces to the left
+left 1,fly one unit to the west
+up 2,move 2 vertical spaces into the air
+left 1,fly left 1 space
+forward 1,fly forward one block
+back 5,go 5 blocks south
+up 3,ascend vertically up 3 cells
+forward 5,go forward 5 spaces
+left 2,fly 2 spaces to the left
+right 4,move 4 squares right
+forward 5,go 5 blocks north
+forward 1,move 1 square forward
+up 2,go up 2 levels
+left 4,fly left 4 cells
+back 3,move 3 spaces to the south
+right 3,fly 3 cells to the right
+left 4,move 4 blocks to the left
+left 6,fly 6 units to the left
+left 1,move left 1 cell
+take_photo 0,take a photo with flash on
+left 5,fly 5 spaces to the left
+back 1,fly 1 space to the back
+right 3,fly 3 steps to the right of the room
+forward 5,move 5 blocks forward
+down 3,fly down vertically for 3 cells
+right 1,move to the right 1 space
+left 1,fly left 1 space
+back 5,move 5 spaces backward
+left 3,go 3 blocks west
+forward 5,fly 5 spaces foward
+back 5,move 5 spaces back
+down 2,descend 2 cells vertically
+forward 5,fly forward 5 spaces
+back 3,fly 3 grid units down
+back 6,go back 6 times
+back 2,fly 2 spaces to the south
+back 6,go south 6 spaces
+forward 5,fly north for 5 units
+back 1,move backwards for 1 space
+up 1,move up for 1 step
+right 6,fly east 6 spaces
+up 1,fly up 2 cells
+back 1,move 1 square south
+down 1,fly 1 space down
+down 2,go down 2 cells
+right 2,move two cells east
+back 4,move back 4 times
+left 2,move left 2 spaces
+back 2,go 2 cells backward
+right 5,move right 5 spaces
+down 2,fly down 2 blocks
+right 5,move to the right 5 spaces
+left 1,fly one block to the left
+back 1,go 1 space backwards
+back 5,move 5 spaces south
+left 1,fly 1 space to the left
+forward 3,fly straight ahead for 3 cells
+up 3,fly upwards for 3 grid units
+left 2,fly 2 spaces to the left
+take_photo 0,take picture
+right 3,move 3 cells right
+left 3,move three spaces to the left
+left 5,move 5 steps to the left
+back 1,move backward 1 cell
+right 4,fly right 4 cells
+up 1,rise 1 cell vertically
+back 3,fly backwards 3 spaces
+up 3,fly straight up 3 blocks
+right 2,fly 2 spaces to the right

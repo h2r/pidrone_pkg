@@ -1,0 +1,240 @@
+﻿left 5,fly 5 spaces to the left
+back 4,move south 4 blocks
+back 4,move 4 block back
+left 5,strafe sideways to the left 5 cells
+back 4,fly backward 4 spaces
+down 3,descend 3 levels
+back 4,move backwards for 4 steps
+down 3,move down 3 vertical units
+down 3,fly to the bottom for 3 units
+left 5,move 5 steps to the left
+left 5,go 5 blocks west
+back 4,move south 4 tiles
+down 3,fly 3 spaces downwards
+back 4,fly 4 cells backwards
+left 5,move 5 spaces left
+down 3,drop 3 levels towards the bottom 
+left 5,move left 5 cells
+left 5,move to the left for 5 spaces
+down 3,fly down 3 cells
+back 4,fly backward 4 spaces
+back 4,move 4 spaces backward
+down 3,descend for 3 levels
+left 5,move left 5 spaces
+down 3,fly 3 levels down vertically
+down 3,fly 3 spaces downwards
+back 4,move backwards 4 spaces
+left 5,go 5 blocks west
+down 3,go down 3 blocks
+left 5,move west 5 spots
+left 5,go west 5 spaces
+back 4,fly backward 4 cells
+down 3,move downward 3 cells
+down 3,fly 3 spaces down
+back 4,go back 4 spaces
+left 5,go 5 blocks west
+left 5,move left 5 spaces
+left 5,fly 5 spaces left
+left 5,fly west 5 spots
+down 3,go down 3 blocks
+left 5,go left for 5 spaces
+back 4,fly 4 spaces backwards
+back 4,move 4 steps backwards
+down 3,fly down 3 spaces
+left 5,move left for 5 spaces
+down 3,fly down 3 spaces
+down 3,fly downwards 3 cells
+back 4,move back 4 spaces
+back 4,fly to the south 4 spaces
+back 4,fly 4 blocks backwards
+left 5,fly left for 5 units
+back 4,move backward 4 spaces
+back 4,go 4 spaces back
+back 4,go south four blocks
+down 3,hover down 3 grid units
+back 4,fly backwards 4 spaces
+left 5,move west 5 spaces
+down 3,descend vertically down 3 squares
+back 4,move back 4 spaces
+left 5,fly five spaces to the left
+down 3,decrease altitude by 3 spaces
+back 4,fly south 4 spaces
+back 4,move south 4 spaces
+down 3,move 3 units down toward floor
+left 5,strafe sideways to the left 5 cells
+back 4,fly back 4 spaces
+left 5,fly left 5 cells
+back 4,fly backwards for 4 steps
+back 4,fly back 4 times
+down 3,fly down 3 spaces
+down 3,fly down 3 blocks
+down 3,descend to 3 grid units
+left 5,move 5 spaces to the left
+back 4,move backwards for 4 spaces
+down 3,move down 3 steps towards the floor
+left 5,fly 5 spaces to the left
+down 3,move down 3 levels
+down 3,go down 3 times
+down 3,fly downward 3 blocks
+left 5,fly west 5 cells
+back 4,move 4 spaces south
+left 5,fly to the left 5 spaces
+left 5,fly 5 blocks west
+back 4,go 4 blocks south
+down 3,descend 3 spaces
+back 4,go 4 blocks south
+back 4,move 4 blocks backward
+down 3,go down 3 blocks
+down 3,go down 3 spaces
+down 3,fly down 3 spaces
+left 5,travel 5 spaces to the left
+back 4,go four blocks south
+down 3,go down 3 blocks
+back 4,move backwards 4 cells horizontally
+down 3,move down 3 grid units
+down 3,go down 3 cells
+down 3,drop down 3 spaces
+down 3,fly 3 units vertically downward
+down 3,go down 3 blocks
+down 3,fly 3 units downwards
+left 5,move 5 squares to the left
+down 3,down 3 spaces
+left 5,fly 5 spaces west
+down 3,descend 3 spaces
+down 3,move down 3 levels to ground level 0
+left 5,move 5 steps to the left
+back 4,move backwards 4 cells
+left 5,fly to the left for 5 cells
+down 3,fly 3 spaces towards the ground
+left 5,go west 5 spaces
+down 3,lower height by 3 blocks
+down 3,descend vertically down 3 squares
+down 3,fly downwards 3 spaces
+down 3,fly down 3 spaces
+left 5,fly left 5 spaces
+left 5,move left 5 spaces
+back 4,move 4 spaces backward
+left 5,go left 5 cells
+back 4,move 4 squares back
+down 3,move down for 3 steps
+back 4,go south 4 spaces
+down 3,drop 3 blocks
+down 3,descend 3 blocks
+back 4,go back 4 spaces
+left 5,fly to your left for 5 cells
+back 4,fly 4 spaces south
+left 5,go west 5 spaces
+back 4,fly south 4 squares
+left 5,move 5 spaces to the left
+back 4,travel backward 4 cells
+back 4,move south 4 spots
+down 3,go straight down for 3 squares
+left 5,fly left 5 spaces
+down 3,descend 3 cells
+back 4,move backwards 4 spaces
+back 4,fly back 4 spaces
+back 4,move back 4 times
+down 3,fly down 3 blocks
+down 3,decrease altitude by 3 units
+back 4,go 4 blocks south
+down 3,come down 3 spaces
+back 4,go south 4 spaces
+left 5,fly left for 5 cells
+down 3,lower 3 vertical spaces down
+left 5,move 5 spaces to the left
+left 5,move left 5 steps
+left 5,move 5 cells to the left
+back 4,back up 4 spaces
+left 5,fly to the left 5 cells
+down 3,move down for three spaces
+back 4,fly back 4 spaces
+back 4,fly 4 cells backward
+down 3,descend 3 blocks
+back 4,fly backwards 4 spaces
+left 5,go 5 spaces to the left
+down 3,lower until right off the ground
+left 5,fly 5 blocks to the left
+left 5,move 5 blocks to your left
+down 3,move down 3 spaces
+left 5,fly 5 blocks west
+back 4,move 4 blocks back
+left 5,move five blocks to the left
+left 5,go west 5 spaces
+down 3,fly down vertically for 3 cells
+down 3,move down for 3 spaces
+down 3,fly down 3 units
+down 3,drop down 3 spaces
+left 5,fly left 5 spaces
+back 4,go back 4 times
+left 5,move 5 blocks to the left
+left 5,fly five units to the left
+left 5,go 5 blocks west
+left 5,move 5 spaces to the left
+back 4,back up 4 blocks
+down 3,fly down 3 spaces
+back 4,move 4 spaces backward
+left 5,go left 5 spaces
+back 4,fly 4 spaces south
+down 3,fly down 3 blocks
+down 3,drop down 3 levels
+back 4,move backwards for 4 steps
+back 4,fly south 4 spaces
+left 5,move five spaces to the left
+back 4,move backward 4 blocks
+left 5,fly 5 blocks west
+left 5,fly to the left 5 spaces
+back 4,fly 4 spaces to the south
+back 4,move back for 4 blocks
+back 4,move 4 spaces back
+left 5,move up 5 spaces
+left 5,go left 5 spaces
+back 4,move backward 4 blocks
+back 4,go five spaces south
+down 3,lower height 3 spaces
+left 5,move 5 cells to the left
+left 5,move left for 5 spaces
+back 4,fly south 4 blocks
+back 4,go 4 squares south
+back 4,move backwards for 4 spaces
+left 5,move west 5 spaces
+left 5,move west 5 squares
+down 3,move down 3 cells
+down 3,fly down 3 grid units
+left 5,go to the west 5 blocks
+down 3,descend 3 times towards to the ground
+back 4,fly backwards for 4 spaces
+left 5,go 5 units to the left
+left 5,fly 5 times left in the room
+back 4,move back 4 spaces
+down 3,fly down 3 blocks
+down 3,descend 3 spaces
+down 3,move down 3 levels
+back 4,fly 4 units south
+left 5,fly 5 cells to the left
+left 5,move 5 squares to the left
+back 4,move 4 squares backward
+back 4,fly 4 spaces to the south
+back 4,fly 4 tiles back
+down 3,fly down 3 spaces
+back 4,move back 4 spaces
+left 5,move 5 cells to the left
+left 5,move 5 units west
+back 4,fly 4 spaces south
+left 5,move over 5 spaces
+down 3,decrease altitude 3 levels
+left 5,go 5 squares to the left
+down 3,lower 3 blocks
+left 5,move left 5 spaces
+back 4,fly in reverse 4 spots
+back 4,fly backward 4 spaces
+back 4,move 4 spaces south
+back 4,fly backward 4 blocks
+left 5,travel left 5 blocks
+down 3,fly downwards vertically 3 spaces
+down 3,fly down three blocks
+left 5,move to the left 5 spaces
+left 5,move 5 spaces to the left
+down 3,move down 3 spaces
+back 4,move back 4 spaces
+down 3,descend 3 cells vertically
+left 5,move left 5 spaces

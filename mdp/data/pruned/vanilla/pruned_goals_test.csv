@@ -1,0 +1,120 @@
+﻿agent_in_room red,fly to the red room and stop
+photo_in_drone red,hover over the red box and take a photo
+agent_in_room blue,come to blue room
+photo_in_drone green,fly to green box and take a picture
+agent_in_room red,"turn around , leave the current room and go to the red room"
+photo_in_drone blue,capture the blue block
+photo_in_drone_agent_in_room red_green,"take a picture of the red box , then move into the green room"
+agent_in_room blue,fly over into the blue room
+photo_in_drone_agent_in_room red_blue,take a photo of the red box then head to the blue room
+photo_in_drone_agent_in_room red_blue,directly fly to take a picture of the red box then hover to blue room
+photo_in_drone green,take a photo of the green box
+photo_in_drone green,move over the green box and snap a photo
+photo_in_drone_agent_in_room red_red,take a photo of the red box and head directly to the red room
+photo_in_drone blue,take a photo of the blue box
+photo_in_drone_agent_in_room blue_red,take a photo of the blue box and then go to the red room
+photo_in_drone_agent_in_room red_red,take a picture of red box and fly into the red room
+photo_in_drone_agent_in_room red_green,"ascend to take a photo of the top of the red box , then proceed to the green room"
+agent_in_room red,fly to the red room
+photo_in_drone_agent_in_room red_blue,"fly over the red box and take a picture of it , then go to the blue room"
+photo_in_drone_agent_in_room blue_green,hover over the blue box snap a picture then fly into the green room
+photo_in_drone_agent_in_room red_blue,take a picture of the red box and then go to the blue room
+photo_in_drone_agent_in_room blue_green,fly up to take a picture of the blue box then fly around the corner to the green room
+photo_in_drone green,take a picture of the green box
+photo_in_drone_agent_in_room blue_red,"hover over the blue cube , take a photo , then fly into the red room"
+photo_in_drone_agent_in_room red_blue,ascend to take a picture of the red box then fly to the blue room and hover
+photo_in_drone blue,hover over the blue box and take a picture
+photo_in_drone_agent_in_room green_blue,take a picture of the green box and head towards the blue room
+photo_in_drone_agent_in_room blue_green,take a photo of the blue block then go to the green room
+photo_in_drone blue,take a picture of the blue box
+photo_in_drone_agent_in_room blue_blue,"take a picture of the blue box once the photo has been taken , move into the room with the blue floor and idle at the first block in the middle"
+photo_in_drone_agent_in_room green_blue,take a photo of the green box and go into the blue room
+photo_in_drone_agent_in_room red_red,"ascend to take picture of red box , and move toward the red room"
+photo_in_drone blue,hover to the blue box and take a photo
+photo_in_drone_agent_in_room red_green,"hover over the red box to take a picture , then go into the green room"
+photo_in_drone_agent_in_room red_red,take red box picture then travel to red room
+photo_in_drone_agent_in_room green_green,"take a photo of the green box , then move to the green room"
+photo_in_drone_agent_in_room green_blue,take photo of green box and head to the blue room
+photo_in_drone_agent_in_room red_red,"take a photo of the red box , then fly to the red room"
+photo_in_drone_agent_in_room red_blue,take a photo of the red box then go to the blue room
+photo_in_drone_agent_in_room green_blue,take a photo of the green box and then enter the blue room
+photo_in_drone green,take photo of cube g
+photo_in_drone_agent_in_room green_blue,fly to take a picture above the green box then fly to the blue room
+photo_in_drone_agent_in_room green_green,take a picture of green box and move to the green room
+photo_in_drone blue,move over the blue box and take a snapshot
+agent_in_room red,go to the red room
+photo_in_drone blue,take a photo of the blue box
+photo_in_drone red,take a picture of the red box
+photo_in_drone_agent_in_room red_blue,"take a photo of the red box , then move to the blue room"
+photo_in_drone_agent_in_room red_red,hover over the red cube to take a picture then fly to the red room
+photo_in_drone_agent_in_room red_green,capture a photo of the red box and fly to the green room
+agent_in_room blue,go to the blue room
+agent_in_room green,go to the green room
+photo_in_drone_agent_in_room green_green,"proceed to green box , take a photo , and fly into the green room"
+photo_in_drone_agent_in_room blue_green,"take a snapshot of the navy box , then fly to the green room"
+photo_in_drone_agent_in_room green_red,"take  picture of green box , then fly to red room"
+photo_in_drone_agent_in_room green_red,ascend and take a photo of the green box  exit towards the red room
+agent_in_room green,fly to the green room
+photo_in_drone_agent_in_room red_green,ascend to take a photo of the red box then fly to the green room
+agent_in_room red,proceed to red room
+photo_in_drone_agent_in_room red_red,fly to take a picture of the red box and fly to the red room
+photo_in_drone_agent_in_room red_blue,take a photo of the red box and then go to the blue room
+photo_in_drone_agent_in_room red_blue,"ascend and move above the red box , take a picture , then hover towards the blue room"
+photo_in_drone_agent_in_room green_blue,"hover over the green box , take a photo of the green box , and enter the blue room"
+photo_in_drone_agent_in_room blue_blue,"take a photo of the blue cube, then go to the blue room"
+agent_in_room red,fly just into the red room
+photo_in_drone blue,take a snapshot of the blue box
+agent_in_room blue,proceed to the blue room
+photo_in_drone_agent_in_room green_red,take a picture of the green box and go to the red room
+photo_in_drone_agent_in_room blue_red,take a snapshot of the blue box and directly fly to the red room
+agent_in_room blue,fly to the blue room
+agent_in_room red,stop in the red room
+photo_in_drone_agent_in_room blue_blue,take a photo of the blue box and go to the blue room
+photo_in_drone red,take a picture of the red box
+photo_in_drone_agent_in_room blue_blue,photograph the blue box and go to the blue room
+agent_in_room blue,go to the blue room
+agent_in_room green,proceed to green room
+photo_in_drone blue,take a photo of the blue box above you
+photo_in_drone_agent_in_room green_red,ascend to take a photo of green box and go to red room
+photo_in_drone_agent_in_room blue_red,descend to take a photo of the blue box and then go to the red room
+photo_in_drone_agent_in_room green_red,proceed to take a picture of green box and enter the red room
+photo_in_drone_agent_in_room red_red,take a picture of the red box then go to the red room
+photo_in_drone_agent_in_room red_green,ascend to take a photo of the red box and then go to the green room
+photo_in_drone green,fly over to the green box then hover above it and take a picture
+photo_in_drone blue,take a picture of the blue box
+agent_in_room red,go into the red room and stop
+photo_in_drone_agent_in_room green_green,take a photo of the green box then go to the green room
+photo_in_drone blue,take a photo of the blue box
+photo_in_drone_agent_in_room green_red,"take a snap shot on top of the green box , then enter the red room"
+photo_in_drone_agent_in_room blue_blue,"travel to the blue box , reverse , and fly directly into the blue room"
+photo_in_drone_agent_in_room red_red,"take a picture of the red cube , then fly to the red room"
+agent_in_room blue,fly in the blue room
+photo_in_drone_agent_in_room green_red,hover over the green box to take a picture of it then proceed to the red room
+photo_in_drone_agent_in_room blue_green,take a picture of the blue box then go to the green room
+photo_in_drone_agent_in_room blue_red,take 1 photo of the blue box and hover to the red room
+photo_in_drone_agent_in_room red_red,photograph the red cube then fly into the red room
+agent_in_room blue,go to the blue room
+photo_in_drone_agent_in_room green_green,"take a picture of the green box , then go to the green room"
+photo_in_drone blue,take photo of cube b
+photo_in_drone_agent_in_room blue_blue,"hover over the b cube and take a photo , then fly to the blue room"
+photo_in_drone_agent_in_room red_red,head to the red box in green room and take photo
+photo_in_drone green,fly to green box and take a picture
+photo_in_drone_agent_in_room red_blue,take picture of red box then fly to blue room
+photo_in_drone_agent_in_room green_green,take a photo of the green box and hover towards the green room
+photo_in_drone blue,take a picture of the blue box
+photo_in_drone_agent_in_room blue_red,hover over the blue box and proceed to the red room
+photo_in_drone green,take a photo of the green box
+photo_in_drone_agent_in_room red_red,"fly to green room , take picture of red box then fly to red room"
+photo_in_drone_agent_in_room blue_blue,"take a picture of the blue box in the red room , then go to the blue room"
+photo_in_drone_agent_in_room red_green,fly over the red box and take a picture of it and continue to the green room
+agent_in_room green,move towards the green room
+photo_in_drone green,move to take a picture of the green box
+photo_in_drone green,take a photo of the green box
+photo_in_drone green,take a picture of the green box
+photo_in_drone_agent_in_room blue_blue,take a photo of the blue box and hover to the blue room
+photo_in_drone_agent_in_room blue_blue,take a photograph of the blue box then fly in to the blue room
+photo_in_drone_agent_in_room blue_green,"take picture of blue box , then fly to green room"
+photo_in_drone_agent_in_room red_green,"capture photo taken over red cube , then fly to green room"
+photo_in_drone_agent_in_room blue_blue,"take a photo of the top of the blue box , then fly into the blue room"
+agent_in_room blue,move towards the blue room
+photo_in_drone_agent_in_room red_red,go and take a photo of the red box then head to the red room

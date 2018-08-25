@@ -78,10 +78,14 @@ def drawMatches(img1, kp1, img2, kp2, matches, mask):
 
 
 MIN_MATCH_COUNT = 5
-MAP_PIXEL_WIDTH = 2048  # in pixel
-MAP_PIXEL_HEIGHT = 1616
-MAP_REAL_WIDTH = 1.40  # in meter
-MAP_REAL_HEIGHT = 1.07
+# MAP_PIXEL_WIDTH = 1700  # in pixel
+# MAP_PIXEL_HEIGHT = 1213
+# MAP_REAL_WIDTH = 1.40  # in meter
+# MAP_REAL_HEIGHT = 1.07
+MAP_PIXEL_WIDTH = 2400
+MAP_PIXEL_HEIGHT = 1840
+MAP_REAL_WIDTH = 2.0
+MAP_REAL_HEIGHT = 1.5
 METER_TO_PIXEL = (MAP_PIXEL_WIDTH / MAP_REAL_WIDTH + MAP_PIXEL_HEIGHT / MAP_REAL_HEIGHT) / 2.
 
 angle_x = 0.0
@@ -94,8 +98,8 @@ offset_y = np.tan(angle_y) * z
 
 # img1 = cv2.imread('/Users/baichuanhuang/Downloads/IMG_0131.JPG')
 # img1 = cv2.resize(img1, (0,0), fx=0.2, fy=0.2)
-img1 = cv2.imread('/Users/baichuanhuang/Downloads/img2.JPG')
-img2 = cv2.imread('map.JPG')
+img1 = cv2.imread('img6.jpg')
+img2 = cv2.imread('big_map.jpg')
 # img2 = cv2.imread('/Users/baichuanhuang/Downloads/IMG_0129.JPG')
 # img2 = cv2.resize(img2, (0, 0), fx=0.2, fy=0.2)
 
@@ -106,9 +110,9 @@ img2 = cv2.imread('map.JPG')
 # print transform
 
 # ORB FLANN knnMatch find object
-detector = cv2.ORB(nfeatures=150, scoreType=cv2.ORB_FAST_SCORE)
-detector2 = cv2.ORB(nfeatures=500, scoreType=cv2.ORB_FAST_SCORE)
-detector3 = cv2.GridAdaptedFeatureDetector(detector2, maxTotalKeypoints=10000, gridCols=4, gridRows=4)
+detector = cv2.ORB(nfeatures=200, scoreType=cv2.ORB_FAST_SCORE)
+detector2 = cv2.ORB(nfeatures=2000, scoreType=cv2.ORB_FAST_SCORE, edgeThreshold=5, scaleFactor = 1.2)
+detector3 = cv2.GridAdaptedFeatureDetector(detector2, maxTotalKeypoints=500000, gridCols=5, gridRows=4)
 
 
 index_params = dict(algorithm=6,
@@ -130,11 +134,11 @@ end_time1 = time.time()
 print len(kp1), len(des1)
 
 start_time2 = time.time()
-for _ in range(50):
+for _ in range(1):
     matches = flann.knnMatch(des1, des2, k=2)
     good = []
     for match in matches:
-        if len(match) > 1 and match[0].distance < 0.7 * match[1].distance:
+        if len(match) > 1 and match[0].distance < 0.75 * match[1].distance:
             good.append(match[0])
 end_time2 = time.time()
 print len(good)
