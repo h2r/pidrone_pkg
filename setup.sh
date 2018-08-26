@@ -6,12 +6,26 @@
 # The pi.screenrc file requires this to be in the ws root.  You may
 # also set any other ROS environment variables here.
 
-# following two lines are for conda and docker, and remove the same line in .bashrc if it has
-export PATH=/home/baichuan/miniconda2/bin:$PATH
-export PYTHONPATH=/home/baichuan/miniconda2/envs/drone/lib/python2.7/site-packages:$PYTHONPATH
-source activate drone
 
+# off-board
 source ../../devel/setup.bash
+export ROS_HOSTNAME=messi11
+export ROS_MASTER_URI=http://138.16.161.151:11311
 export PS1="\[\033[00;33m\][pidrone - ${ROS_MASTER_URI}]\[\033[00m\] $PS1"
-export ROS_MASTER_URI=http://messi11:11311
+
+# on-board
+source ../../devel/setup.bash
+export ROS_IP=138.16.161.151
+export ROS_HOSTNAME=kalessin
+export ROS_MASTER_URI=http://138.16.161.151:11311
+export PS1="\[\033[00;33m\][pidrone - ${ROS_MASTER_URI}]\[\033[00m\] $PS1"
+
+# following two lines are for conda and docker, and remove the same line in .bashrc if it has
+#export PATH=/home/baichuan/miniconda2/bin:$PATH
+#export PYTHONPATH=/home/baichuan/miniconda2/envs/drone/lib/python2.7/site-packages:$PYTHONPATH
+#source activate drone
+
+#source ../../devel/setup.bash
+#export PS1="\[\033[00;33m\][pidrone - ${ROS_MASTER_URI}]\[\033[00m\] $PS1"
+#export ROS_MASTER_URI=http://messi11:11311
 
