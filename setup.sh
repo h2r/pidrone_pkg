@@ -7,17 +7,17 @@
 # also set any other ROS environment variables here.
 
 
+# on-board
+#source ../../devel/setup.bash
+#export ROS_HOSTNAME=messi11
+#export ROS_MASTER_URI=http://kalessin:11311
+#export PS1="\[\033[00;33m\][pidrone - ${ROS_MASTER_URI}]\[\033[00m\] $PS1"
+
 # off-board
 source ../../devel/setup.bash
-export ROS_HOSTNAME=messi11
-export ROS_MASTER_URI=http://138.16.161.151:11311
-export PS1="\[\033[00;33m\][pidrone - ${ROS_MASTER_URI}]\[\033[00m\] $PS1"
-
-# on-board
-source ../../devel/setup.bash
-export ROS_IP=138.16.161.151
+#export ROS_IP=138.16.161.151
 export ROS_HOSTNAME=kalessin
-export ROS_MASTER_URI=http://138.16.161.151:11311
+export ROS_MASTER_URI=http://messi11:11311
 export PS1="\[\033[00;33m\][pidrone - ${ROS_MASTER_URI}]\[\033[00m\] $PS1"
 
 # following two lines are for conda and docker, and remove the same line in .bashrc if it has
