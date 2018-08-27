@@ -46,6 +46,9 @@ def run(command):
     assert len(id2arg) == len(arg2id), "There is a duplicate value in arg2id."
 
     # 3) Testing:
+    prog_model.eval()
+    arg_model.eval()
+
     test1 = parse_input(main_input, word2id)
     test1_prog = (prog_model(test1).data.max(1, keepdim=True)[1]).numpy()[0][0]
     test1_arg = (arg_model(test1).data.max(1, keepdim=True)[1]).numpy()[0][0]
@@ -57,7 +60,7 @@ def run(command):
 
 
 if __name__ == '__main__':
-    main_input = "go to blue room"
+    main_input = "back twice"
 
     # 1) Loading models:
     arg_model = torch.load("arg_model_saved.pt")
@@ -74,6 +77,8 @@ if __name__ == '__main__':
     assert len(id2arg) == len(arg2id), "There is a duplicate value in arg2id."
 
     # 3) Testing:
+    prog_model.eval()
+    arg_model.eval()
     test1 = parse_input(main_input, word2id)
     test1_prog = (prog_model(test1).data.max(1, keepdim=True)[1]).numpy()[0][0]
     test1_arg = (arg_model(test1).data.max(1, keepdim=True)[1]).numpy()[0][0]

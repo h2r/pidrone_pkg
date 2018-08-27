@@ -6,7 +6,7 @@ import time
 import load_drone_draggn
 from i_draggn import ProgArgNet
 
-ACTION_TABLE = {'forward': (0, 0.5, 0), 'back': (0, -0.5, 0), 'left': (-0.5, 0, 0), 'right': (0.5, 0, 0), 'up': (0, 0, 0.25), 'down': (0, 0, -0.25), 'take_photo': (-1,)}
+ACTION_TABLE = {'forward': (0, 0.5, 0), 'back': (0, -0.5, 0), 'left': (-0.5, 0, 0), 'right': (0.5, 0, 0), 'up': (0, 0, 0.19), 'down': (0, 0, -0.19), 'take_photo': (-1,)}
 
 command = ""
 prev_command = ""

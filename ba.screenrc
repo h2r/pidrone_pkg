@@ -1,0 +1,72 @@
+#!/bin/bash
+#
+# various settings suggested by other users
+#
+# derived from the Paradox pair programming screenrc, UChicago 2010
+#   ~ yes, we are all total newbs ~
+#
+
+startup_message off
+
+#defscrollback 5000
+defscrollback 5000
+
+escape ``
+
+# this hard status was stolen from the net, all credit goes to its originator
+hardstatus             alwayslastline
+#hardstatus string '%{= mK}%-Lw%{= KW}%50>%n%f* %t%{= mK}%+Lw%< %{= kG}%-=%D %d %M %Y %c:%s%{-}'
+hardstatus string '%{= kG}[ %{G}%H %{g}][%= %{= kw}%?%-Lw%?%{r}(%{W}%n*%f%t%?(%u)%?%{r})%{w}%?%+Lw%?%?%= %{g}][%{B} %d/%m %{W}%c %{g}]'
+
+# A hint for using multiuser mode:  make sure that both parties have identically
+# sized terminals, otherwise there could be graphical mismatches and undrawn text
+# for one party :(  .
+
+# turn multiuser mode on so others can connect.
+multiuser on
+
+# add the specified user to this screen session so that they can connect.
+# the initiating user is allowed automatically, but add both so either can
+# run this script without modification.
+
+#acladd gen
+acladd oberlin
+acladd stefie10 
+
+# Starts a new screen with title " MAKE"
+# this is basically equivalent to pressing the following from within screen:
+# `c (starts a new window)
+# `:title " MAKE" (sets the title to " MAKE")
+#screen -t " MAKE"
+
+#stuff "unset STY"
+#stuff "screen"
+
+screen -t " roscore" bash
+stuff "source setup.sh"
+stuff "roscore"
+stuff ""
+
+screen -t " vision" bash
+stuff "source setup.sh"
+stuff "cd $(rospack find pidrone_pkg)/scripts"
+stuff "python camera_off_board_hololens.py"
+
+screen -t " language_mdp" bash
+stuff "export PATH=~/miniconda2/bin:$PATH"
+stuff "source activate lmdp"
+stuff "source setup.sh"
+stuff "cd $(rospack find pidrone_pkg)/mdp"
+stuff "python main.py"
+
+screen -t " rosbridge" bash
+stuff "source setup.sh"
+stuff "sleep 10s && roslaunch rosbridge_server rosbridge_websocket.launch"
+
+screen -t " web_video_server" bash
+stuff "source setup.sh"
+stuff " rosrun web_video_server web_video_server"
+
+screen -t " free" bash
+stuff "source setup.sh"
+#stuff "cd $(rospack find pidrone_pkg)/scripts/"

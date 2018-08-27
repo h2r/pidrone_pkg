@@ -38,8 +38,8 @@ class AnalyzePhase:
 
         # self.lr_pid = PIDaxis(11.0, 0.001, 0.001, midpoint=0, control_range=(-5.0, 5.0))
         # self.fb_pid = PIDaxis(11.0, 0.001, 0.001, midpoint=0, control_range=(-5.0, 5.0))
-        self.lr_pid = PIDaxis(12.0, 0.002, 0.0015, midpoint=0, control_range=(-5.0, 5.0))
-        self.fb_pid = PIDaxis(12.0, 0.002, 0.0015, midpoint=0, control_range=(-5.0, 5.0))
+        self.lr_pid = PIDaxis(10.5, 0.001, 0.002, midpoint=0, control_range=(-5.0, 5.0))
+        self.fb_pid = PIDaxis(10.5, 0.001, 0.002, midpoint=0, control_range=(-5.0, 5.0))
 
         self.detector = cv2.ORB(nfeatures=200, scoreType=cv2.ORB_FAST_SCORE)  # FAST_SCORE is a little faster to compute
         map_grid_kp, map_grid_des = create_map('big_map.jpg')
@@ -69,7 +69,7 @@ class AnalyzePhase:
         self.kp_yaw = 50.0
         self.ki_yaw = 0.1
         self.alpha_yaw = 0.1  # perceived yaw smoothing alpha
-        self.hybrid_alpha = 0.35  # blend position with first frame and int
+        self.hybrid_alpha = 0.75  # blend position with first frame and int
         # angle
         self.angle_x = 0.0  # the hz of state_controller is different
         self.angle_y = 0.0
@@ -97,7 +97,7 @@ class AnalyzePhase:
         curr_time = curr_rostime.to_sec()
 
         # process path from MDP
-        if len(self.path) != 0 and is_close_to(self.pos, self.target_pos, distance=0.2):
+        if len(self.path) != 0 and is_close_to(self.pos, self.target_pos, distance=0.15):
             if self.path[self.path_index + 1] == -1:   # take photo
                 if is_close_to(self.pos, self.target_pos, distance=0.1):
                     # image_message = self.bridge.cv2_to_imgmsg(curr_img, encoding="bgr8")
