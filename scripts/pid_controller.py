@@ -89,6 +89,9 @@ class PIDController(object):
         # determines if the position of the drone is known
         self.lost = False
 
+        # determines whether to use open loop velocity path planning
+        self.path_planning = False
+
 
     # ROS SUBSCRIBER CALLBACK METHODS
     #################################
@@ -103,10 +106,11 @@ class PIDController(object):
         # store the previous desired position
         self.last_desired_position = self.desired_position
         # set the desired positions
-        self.desired_position.x = msg.position.x
-        self.desired_position.y = msg.position.y
+        self.desired_position.x = self.current_position.x + msg.position.x
+        self.desired_position.y = self.current_position.y + msg.position.y
         # the desired z must be above z and below the range of the ir sensor (.55meters)
-        self.desired_position.z = msg.position.z if 0 <= msg.position.z <= 0.5 else self.last_desired_position.z
+        desired_z = self.current_position.z + msg.position.z
+        self.desired_position.z = desired_z if 0 <= desired_z <= 0.5 else self.last_desired_position.z
 
         if self.desired_position != self.last_desired_position:
             # the drone is moving between desired positions
@@ -118,8 +122,9 @@ class PIDController(object):
         self.desired_velocity.x = msg.linear.x
         self.desired_velocity.y = msg.linear.y
         self.desired_velocity.z = msg.linear.z
-        self.calculate_travel_time()
-        print 'travel time'
+        self.yaw_velocity = msg.angular.z
+        if self.path_planning:
+            self.calculate_travel_time()
 
     def current_mode_callback(self, msg):
         """ Update the current mode """
@@ -161,7 +166,9 @@ class PIDController(object):
             if self.desired_velocity.magnitude() > 0:
                 self.adjust_desired_velocity()
 
-        return self.pid.step(self.pid_error, self.yaw_velocity)
+        desired_yaw_velocity = self.yaw_velocity
+        self.yaw_velocity = 0
+        return self.pid.step(self.pid_error, desired_yaw_velocity)
 
     # HELPER METHODS
     ################
@@ -194,33 +201,21 @@ class PIDController(object):
         travel distance. This is an open loop method meaning that the specified
         travel distance cannot be guarenteed.
         """
-        curr_time = rospy.get_time()
-        if self.desired_velocity_start_time is not None:
-            duration = curr_time - self.desired_velocity_start_time
-            if duration > self.desired_velocity_travel_time:
-                self.desired_velocity = Velocity(0, 0, 0)
-                self.desired_velocity_start_time = None
+        if self.path_planning:
+            curr_time = rospy.get_time()
+            if self.desired_velocity_start_time is not None:
+                duration = curr_time - self.desired_velocity_start_time
+                if duration > self.desired_velocity_travel_time:
+                    self.desired_velocity.x = 0
+                    self.desired_velocity.y = 0
+                    self.desired_velocity.z = 0
+                    self.desired_velocity_start_time = None
+            else:
+                self.desired_velocity_start_time = curr_time
         else:
-            self.desired_velocity_start_time = curr_time
-
-# TODO THIS IS A PROTOTYPE METHOD THAT NEEDS TESTING
-    def world_to_body_frame_rotation(self):
-        current_position_matrix = np.matrix([self.current_position.x,
-                                            self.current_position.y,
-                                            self.current_position.z])
-
-        r,p,y = tf.transformations.euler_from_quaternion(self.current_orientation_quaternion)
-        cr,sr,cp,sp,cy,sy = np.cos(r),np.sin(r),np.cos(p),np.sin(p),np.cos(y),np.sin(y)
-# TODO THIS COULD BE THE TRASNPOSE
-        rotation_matrix = np.matrix(
-        [   [cy*cp,      -sy*cr + cy*sp*sr,      sy*sr + cy*sp*cr],
-            [sy*cp,      cy*cr + sy*sp*sr,       -cy*sr + sy*sp*cr],
-            [-sp,        cp*sr,                  cp*cr]
-        ])
-        # rotation_matrix = rotation_matrix.transpose()
-
-        rotated_current_position = current_position_matrix.dot(rotation_matrix)
-        self.current_position = Position(rotated_current_position[0,0], rotated_current_position[0,1], rotated_current_position[0,2])
+            self.desired_velocity.x = 0
+            self.desired_velocity.y = 0
+            self.desired_velocity.z = 0
 
     def calc_error(self):
         """ Calculate the error in velocity, and if in position hold, add the
@@ -253,17 +248,6 @@ class PIDController(object):
             fb_step = self.fb_pid.step(self.position_error.y, pose_dt)
             self.pid_error.x += lr_step
             self.pid_error.y += fb_step
-
-# TODO THIS IS A PROTOTYPE METHOD THAT NEEDS TESTING
-    def reduce_magnitude(self, error):
-        """ Returns a vector with the same direction but with a reduced
-        magnitude to enable small steps when a large error exists. This is meant
-        to act as a very simple motion planning algorithm """
-        error_array = np.array([error.x, error.y, error.z])
-        magnitude = np.sqrt(error_array.dot(error_array))
-        if magnitude > 0.05:
-            error_array = (error_array / magnitude) * 0.05
-        return Error(error_array[0], error_array[1], error_array[2])
 
     def calculate_travel_time(self):
         ''' return the amount of time that desired velocity should be used to
@@ -309,7 +293,7 @@ class PIDController(object):
         self.cmdpub.publish(msg)
 
 
-def main():
+def main(ControllerClass):
     # Verbosity between 0 and 2, 2 is most verbose
     verbose = 2
 
@@ -319,7 +303,7 @@ def main():
     rospy.init_node(node_name)
 
     # create the PIDController object
-    pid_controller = PIDController()
+    pid_controller = ControllerClass()
 
     # Publishers
     ############
@@ -383,4 +367,4 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    main(PIDController)
