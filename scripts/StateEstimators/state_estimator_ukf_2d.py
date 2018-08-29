@@ -18,6 +18,7 @@ from filterpy.kalman import MerweScaledSigmaPoints
 # Other imports
 import numpy as np
 import argparse
+import os
 
 
 class UKFStateEstimator2D(object):
