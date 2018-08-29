@@ -43,7 +43,7 @@ class PIDController(object):
         self.velocity_error = Error()
 
         # Set the distance that a velocity command will move the drone (m)
-        self.desired_velocity_travel_distance = 0.2
+        self.desired_velocity_travel_distance = 0.01
         self.desired_velocity_travel_time = 0.0
         self.desired_velocity_start_time = None
 
@@ -90,7 +90,7 @@ class PIDController(object):
         self.lost = False
 
         # determines whether to use open loop velocity path planning
-        self.path_planning = False
+        self.path_planning = True
 
 
     # ROS SUBSCRIBER CALLBACK METHODS

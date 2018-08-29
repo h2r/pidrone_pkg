@@ -12,10 +12,10 @@ from geometry_msgs.msg import Pose, Twist
 
 
 class CommandLineInterface(object):
+    """ A text based interface to control the drone from the terminal """
 
     def __init__(self):
         self.position_control = False
-        self.position = Position()
 
     def ctrl_c_handler(self, signal, frame):
         print('Got ctrl-c!')
@@ -24,7 +24,8 @@ class CommandLineInterface(object):
 
     def publish_desired_pose(self, x=0, y=0, z=0):
         ''' Publish the desired pose
-        x, y, z : the desired position coordinates of the drone
+        x, y, z : the desired position of the drone relative to its current
+                  position
         '''
         # create the pose message
         desired_pose_msg = Pose()
@@ -139,11 +140,23 @@ def main():
 
     cli.publish_desired_mode('DISARMED')
     signal.signal(signal.SIGINT, lambda x,y: cli.ctrl_c_handler(x,y))
-    print('Valid modes are DISARMED, ARMED, and FLYING')
-    print('Alternatively, D, A, and F')
-    print('To switch between position and velocity control, press \'p\'')
-    print('p <x> <y> <z> will command the drone to go to position (x, y, z)')
-    print('v <vx> <vy> <vz> will command the travel a set distnace at velocity (vx, vy, vz)')
+    print('Welcome to the command line interface!')
+    print('The commands are as follows:')
+    print('; : arm')
+    print('t : takeoff')
+    print('spacebar : disarm')
+    print('i : forward')
+    print('k : backward')
+    print('j : left')
+    print('l : right')
+    print('w : up')
+    print('s : down')
+    print('a : yaw left')
+    print('d : yaw right')
+    print('r : reset position')
+    print('p : enable position control')
+    print('v : enable velocity control')
+
     try:
         while not rospy.is_shutdown():
             raw_entry = raw_input('Type a mode and press enter:\t')
@@ -152,19 +165,13 @@ def main():
                 desired_mode = 'DISARMED'
                 cli.publish_desired_mode(desired_mode)
             else:
+                # parse the entry
                 entry = raw_entry.strip()
-                # make the entry case insensitive
                 entry = entry.lower()
                 if len(entry) == 0:
                     print 'invalid entry. try again.'
                 elif len(entry) == 1:
                     input = entry[0]
-
-                    # mode commands take the form of a string or letter. possible
-                    # entries are:
-                    # disarm : spacebar
-                    # arm : ; (semicolon)
-                    # fly : t (t for takeoff)
                     if 'x' in entry: # This is the 'panic' command
                         desired_mode = 'DISARMED'
                         cli.publish_desired_mode(desired_mode)
