@@ -38,6 +38,7 @@ var gotFirstHeight = false;
 var startTime;
 var heightChartPaused = false;
 var spanningFullWindow = false;
+var state = [0.0, 0.0, 0.0];
 
 function closeSession(){
   console.log("Closing connections.");
@@ -81,12 +82,12 @@ function init() {
 
     modepub = new ROSLIB.Topic({
       ros : ros,
-      name : '/pidrone/set_mode',
+      name : '/pidrone/desired/mode',
       messageType : 'pidrone_pkg/Mode'
     });
 
     modeMsg = new ROSLIB.Message({
-      mode: 0,
+      mode: "DISARMED",
      });
 
     emptyMsg = new ROSLIB.Message({
@@ -246,6 +247,7 @@ function init() {
         queue_length : 2,
         throttle_rate : 80
     });
+
     ukf2dsub.subscribe(function(message) {
       //printProperties(message);
       currTime = message.header.stamp.secs + message.header.stamp.nsecs/1.0e9;
@@ -534,6 +536,20 @@ function init() {
           // heightChart.update();
       }
     });
+
+    stateSub = new ROSLIB.Topic({
+        ros : ros,
+        name : '/pidrone/state',
+        messageType : 'pidrone_pkg/State',
+        queue_length : 2,
+        throttle_rate : 80
+    });
+
+    stateSub.subscribe(function(message) {
+        state[0] = message.pose_with_covariance.pose.position.x;
+        state[1] = message.pose_with_covariance.pose.position.y;
+        state[2] = message.pose_with_covariance.pose.position.z;
+    });
     
     stateGroundTruthSub = new ROSLIB.Topic({
         ros : ros,
@@ -542,6 +558,7 @@ function init() {
         queue_length : 2,
         throttle_rate : 80
     });
+
     stateGroundTruthSub.subscribe(function(message) {
       //printProperties(message);
       currTime = message.header.stamp.secs + message.header.stamp.nsecs/1.0e9;
@@ -626,15 +643,6 @@ function init() {
       heightChart.update();
   }
 
-function publishArm() {
-  console.log("arm");
-  modeMsg.mode = 0
-  modeMsg.x_velocity = 0
-  modeMsg.y_velocity = 0
-  modeMsg.z_velocity = 0
-  modeMsg.yaw_velocity = 0
-  modepub.publish(modeMsg);
-}
 function publishResetTransform() {
   console.log("reset transform");
   resetpub.publish(emptyMsg);
@@ -645,119 +653,152 @@ function publishToggleTransform() {
   togglepub.publish(emptyMsg);
 }
 
+function publishArm() {
+  console.log("arm");
+  if (positionMsg.data == true) {
+    poseMsg.position.x = 0
+    poseMsg.position.y = 0
+    poseMsg.position.z = 0
+    positionControlPub.publish(poseMsg)
+  } else {
+    twistMsg.linear.x = 0
+    twistMsg.linear.y = 0
+    twistMsg.linear.z = 0
+    velocityControlPub.publish(twistMsg)
+  }
+  modeMsg.mode = "ARMED"
+  modepub.publish(modeMsg);
+}
 
 function publishDisarm() {
   console.log("disarm");
-  modeMsg.mode = 4
-  modeMsg.x_velocity = 0
-  modeMsg.y_velocity = 0
-  modeMsg.z_velocity = 0
-  modeMsg.yaw_velocity = 0
+  twistMsg.linear.x = 0
+  twistMsg.linear.y = 0
+  twistMsg.linear.z = 0
+  velocityControlPub.publish(twistMsg)
+  modeMsg.mode = "DISARMED"
   modepub.publish(modeMsg);
 }
 
 function publishZeroVelocity() {
   console.log("zero velocity");
-  modeMsg.mode = 5
-  modeMsg.x_velocity = 0
-  modeMsg.y_velocity = 0
-  modeMsg.z_velocity = 0
-  modeMsg.yaw_velocity = 0
+  twistMsg.linear.x = 0
+  twistMsg.linear.y = 0
+  twistMsg.linear.z = 0
+  velocityControlPub.publish(twistMsg)
+  modeMsg.mode = "FLYING"
   modepub.publish(modeMsg);
 }
-
 
 function publishTakeoff() {
   console.log("takeoff");
-  modeMsg.mode = 5
-  modeMsg.x_velocity = 0
-  modeMsg.y_velocity = 0
-  modeMsg.z_velocity = 0
-  modeMsg.yaw_velocity = 0
+  twistMsg.linear.x = 0
+  twistMsg.linear.y = 0
+  twistMsg.linear.z = 0
+  velocityControlPub.publish(twistMsg)
+  modeMsg.mode = "FLYING"
   modepub.publish(modeMsg);
 }
 
-
 function publishTranslateLeft() {
   console.log("translate left");
-  modeMsg.mode = 5
-  modeMsg.x_velocity = -10
-  modeMsg.y_velocity = 0
-  modeMsg.z_velocity = 0
-  modeMsg.yaw_velocity = 0
+  if (positionMsg.data == true) {
+    poseMsg.position.x = state[0] - 0.5
+    poseMsg.position.y = state[1]
+    poseMsg.position.z = state[2]
+    positionControlPub.publish(poseMsg)
+  } else {
+    twistMsg.linear.x = -5
+    twistMsg.linear.y = 0
+    twistMsg.linear.z = 0
+    velocityControlPub.publish(twistMsg)
+  }
+  modeMsg.mode = "FLYING"
   modepub.publish(modeMsg);
 }
 
 function publishTranslateRight() {
   console.log("translate right");
-  modeMsg.mode = 5
-  modeMsg.x_velocity = 10
-  modeMsg.y_velocity = 0
-  modeMsg.z_velocity = 0
-  modeMsg.yaw_velocity = 0
+  if (positionMsg.data == true) {
+    poseMsg.position.x = state[0] + 0.5
+    poseMsg.position.y = state[1]
+    poseMsg.position.z = state[2]
+    positionControlPub.publish(poseMsg)
+  } else {
+    twistMsg.linear.x = 5
+    twistMsg.linear.y = 0
+    twistMsg.linear.z = 0
+    velocityControlPub.publish(twistMsg)
+  }
+  modeMsg.mode = "FLYING"
   modepub.publish(modeMsg);
 }
 
 function publishTranslateForward() {
   console.log("translate forward");
-  modeMsg.mode = 5
-  modeMsg.x_velocity = 0
-  modeMsg.y_velocity = 10
-  modeMsg.z_velocity = 0
-  modeMsg.yaw_velocity = 0
+  if (positionMsg.data == true) {
+    poseMsg.position.x = state[0]
+    poseMsg.position.y = state[1] + 0.5
+    poseMsg.position.z = state[2]
+    positionControlPub.publish(poseMsg)
+  } else {
+    twistMsg.linear.x = 0
+    twistMsg.linear.y = 5
+    twistMsg.linear.z = 0
+    velocityControlPub.publish(twistMsg)
+  }
+  modeMsg.mode = "FLYING"
   modepub.publish(modeMsg);
-
 }
 
 function publishTranslateBackward() {
   console.log("translate backward");
-  modeMsg.mode = 5
-  modeMsg.x_velocity = 0
-  modeMsg.y_velocity = -10
-  modeMsg.z_velocity = 0
-  modeMsg.yaw_velocity = 0
+  if (positionMsg.data == true) {
+    poseMsg.position.x = state[0]
+    poseMsg.position.y = state[1] - 0.5
+    poseMsg.position.z = state[2]
+    positionControlPub.publish(poseMsg)
+  } else {
+    twistMsg.linear.x = 0
+    twistMsg.linear.y = -5
+    twistMsg.linear.z = 0
+    velocityControlPub.publish(twistMsg)
+  }
+  modeMsg.mode = "FLYING"
   modepub.publish(modeMsg);
 }
 
-
 function publishTranslateUp() {
   console.log("translate up");
-  modeMsg.mode = 5
-  modeMsg.x_velocity = 0
-  modeMsg.y_velocity = 0
-  modeMsg.z_velocity = 0.05
-  modeMsg.yaw_velocity = 0
+  if (positionMsg.data == true) {
+    poseMsg.position.x = state[0]
+    poseMsg.position.y = state[1]
+    poseMsg.position.z = state[2] + 0.05
+    positionControlPub.publish(poseMsg)
+  } else {
+    twistMsg.linear.x = 0
+    twistMsg.linear.y = 0
+    twistMsg.linear.z = 1
+    velocityControlPub.publish(twistMsg)
+  }
+  modeMsg.mode = "FLYING"
   modepub.publish(modeMsg);
 }
 
 function publishTranslateDown() {
   console.log("translate down");
-  modeMsg.mode = 5
-  modeMsg.x_velocity = 0
-  modeMsg.y_velocity = 0
-  modeMsg.z_velocity = -0.05
-  modeMsg.yaw_velocity = 0
-  modepub.publish(modeMsg);
-}
-
-
-function publishYawLeft() {
-  console.log("yaw left");
-  modeMsg.mode = 5
-  modeMsg.x_velocity = 0
-  modeMsg.y_velocity = 0
-  modeMsg.z_velocity = 0
-  modeMsg.yaw_velocity = -50
-  modepub.publish(modeMsg);
-}
-
-function publishYawRight() {
-  console.log("yaw right");
-  modeMsg.mode = 5
-  modeMsg.x_velocity = 0
-  modeMsg.y_velocity = 0
-  modeMsg.z_velocity = 0
-  modeMsg.yaw_velocity = 50
+  if (positionMsg.data == true) {
+    poseMsg.position.x = state[0]
+    poseMsg.position.y = state[1]
+    poseMsg.position.z = state[2] - 0.05
+    positionControlPub.publish(poseMsg)
+  } else {
+    twistMsg.linear.x = 0
+    twistMsg.linear.y = 0
+    twistMsg.linear.z = -1
+    velocityControlPub.publish(twistMsg)
+  }
+  modeMsg.mode = "FLYING"
   modepub.publish(modeMsg);
 }
 
