@@ -38,7 +38,6 @@ var gotFirstHeight = false;
 var startTime;
 var heightChartPaused = false;
 var spanningFullWindow = false;
-var state = [0.0, 0.0, 0.0];
 
 function closeSession(){
   console.log("Closing connections.");
@@ -52,7 +51,7 @@ function init() {
     ros = new ROSLIB.Ros({
         url : url
     });
-    
+
     var velocityBtn = document.getElementById('velocityBtn');
     velocityBtn.addEventListener("click", publishVelocityMode, false);
 
@@ -91,30 +90,6 @@ function init() {
      });
 
     emptyMsg = new ROSLIB.Message({
-     });
-
-    heartbeatPub = new ROSLIB.Topic({
-      ros : ros,
-      name : '/pidrone/heartbeat/web_interface',
-      messageType : 'std_msgs/Empty'
-    });
-
-    positionPub = new ROSLIB.Topic({
-        ros : ros,
-        name : '/pidrone/position_control',
-        messageType : 'std_msgs/Bool'
-    });
-
-    velocityControlPub = new ROSLIB.Topic({
-        ros : ros,
-        name : '/pidrone/desired/twist',
-        messageType : 'geometry_msgs/Twist'
-    });
-
-    positionControlPub = new ROSLIB.Topic({
-        ros : ros,
-        name : '/pidrone/desired/pose',
-        messageType : 'geometry_msgs/Pose'
     });
 
     positionMsg = new ROSLIB.Message({
@@ -149,11 +124,34 @@ function init() {
         }
     });
 
+    heartbeatPub = new ROSLIB.Topic({
+      ros : ros,
+      name : '/pidrone/heartbeat/web_interface',
+      messageType : 'std_msgs/Empty'
+    });
 
     setInterval(function(){
       heartbeatPub.publish(emptyMsg);
       //console.log("heartbeat");
     }, 1000);
+
+    positionPub = new ROSLIB.Topic({
+        ros : ros,
+        name : '/pidrone/position_control',
+        messageType : 'std_msgs/Bool'
+    });
+
+    velocityControlPub = new ROSLIB.Topic({
+        ros : ros,
+        name : '/pidrone/desired/twist',
+        messageType : 'geometry_msgs/Twist'
+    });
+
+    positionControlPub = new ROSLIB.Topic({
+        ros : ros,
+        name : '/pidrone/desired/pose',
+        messageType : 'geometry_msgs/Pose'
+    });
 
     resetpub = new ROSLIB.Topic({
       ros : ros,
@@ -536,20 +534,6 @@ function init() {
           // heightChart.update();
       }
     });
-
-    stateSub = new ROSLIB.Topic({
-        ros : ros,
-        name : '/pidrone/state',
-        messageType : 'pidrone_pkg/State',
-        queue_length : 2,
-        throttle_rate : 80
-    });
-
-    stateSub.subscribe(function(message) {
-        state[0] = message.pose_with_covariance.pose.position.x;
-        state[1] = message.pose_with_covariance.pose.position.y;
-        state[2] = message.pose_with_covariance.pose.position.z;
-    });
     
     stateGroundTruthSub = new ROSLIB.Topic({
         ros : ros,
@@ -672,30 +656,34 @@ function publishArm() {
 
 function publishDisarm() {
   console.log("disarm");
-  twistMsg.linear.x = 0
-  twistMsg.linear.y = 0
-  twistMsg.linear.z = 0
-  velocityControlPub.publish(twistMsg)
+  if (positionMsg.data == true) {
+    poseMsg.position.x = 0
+    poseMsg.position.y = 0
+    poseMsg.position.z = 0
+    positionControlPub.publish(poseMsg)
+  } else {
+    twistMsg.linear.x = 0
+    twistMsg.linear.y = 0
+    twistMsg.linear.z = 0
+    velocityControlPub.publish(twistMsg)
+  }
   modeMsg.mode = "DISARMED"
-  modepub.publish(modeMsg);
-}
-
-function publishZeroVelocity() {
-  console.log("zero velocity");
-  twistMsg.linear.x = 0
-  twistMsg.linear.y = 0
-  twistMsg.linear.z = 0
-  velocityControlPub.publish(twistMsg)
-  modeMsg.mode = "FLYING"
   modepub.publish(modeMsg);
 }
 
 function publishTakeoff() {
   console.log("takeoff");
-  twistMsg.linear.x = 0
-  twistMsg.linear.y = 0
-  twistMsg.linear.z = 0
-  velocityControlPub.publish(twistMsg)
+  if (positionMsg.data == true) {
+    poseMsg.position.x = 0
+    poseMsg.position.y = 0
+    poseMsg.position.z = 0
+    positionControlPub.publish(poseMsg)
+  } else {
+    twistMsg.linear.x = 0
+    twistMsg.linear.y = 0
+    twistMsg.linear.z = 0
+    velocityControlPub.publish(twistMsg)
+  }
   modeMsg.mode = "FLYING"
   modepub.publish(modeMsg);
 }
@@ -703,12 +691,12 @@ function publishTakeoff() {
 function publishTranslateLeft() {
   console.log("translate left");
   if (positionMsg.data == true) {
-    poseMsg.position.x = state[0] - 0.5
-    poseMsg.position.y = state[1]
-    poseMsg.position.z = state[2]
+    poseMsg.position.x = -0.1
+    poseMsg.position.y = 0
+    poseMsg.position.z = 0
     positionControlPub.publish(poseMsg)
   } else {
-    twistMsg.linear.x = -5
+    twistMsg.linear.x = -1
     twistMsg.linear.y = 0
     twistMsg.linear.z = 0
     velocityControlPub.publish(twistMsg)
@@ -720,12 +708,12 @@ function publishTranslateLeft() {
 function publishTranslateRight() {
   console.log("translate right");
   if (positionMsg.data == true) {
-    poseMsg.position.x = state[0] + 0.5
-    poseMsg.position.y = state[1]
-    poseMsg.position.z = state[2]
+    poseMsg.position.x = 0.1
+    poseMsg.position.y = 0
+    poseMsg.position.z = 0
     positionControlPub.publish(poseMsg)
   } else {
-    twistMsg.linear.x = 5
+    twistMsg.linear.x = 1
     twistMsg.linear.y = 0
     twistMsg.linear.z = 0
     velocityControlPub.publish(twistMsg)
@@ -737,13 +725,13 @@ function publishTranslateRight() {
 function publishTranslateForward() {
   console.log("translate forward");
   if (positionMsg.data == true) {
-    poseMsg.position.x = state[0]
-    poseMsg.position.y = state[1] + 0.5
-    poseMsg.position.z = state[2]
+    poseMsg.position.x = 0
+    poseMsg.position.y = 0.1
+    poseMsg.position.z = 0
     positionControlPub.publish(poseMsg)
   } else {
     twistMsg.linear.x = 0
-    twistMsg.linear.y = 5
+    twistMsg.linear.y = 1
     twistMsg.linear.z = 0
     velocityControlPub.publish(twistMsg)
   }
@@ -754,13 +742,13 @@ function publishTranslateForward() {
 function publishTranslateBackward() {
   console.log("translate backward");
   if (positionMsg.data == true) {
-    poseMsg.position.x = state[0]
-    poseMsg.position.y = state[1] - 0.5
-    poseMsg.position.z = state[2]
+    poseMsg.position.x = 0
+    poseMsg.position.y = -0.1
+    poseMsg.position.z = 0
     positionControlPub.publish(poseMsg)
   } else {
     twistMsg.linear.x = 0
-    twistMsg.linear.y = -5
+    twistMsg.linear.y = -1
     twistMsg.linear.z = 0
     velocityControlPub.publish(twistMsg)
   }
@@ -770,36 +758,44 @@ function publishTranslateBackward() {
 
 function publishTranslateUp() {
   console.log("translate up");
-  if (positionMsg.data == true) {
-    poseMsg.position.x = state[0]
-    poseMsg.position.y = state[1]
-    poseMsg.position.z = state[2] + 0.05
-    positionControlPub.publish(poseMsg)
-  } else {
-    twistMsg.linear.x = 0
-    twistMsg.linear.y = 0
-    twistMsg.linear.z = 1
-    velocityControlPub.publish(twistMsg)
-  }
+  poseMsg.position.x = 0
+  poseMsg.position.y = 0
+  poseMsg.position.z = 0.05
+  positionControlPub.publish(poseMsg)
   modeMsg.mode = "FLYING"
   modepub.publish(modeMsg);
 }
 
 function publishTranslateDown() {
   console.log("translate down");
-  if (positionMsg.data == true) {
-    poseMsg.position.x = state[0]
-    poseMsg.position.y = state[1]
-    poseMsg.position.z = state[2] - 0.05
-    positionControlPub.publish(poseMsg)
-  } else {
-    twistMsg.linear.x = 0
-    twistMsg.linear.y = 0
-    twistMsg.linear.z = -1
-    velocityControlPub.publish(twistMsg)
-  }
+  poseMsg.position.x = 0
+  poseMsg.position.y = 0
+  poseMsg.position.z = -0.05
+  positionControlPub.publish(poseMsg)
   modeMsg.mode = "FLYING"
   modepub.publish(modeMsg);
+}
+
+function publishYawLeft() {
+    console.log("yaw left")
+    modeMsg.mode = "FLYING"
+    twistMsg.linear.x = 0
+    twistMsg.linear.y = 0
+    twistMsg.linear.z = 0
+    twistMsg.angular.z = -100
+    velocityControlPub.publish(twistMsg)
+    modepub.publish(modeMsg);
+}
+
+function publishYawRight() {
+    console.log("yaw right")
+    modeMsg.mode = "FLYING"
+    twistMsg.linear.x = 0
+    twistMsg.linear.y = 0
+    twistMsg.linear.z = 0
+    twistMsg.angular.z = 100
+    velocityControlPub.publish(twistMsg)
+    modepub.publish(modeMsg);
 }
 
 $(document).keydown(function(event){
@@ -1165,8 +1161,6 @@ $(document).keypress(function(event){
     publishArm();
   } else if (char == ' ') {
     publishDisarm();
-  } else if (char == 'h') {
-    publishZeroVelocity();
   } else if (char == 'r') {
     publishResetTransform();
   } else if (char == 't') {
