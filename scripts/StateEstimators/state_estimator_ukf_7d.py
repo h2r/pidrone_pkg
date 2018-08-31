@@ -527,10 +527,13 @@ def main():
             help=('Use throttled IMU topic /pidrone/imu_throttle'))
     parser.add_argument('--optical_flow_throttled', action='store_true',
                         help=('Use throttled optical flow topic /pidrone/picamera/twist_throttle'))
+    parser.add_argument('--camera_pose_throttled', action='store_true',
+                        help=('Use throttled camera pose topic /pidrone/picamera/pose_throttle'))
     args = parser.parse_args()
     se = UKFStateEstimator7D(ir_throttled=args.ir_throttled,
                          imu_throttled=args.imu_throttled,
-                         optical_flow_throttled=args.optical_flow_throttled)
+                         optical_flow_throttled=args.optical_flow_throttled,
+                         camera_pose_throttled=args.camera_pose_throttled)
     try:
         # Wait until node is halted
         rospy.spin()
