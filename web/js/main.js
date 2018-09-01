@@ -237,7 +237,7 @@ function init() {
       //console.log("Data: " + heightChart.data.datasets[0].data);
       //console.log('tVal: ' + tVal)
     });
-    
+
     ukf2dsub = new ROSLIB.Topic({
         ros : ros,
         name : '/pidrone/state/ukf_2d',
@@ -260,7 +260,7 @@ function init() {
           // Avoid changing axis limits too often, to avoid shaky plotting?
           // heightChartMinTime = tVal - windowSize;
           // heightChartMaxTime = tVal;
-          
+
           // Remove first element of array while difference compared to current
           // time is greater than the windowSize
           while (ukfData.length > 0 &&
@@ -302,7 +302,7 @@ function init() {
           // heightChart.update();
       }
     });
-    
+
     cameraPoseSub = new ROSLIB.Topic({
         ros : ros,
         name : '/pidrone/picamera/pose',
@@ -313,7 +313,7 @@ function init() {
     cameraPoseSub.subscribe(function(message) {
         updateCameraPoseXYChart(message);
     });
-    
+
     function updateGroundTruthXYChart(msg) {
         xPos = msg.pose.position.x;
         yPos = msg.pose.position.y;
@@ -321,14 +321,14 @@ function init() {
         qy = msg.pose.orientation.y;
         qz = msg.pose.orientation.z;
         qw = msg.pose.orientation.w;
-        
+
         if (xPos != null &&
             yPos != null &&
             qx != null &&
             qy != null &&
             qz != null &&
             qw != null) {
-            
+
             // Quaternion with which to rotate vectors to show the yaw of the
             // drone (and perhaps also the roll and pitch)
             global_to_body_quat = new Quaternion([qw, qx, qy, qz]);
@@ -371,7 +371,7 @@ function init() {
             xyChart.update()
         }
     }
-    
+
     function updateCameraPoseXYChart(msg) {
         xPos = msg.pose.position.x;
         yPos = msg.pose.position.y;
@@ -379,14 +379,14 @@ function init() {
         qy = msg.pose.orientation.y;
         qz = msg.pose.orientation.z;
         qw = msg.pose.orientation.w;
-        
+
         if (xPos != null &&
             yPos != null &&
             qx != null &&
             qy != null &&
             qz != null &&
             qw != null) {
-            
+
             // Quaternion with which to rotate vectors to show the yaw of the
             // drone (and perhaps also the roll and pitch)
             global_to_body_quat = new Quaternion([qw, qx, qy, qz]);
@@ -429,7 +429,7 @@ function init() {
             xyChart.update()
         }
     }
-    
+
     function updateUkfXYChart(msg) {
         xPos = msg.pose_with_covariance.pose.position.x;
         yPos = msg.pose_with_covariance.pose.position.y;
@@ -437,14 +437,14 @@ function init() {
         qy = msg.pose_with_covariance.pose.orientation.y;
         qz = msg.pose_with_covariance.pose.orientation.z;
         qw = msg.pose_with_covariance.pose.orientation.w;
-        
+
         if (xPos != null &&
             yPos != null &&
             qx != null &&
             qy != null &&
             qz != null &&
             qw != null) {
-            
+
             // Quaternion with which to rotate vectors to show the yaw of the
             // drone (and perhaps also the roll and pitch)
             global_to_body_quat = new Quaternion([qw, qx, qy, qz]);
@@ -511,7 +511,7 @@ function init() {
           // Avoid changing axis limits too often, to avoid shaky plotting?
           // heightChartMinTime = tVal - windowSize;
           // heightChartMaxTime = tVal;
-          
+
           // Remove first element of array while difference compared to current
           // time is greater than the windowSize
           while (emaData.length > 0 &&
@@ -534,7 +534,7 @@ function init() {
           // heightChart.update();
       }
     });
-    
+
     stateGroundTruthSub = new ROSLIB.Topic({
         ros : ros,
         name : '/pidrone/state_ground_truth',
@@ -557,7 +557,7 @@ function init() {
           // Avoid changing axis limits too often, to avoid shaky plotting?
           // heightChartMinTime = tVal - windowSize;
           // heightChartMaxTime = tVal;
-          
+
           // Remove first element of array while difference compared to current
           // time is greater than the windowSize
           while (stateGroundTruthData.length > 0 &&
@@ -584,7 +584,7 @@ function init() {
           // heightChart.update();
       }
     });
-    
+
     imageStream();
   }
 
@@ -596,7 +596,7 @@ function init() {
     firstImage.src = "http://" + document.getElementById('hostname').value + ":8080/stream?topic=/pidrone/picamera/first_image&quality=70";
 
   }
-  
+
   var irAlphaVal = 0;
   var increasingAlpha = true;
   function pulseIr() {
@@ -611,7 +611,7 @@ function init() {
       if (irAlphaVal < 0) {
           increasingAlpha = true;
       }
-      
+
       // Change gradient depending on whether or not the entire chart window
       // is spanned with data
       if (spanningFullWindow) {
@@ -619,7 +619,7 @@ function init() {
       } else {
           irBackgroundGradient = ctx.createLinearGradient(0, 0, 600, 0);
       }
-      
+
       irBackgroundGradient.addColorStop(0, 'rgba(255, 80, 0, 0)');
       irBackgroundGradient.addColorStop(1, 'rgba(255, 80, 0, '+irAlphaVal.toString()+')');
       heightChart.data.datasets[0].backgroundColor = irBackgroundGradient;
@@ -665,6 +665,7 @@ function publishDisarm() {
     twistMsg.linear.x = 0
     twistMsg.linear.y = 0
     twistMsg.linear.z = 0
+    twistMsg.angular.z = 0
     velocityControlPub.publish(twistMsg)
   }
   modeMsg.mode = "DISARMED"
@@ -682,6 +683,7 @@ function publishTakeoff() {
     twistMsg.linear.x = 0
     twistMsg.linear.y = 0
     twistMsg.linear.z = 0
+    twistMsg.angular.z = 0
     velocityControlPub.publish(twistMsg)
   }
   modeMsg.mode = "FLYING"
@@ -696,13 +698,12 @@ function publishTranslateLeft() {
     poseMsg.position.z = 0
     positionControlPub.publish(poseMsg)
   } else {
-    twistMsg.linear.x = -1
+    twistMsg.linear.x = -0.1
     twistMsg.linear.y = 0
     twistMsg.linear.z = 0
+    twistMsg.angular.z = 0
     velocityControlPub.publish(twistMsg)
   }
-  modeMsg.mode = "FLYING"
-  modepub.publish(modeMsg);
 }
 
 function publishTranslateRight() {
@@ -713,13 +714,12 @@ function publishTranslateRight() {
     poseMsg.position.z = 0
     positionControlPub.publish(poseMsg)
   } else {
-    twistMsg.linear.x = 1
+    twistMsg.linear.x = 0.1
     twistMsg.linear.y = 0
     twistMsg.linear.z = 0
+    twistMsg.angular.z = 0
     velocityControlPub.publish(twistMsg)
   }
-  modeMsg.mode = "FLYING"
-  modepub.publish(modeMsg);
 }
 
 function publishTranslateForward() {
@@ -731,12 +731,11 @@ function publishTranslateForward() {
     positionControlPub.publish(poseMsg)
   } else {
     twistMsg.linear.x = 0
-    twistMsg.linear.y = 1
+    twistMsg.linear.y = 0.1
     twistMsg.linear.z = 0
+    twistMsg.angular.z = 0
     velocityControlPub.publish(twistMsg)
   }
-  modeMsg.mode = "FLYING"
-  modepub.publish(modeMsg);
 }
 
 function publishTranslateBackward() {
@@ -748,12 +747,11 @@ function publishTranslateBackward() {
     positionControlPub.publish(poseMsg)
   } else {
     twistMsg.linear.x = 0
-    twistMsg.linear.y = -1
+    twistMsg.linear.y = -0.1
     twistMsg.linear.z = 0
+    twistMsg.angular.z = 0
     velocityControlPub.publish(twistMsg)
   }
-  modeMsg.mode = "FLYING"
-  modepub.publish(modeMsg);
 }
 
 function publishTranslateUp() {
@@ -762,8 +760,6 @@ function publishTranslateUp() {
   poseMsg.position.y = 0
   poseMsg.position.z = 0.05
   positionControlPub.publish(poseMsg)
-  modeMsg.mode = "FLYING"
-  modepub.publish(modeMsg);
 }
 
 function publishTranslateDown() {
@@ -772,8 +768,6 @@ function publishTranslateDown() {
   poseMsg.position.y = 0
   poseMsg.position.z = -0.05
   positionControlPub.publish(poseMsg)
-  modeMsg.mode = "FLYING"
-  modepub.publish(modeMsg);
 }
 
 function publishYawLeft() {
@@ -782,9 +776,8 @@ function publishYawLeft() {
     twistMsg.linear.x = 0
     twistMsg.linear.y = 0
     twistMsg.linear.z = 0
-    twistMsg.angular.z = -100
+    twistMsg.angular.z = -50
     velocityControlPub.publish(twistMsg)
-    modepub.publish(modeMsg);
 }
 
 function publishYawRight() {
@@ -793,26 +786,17 @@ function publishYawRight() {
     twistMsg.linear.x = 0
     twistMsg.linear.y = 0
     twistMsg.linear.z = 0
-    twistMsg.angular.z = 100
+    twistMsg.angular.z = 50
     velocityControlPub.publish(twistMsg)
-    modepub.publish(modeMsg);
 }
 
 function publishZeroVelocity() {
   console.log("zero velocity");
-  if (positionMsg.data == true) {
-    poseMsg.position.x = 0
-    poseMsg.position.y = 0
-    poseMsg.position.z = 0
-    positionControlPub.publish(poseMsg)
-  } else {
     twistMsg.linear.x = 0
     twistMsg.linear.y = 0
     twistMsg.linear.z = 0
+    twistMsg.angular.z = 0
     velocityControlPub.publish(twistMsg)
-  }
-  modeMsg.mode = "FLYING"
-  modepub.publish(modeMsg);
 }
 
 $(document).keydown(function(event){
@@ -977,7 +961,7 @@ $(document).ready(function() {
             },
         }
     });
-    
+
     xyctx = document.getElementById("xyChart").getContext('2d');
     xyChart = new Chart(xyctx, {
         type: 'line',
@@ -1102,7 +1086,7 @@ $(document).ready(function() {
             },
         }
     });
-    
+
     init();
 });
 

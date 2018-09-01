@@ -6,7 +6,6 @@ import rospy
 import signal
 import traceback
 import numpy as np
-import command_values as cmds
 from pid_class import PID, PIDaxis
 from geometry_msgs.msg import Pose, Twist
 from pidrone_pkg.msg import Mode, RC, State
@@ -96,6 +95,9 @@ class PIDController(object):
         # determines if the position of the drone is known
         self.lost = False
 
+        # determines if the desired poses are aboslute or relative to the drone
+        self.absolute_desired_position = False
+
         # determines whether to use open loop velocity path planning which is
         # accomplished by calculate_travel_time
         self.path_planning = True
@@ -113,13 +115,20 @@ class PIDController(object):
         """ Update the desired pose """
         # store the previous desired position
         self.last_desired_position = self.desired_position
-        # set the desired positions relative to the current position (limits the magnitude of the error)
-        self.desired_position.x = self.current_position.x + msg.position.x
-        self.desired_position.y = self.current_position.y + msg.position.y
-        # set the disired z position relative to the last desired position (doesn't limit the mag of the error)
-        # the desired z must be above z and below the range of the ir sensor (.55meters)
-        desired_z = self.last_desired_position.z + msg.position.z
-        self.desired_position.z = desired_z if 0 <= desired_z <= 0.5 else self.last_desired_position.z
+        # set the desired positions equal to the desired pose message
+        if self.absolute_desired_position:
+            self.desired_position.x = msg.position.x
+            self.desired_position.y = msg.position.y
+            # the desired z must be above z and below the range of the ir sensor (.55meters)
+            self.desired_position.z = msg.position.z if 0 <= desired_z <= 0.5 else self.last_desired_position.z
+        # set the desired positions relative to the current position (except for z to make it more responsive)
+        else:
+            self.desired_position.x = self.current_position.x + msg.position.x
+            self.desired_position.y = self.current_position.y + msg.position.y
+            # set the disired z position relative to the last desired position (doesn't limit the mag of the error)
+            # the desired z must be above z and below the range of the ir sensor (.55meters)
+            desired_z = self.last_desired_position.z + msg.position.z
+            self.desired_position.z = desired_z if 0 <= desired_z <= 0.5 else self.last_desired_position.z
 
         if self.desired_position != self.last_desired_position:
             # the drone is moving between desired positions
@@ -175,9 +184,9 @@ class PIDController(object):
                         print 'not moving'
             else:
                 self.position_control_pub.publish(False)
-        else:
-            if self.desired_velocity.magnitude() > 0 or abs(self.desired_yaw_velocity) > 0:
-                self.adjust_desired_velocity()
+
+        if self.desired_velocity.magnitude() > 0 or abs(self.desired_yaw_velocity) > 0:
+            self.adjust_desired_velocity()
 
         return self.pid.step(self.pid_error, self.desired_yaw_velocity)
 
@@ -216,17 +225,18 @@ class PIDController(object):
         drone for as long as they are holding down a key
         """
         curr_time = rospy.get_time()
+        # set the desired planar velocities to zero if the duration is up
         if self.desired_velocity_start_time is not None:
             # the amount of time the set point velocity is not zero
             duration = curr_time - self.desired_velocity_start_time
             if duration > self.desired_velocity_travel_time:
                 self.desired_velocity.x = 0
                 self.desired_velocity.y = 0
-                self.desired_velocity.z = 0
                 self.desired_velocity_start_time = None
         else:
             self.desired_velocity_start_time = curr_time
 
+        # set the desired yaw velocity to zero if the duration is up
         if self.desired_yaw_velocity_start_time is not None:
             # the amount of time the set point velocity is not zero
             duration = curr_time - self.desired_yaw_velocity_start_time
@@ -314,7 +324,7 @@ class PIDController(object):
 
 def main(ControllerClass):
     # Verbosity between 0 and 2, 2 is most verbose
-    verbose = 0
+    verbose = 2
 
     # ROS Setup
     ###########
