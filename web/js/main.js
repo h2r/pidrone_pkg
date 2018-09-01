@@ -45,6 +45,7 @@ function closeSession(){
   return false;
 }
 
+/* This code runs when you load the page */
 function init() {
     // Connect to ROS.
     var url = 'ws://' + document.getElementById('hostname').value + ':9090'
@@ -79,11 +80,9 @@ function init() {
       $('#statusMessage').addClass('alert-danger').removeClass('alert-success');
     });
 
-    modepub = new ROSLIB.Topic({
-      ros : ros,
-      name : '/pidrone/desired/mode',
-      messageType : 'pidrone_pkg/Mode'
-    });
+    /*
+     * ROS Messages
+     */
 
     modeMsg = new ROSLIB.Message({
       mode: "DISARMED",
@@ -122,6 +121,16 @@ function init() {
             y : 0.0,
             z : 0.0
         }
+    });
+
+    /*
+     * ROS Publishers
+     */
+
+    modepub = new ROSLIB.Topic({
+      ros : ros,
+      name : '/pidrone/desired/mode',
+      messageType : 'pidrone_pkg/Mode'
     });
 
     heartbeatPub = new ROSLIB.Topic({
@@ -171,6 +180,18 @@ function init() {
       messageType : 'std_msgs/Empty'
     });
 
+    /*
+     * ROS Subscribers
+     */
+
+    positionSub = new ROSLIB.Topic({
+        ros : ros,
+        name : '/pidrone/position_control',
+        messageType : 'std_msgs/Bool',
+        queue_length : 2,
+        throttle_rate : 80
+    });
+
     // TODO: Merge with code that has Battery.msg
     // (published from flight controller node)
     batterysub = new ROSLIB.Topic({
@@ -180,6 +201,62 @@ function init() {
       queue_length : 2,
       throttle_rate : 2
     });
+
+    irsub = new ROSLIB.Topic({
+      ros : ros,
+      name : '/pidrone/infrared',
+      messageType : 'sensor_msgs/Range',
+      queue_length : 2,
+      throttle_rate : 80
+    });
+
+    ukf2dsub = new ROSLIB.Topic({
+        ros : ros,
+        name : '/pidrone/state/ukf_2d',
+        messageType : 'pidrone_pkg/State',
+        queue_length : 2,
+        throttle_rate : 80
+    });
+
+    cameraPoseSub = new ROSLIB.Topic({
+        ros : ros,
+        name : '/pidrone/picamera/pose',
+        messageType : 'geometry_msgs/PoseStamped',
+        queue_length : 2,
+        throttle_rate : 80
+    });
+
+    emaIrSub = new ROSLIB.Topic({
+      ros : ros,
+      name : '/pidrone/state/ema',
+      messageType : 'pidrone_pkg/State',
+      queue_length : 2,
+      throttle_rate : 80
+    });
+
+    stateGroundTruthSub = new ROSLIB.Topic({
+        ros : ros,
+        name : '/pidrone/state_ground_truth',
+        messageType : 'pidrone_pkg/StateGroundTruth',
+        queue_length : 2,
+        throttle_rate : 80
+    });
+
+    /*
+     * ROS Subscriber Callbacks
+     */
+
+     positionSub.subscribe(function(message) {
+        var position = message.data;
+        var text = "";
+        if (position) {
+            text = "Position Mode";
+        } else {
+            text = "Velocity Mode";
+        }
+        element = document.getElementById("position_state");
+        element.textContent = text;
+     });
 
     batterysub.subscribe(function(message) {
       //printProperties(message);
@@ -195,13 +272,6 @@ function init() {
 
     });
 
-    irsub = new ROSLIB.Topic({
-      ros : ros,
-      name : '/pidrone/infrared',
-      messageType : 'sensor_msgs/Range',
-      queue_length : 2,
-      throttle_rate : 80
-    });
     var heightChartMinTime;
     var heightChartMaxTime;
     irsub.subscribe(function(message) {
@@ -243,14 +313,7 @@ function init() {
       //console.log("Data: " + heightChart.data.datasets[0].data);
       //console.log('tVal: ' + tVal)
     });
-    
-    ukf2dsub = new ROSLIB.Topic({
-        ros : ros,
-        name : '/pidrone/state/ukf_2d',
-        messageType : 'pidrone_pkg/State',
-        queue_length : 2,
-        throttle_rate : 80
-    });
+
 
     ukf2dsub.subscribe(function(message) {
       //printProperties(message);
@@ -309,13 +372,7 @@ function init() {
       }
     });
     
-    cameraPoseSub = new ROSLIB.Topic({
-        ros : ros,
-        name : '/pidrone/picamera/pose',
-        messageType : 'geometry_msgs/PoseStamped',
-        queue_length : 2,
-        throttle_rate : 80
-    });
+
     cameraPoseSub.subscribe(function(message) {
         updateCameraPoseXYChart(message);
     });
@@ -494,14 +551,6 @@ function init() {
         }
     }
 
-    emaIrSub = new ROSLIB.Topic({
-      ros : ros,
-      name : '/pidrone/state/ema',
-      messageType : 'pidrone_pkg/State',
-      queue_length : 2,
-      throttle_rate : 80
-    });
-
     emaIrSub.subscribe(function(message) {
       //printProperties(message);
       //console.log("Range: " + message.range);
@@ -539,14 +588,6 @@ function init() {
           // Avoid updating too often, to avoid shaky plotting?
           // heightChart.update();
       }
-    });
-    
-    stateGroundTruthSub = new ROSLIB.Topic({
-        ros : ros,
-        name : '/pidrone/state_ground_truth',
-        messageType : 'pidrone_pkg/StateGroundTruth',
-        queue_length : 2,
-        throttle_rate : 80
     });
 
     stateGroundTruthSub.subscribe(function(message) {
@@ -632,6 +673,10 @@ function init() {
       heightChart.data.datasets[0].fill = true;
       heightChart.update();
   }
+
+/*
+ * Key event functions
+ */
 
 function publishResetTransform() {
   console.log("reset transform");
@@ -826,29 +871,25 @@ function publishZeroVelocity() {
   modepub.publish(modeMsg);
 }
 
-$(document).keydown(function(event){
-  var char = String.fromCharCode(event.which || event.keyCode);
-  // console.log("Key down: " + char);
-  if (char == 'J') {
-    publishTranslateLeft();
-  } else if (char == 'L') {
-    publishTranslateRight();
-  } else if (char == "K") {
-    publishTranslateBackward();
-  } else if (char == "I") {
-    publishTranslateForward();
-  } else if (char == "W") {
-    publishTranslateUp();
-  } else if (char == "S") {
-    publishTranslateDown();
-  } else if (char == "A") {
-    publishYawLeft();
-  } else if (char == "D") {
-    publishYawRight();
-  } else {
-    //console.log('undefined key: ' + event.keyCode);
-  }
-});
+function togglePauseXYChart(btn) {
+    // TODO: Implement this function
+    console.log('Pause button pressed')
+}
+
+function publishVelocityMode() {
+    positionMsg.data = false;
+    positionPub.publish(positionMsg)
+}
+
+function publishPositionMode() {
+    positionMsg.data = true;
+    positionPub.publish(positionMsg)
+}
+
+/*
+ * Handle IR chart and UKF map
+ */
+
 
 var rawIrDataset = {
   label: 'Raw IR Readings',
@@ -1143,21 +1184,6 @@ function togglePauseHeightChart(btn) {
     }
 }
 
-function togglePauseXYChart(btn) {
-    // TODO: Implement this function
-    console.log('Pause button pressed')
-}
-
-function publishVelocityMode() {
-    positionMsg.data = false;
-    positionPub.publish(positionMsg)
-}
-
-function publishPositionMode() {
-    positionMsg.data = true;
-    positionPub.publish(positionMsg)
-}
-
 function setControls () {
     x = document.getElementById("controlX").value;
     y = document.getElementById("controlY").value;
@@ -1175,6 +1201,10 @@ function setControls () {
         velocityControlPub.publish(twistMsg);
     }
 }
+
+/*
+ * Listen for key events
+*/
 
 $(document).keyup(function(event){
   var char = String.fromCharCode(event.which || event.keyCode);
@@ -1197,5 +1227,29 @@ $(document).keypress(function(event){
     publishToggleTransform();
   } else if (char == 'm') {
     publishToggleMap();
+  }
+});
+
+$(document).keydown(function(event){
+  var char = String.fromCharCode(event.which || event.keyCode);
+  // console.log("Key down: " + char);
+  if (char == 'J') {
+    publishTranslateLeft();
+  } else if (char == 'L') {
+    publishTranslateRight();
+  } else if (char == "K") {
+    publishTranslateBackward();
+  } else if (char == "I") {
+    publishTranslateForward();
+  } else if (char == "W") {
+    publishTranslateUp();
+  } else if (char == "S") {
+    publishTranslateDown();
+  } else if (char == "A") {
+    publishYawLeft();
+  } else if (char == "D") {
+    publishYawRight();
+  } else {
+    //console.log('undefined key: ' + event.keyCode);
   }
 });
