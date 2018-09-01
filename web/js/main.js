@@ -159,6 +159,12 @@ function init() {
       messageType : 'std_msgs/Empty'
     });
 
+    mappub = new ROSLIB.Topic({
+        ros : ros,
+        name : '/pidrone/map',
+        messageType : 'std_msgs/Empty'
+    })
+
     togglepub = new ROSLIB.Topic({
       ros : ros,
       name : '/pidrone/toggle_transform',
@@ -635,6 +641,11 @@ function publishResetTransform() {
 function publishToggleTransform() {
   console.log("toggle transform");
   togglepub.publish(emptyMsg);
+}
+
+function publishToggleMap() {
+    console.log("toggle map")
+    mappub.publish(emptyMsg);
 }
 
 function publishArm() {
@@ -1167,5 +1178,7 @@ $(document).keypress(function(event){
     publishTakeoff();
   } else if (char == 'p') {
     publishToggleTransform();
+  } else if (char == 'm') {
+    publishToggleMap();
   }
 });
