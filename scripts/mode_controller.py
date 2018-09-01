@@ -191,6 +191,7 @@ def main():
 
         except:
                 print 'there was an internal error'
+                print 'cannot transition to', mc.desired_mode
                 sys.exit()
         r.sleep()
 
