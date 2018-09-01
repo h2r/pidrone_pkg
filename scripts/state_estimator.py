@@ -28,7 +28,8 @@ class StateEstimator(object):
     that should be investigated further.
     """
     
-    def __init__(self, primary, others):
+    def __init__(self, primary, others, ir_throttled=False, imu_throttled=False,
+                 optical_flow_throttled=False, camera_pose_throttled=False, sdim=1):
         self.state_msg = State()
         
         self.primary_estimator = primary
@@ -40,8 +41,13 @@ class StateEstimator(object):
                 'ukf7d': 'python StateEstimators/state_estimator_ukf_7d.py',
                 'ukf12d': 'python StateEstimators/state_estimator_ukf_12d.py',
                 'mocap': 'python StateEstimators/state_estimator_mocap.py',  # TODO: Implement this
-                'simulator': 'python drone_simulator.py --dim 1'  # TODO: Improve drone_simulator usage?
+                'simulator': 'python drone_simulator.py --dim '+str(sdim)  # TODO: Improve drone_simulator usage?
         }
+        
+        self.can_use_throttled_ir = ['ukf2d', 'ukf7d', 'ukf12d']
+        self.can_use_throttled_imu = ['ukf2d', 'ukf7d', 'ukf12d']
+        self.can_use_throttled_optical_flow = ['ukf7d', 'ukf12d']
+        self.can_use_throttled_camera_pose = ['ukf7d']
         
         # List to store the process objects from subprocess.Popen()
         self.processes = []
@@ -68,7 +74,9 @@ class StateEstimator(object):
         rospy.spin()
     
     def start_estimator_subprocess_cmds(self):
-        process_cmds = [self.process_cmds_dict[self.primary_estimator]]
+        cmd = self.process_cmds_dict[self.primary_estimator]
+        cmd = self.append_throttle_flags(cmd, self.primary_estimator)
+        process_cmds = [cmd]
         if self.primary_estimator == 'ukf2d':
             # We want the EMA to provide x and y position and velocity
             # estimates, for example, to supplement the 2D UKF's z position and
@@ -93,12 +101,25 @@ class StateEstimator(object):
             for other_estimator in self.other_estimators:
                 # Avoid running a subprocess more than once
                 if other_estimator not in process_cmds:
-                    process_cmds.append(self.process_cmds_dict[other_estimator])
+                    other_cmd = self.process_cmds_dict[other_estimator]
+                    other_cmd = self.append_throttle_flags(other_cmd, other_estimator)
+                    process_cmds.append(other_cmd)
             
         for p in process_cmds:
             print 'Starting:', p
             # NOTE: shell=True could be security hazard
             self.processes.append((p, subprocess.Popen(p, shell=True)))
+            
+    def append_throttle_flags(self, cmd, estimator):
+        if estimator in self.can_use_throttled_ir:
+            cmd += ' --ir_throttled'
+        if estimator in self.can_use_throttled_imu:
+            cmd += ' --imu_throttled'
+        if estimator in self.can_use_throttled_optical_flow:
+            cmd += ' --optical_flow_throttled'
+        if estimator in self.can_use_throttled_camera_pose:
+            cmd += ' --camera_pose_throttled'
+        return cmd
 
     def state_callback(self, msg):
         """
@@ -176,10 +197,34 @@ def main():
                               'alongside the primary state estimator, e.g., '
                               'for visualization or debugging purposes'))
                               
+    # Arguments to determine if the throttle command is being used. E.g.:
+    #   rosrun topic_tools throttle messages /pidrone/infrared 40.0
+    # If one of these is passed in, it will act on all state estimators that can
+    # take it in as a command-line argument.
+    parser.add_argument('--ir_throttled', action='store_true',
+                        help=('Use throttled infrared topic /pidrone/infrared_throttle'))
+    parser.add_argument('--imu_throttled', action='store_true',
+                        help=('Use throttled IMU topic /pidrone/imu_throttle'))
+    parser.add_argument('--optical_flow_throttled', action='store_true',
+                        help=('Use throttled optical flow topic /pidrone/picamera/twist_throttle'))
+    parser.add_argument('--camera_pose_throttled', action='store_true',
+                        help=('Use throttled camera pose topic /pidrone/picamera/pose_throttle'))
+                        
+    parser.add_argument('--sdim', default=1, type=int, choices=[1, 2, 3],
+                        help=('Number of spatial dimensions in which to '
+                              'simulate the drone\'s motion, if running the '
+                              'drone simulator (default: 1)'))
+                              
     args = parser.parse_args()
     
     try:
-        se = StateEstimator(primary=args.primary, others=args.others)
+        se = StateEstimator(primary=args.primary,
+                            others=args.others,
+                            ir_throttled=args.ir_throttled,
+                            imu_throttled=args.imu_throttled,
+                            optical_flow_throttled=args.optical_flow_throttled,
+                            camera_pose_throttled=args.camera_pose_throttled,
+                            sdim=args.sdim)
     except Exception as e:
         print e
     finally:

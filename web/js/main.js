@@ -809,6 +809,23 @@ function publishYawRight() {
     modepub.publish(modeMsg);
 }
 
+function publishZeroVelocity() {
+  console.log("zero velocity");
+  if (positionMsg.data == true) {
+    poseMsg.position.x = 0
+    poseMsg.position.y = 0
+    poseMsg.position.z = 0
+    positionControlPub.publish(poseMsg)
+  } else {
+    twistMsg.linear.x = 0
+    twistMsg.linear.y = 0
+    twistMsg.linear.z = 0
+    velocityControlPub.publish(twistMsg)
+  }
+  modeMsg.mode = "FLYING"
+  modepub.publish(modeMsg);
+}
+
 $(document).keydown(function(event){
   var char = String.fromCharCode(event.which || event.keyCode);
   // console.log("Key down: " + char);
