@@ -107,7 +107,7 @@ class PID:
         # Tuning values specific to each drone
         self.roll_low.init_i = 0.0
         self.pitch_low.init_i = 0.0
-        self.throttle_low.init_i = 60
+        self.throttle_low.init_i = 100
         self.reset()
 
     def reset(self):

@@ -214,6 +214,10 @@ def main():
                         cli.yaw_left()
                     elif input == 'd':
                         cli.yaw_right()
+                    elif input == 'p':
+                        cli.position_control_pub.publish(True)
+                    elif input == 'v':
+                        cli.position_control_pub.publish(False)
 
                 else:
                     # position commands take the form p <x> <y> <z> where x, y, and z are floats
