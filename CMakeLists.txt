@@ -52,6 +52,7 @@ add_message_files(
   Battery.msg
   State.msg
   StateGroundTruth.msg
+  UkfStats.msg
 
 )
 

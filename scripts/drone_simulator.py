@@ -62,7 +62,7 @@ class DroneSimulator(object):
         self.imu_pub = rospy.Publisher('/pidrone/imu', Imu, queue_size=1)
         
         # Create the publisher to publish state estimates
-        self.state_ground_truth_pub = rospy.Publisher('/pidrone/state_ground_truth',
+        self.state_ground_truth_pub = rospy.Publisher('/pidrone/state/ground_truth',
                                                       StateGroundTruth,
                                                       queue_size=1,
                                                       tcp_nodelay=False)
