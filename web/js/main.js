@@ -1114,12 +1114,6 @@ function loadHeightChartUkfAnalysis() {
             },
             scales: {
                 yAxes: [{
-                    ticks: {
-                        beginAtZero: true,
-                        min: 0,
-                        max: 0.6,
-                        stepSize: 0.1
-                    },
                     scaleLabel: {
                         display: true,
                         labelString: 'Height (meters)'

@@ -883,8 +883,8 @@ def main():
     parser.add_argument('--dim', '-d', default=3, type=int, choices=[1, 2, 3],
                         help=('Number of spatial dimensions in which to '
                               'simulate the drone\'s motion (default: 3)'))
-    parser.add_argument('--duration', default=10.0, type=check_positive_float_duration,
-                        help='Duration (seconds) of simulation')
+    parser.add_argument('--duration', default=60.0, type=check_positive_float_duration,
+                        help='Duration (seconds) of simulation (default: 60)')
     args = parser.parse_args()
     drone_sim_dims = [DroneSimulator1D, DroneSimulator2D, DroneSimulator3D]
     drone_sim = drone_sim_dims[args.dim-1](publish_ros=args.publish_ros,
