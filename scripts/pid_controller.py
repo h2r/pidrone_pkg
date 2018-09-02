@@ -6,7 +6,6 @@ import rospy
 import signal
 import traceback
 import numpy as np
-import command_values as cmds
 from pid_class import PID, PIDaxis
 from geometry_msgs.msg import Pose, Twist
 from pidrone_pkg.msg import Mode, RC, State
@@ -43,9 +42,16 @@ class PIDController(object):
         self.velocity_error = Error()
 
         # Set the distance that a velocity command will move the drone (m)
-        self.desired_velocity_travel_distance = 0.01
-        self.desired_velocity_travel_time = 0.0
+        self.desired_velocity_travel_distance = 0.1
+        # Set a static duration that a velocity command will be held
+        self.desired_velocity_travel_time = 0.1
+
+        # Set a static duration that a yaw velocity command will be held
+        self.desired_yaw_velocity_travel_time = 0.25
+
+        # Store the start time of the desired velocities
         self.desired_velocity_start_time = None
+        self.desired_yaw_velocity_start_time = None
 
         # Initialize the primary PID
         self.pid = PID()
@@ -63,8 +69,8 @@ class PIDController(object):
         # Initialize the pose callback time
         self.last_pose_time = None
 
-        # Initialize the yaw velocity
-        self.yaw_velocity = 0.0
+        # Initialize the desired yaw velocity
+        self.desired_yaw_velocity = 0
 
         # Initialize the current and  previous roll, pitch, yaw values
         self.current_rpy = RPY()
@@ -89,7 +95,11 @@ class PIDController(object):
         # determines if the position of the drone is known
         self.lost = False
 
-        # determines whether to use open loop velocity path planning
+        # determines if the desired poses are aboslute or relative to the drone
+        self.absolute_desired_position = False
+
+        # determines whether to use open loop velocity path planning which is
+        # accomplished by calculate_travel_time
         self.path_planning = True
 
 
@@ -105,12 +115,20 @@ class PIDController(object):
         """ Update the desired pose """
         # store the previous desired position
         self.last_desired_position = self.desired_position
-        # set the desired positions
-        self.desired_position.x = self.current_position.x + msg.position.x
-        self.desired_position.y = self.current_position.y + msg.position.y
-        # the desired z must be above z and below the range of the ir sensor (.55meters)
-        desired_z = self.current_position.z + msg.position.z
-        self.desired_position.z = desired_z if 0 <= desired_z <= 0.5 else self.last_desired_position.z
+        # set the desired positions equal to the desired pose message
+        if self.absolute_desired_position:
+            self.desired_position.x = msg.position.x
+            self.desired_position.y = msg.position.y
+            # the desired z must be above z and below the range of the ir sensor (.55meters)
+            self.desired_position.z = msg.position.z if 0 <= desired_z <= 0.5 else self.last_desired_position.z
+        # set the desired positions relative to the current position (except for z to make it more responsive)
+        else:
+            self.desired_position.x = self.current_position.x + msg.position.x
+            self.desired_position.y = self.current_position.y + msg.position.y
+            # set the disired z position relative to the last desired position (doesn't limit the mag of the error)
+            # the desired z must be above z and below the range of the ir sensor (.55meters)
+            desired_z = self.last_desired_position.z + msg.position.z
+            self.desired_position.z = desired_z if 0 <= desired_z <= 0.5 else self.last_desired_position.z
 
         if self.desired_position != self.last_desired_position:
             # the drone is moving between desired positions
@@ -122,7 +140,9 @@ class PIDController(object):
         self.desired_velocity.x = msg.linear.x
         self.desired_velocity.y = msg.linear.y
         self.desired_velocity.z = msg.linear.z
-        self.yaw_velocity = msg.angular.z
+        self.desired_yaw_velocity = msg.angular.z
+        self.desired_velocity_start_time = None
+        self.desired_yaw_velocity_start_time = None
         if self.path_planning:
             self.calculate_travel_time()
 
@@ -137,12 +157,17 @@ class PIDController(object):
     def position_control_callback(self, msg):
         """ Set whether or not position control is enabled """
         self.position_control = msg.data
+        if self.position_control:
+            self.reset_callback(Empty())
         print "Position Control", self.position_control
 
     def reset_callback(self, empty):
+        """ Reset the desired and current poses of the drone and set
+        desired velocities to zero """
         self.current_position = Position(z=self.current_position.z)
         self.desired_position = Position(z=self.current_position.z)
-        self.desired_velocity = Velocity()
+        self.desired_velocity.x = 0
+        self.desired_velocity.y = 0
 
     def lost_callback(self, msg):
         self.lost = msg.data
@@ -162,13 +187,11 @@ class PIDController(object):
                         print 'not moving'
             else:
                 self.position_control_pub.publish(False)
-        else:
-            if self.desired_velocity.magnitude() > 0:
-                self.adjust_desired_velocity()
 
-        desired_yaw_velocity = self.yaw_velocity
-        self.yaw_velocity = 0
-        return self.pid.step(self.pid_error, desired_yaw_velocity)
+        if self.desired_velocity.magnitude() > 0 or abs(self.desired_yaw_velocity) > 0:
+            self.adjust_desired_velocity()
+
+        return self.pid.step(self.pid_error, self.desired_yaw_velocity)
 
     # HELPER METHODS
     ################
@@ -198,24 +221,33 @@ class PIDController(object):
     def adjust_desired_velocity(self):
         """ Set the desired velocity back to 0 once the drone has traveled the
         amount of time that causes it to move the specified desired velocity
-        travel distance. This is an open loop method meaning that the specified
-        travel distance cannot be guarenteed.
+        travel distance if path_planning otherwise just set the velocities back
+        to 0 after the . This is an open loop method meaning that the specified
+        travel distance cannot be guarenteed. If path planning_planning is false,
+        just set the velocities back to zero, this allows the user to move the
+        drone for as long as they are holding down a key
         """
-        if self.path_planning:
-            curr_time = rospy.get_time()
-            if self.desired_velocity_start_time is not None:
-                duration = curr_time - self.desired_velocity_start_time
-                if duration > self.desired_velocity_travel_time:
-                    self.desired_velocity.x = 0
-                    self.desired_velocity.y = 0
-                    self.desired_velocity.z = 0
-                    self.desired_velocity_start_time = None
-            else:
-                self.desired_velocity_start_time = curr_time
+        curr_time = rospy.get_time()
+        # set the desired planar velocities to zero if the duration is up
+        if self.desired_velocity_start_time is not None:
+            # the amount of time the set point velocity is not zero
+            duration = curr_time - self.desired_velocity_start_time
+            if duration > self.desired_velocity_travel_time:
+                self.desired_velocity.x = 0
+                self.desired_velocity.y = 0
+                self.desired_velocity_start_time = None
         else:
-            self.desired_velocity.x = 0
-            self.desired_velocity.y = 0
-            self.desired_velocity.z = 0
+            self.desired_velocity_start_time = curr_time
+
+        # set the desired yaw velocity to zero if the duration is up
+        if self.desired_yaw_velocity_start_time is not None:
+            # the amount of time the set point velocity is not zero
+            duration = curr_time - self.desired_yaw_velocity_start_time
+            if duration > self.desired_yaw_velocity_travel_time:
+                self.desired_yaw_velocity = 0
+                self.desired_yaw_velocity_start_time = None
+        else:
+            self.desired_yaw_velocity_start_time = curr_time
 
     def calc_error(self):
         """ Calculate the error in velocity, and if in position hold, add the
@@ -284,7 +316,7 @@ class PIDController(object):
         sys.exit()
 
     def publish_cmd(self, cmd):
-        """Publish the controls to /pidrone/controller"""
+        """Publish the controls to /pidrone/fly_commands """
         msg = RC()
         msg.roll = cmd[0]
         msg.pitch = cmd[1]
@@ -349,6 +381,18 @@ def main(ControllerClass):
             if pid_controller.desired_mode == 'FLYING':
                 # Publish the ouput of pid step method
                 pid_controller.publish_cmd(fly_command)
+            # after flying, take the converged low i terms and set these as the
+            # initial values, this allows the drone to "learn" and get steadier
+            # with each flight until it converges
+            elif pid_controller.desired_mode == 'DISARMED':
+                pid_controller.pid.roll_low.init_i = pid_controller.pid.roll_low._i
+                pid_controller.pid.pitch_low.init_i = pid_controller.pid.pitch_low._i
+                pid_controller.pid.throttle_low.init_i = pid_controller.pid.throttle_low._i
+                # Uncomment below statements to print the converged values.
+                # Make sure verbose = 0 so that you can see these values
+                # print 'roll_low.init_i', pid_controller.pid.roll_low.init_i
+                # print 'pitch_low.init_i', pid_controller.pid.pitch_low.init_i
+                # print 'throttle_low.init_i', pid_controller.pid.throttle_low.init_i
 
         if verbose >= 2:
             if pid_controller.position_control:
