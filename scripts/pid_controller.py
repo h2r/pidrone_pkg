@@ -157,6 +157,8 @@ class PIDController(object):
     def position_control_callback(self, msg):
         """ Set whether or not position control is enabled """
         self.position_control = msg.data
+        if self.position_control:
+            self.reset_callback(Empty())
         print "Position Control", self.position_control
 
     def reset_callback(self, empty):
@@ -164,7 +166,8 @@ class PIDController(object):
         desired velocities to zero """
         self.current_position = Position(z=self.current_position.z)
         self.desired_position = Position(z=self.current_position.z)
-        self.desired_velocity = Velocity()
+        self.desired_velocity.x = 0
+        self.desired_velocity.y = 0
 
     def lost_callback(self, msg):
         self.lost = msg.data
