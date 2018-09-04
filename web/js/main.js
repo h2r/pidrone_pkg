@@ -33,10 +33,11 @@ var positionControlPub;
 var velocityControlPub;
 var heartbeatPub;
 var heightChart;
-var windowSize;
+var windowSize = 5;
 var gotFirstHeight = false;
 var startTime;
 var heightChartPaused = false;
+var showingUkfAnalysis = false;
 var spanningFullWindow = false;
 
 function closeSession(){
@@ -217,6 +218,14 @@ function init() {
         queue_length : 2,
         throttle_rate : 80
     });
+    
+    ukf7dsub = new ROSLIB.Topic({
+        ros : ros,
+        name : '/pidrone/state/ukf_7d',
+        messageType : 'pidrone_pkg/State',
+        queue_length : 2,
+        throttle_rate : 80
+    });
 
     cameraPoseSub = new ROSLIB.Topic({
         ros : ros,
@@ -236,8 +245,16 @@ function init() {
 
     stateGroundTruthSub = new ROSLIB.Topic({
         ros : ros,
-        name : '/pidrone/state_ground_truth',
+        name : '/pidrone/state/ground_truth',
         messageType : 'pidrone_pkg/StateGroundTruth',
+        queue_length : 2,
+        throttle_rate : 80
+    });
+    
+    ukfStatsSub = new ROSLIB.Topic({
+        ros : ros,
+        name : '/pidrone/ukf_stats',
+        messageType : 'pidrone_pkg/UkfStats',
         queue_length : 2,
         throttle_rate : 80
     });
@@ -302,19 +319,19 @@ function init() {
           y: message.range
       }
       rawIrData.push(xyPair)
-      if (!heightChartPaused) {
+      if (!heightChartPaused && !showingUkfAnalysis) {
           heightChart.options.scales.xAxes[0].ticks.min = heightChartMinTime;
           heightChart.options.scales.xAxes[0].ticks.max = heightChartMaxTime;
           heightChart.data.datasets[0].data = rawIrData.slice();
           heightChart.update();
-      } else {
+      } else if (!showingUkfAnalysis) {
           pulseIr();
       }
       //console.log("Data: " + heightChart.data.datasets[0].data);
       //console.log('tVal: ' + tVal)
     });
 
-    ukf2dsub.subscribe(function(message) {
+    function ukfCallback(message) {
       //printProperties(message);
       currTime = message.header.stamp.secs + message.header.stamp.nsecs/1.0e9;
       if (!gotFirstHeight) {
@@ -360,7 +377,7 @@ function init() {
       ukfPlusSigmaData.push(xyPairStdDevPlus);
       ukfMinusSigmaData.push(xyPairStdDevMinus);
       updateUkfXYChart(message);
-      if (!heightChartPaused) {
+      if (!heightChartPaused && !showingUkfAnalysis) {
           // heightChart.options.scales.xAxes[0].ticks.min = heightChartMinTime;
           // heightChart.options.scales.xAxes[0].ticks.max = heightChartMaxTime;
           heightChart.data.datasets[1].data = ukfData.slice();
@@ -369,8 +386,63 @@ function init() {
           // Avoid updating too often, to avoid shaky plotting?
           // heightChart.update();
       }
-    });
+    };
 
+    ukf2dsub.subscribe(ukfCallback);
+    ukf7dsub.subscribe(ukfCallback);
+    
+    ukfStatsSub.subscribe(function(message) {
+        currTime = message.header.stamp.secs + message.header.stamp.nsecs/1.0e9;
+        if (!gotFirstHeight) {
+            gotFirstHeight = true;
+            startTime = currTime;
+        }
+        tVal = currTime - startTime;
+        // Have the plot scroll in time, showing a window of windowSize seconds
+        if (tVal > windowSize) {
+            spanningFullWindow = true;
+            heightChartMinTime = tVal - windowSize;
+            heightChartMaxTime = tVal;
+            
+            // Remove first element of array while difference compared to current
+            // time is greater than the windowSize
+            while (residualData.length > 0 &&
+                   (tVal - residualData[0].x > windowSize)) {
+                residualData.splice(0, 1);
+                plusSigmaData.splice(0, 1);
+                minusSigmaData.splice(0, 1);
+            }
+        }
+        // Add new height error to end of the data array
+        // x-y pair
+        var zError = message.error;
+        var xyPair = {
+            x: tVal,
+            y: zError
+        }
+        residualData.push(xyPair);
+        // Also plot +/- one standard deviation:
+        var heightStdDev = message.stddev;
+        var xyPairStdDevPlus = {
+            x: tVal,
+            y: heightStdDev
+        }
+        var xyPairStdDevMinus = {
+            x: tVal,
+            y: -heightStdDev
+        }
+        plusSigmaData.push(xyPairStdDevPlus);
+        minusSigmaData.push(xyPairStdDevMinus);
+        if (!heightChartPaused && showingUkfAnalysis) {
+            heightChart.options.scales.xAxes[0].ticks.min = heightChartMinTime;
+            heightChart.options.scales.xAxes[0].ticks.max = heightChartMaxTime;
+            heightChart.data.datasets[0].data = residualData.slice();
+            heightChart.data.datasets[1].data = plusSigmaData.slice();
+            heightChart.data.datasets[2].data = minusSigmaData.slice();
+            heightChart.update();
+        }
+    });
+    
     cameraPoseSub.subscribe(function(message) {
         updateCameraPoseXYChart(message);
     });
@@ -579,7 +651,7 @@ function init() {
           y: message.pose_with_covariance.pose.position.z
       }
       emaData.push(xyPair)
-      if (!heightChartPaused) {
+      if (!heightChartPaused && !showingUkfAnalysis) {
           // heightChart.options.scales.xAxes[0].ticks.min = heightChartMinTime;
           // heightChart.options.scales.xAxes[0].ticks.max = heightChartMaxTime;
           heightChart.data.datasets[4].data = emaData.slice();
@@ -621,7 +693,7 @@ function init() {
           stateGroundTruthData.push(xyPair);
       }
       updateGroundTruthXYChart(message);
-      if (!heightChartPaused) {
+      if (!heightChartPaused && !showingUkfAnalysis) {
           // heightChart.options.scales.xAxes[0].ticks.min = heightChartMinTime;
           // heightChart.options.scales.xAxes[0].ticks.max = heightChartMaxTime;
           heightChart.data.datasets[5].data = stateGroundTruthData.slice();
@@ -860,21 +932,6 @@ function publishZeroVelocity() {
     velocityControlPub.publish(twistMsg)
 }
 
-function togglePauseXYChart(btn) {
-    // TODO: Implement this function
-    console.log('Pause button pressed')
-}
-
-function publishVelocityMode() {
-    positionMsg.data = false;
-    positionPub.publish(positionMsg)
-}
-
-function publishPositionMode() {
-    positionMsg.data = true;
-    positionPub.publish(positionMsg)
-}
-
 /*
  * Handle IR chart and UKF map
  */
@@ -958,12 +1015,50 @@ var stateGroundTruthDataset = {
 }
 var stateGroundTruthData = Array(0);
 
+//--------------------------------------
+
+var residualDataset = {
+  label: 'Error between UKF and Ground Truth',
+  data: Array(0), // initialize array of length 0
+  borderWidth: 1.5,
+  pointRadius: 0,
+  fill: false,
+  borderColor: 'rgba(209, 81, 58, 0.8)',
+  backgroundColor: 'rgba(209, 81, 58, 0)',
+  lineTension: 0, // remove smoothing
+}
+var residualData = Array(0);
+
+var plusSigmaDataset = {
+  label: '+1 sigma',
+  data: Array(0), // initialize array of length 0
+  borderWidth: 1.5,
+  pointRadius: 0,
+  fill: '+1', // fill to the next dataset
+  borderColor: 'rgba(49, 26, 140, 0.8)',
+  backgroundColor: 'rgba(49, 26, 140, 0.1)',
+  lineTension: 0, // remove smoothing
+}
+var plusSigmaData = Array(0);
+
+var minusSigmaDataset = {
+  label: '-1 sigma',
+  data: Array(0), // initialize array of length 0
+  borderWidth: 1.5,
+  pointRadius: 0,
+  fill: false,
+  borderColor: 'rgba(49, 26, 140, 0.8)',
+  backgroundColor: 'rgba(49, 26, 140, 0.1)',
+  lineTension: 0, // remove smoothing
+}
+var minusSigmaData = Array(0);
+
 
 var ctx;
 var xyctx;
-$(document).ready(function() {
+
+function loadHeightChartStandardView() {
     ctx = document.getElementById("heightChart").getContext('2d');
-    windowSize = 5;
     heightChart = new Chart(ctx, {
         type: 'line',
         data: {
@@ -1018,7 +1113,49 @@ $(document).ready(function() {
             },
         }
     });
+}
 
+function loadHeightChartUkfAnalysis() {
+    ctx = document.getElementById("heightChart").getContext('2d');
+    heightChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            datasets: [
+                residualDataset,
+                plusSigmaDataset,
+                minusSigmaDataset
+            ]
+        },
+        options: {
+            animation: {
+               duration: 0,
+            },
+            scales: {
+                yAxes: [{
+                    scaleLabel: {
+                        display: true,
+                        labelString: 'Height (meters)'
+                    }
+                }],
+                xAxes: [{
+                    type: 'linear',
+                    display: false,
+                    ticks: {
+                        min: 0,
+                        max: windowSize,
+                        stepSize: windowSize
+                    }
+                }]
+            },
+            legend: {
+              display: true
+            },
+        }
+    });
+}
+
+$(document).ready(function() {
+    loadHeightChartStandardView();
     xyctx = document.getElementById("xyChart").getContext('2d');
     xyChart = new Chart(xyctx, {
         type: 'line',
@@ -1171,6 +1308,34 @@ function togglePauseHeightChart(btn) {
         heightChart.data.datasets[0].backgroundColor = 'rgba(255, 80, 0, 0)';
         heightChart.data.datasets[0].fill = false;
     }
+}
+
+function toggleUkfAnalysis(btn) {
+    showingUkfAnalysis = !showingUkfAnalysis;
+    if (showingUkfAnalysis) {
+        btn.value = 'Standard View'
+        heightChart.destroy();
+        loadHeightChartUkfAnalysis();
+    } else {
+        btn.value = 'UKF Analysis'
+        heightChart.destroy();
+        loadHeightChartStandardView();
+    }
+}
+
+function togglePauseXYChart(btn) {
+    // TODO: Implement this function
+    console.log('Pause button pressed')
+}
+
+function publishVelocityMode() {
+    positionMsg.data = false;
+    positionPub.publish(positionMsg)
+}
+
+function publishPositionMode() {
+    positionMsg.data = true;
+    positionPub.publish(positionMsg)
 }
 
 function setControls () {

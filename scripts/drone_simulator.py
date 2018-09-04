@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+'optical_flow'#!/usr/bin/env python
 
 from numpy.random import randn # to generate some random Gaussian noise
 import numpy as np
@@ -62,7 +62,7 @@ class DroneSimulator(object):
         self.imu_pub = rospy.Publisher('/pidrone/imu', Imu, queue_size=1)
         
         # Create the publisher to publish state estimates
-        self.state_ground_truth_pub = rospy.Publisher('/pidrone/state_ground_truth',
+        self.state_ground_truth_pub = rospy.Publisher('/pidrone/state/ground_truth',
                                                       StateGroundTruth,
                                                       queue_size=1,
                                                       tcp_nodelay=False)
@@ -477,8 +477,12 @@ class DroneSimulator2D(DroneSimulator):
         if self.save_to_csv:
             self.init_csv_files()
         if self.publish_ros:
+            global PoseStamped
             global TwistStamped
-            from geometry_msgs.msg import TwistStamped
+            from geometry_msgs.msg import PoseStamped, TwistStamped
+            self.camera_pose_pub = rospy.Publisher('/pidrone/picamera/pose',
+                                                    PoseStamped,
+                                                    queue_size=1)
             self.optical_flow_pub = rospy.Publisher('/pidrone/picamera/twist',
                                                     TwistStamped,
                                                     queue_size=1)
@@ -514,19 +518,29 @@ class DroneSimulator2D(DroneSimulator):
                              'rpy' : []
                              }
                          }
-        self.camera_info = {'id' : 2,
-                            'hz' : 20,
+        self.optical_flow_info = {'id' : 2,
+                            'hz' : 80,
                             'topic' : '/pidrone/picamera/twist',
                             'times' : [],
                             'times_copy' : [],
-                            'filenames' : {'camera' : 'x_y_yaw_velocity_RAW'},
-                            'headers' : {'camera' : ['Vel_x_(m/s)', 'Vel_y_(m/s)', 'Vel_yaw_(rad/s)']},
-                            'data_lists' : {'camera' : []}
+                            'filenames' : {'optical_flow' : 'x_y_yaw_velocity_RAW'},
+                            'headers' : {'optical_flow' : ['Vel_x_(m/s)', 'Vel_y_(m/s)', 'Vel_yaw_(rad/s)']},
+                            'data_lists' : {'optical_flow' : []}
+                            }
+        self.camera_pose_info = {'id' : 3,
+                            'hz' : 80,
+                            'topic' : '/pidrone/picamera/pose',
+                            'times' : [],
+                            'times_copy' : [],
+                            'filenames' : {'camera_pose' : 'x_y_yaw_RAW'},
+                            'headers' : {'camera_pose' : ['Pos_x_(m)', 'Pos_y_(m)', 'Yaw_(rad)']},
+                            'data_lists' : {'camera_pose' : []}
                             }
                             
         self.info_dicts = {'ir' : self.ir_info,
                            'imu' : self.imu_info,
-                           'camera' : self.camera_info
+                           'optical_flow' : self.optical_flow_info,
+                           'camera_pose' : self.camera_pose_info
                            }
                            
     def init_state(self):
@@ -557,6 +571,9 @@ class DroneSimulator2D(DroneSimulator):
         self.optical_flow_x_vel_stddev = 0.1 # meters/second
         self.optical_flow_y_vel_stddev = 0.1 # meters/second
         self.optical_flow_yaw_vel_stddev = 0.1 # radians/second
+        self.camera_pose_x_stddev = 0.01 # meters
+        self.camera_pose_y_stddev = 0.01 # meters
+        self.camera_pose_yaw_stddev = 0.1 # radians
         
     def take_imu_sample(self):
         '''
@@ -574,10 +591,22 @@ class DroneSimulator2D(DroneSimulator):
         self.x_vel_optical_flow_measurement = self.optical_flow_x_vel_stddev * randn() + self.actual_state[3]
         self.y_vel_optical_flow_measurement = self.optical_flow_y_vel_stddev * randn() + self.actual_state[4]
         self.yaw_vel_optical_flow_measurement = self.optical_flow_yaw_vel_stddev * randn() + self.actual_state[5]
-        self.camera_info['data_lists']['camera'].append([
+        self.optical_flow_info['data_lists']['optical_flow'].append([
                                         self.x_vel_optical_flow_measurement,
                                         self.y_vel_optical_flow_measurement,
                                         self.yaw_vel_optical_flow_measurement])
+                                        
+    def take_camera_pose_sample(self):
+        '''
+        Take a reading of x, y, and yaw from camera pose data
+        '''
+        self.x_camera_pose_measurement = self.camera_pose_x_stddev * randn() + self.actual_state[0]
+        self.y_camera_pose_measurement = self.camera_pose_y_stddev * randn() + self.actual_state[1]
+        self.yaw_camera_pose_measurement = self.camera_pose_yaw_stddev * randn() + self.actual_state[2]
+        self.camera_pose_info['data_lists']['camera_pose'].append([
+                                        self.x_camera_pose_measurement,
+                                        self.y_camera_pose_measurement,
+                                        self.yaw_camera_pose_measurement])
         
     def publish_imu(self):
         imu_msg = Imu()
@@ -597,6 +626,22 @@ class DroneSimulator2D(DroneSimulator):
         twist_msg.twist.linear.y = self.y_vel_optical_flow_measurement
         twist_msg.twist.angular.z = self.yaw_vel_optical_flow_measurement
         self.optical_flow_pub.publish(twist_msg)
+        
+    def publish_camera_pose(self):
+        pose_msg = PoseStamped()
+        pose_msg.header.stamp = rospy.Time.now()
+        pose_msg.pose.position.x = self.x_camera_pose_measurement
+        pose_msg.pose.position.y = self.y_camera_pose_measurement
+        
+        x,y,z,w = tf.transformations.quaternion_from_euler(0, # roll
+                                            0, # pitch
+                                            self.yaw_camera_pose_measurement)
+        
+        pose_msg.pose.orientation.x = x
+        pose_msg.pose.orientation.y = y
+        pose_msg.pose.orientation.z = z
+        pose_msg.pose.orientation.w = w
+        self.camera_pose_pub.publish(pose_msg)
         
     def publish_actual_state(self):
         '''
@@ -653,6 +698,7 @@ class DroneSimulator2D(DroneSimulator):
             # For the time being, don't use different data rates. Use a set
             # data rate defined by the command time steps (non-noisy)
             self.take_imu_sample()
+            self.take_camera_pose_sample()
             self.take_optical_flow_sample()
             if self.publish_ros:
                 if len(self.commanded_times) > 0:
@@ -662,6 +708,7 @@ class DroneSimulator2D(DroneSimulator):
                     sys.stdout.flush()
                 self.publish_actual_state()
                 self.publish_imu()
+                self.publish_camera_pose()
                 self.publish_optical_flow()
                 rospy.sleep(self.delay_rate * time_step)
                     
@@ -749,7 +796,13 @@ class DroneSimulator2D(DroneSimulator):
              'args' : [{'yaw_vel' : np.pi}]},
             {'duration' : 10,
              'cmds' : [self.yaw_cmd, self.translate_body_cmd],
-             'args' : [{'yaw_vel' : 0.3}, {'body_frame_accel' : [-0.005, -0.005]}]}
+             'args' : [{'yaw_vel' : 0.3}, {'body_frame_accel' : [-0.005, -0.005]}]},
+            {'duration' : 5,
+             'cmds' : [self.yaw_cmd],
+             'args' : [{'yaw_vel' : -np.pi/2.0}]},
+            {'duration' : 2,
+             'cmds' : [self.translate_body_cmd],
+             'args' : [{'body_frame_accel' : [0, -0.1]}]},
             ]
         
         # self.actual_state[4] = 0.5 # give initial positive y velocity
@@ -826,19 +879,19 @@ class DroneSimulator3D(DroneSimulator):
                              'rpy' : []
                              }
                          }
-        self.camera_info = {'id' : 2,
+        self.optical_flow_info = {'id' : 2,
                             'hz' : 20,
                             'topic' : '/pidrone/picamera/twist',
                             'times' : [],
                             'times_copy' : [],
-                            'filenames' : {'camera' : 'x_y_yaw_velocity_RAW'},
-                            'headers' : {'camera' : ['Vel_x_(m/s)', 'Vel_y_(m/s)', 'Vel_yaw_(rad/s)']},
-                            'data_lists' : {'camera' : []}
+                            'filenames' : {'optical_flow' : 'x_y_yaw_velocity_RAW'},
+                            'headers' : {'optical_flow' : ['Vel_x_(m/s)', 'Vel_y_(m/s)', 'Vel_yaw_(rad/s)']},
+                            'data_lists' : {'optical_flow' : []}
                             }
                             
         self.info_dicts = {'ir' : self.ir_info,
                            'imu' : self.imu_info,
-                           'camera' : self.camera_info
+                           'optical_flow' : self.optical_flow_info
                            }
         
     def init_state(self):
@@ -883,8 +936,8 @@ def main():
     parser.add_argument('--dim', '-d', default=3, type=int, choices=[1, 2, 3],
                         help=('Number of spatial dimensions in which to '
                               'simulate the drone\'s motion (default: 3)'))
-    parser.add_argument('--duration', default=10.0, type=check_positive_float_duration,
-                        help='Duration (seconds) of simulation')
+    parser.add_argument('--duration', default=60.0, type=check_positive_float_duration,
+                        help='Duration (seconds) of simulation (default: 60)')
     args = parser.parse_args()
     drone_sim_dims = [DroneSimulator1D, DroneSimulator2D, DroneSimulator3D]
     drone_sim = drone_sim_dims[args.dim-1](publish_ros=args.publish_ros,

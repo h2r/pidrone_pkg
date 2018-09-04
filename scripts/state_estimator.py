@@ -1,6 +1,6 @@
 import argparse
 import rospy
-from pidrone_pkg.msg import State
+from pidrone_pkg.msg import State, StateGroundTruth, UkfStats
 import subprocess
 import os
 
@@ -32,8 +32,17 @@ class StateEstimator(object):
                  optical_flow_throttled=False, camera_pose_throttled=False, sdim=1):
         self.state_msg = State()
         
+        self.ir_throttled = ir_throttled
+        self.imu_throttled = imu_throttled
+        self.optical_flow_throttled = optical_flow_throttled
+        self.camera_pose_throttled = camera_pose_throttled
+        
         self.primary_estimator = primary
         self.other_estimators = others
+        if self.other_estimators is None:
+            self.other_estimators = []
+        self.estimators = list(self.other_estimators)
+        self.estimators.append(self.primary_estimator)
         
         self.process_cmds_dict = {
                 'ema': 'python StateEstimators/state_estimator_ema.py',
@@ -41,7 +50,7 @@ class StateEstimator(object):
                 'ukf7d': 'python StateEstimators/state_estimator_ukf_7d.py',
                 'ukf12d': 'python StateEstimators/state_estimator_ukf_12d.py',
                 'mocap': 'python StateEstimators/state_estimator_mocap.py',  # TODO: Implement this
-                'simulator': 'python drone_simulator.py --dim '+str(sdim)  # TODO: Improve drone_simulator usage?
+                'simulator': 'python drone_simulator.py --dim '+str(sdim)
         }
         
         self.can_use_throttled_ir = ['ukf2d', 'ukf7d', 'ukf12d']
@@ -56,14 +65,16 @@ class StateEstimator(object):
                            7: '/pidrone/state/ukf_7d',
                            12: '/pidrone/state/ukf_12d'}
         self.ema_topic = '/pidrone/state/ema'
-        # TODO: Get the mocap node to publish State messages to this topic
-        self.mocap_topic = '/pidrone/state/mocap'
-        # TODO: Get the drone_simulator to publish State messages to this topic
-        self.simulator_topic = '/pidrone/state/simulator'
+        # NOTE: Currently not supported is running both a simulator and mocap at
+        #       the same time for state estimation. There is no apparent need
+        #       for such functionality.
+        self.mocap_topic = '/pidrone/state/ground_truth'
+        self.simulator_topic = '/pidrone/state/ground_truth'
 
         self.state_pub = rospy.Publisher('/pidrone/state', State, queue_size=1,
                                          tcp_nodelay=False)
 
+        self.setup_ukf_with_ground_truth()
         self.start_estimator_subprocess_cmds()
         self.initialize_ros()
 
@@ -97,27 +108,83 @@ class StateEstimator(object):
             rospy.Subscriber(self.simulator_topic, State, self.state_callback)
         
         # Set up the process commands for the non-primary estimators
-        if self.other_estimators is not None:
-            for other_estimator in self.other_estimators:
-                # Avoid running a subprocess more than once
-                if other_estimator not in process_cmds:
-                    other_cmd = self.process_cmds_dict[other_estimator]
-                    other_cmd = self.append_throttle_flags(other_cmd, other_estimator)
-                    process_cmds.append(other_cmd)
+        for other_estimator in self.other_estimators:
+            # Avoid running a subprocess more than once
+            if other_estimator not in process_cmds:
+                other_cmd = self.process_cmds_dict[other_estimator]
+                other_cmd = self.append_throttle_flags(other_cmd, other_estimator)
+                process_cmds.append(other_cmd)
             
         for p in process_cmds:
             print 'Starting:', p
             # NOTE: shell=True could be security hazard
             self.processes.append((p, subprocess.Popen(p, shell=True)))
             
+    def setup_ukf_with_ground_truth(self):
+        """
+        Determine if a UKF is being run simultaneously with ground truth. This
+        informs whether or not we can provide certain analytics about the UKF's
+        performance to the user in the web interface
+        """
+        do_setup = (('ukf2d' in self.estimators or 'ukf7d' in self.estimators or
+                     'ukf12d' in self.estimators) and
+                    ('simulator' in self.estimators or 'mocap' in self.estimators))
+        if do_setup:
+            self.last_ground_truth_height = None
+            self.last_ukf_height = None
+            self.ukf_stats_pub = rospy.Publisher('/pidrone/ukf_stats', UkfStats, queue_size=1,
+                                             tcp_nodelay=False)
+            if 'ukf' in self.primary_estimator:
+                # If the primary estimator is a UKF, use this one
+                ukf_to_use = self.primary_estimator
+            else:
+                # Search through the other estimators
+                possible_ukfs = []
+                for estimator in self.other_estimators:
+                    if 'ukf' in estimator:
+                        possible_ukfs.append(estimator)
+                if len(possible_ukfs) > 1:
+                    # Give user the option
+                    got_good_input = False
+                    while not got_good_input:
+                        print ('Please enter the list number of which UKF to use'
+                               ' for comparison against ground truth:')
+                        for num, ukf in enumerate(possible_ukfs):
+                            print '{}: {}'.format(num+1, ukf)
+                        selection = raw_input()
+                        try:
+                            selection = int(selection)
+                            if selection <= 0 or selection > len(possible_ukfs):
+                                raise ValueError
+                            ukf_to_use = possible_ukfs[selection]
+                            got_good_input = True
+                        except ValueError:
+                            print 'Invalid input.'
+                elif len(possible_ukfs) == 1:
+                    # This is the only other option; otherwise, do_setup would
+                    # be False
+                    ukf_to_use = possible_ukfs[0]
+            if ukf_to_use == 'ukf2d':
+                rospy.Subscriber(self.ukf_topics[2], State, self.ukf_analytics_callback)
+            elif ukf_to_use == 'ukf7d':
+                rospy.Subscriber(self.ukf_topics[7], State, self.ukf_analytics_callback)
+            elif ukf_to_use == 'ukf12d':
+                rospy.Subscriber(self.ukf_topics[12], State, self.ukf_analytics_callback)
+            for estimator in self.estimators:
+                if estimator == 'simulator':
+                    topic = self.simulator_topic
+                elif estimator == 'mocap':
+                    topic = self.mocap_topic
+            rospy.Subscriber(topic, StateGroundTruth, self.ground_truth_analytics_callback)
+                
     def append_throttle_flags(self, cmd, estimator):
-        if estimator in self.can_use_throttled_ir:
+        if self.ir_throttled and estimator in self.can_use_throttled_ir:
             cmd += ' --ir_throttled'
-        if estimator in self.can_use_throttled_imu:
+        if self.imu_throttled and estimator in self.can_use_throttled_imu:
             cmd += ' --imu_throttled'
-        if estimator in self.can_use_throttled_optical_flow:
+        if self.optical_flow_throttled and estimator in self.can_use_throttled_optical_flow:
             cmd += ' --optical_flow_throttled'
-        if estimator in self.can_use_throttled_camera_pose:
+        if self.camera_pose_throttled and estimator in self.can_use_throttled_camera_pose:
             cmd += ' --camera_pose_throttled'
         return cmd
 
@@ -171,6 +238,21 @@ class StateEstimator(object):
         self.ema_state_msg.pose_with_covariance.pose.position.y = msg.pose_with_covariance.pose.position.y
         self.ema_state_msg.twist_with_covariance.twist.linear.x = msg.twist_with_covariance.twist.linear.x
         self.ema_state_msg.twist_with_covariance.twist.linear.y = msg.twist_with_covariance.twist.linear.y
+        
+    def ukf_analytics_callback(self, msg):
+        self.last_ukf_height = msg.pose_with_covariance.pose.position.z
+        if self.last_ground_truth_height is not None:
+            stats_msg = UkfStats()
+            stats_msg.header.stamp = rospy.Time.now()
+            stats_msg.error = self.last_ukf_height - self.last_ground_truth_height
+            stats_msg.stddev = (msg.pose_with_covariance.covariance[14])**0.5
+            self.ukf_stats_pub.publish(stats_msg)
+        
+    def ground_truth_analytics_callback(self, msg):
+        self.last_ground_truth_height = msg.pose.position.z
+        # Ground truth value should come in before UKF value. Could perhaps
+        # match timestamps or header sequence numbers to check or synchronize.
+        
         
 
 def main():

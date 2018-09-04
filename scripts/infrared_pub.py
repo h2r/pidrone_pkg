@@ -35,11 +35,11 @@ class IR(object):
     def publish_range(self, range):
         """Create and publish the Range message to publisher."""
         msg = Range()
-        msg.header.stamp = rospy.get_rostime()
         msg.max_range = 0.8
         msg.min_range = 0
         msg.range = range
         msg.header.frame_id = "base"
+        msg.header.stamp = rospy.Time.now()
         self.range_pub.publish(msg)
 
     def ctrl_c_handler(self, signal, frame):
