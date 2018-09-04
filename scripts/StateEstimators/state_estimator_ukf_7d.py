@@ -75,6 +75,8 @@ class UKFStateEstimator7D(object):
         # Initialize the last control input as 0 m/s^2 along each axis
         self.last_control_input = np.array([0.0, 0.0, 0.0])
         
+        self.last_measurement_vector = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+        
         self.initialize_ros()
         
     def initialize_ros(self):
@@ -169,6 +171,7 @@ class UKFStateEstimator7D(object):
         # Estimated standard deviation of 5 cm = 0.05 m ->
         # variance of 0.05^2 = 0.0025
         self.measurement_cov_camera_pose = np.diag([0.0025, 0.0025, 0.0003])
+        self.ukf.R = np.diag([2.2221e-05, 0.0025, 0.0025, 0.01, 0.01, 0.0005, 0.0003])
                 
     def update_input_time(self, msg):
         '''
@@ -239,13 +242,9 @@ class UKFStateEstimator7D(object):
             # Wait to predict until we get an initial IR measurement to
             # initialize our state vector
             self.print_notice_if_first()
-            self.update_input_time(data)
-            self.ukf_predict()
-            measurement_z = np.array([yaw])
-            self.ukf.update(measurement_z,
-                            hx=self.measurement_function_yaw,
-                            R=self.measurement_cov_yaw)
-            self.publish_current_state()
+            # self.update_input_time(data)
+            # self.ukf_predict()
+            self.last_measurement_vector[5] = yaw
         else:
             self.initialize_input_time(data)
             # Got a yaw reading from the IMU reading, so update the initial
@@ -276,10 +275,8 @@ class UKFStateEstimator7D(object):
             # Now that a prediction has been formed to bring the current prior
             # state estimate to the same point in time as the measurement,
             # perform a measurement update with the slant range reading
-            measurement_z = np.array([data.range])
-            self.ukf.update(measurement_z,
-                            hx=self.measurement_function_ir,
-                            R=self.measurement_cov_ir)
+            self.last_measurement_vector[0] = data.range
+            self.ukf.update(self.last_measurement_vector)
             self.publish_current_state()
         else:
             self.initialize_input_time(data)
@@ -309,23 +306,10 @@ class UKFStateEstimator7D(object):
         self.in_callback = True
         if self.ready_to_filter:
             self.print_notice_if_first()
-            self.update_input_time(data)
-            self.ukf_predict()
-            
-            # Now that a prediction has been formed to bring the current prior
-            # state estimate to the same point in time as the measurement,
-            # perform a measurement update with x velocity, y velocity, and yaw
-            # velocity data in the TwistStamped message
-            # TODO: Verify the units of these velocities that are being
-            #       published
-            measurement_z = np.array([data.twist.linear.x,  # x velocity
-                                      data.twist.linear.y]) # y velocity
-            # Ensure that we are using subtraction to compute the residual
-            #self.ukf.residual_z = np.subtract
-            self.ukf.update(measurement_z,
-                            hx=self.measurement_function_optical_flow,
-                            R=self.measurement_cov_optical_flow)
-            self.publish_current_state()
+            # self.update_input_time(data)
+            # self.ukf_predict()
+            self.last_measurement_vector[3] = data.twist.linear.x
+            self.last_measurement_vector[4] = data.twist.linear.y
         else:
             self.initialize_input_time(data)
             # Update the initial state vector of the UKF
@@ -360,15 +344,11 @@ class UKFStateEstimator7D(object):
                                                        data.pose.orientation.w])
         if self.ready_to_filter:
             self.print_notice_if_first()
-            self.update_input_time(data)
-            self.ukf_predict()
-            measurement_z = np.array([data.pose.position.x,
-                                      data.pose.position.y,
-                                      yaw])
-            self.ukf.update(measurement_z,
-                            hx=self.measurement_function_camera_pose,
-                            R=self.measurement_cov_camera_pose)
-            self.publish_current_state()
+            # self.update_input_time(data)
+            # self.ukf_predict()
+            self.last_measurement_vector[1] = data.pose.position.x
+            self.last_measurement_vector[2] = data.pose.position.y
+            self.last_measurement_vector[6] = yaw
         else:
             self.initialize_input_time(data)
             # Update the initial state vector of the UKF
@@ -495,7 +475,15 @@ class UKFStateEstimator7D(object):
         
         x : current state. A NumPy array
         '''
-        pass
+        H = np.array([[0, 0, 1, 0, 0, 0, 0],
+                      [1, 0, 0, 0, 0, 0, 0],
+                      [0, 1, 0, 0, 0, 0, 0],
+                      [0, 0, 0, 1, 0, 0, 0],
+                      [0, 0, 0, 0, 1, 0, 0],
+                      [0, 0, 0, 0, 0, 0, 1],
+                      [0, 0, 0, 0, 0, 0, 1]])
+        result = np.dot(H, x)
+        return result
         
     def measurement_function_ir(self, x):
         return np.array([x[2]])
