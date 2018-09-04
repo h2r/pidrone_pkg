@@ -218,6 +218,14 @@ function init() {
         queue_length : 2,
         throttle_rate : 80
     });
+    
+    ukf7dsub = new ROSLIB.Topic({
+        ros : ros,
+        name : '/pidrone/state/ukf_7d',
+        messageType : 'pidrone_pkg/State',
+        queue_length : 2,
+        throttle_rate : 80
+    });
 
     cameraPoseSub = new ROSLIB.Topic({
         ros : ros,
@@ -323,7 +331,7 @@ function init() {
       //console.log('tVal: ' + tVal)
     });
 
-    ukf2dsub.subscribe(function(message) {
+    function ukfCallback(message) {
       //printProperties(message);
       currTime = message.header.stamp.secs + message.header.stamp.nsecs/1.0e9;
       if (!gotFirstHeight) {
@@ -378,7 +386,10 @@ function init() {
           // Avoid updating too often, to avoid shaky plotting?
           // heightChart.update();
       }
-    });
+    };
+
+    ukf2dsub.subscribe(ukfCallback);
+    ukf7dsub.subscribe(ukfCallback);
     
     ukfStatsSub.subscribe(function(message) {
         currTime = message.header.stamp.secs + message.header.stamp.nsecs/1.0e9;

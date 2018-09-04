@@ -94,7 +94,6 @@ class FlightController(object):
         """
         Compute the ROS IMU message by reading data from the board.
         """
-        time = rospy.Time.now()
 
         # extract roll, pitch, heading
         self.board.getData(MultiWii.ATTITUDE)
@@ -115,15 +114,6 @@ class FlightController(object):
         previous_quaternion = self.imu_message.orientation
         quaternion_array = [previous_quaternion.x, previous_quaternion.y, previous_quaternion.z, previous_quaternion.w]
         previous_roll, previous_pitch, previous_heading = tf.transformations.euler_from_quaternion(quaternion_array)
-        # calculate the angular velocities of roll, pitch, and yaw in rad/s
-        dt = time.to_sec() - self.time.to_sec()
-        dr = roll - previous_roll
-        dp = pitch - previous_pitch
-        dh = heading - previous_heading
-        angvx = self.near_zero(dr / dt)
-        angvy = self.near_zero(dp / dt)
-        angvz = self.near_zero(dh / dt)
-        self.time = time
 
         # transform euler angles into quaternion
         quaternion = tf.transformations.quaternion_from_euler(roll, pitch, heading)
@@ -151,6 +141,17 @@ class FlightController(object):
         lin_acc_x_drone_body = lin_acc_x_drone_body + g*np.sin(roll)*np.cos(pitch)
         lin_acc_y_drone_body = lin_acc_y_drone_body + g*np.cos(roll)*(-np.sin(pitch))
         lin_acc_z_drone_body = lin_acc_z_drone_body + g*(1 - np.cos(roll)*np.cos(pitch))
+
+        # calculate the angular velocities of roll, pitch, and yaw in rad/s
+        time = rospy.Time.now()
+        dt = time.to_sec() - self.time.to_sec()
+        dr = roll - previous_roll
+        dp = pitch - previous_pitch
+        dh = heading - previous_heading
+        angvx = self.near_zero(dr / dt)
+        angvy = self.near_zero(dp / dt)
+        angvz = self.near_zero(dh / dt)
+        self.time = time
 
         # Update the imu_message:
         # header stamp
