@@ -681,9 +681,16 @@ function publishResetTransform() {
   resetpub.publish(emptyMsg);
 }
 
-function publishToggleTransform() {
-  console.log("toggle transform");
-  togglepub.publish(emptyMsg);
+function publishToPosition() {
+  console.log("to position");
+  positionMsg.data = true;
+  positionPub.publish(positionMsg);
+}
+
+function publishToVelocity() {
+  console.log("to velocity");
+  positionMsg.data = false;
+  positionPub.publish(positionMsg);
 }
 
 function publishToggleMap() {
@@ -1206,7 +1213,9 @@ $(document).keypress(function(event){
   } else if (char == 't') {
     publishTakeoff();
   } else if (char == 'p') {
-    publishToggleTransform();
+    publishToPosition();
+  } else if (char == 'v') {
+    publishToVelocity();
   } else if (char == 'm') {
     publishToggleMap();
   }
