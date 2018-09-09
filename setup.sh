@@ -15,7 +15,7 @@
 
 # off-board
 source ../../devel/setup.bash
-#export ROS_IP=138.16.161.151
+export ROS_IP=`hostname -I`
 export ROS_HOSTNAME=baichuan-XPS
 export ROS_MASTER_URI=http://baichuan-XPS:11311
 export PS1="\[\033[00;33m\][pidrone - ${ROS_MASTER_URI}]\[\033[00m\] $PS1"

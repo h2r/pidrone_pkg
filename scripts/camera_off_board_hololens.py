@@ -2,7 +2,7 @@ import numpy as np
 import cv2
 from pidrone_pkg.msg import axes_err, Mode, ERR
 from sensor_msgs.msg import Image, Range, CameraInfo, CompressedImage
-from std_msgs.msg import Empty, Float32MultiArray
+from std_msgs.msg import String, Empty, Float32MultiArray
 import rospy
 import tf
 from cv_bridge import CvBridge, CvBridgeError
@@ -27,7 +27,7 @@ METER_TO_PIXEL = (float(MAP_PIXEL_WIDTH) / MAP_REAL_WIDTH + float(MAP_PIXEL_HEIG
 CAMERA_CENTER = np.float32([(CAMERA_WIDTH - 1) / 2., (CAMERA_HEIGHT - 1) / 2.]).reshape(-1, 1, 2)
 MAX_BAD_COUNT = -50
 NUM_PARTICLE = 50
-INIZ_Z = 0.45
+INIZ_Z = 0.25
 CELL_DISTANCE = 0.5
 
 class AnalyzePhase:
@@ -38,8 +38,8 @@ class AnalyzePhase:
 
         # self.lr_pid = PIDaxis(11.0, 0.001, 0.001, midpoint=0, control_range=(-5.0, 5.0))
         # self.fb_pid = PIDaxis(11.0, 0.001, 0.001, midpoint=0, control_range=(-5.0, 5.0))
-        self.lr_pid = PIDaxis(10.5, 0.001, 0.002, midpoint=0, control_range=(-5.0, 5.0))
-        self.fb_pid = PIDaxis(10.5, 0.001, 0.002, midpoint=0, control_range=(-5.0, 5.0))
+        self.lr_pid = PIDaxis(9.0, 0.001, 0.001, midpoint=0, control_range=(-4.0, 4.0))
+        self.fb_pid = PIDaxis(9.0, 0.001, 0.001, midpoint=0, control_range=(-4.0, 4.0))
 
         self.detector = cv2.ORB(nfeatures=200, scoreType=cv2.ORB_FAST_SCORE)  # FAST_SCORE is a little faster to compute
         map_grid_kp, map_grid_des = create_map('big_map.jpg')
@@ -56,9 +56,10 @@ class AnalyzePhase:
         self.pos = [0, 0, 0]
         self.yaw = 0.0
         self.z = 0.075
+        self.set_z = INIZ_Z
         self.iacc_yaw = 0.0
         self.hold_position = False
-        self.target_pos = [0, 0, INIZ_Z]
+        self.target_pos = [0, 0, self.set_z]
         self.target_point = Point()
         self.target_yaw = 0.0
         self.map_counter = 0
@@ -81,6 +82,7 @@ class AnalyzePhase:
 
         rospy.Subscriber("/pidrone/set_mode", Mode, self.mode_callback)
         rospy.Subscriber('/pidrone/path', Float32MultiArray, self.path_callback)
+        rospy.Subscriber('/hololens/path', String, self.hololens_path_callback)
         rospy.Subscriber("/pidrone/reset_transform", Empty, self.reset_callback)
         rospy.Subscriber("/pidrone/toggle_transform", Empty, self.toggle_callback)
         rospy.Subscriber("/pidrone/infrared", Range, self.range_callback)
@@ -98,7 +100,7 @@ class AnalyzePhase:
 
         # process path from MDP
         if len(self.path) != 0 and is_close_to(self.pos, self.target_pos, distance=0.15):
-            if self.path[self.path_index + 1] == -1:   # take photo
+            if self.path[self.path_index + 1] == -10:   # take photo
                 if is_close_to(self.pos, self.target_pos, distance=0.1):
                     # image_message = self.bridge.cv2_to_imgmsg(curr_img, encoding="bgr8")
                     # self.first_image_pub.publish(image_message)
@@ -168,7 +170,7 @@ class AnalyzePhase:
                             if self.first_hold:
                                 self.target_pos[0] = (int)(self.pos[0] / CELL_DISTANCE) * CELL_DISTANCE + CELL_DISTANCE / 2.
                                 self.target_pos[1] = (int)(self.pos[1] / CELL_DISTANCE) * CELL_DISTANCE + CELL_DISTANCE / 2. 
-                                self.target_pos[2] = INIZ_Z
+                                self.target_pos[2] = self.set_z
                                 self.target_yaw = 0  # rotate is not implement
                                 self.first_hold = False
                                 # image_message = self.bridge.cv2_to_imgmsg(curr_img, encoding="bgr8")
@@ -207,8 +209,10 @@ class AnalyzePhase:
 
     # the angle is just estimate
     def angle_callback(self, data):
-        self.angle_x = data.twist.angular.x
-        self.angle_y = data.twist.angular.y
+        #self.angle_x = data.twist.angular.x
+        #self.angle_y = data.twist.angular.y
+        self.angle_x = 0
+        self.angle_y = 0
 
     def range_callback(self, data):
         if data.range != -1:
@@ -216,9 +220,16 @@ class AnalyzePhase:
 
     def reset_callback(self, data):
         print "Start localization"
+        self.set_z = self.target_pos[2]
+        self.path = []
+        self.path_index = -1
         self.locate_position = True
         self.first_locate = True
         self.hold_position = False
+        self.first_hold = True
+        self.fb_pid._i = 0
+        self.lr_pid._i = 0
+        self.iacc_yaw = 0.0
         self.map_counter = 0
         self.max_map_counter = 0
 
@@ -247,6 +258,10 @@ class AnalyzePhase:
 
     def path_callback(self, data):
         self.path = data.data
+        print(self.path)
+
+    def hololens_path_callback(self, data):
+        self.path = [float(str(round(float(i), 2))) for i in (data.data).split()]
         print(self.path)
 
 def is_almost_equal(x,y, epsilon=1*10**(-8)):

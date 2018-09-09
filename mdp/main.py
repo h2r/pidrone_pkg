@@ -6,7 +6,7 @@ import time
 import load_drone_draggn
 from i_draggn import ProgArgNet
 
-ACTION_TABLE = {'forward': (0, 0.5, 0), 'back': (0, -0.5, 0), 'left': (-0.5, 0, 0), 'right': (0.5, 0, 0), 'up': (0, 0, 0.19), 'down': (0, 0, -0.19), 'take_photo': (-1,)}
+ACTION_TABLE = {'forward': (0, 0.5, 0), 'back': (0, -0.5, 0), 'left': (-0.5, 0, 0), 'right': (0.5, 0, 0), 'up': (0, 0, 0.15), 'down': (0, 0, -0.15), 'take_photo': (-10,)}
 
 command = ""
 prev_command = ""
@@ -41,7 +41,7 @@ def box_callback(data):
 def command_callback(data):
     global command
 
-    command = str(data.data)[0:-2]
+    command = str(data.data)
 
 rospy.init_node("path_pub")
 pub = rospy.Publisher('/pidrone/path', Float32MultiArray, queue_size=1)
@@ -64,7 +64,7 @@ while True:
             print("start action")
             print(prog, arg)
             if arg_1 == 'take_photo':
-                drone_path.data = [-1]
+                drone_path.data = [ACTION_TABLE[arg_1][0]]
             else:
                 move = ACTION_TABLE[arg_1]
                 drone_path.data = [move[0] * arg_2, move[1] * arg_2, move[2] * arg_2]

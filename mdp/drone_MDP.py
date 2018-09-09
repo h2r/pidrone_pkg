@@ -16,7 +16,7 @@ class DroneMDP(MDP):
 
     # don't need rotation in MDP
     ACTIONS = ["forward", "back", "left", "right", "up", "down", "take_photo"]
-    ACTION_TABLE = {'forward': (0, 0.5, 0), 'back': (0, -0.5, 0), 'left': (-0.5, 0, 0), 'right': (0.5, 0, 0), 'up': (0, 0, 0.2), 'down': (0, 0, -0.2), 'take_photo': (-1,)}
+    ACTION_TABLE = {'forward': (0, 0.5, 0), 'back': (0, -0.5, 0), 'left': (-0.5, 0, 0), 'right': (0.5, 0, 0), 'up': (0, 0, 0.15), 'down': (0, 0, -0.15), 'take_photo': (-10,)}
 
     def __init__(self, init_location, task, rooms, blocks=None, doors=None, random_init_location=False, gamma=0.99):
         """

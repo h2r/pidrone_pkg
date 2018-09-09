@@ -59,6 +59,14 @@ stuff "source setup.sh"
 stuff "cd $(rospack find pidrone_pkg)/mdp"
 stuff "python main.py"
 
+#screen -t " speech_to_text" bash
+#stuff "export PATH=~/miniconda2/bin:$PATH"
+#stuff "source activate speech"
+#stuff "source setup.sh"
+#stuff "cd $(rospack find pidrone_pkg)/speech"
+#stuff "python "
+
+
 screen -t " rosbridge" bash
 stuff "source setup.sh"
 stuff "sleep 10s && roslaunch rosbridge_server rosbridge_websocket.launch"
