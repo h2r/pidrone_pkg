@@ -23,25 +23,24 @@ import os
 
 
 class UKFStateEstimator2D(object):
-    '''
+    """
     Class that estimates the state of the drone using an Unscented Kalman Filter
     (UKF) applied to raw sensor data. The filter only tracks the quadcopter's
     motion along one spatial dimension: the global frame z-axis. In this
     simplified case, we assume that the drone's body frame orientation is
     aligned with the world frame (i.e., no roll, pitch, or yaw), and that it is
-    only offset along the z-axis.
-    '''
-    # TODO: Make a reference to the UKF math document that is being written up,
-    #       once it is in a complete enough state and can be placed in a shared
-    #       location.
+    only offset along the z-axis. It is called a 2D UKF because we track two
+    state variables in the state vector: z position and z velocity.
+    """
     
-    def __init__(self, ir_throttled=False, imu_throttled=False):
+    def __init__(self, loop_hz, ir_throttled=False, imu_throttled=False):
         # self.ready_to_filter is False until we get initial measurements in
         # order to be able to initialize the filter's state vector x and
         # covariance matrix P.
         self.ready_to_filter = False
         self.printed_filter_start_notice = False
         self.got_ir = False
+        self.loop_hz = loop_hz
         
         self.ir_topic_str = '/pidrone/infrared'
         self.imu_topic_str = '/pidrone/imu'
@@ -70,9 +69,9 @@ class UKFStateEstimator2D(object):
         self.initialize_ros()
         
     def initialize_ros(self):
-        '''
+        """
         Initialize ROS-related objects, e.g., the node, subscribers, etc.
-        '''
+        """
         self.node_name = os.path.splitext(os.path.basename(__file__))[0]
         print 'Initializing {} node...'.format(self.node_name)
         rospy.init_node(self.node_name)
@@ -87,10 +86,10 @@ class UKFStateEstimator2D(object):
                                          tcp_nodelay=False)
         
     def initialize_ukf(self):
-        '''
+        """
         Initialize the parameters of the Unscented Kalman Filter (UKF) that is
         used to estimate the state of the drone.
-        '''
+        """
         
         # Number of state variables being tracked
         self.state_vector_dim = 2
@@ -106,7 +105,7 @@ class UKFStateEstimator2D(object):
         
         # Function to generate sigma points for the UKF
         # TODO: Modify these sigma point parameters appropriately. Currently
-        #       just guesses
+        #       just educated guesses
         sigma_points = MerweScaledSigmaPoints(n=self.state_vector_dim,
                                               alpha=0.1,
                                               beta=2.0,
@@ -126,9 +125,9 @@ class UKFStateEstimator2D(object):
         self.initialize_ukf_matrices()
 
     def initialize_ukf_matrices(self):
-        '''
+        """
         Initialize the covariance matrices of the UKF
-        '''
+        """
         # Initialize state covariance matrix P:
         # TODO: Tune these initial values appropriately. Currently these are
         #       just guesses
@@ -145,14 +144,14 @@ class UKFStateEstimator2D(object):
         self.ukf.R = np.array([2.2221e-05])
         
     def update_input_time(self, msg):
-        '''
+        """
         Update the time at which we have received the most recent input, based
         on the timestamp in the header of a ROS message
         
         msg : a ROS message that includes a header with a timestamp that
               indicates the time at which the respective input was originally
               recorded
-        '''
+        """
         self.last_time_secs = msg.header.stamp.secs
         self.last_time_nsecs = msg.header.stamp.nsecs
         new_time = self.last_time_secs + self.last_time_nsecs*1e-9
@@ -172,24 +171,24 @@ class UKFStateEstimator2D(object):
         self.last_state_transition_time = new_time
         
     def initialize_input_time(self, msg):
-        '''
+        """
         Initialize the input time (self.last_state_transition_time) based on the
         timestamp in the header of a ROS message. This is called before we start
         filtering in order to attain an initial time value, which enables us to
         then compute a time interval self.dt by calling self.update_input_time()
         
         msg : a ROS message that includes a header with a timestamp
-        '''
+        """
         self.last_time_secs = msg.header.stamp.secs
         self.last_time_nsecs = msg.header.stamp.nsecs
         self.last_state_transition_time = (self.last_time_secs +
                                            self.last_time_nsecs*1e-9)
         
     def ukf_predict(self):
-        '''
+        """
         Compute the prior for the UKF based on the current state, a control
         input, and a time step.
-        '''
+        """
         # self.ukf.Q = Q_discrete_white_noise(self.state_vector_dim, dt=self.dt, var=1.0)
         # self.ukf.Q = np.diag([0.01, 1.0])*0.05*self.dt
         self.ukf.predict(dt=self.dt, u=self.last_control_input)
@@ -200,12 +199,10 @@ class UKFStateEstimator2D(object):
             self.printed_filter_start_notice = True
         
     def imu_data_callback(self, data):
-        '''
+        """
         Handle the receipt of an Imu message. Only take the linear acceleration
         along the z-axis.
-        
-        This method PREDICTS with a control input.
-        '''
+        """
         if self.in_callback:
             return
         self.in_callback = True
@@ -215,35 +212,18 @@ class UKFStateEstimator2D(object):
             self.ukf.Q = np.diag([0.01, 1.0])*0.0005
         else:
             self.ukf.Q = np.diag([0.01, 1.0])*0.005
-        # if self.ready_to_filter:
-        #     # Wait to predict until we get an initial IR measurement to
-        #     # initialize our state vector
-        #     self.print_notice_if_first()
-        #     self.update_input_time(data)
-        #     self.ukf_predict()
-        #     self.publish_current_state()
         self.in_callback = False
                         
     def ir_data_callback(self, data):
-        '''
+        """
         Handle the receipt of a Range message from the IR sensor.
-        
-        This method PREDICTS with the most recent control input and UPDATES.
-        '''
+        """
         if self.in_callback:
             return
         self.in_callback = True
+        self.last_measurement_vector = np.array([data.range])
         if self.ready_to_filter:
-            self.print_notice_if_first()
             self.update_input_time(data)
-            self.ukf_predict()
-                        
-            # Now that a prediction has been formed to bring the current prior
-            # state estimate to the same point in time as the measurement,
-            # perform a measurement update with the slant range reading
-            measurement_z = np.array([data.range])
-            self.ukf.update(measurement_z)
-            self.publish_current_state()
         else:
             self.initialize_input_time(data)
             # Got a raw slant range reading, so update the initial state
@@ -262,7 +242,7 @@ class UKFStateEstimator2D(object):
         self.ready_to_filter = self.got_ir
                         
     def publish_current_state(self):
-        '''
+        """
         Publish the current state estimate and covariance from the UKF. This is
         a State message containing:
             - Header
@@ -271,7 +251,7 @@ class UKFStateEstimator2D(object):
         Note that a lot of these ROS message fields will be left empty, as the
         2D UKF does not track information on the entire state space of the
         drone.
-        '''
+        """
         state_msg = State()
         state_msg.header.stamp.secs = self.last_time_secs
         state_msg.header.stamp.nsecs = self.last_time_nsecs
@@ -308,14 +288,14 @@ class UKFStateEstimator2D(object):
         self.state_pub.publish(state_msg)
 
     def state_transition_function(self, x, dt, u):
-        '''
+        """
         The state transition function to compute the prior in the prediction
         step, propagating the state to the next time step.
         
         x : current state. A NumPy array
         dt : time step. A float
         u : control input. A NumPy array
-        '''
+        """
         # State transition matrix F
         F = np.array([[1, dt],
                       [0, 1]])
@@ -328,18 +308,47 @@ class UKFStateEstimator2D(object):
         return x_output
         
     def measurement_function(self, x):
-        '''
+        """
         Transform the state x into measurement space. In this simple model, we
         assume that the range measurement corresponds exactly to position along
         the z-axis, as we are assuming there is no pitch and roll.
         
         x : current state. A NumPy array
-        '''
+        """
         # Measurement update matrix H
         H = np.array([[1, 0]])
         hx_output = np.dot(H, x)
         return hx_output
         
+    def start_loop(self):
+        """
+        Begin the UKF's loop of predicting and updating. Publish a state
+        estimate at the end of each loop.
+        """
+        rate = rospy.Rate(self.loop_hz)
+        while not rospy.is_shutdown():
+            if self.ready_to_filter:
+                self.print_notice_if_first()
+                self.ukf_predict()
+                            
+                # Now that a prediction has been formed to bring the current
+                # prior state estimate to the same point in time as the
+                # measurement, perform a measurement update with the most recent
+                # IR range reading
+                self.ukf.update(self.last_measurement_vector)
+                self.publish_current_state()
+            rate.sleep()
+            
+            
+def check_positive_float_duration(val):
+    """
+    Function to check that the --loop_hz command-line argument is a positive
+    float.
+    """
+    value = float(val)
+    if value <= 0.0:
+        raise argparse.ArgumentTypeError('Loop Hz must be positive')
+    return value
         
 def main():
     parser = argparse.ArgumentParser(description=('Estimate the drone\'s state '
@@ -350,12 +359,19 @@ def main():
             help=('Use throttled infrared topic /pidrone/infrared_throttle'))
     parser.add_argument('--imu_throttled', action='store_true',
             help=('Use throttled IMU topic /pidrone/imu_throttle'))
+    parser.add_argument('--loop_hz', '-hz', default=30.0,
+                        type=check_positive_float_duration,
+                        help=('Frequency at which to run the predict-update '
+                              'loop of the UKF (default: 30)'))
+    # NOTE: The throttle flags are deprecated in favor of the loop Hz flag.
+    #       Using throttled data streams while also running the UKF on a set
+    #       loop can degrade the estimates.
     args = parser.parse_args()
-    se = UKFStateEstimator2D(ir_throttled=args.ir_throttled,
-                         imu_throttled=args.imu_throttled)
+    se = UKFStateEstimator2D(loop_hz=args.loop_hz,
+                             ir_throttled=args.ir_throttled,
+                             imu_throttled=args.imu_throttled)
     try:
-        # Wait until node is halted
-        rospy.spin()
+        se.start_loop()
     finally:
         # Upon termination of this script, print out a helpful message
         print '{} node terminating.'.format(se.node_name)

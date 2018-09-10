@@ -32,13 +32,14 @@ class StateEstimator(object):
     
     def __init__(self, primary, others, ir_throttled=False, imu_throttled=False,
                  optical_flow_throttled=False, camera_pose_throttled=False,
-                 sdim=1, student_ukf=False, ir_var=None):
+                 sdim=1, student_ukf=False, ir_var=None, loop_hz=None):
         self.state_msg = State()
         
         self.ir_throttled = ir_throttled
         self.imu_throttled = imu_throttled
         self.optical_flow_throttled = optical_flow_throttled
         self.camera_pose_throttled = camera_pose_throttled
+        self.loop_hz = loop_hz
         
         self.primary_estimator = primary
         self.other_estimators = others
@@ -76,6 +77,7 @@ class StateEstimator(object):
         self.can_use_throttled_imu = ['ukf2d', 'ukf7d', 'ukf12d']
         self.can_use_throttled_optical_flow = ['ukf7d', 'ukf12d']
         self.can_use_throttled_camera_pose = ['ukf7d']
+        self.can_use_loop_hz = ['ukf2d', 'ukf7d']
         
         # List to store the process objects from subprocess.Popen()
         self.processes = []
@@ -197,6 +199,9 @@ class StateEstimator(object):
             rospy.Subscriber(topic, StateGroundTruth, self.ground_truth_analytics_callback)
                 
     def append_throttle_flags(self, cmd, estimator):
+        """
+        Append throttle flags and/or a loop Hz flag to the given command.
+        """
         if self.ir_throttled and estimator in self.can_use_throttled_ir:
             cmd += ' --ir_throttled'
         if self.imu_throttled and estimator in self.can_use_throttled_imu:
@@ -205,13 +210,14 @@ class StateEstimator(object):
             cmd += ' --optical_flow_throttled'
         if self.camera_pose_throttled and estimator in self.can_use_throttled_camera_pose:
             cmd += ' --camera_pose_throttled'
+        if self.loop_hz is not None and estimator in self.can_use_loop_hz:
+            cmd += ' -hz {}'.format(self.loop_hz)
         return cmd
 
     def state_callback(self, msg):
         """
         Callback that handles the primary estimator republishing.
         """
-        
         # TODO: Consider creating a new State message rather than modifying just
         #       one State message
         self.state_msg.header.stamp = rospy.Time.now()
@@ -273,6 +279,16 @@ class StateEstimator(object):
         # match timestamps or header sequence numbers to check or synchronize.
         
         
+def check_positive_float_duration(val):
+    """
+    Function to check that the --loop_hz command-line argument is a positive
+    float.
+    """
+    value = float(val)
+    if value <= 0.0:
+        raise argparse.ArgumentTypeError('Loop Hz must be positive')
+    return value
+        
 
 def main():
     parser = argparse.ArgumentParser(description=('The state estimator node '
@@ -321,6 +337,11 @@ def main():
     # TODO: Test out the --ir_var flag
     parser.add_argument('--ir_var', type=float,
                         help=('IR sensor variance to use in 1D simulation'))
+                        
+    parser.add_argument('--loop_hz', '-hz', default=30.0,
+                        type=check_positive_float_duration,
+                        help=('Frequency at which to run the predict-update '
+                              'loop of the UKF (default: 30)'))
                               
     args = parser.parse_args()
     
@@ -333,7 +354,8 @@ def main():
                             camera_pose_throttled=args.camera_pose_throttled,
                             sdim=args.sdim,
                             student_ukf=args.student_ukf,
-                            ir_var=args.ir_var)
+                            ir_var=args.ir_var,
+                            loop_hz=args.loop_hz)
     except Exception as e:
         print e
     finally:
