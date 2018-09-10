@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 """""
 global_position_estimator_distance
 
@@ -133,7 +134,8 @@ class LocalizationParticleFilter:
         if transform is not None:
             x = self.pixel_to_meter(-transform[0, 2])
             y = self.pixel_to_meter(transform[1, 2])
-            yaw = -np.arctan2(transform[1, 0], transform[0, 0])
+            # CCW rotation makes yaw more positive
+            yaw = np.arctan2(transform[1, 0], transform[0, 0])
 
             self.sample_motion_model(x, y, yaw)
 

@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import argparse
 import rospy
 from pidrone_pkg.msg import State, StateGroundTruth, UkfStats
@@ -29,7 +31,8 @@ class StateEstimator(object):
     """
     
     def __init__(self, primary, others, ir_throttled=False, imu_throttled=False,
-                 optical_flow_throttled=False, camera_pose_throttled=False, sdim=1):
+                 optical_flow_throttled=False, camera_pose_throttled=False,
+                 sdim=1, student_ukf=False, ir_var=None):
         self.state_msg = State()
         
         self.ir_throttled = ir_throttled
@@ -44,13 +47,29 @@ class StateEstimator(object):
         self.estimators = list(self.other_estimators)
         self.estimators.append(self.primary_estimator)
         
+        student_project_pkg_dir = 'pidrone_project2_ukf'
+        pidrone_pkg_dir = 'pidrone_pkg'
+        
+        if student_ukf:
+            program_str = 'rosrun ' + student_project_pkg_dir + ' StateEstimators/student_'
+        else:
+            program_str = 'rosrun ' + pidrone_pkg_dir + ' scripts/StateEstimators/'
+            
+        # TODO: Test this IR variance argument passing
+        # TODO: Test if it is necessary to include "scripts/" in this command.
+        #       It might have worked beforehand without it, with rosrun...
+        sim_cmd = 'rosrun pidrone_pkg scripts/drone_simulator.py --dim '+str(sdim)
+        if ir_var is not None:
+            # Pass in the IR variance value given as a command-line argument
+            sim_cmd += ' --ir_var '+str(ir_var)
+        
         self.process_cmds_dict = {
-                'ema': 'python StateEstimators/state_estimator_ema.py',
-                'ukf2d': 'python StateEstimators/state_estimator_ukf_2d.py',
-                'ukf7d': 'python StateEstimators/state_estimator_ukf_7d.py',
-                'ukf12d': 'python StateEstimators/state_estimator_ukf_12d.py',
-                'mocap': 'python StateEstimators/state_estimator_mocap.py',  # TODO: Implement this
-                'simulator': 'python drone_simulator.py --dim '+str(sdim)
+                'ema': 'rosrun pidrone_pkg scripts/StateEstimators/state_estimator_ema.py',
+                'ukf2d': '{}state_estimator_ukf_2d.py'.format(program_str),
+                'ukf7d': '{}state_estimator_ukf_7d.py'.format(program_str),
+                'ukf12d': 'rosrun pidrone_pkg scripts/state_estimator_ukf_12d.py',
+                'mocap': 'rosrun pidrone_pkg scripts/state_estimator_mocap.py',  # TODO: Implement this
+                'simulator': sim_cmd
         }
         
         self.can_use_throttled_ir = ['ukf2d', 'ukf7d', 'ukf12d']
@@ -297,6 +316,12 @@ def main():
                               'simulate the drone\'s motion, if running the '
                               'drone simulator (default: 1)'))
                               
+    parser.add_argument('--student_ukf', action='store_true',
+                        help=('Use student UKF'))
+    # TODO: Test out the --ir_var flag
+    parser.add_argument('--ir_var', type=float,
+                        help=('IR sensor variance to use in 1D simulation'))
+                              
     args = parser.parse_args()
     
     try:
@@ -306,7 +331,9 @@ def main():
                             imu_throttled=args.imu_throttled,
                             optical_flow_throttled=args.optical_flow_throttled,
                             camera_pose_throttled=args.camera_pose_throttled,
-                            sdim=args.sdim)
+                            sdim=args.sdim,
+                            student_ukf=args.student_ukf,
+                            ir_var=args.ir_var)
     except Exception as e:
         print e
     finally:

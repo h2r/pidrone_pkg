@@ -60,6 +60,10 @@ class UKFStateEstimator7D(object):
         if camera_pose_throttled:
             self.camera_pose_topic_str += throttle_suffix
             
+        # Localization wants angular velocities, so take from IMU and republish
+        # in the state message
+        self.angular_velocity = None
+            
         self.in_callback = False
 
         self.initialize_ukf()
@@ -227,14 +231,15 @@ class UKFStateEstimator7D(object):
         if self.in_callback:
             return
         self.in_callback = True
-        _, _, yaw = tf.transformations.euler_from_quaternion(
-                                                           [data.orientation.x,
-                                                            data.orientation.y,
-                                                            data.orientation.z,
-                                                            data.orientation.w])
+        # _, _, yaw = tf.transformations.euler_from_quaternion(
+        #                                                    [data.orientation.x,
+        #                                                     data.orientation.y,
+        #                                                     data.orientation.z,
+        #                                                     data.orientation.w])
         self.last_control_input = np.array([data.linear_acceleration.x,
                                             data.linear_acceleration.y,
                                             data.linear_acceleration.z])
+        self.angular_velocity = data.angular_velocity
         # self.last_control_input = np.array([0.0,
         #                                     0.0,
         #                                     data.linear_acceleration.z])
@@ -244,12 +249,12 @@ class UKFStateEstimator7D(object):
             self.print_notice_if_first()
             # self.update_input_time(data)
             # self.ukf_predict()
-            self.last_measurement_vector[5] = yaw
+            # self.last_measurement_vector[5] = yaw
         else:
             self.initialize_input_time(data)
             # Got a yaw reading from the IMU reading, so update the initial
             # state vector of the UKF
-            self.ukf.x[6] = yaw
+            # self.ukf.x[6] = yaw
             # Update the state covariance matrix to reflect estimated
             # measurement error. Variance of the measurement -> variance of
             # the corresponding state variable
@@ -384,6 +389,8 @@ class UKFStateEstimator7D(object):
         state_msg.header.stamp.nsecs = self.last_time_nsecs
         state_msg.header.frame_id = 'global'
         
+        # TODO: Consider using roll and pitch values directly from the IMU, as
+        #       the IMU implements its own filter on attitude
         quaternion = self.get_quaternion_from_yaw(self.ukf.x[6])
         
         # Get the current state estimate from self.ukf.x, and fill the rest of
@@ -398,9 +405,7 @@ class UKFStateEstimator7D(object):
         state_msg.twist_with_covariance.twist.linear.x = self.ukf.x[3]
         state_msg.twist_with_covariance.twist.linear.y = self.ukf.x[4]
         state_msg.twist_with_covariance.twist.linear.z = self.ukf.x[5]
-        state_msg.twist_with_covariance.twist.angular.x = np.nan
-        state_msg.twist_with_covariance.twist.angular.y = np.nan
-        state_msg.twist_with_covariance.twist.angular.z = np.nan
+        state_msg.twist_with_covariance.twist.angular = self.angular_velocity
         
         # Prepare covariance matrices
         # TODO: Finish populating these matrices, if deemed necessary

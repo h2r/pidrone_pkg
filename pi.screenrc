@@ -117,3 +117,8 @@ screen -t " throttle_optical_flow"
 stuff "source setup.sh\n"
 stuff "cd $(rospack find pidrone_pkg)/scripts\n"
 stuff "rosrun topic_tools throttle messages /pidrone/picamera/twist 10.0\n"
+
+screen -t " throttle_camera_pose"
+stuff "source setup.sh\n"
+stuff "cd $(rospack find pidrone_pkg)/scripts\n"
+stuff "rosrun topic_tools throttle messages /pidrone/picamera/pose 15.0\n"

@@ -1,4 +1,4 @@
-'optical_flow'#!/usr/bin/env python
+#!/usr/bin/env python
 
 from numpy.random import randn # to generate some random Gaussian noise
 import numpy as np
@@ -362,8 +362,12 @@ class DroneSimulator1D(DroneSimulator):
         
     def init_std_devs(self):
         self.z_accel_imu_measured_std_dev = 0.001 # meters/second^2
-        # Estimated standard deviation based on IR reading measured variance
-        self.z_pos_ir_measured_std_dev = np.sqrt(2.2221e-05) # meters
+        # Estimated standard deviation (meters) based on IR reading measured
+        # variance
+        if ir_var is None:
+            self.z_pos_ir_measured_std_dev = np.sqrt(2.2221e-05)
+        else:
+            self.z_pos_ir_measured_std_dev = np.sqrt(ir_var)
     
     def take_ir_sample(self):
         self.z_pos_ir_measurement = self.z_pos_ir_measured_std_dev * randn() + self.actual_state[0]
@@ -938,7 +942,12 @@ def main():
                               'simulate the drone\'s motion (default: 3)'))
     parser.add_argument('--duration', default=60.0, type=check_positive_float_duration,
                         help='Duration (seconds) of simulation (default: 60)')
+    # TODO: Test out the --ir_var flag
+    parser.add_argument('--ir_var', type=float,
+                        help=('IR sensor variance to use in 1D simulation'))
     args = parser.parse_args()
+    global ir_var
+    ir_var = args.ir_var
     drone_sim_dims = [DroneSimulator1D, DroneSimulator2D, DroneSimulator3D]
     drone_sim = drone_sim_dims[args.dim-1](publish_ros=args.publish_ros,
                                            save_to_csv=args.save_csv,

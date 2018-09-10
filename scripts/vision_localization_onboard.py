@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 """
 vision_localization.py
 

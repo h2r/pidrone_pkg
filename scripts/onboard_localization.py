@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 """
 localization.py
 
@@ -96,7 +97,7 @@ class Localizer(picamera.array.PiMotionAnalysis):
                     self.posemsg.pose.position.z = particle.z()
                     x, y, z, w = tf.transformations.quaternion_from_euler(0, 0, self.pos[3])
 
-                    self.posemsg.pose.orientation.x = x  
+                    self.posemsg.pose.orientation.x = x
                     self.posemsg.pose.orientation.y = y
                     self.posemsg.pose.orientation.z = z
                     self.posemsg.pose.orientation.w = w
@@ -118,7 +119,7 @@ class Localizer(picamera.array.PiMotionAnalysis):
                     self.posemsg.pose.position.z = self.pos[2]
                     x, y, z, w = tf.transformations.quaternion_from_euler(0, 0, self.pos[3])
 
-                    self.posemsg.pose.orientation.x = x  
+                    self.posemsg.pose.orientation.x = x
                     self.posemsg.pose.orientation.y = y
                     self.posemsg.pose.orientation.z = z
                     self.posemsg.pose.orientation.w = w
