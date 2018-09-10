@@ -32,6 +32,7 @@ class ModeController(object):
         # Publisher to send the commanded mode to
         self.cmd_mode_pub = None
 
+
     # ROS Callback Methods
     ######################
     def mode_callback(self, msg):
@@ -56,10 +57,6 @@ class ModeController(object):
         """Update web_interface heartbeat"""
         self.heartbeat_web_interface = rospy.Time.now()
 
-    def heartbeat_command_line_interface_callback(self, msg):
-        """Update command_line_interface heartbeat"""
-        self.heartbeat_command_line_interface = rospy.Time.now()
-
     def heartbeat_flight_controller_callback(self, msg):
         """Update the flight_controller heartbeat"""
         self.heartbeat_flight_controller = rospy.Time.now()
@@ -82,10 +79,9 @@ class ModeController(object):
         if self.vbat != None and self.vbat < self.minimum_voltage:
             print('\nSafety Failure: low battery\n')
             disarm = True
-        if ((curr_time - self.heartbeat_web_interface) > rospy.Duration.from_sec(5) and
-        (curr_time - self.heartbeat_command_line_interface) > rospy.Duration.from_sec(5)):
-            print('\nSafety Failure: user interface heartbeat\n')
-            print('Ensure that either the web interface or command line interface is running')
+        if curr_time - self.heartbeat_web_interface > rospy.Duration.from_sec(3):
+            print('\nSafety Failure: web interface heartbeat\n')
+            print('The web interface stopped responding. Check your browser')
             disarm = True
         if curr_time - self.heartbeat_flight_controller > rospy.Duration.from_sec(1):
             print('\nSafety Failure: not receiving data from flight controller.')
@@ -122,7 +118,6 @@ def main():
     mc.heartbeat_web_interface= curr_time
     mc.heartbeat_pid_controller = curr_time
     mc.heartbeat_flight_controller = curr_time
-    mc.heartbeat_command_line_interface = curr_time
 
     # Publishers
     ############
@@ -138,7 +133,6 @@ def main():
     rospy.Subscriber("/pidrone/heartbeat/web_interface", Empty, mc.heartbeat_web_interface_callback)
     rospy.Subscriber("/pidrone/heartbeat/pid_controller", Empty, mc.heartbeat_pid_controller_callback)
     rospy.Subscriber("/pidrone/heartbeat/flight_controller", Empty, mc.heartbeat_flight_controller_callback)
-    rospy.Subscriber("/pidrone/heartbeat/command_line_interface", Empty, mc.heartbeat_command_line_interface_callback)
 
 
     # Non-ROS Setup

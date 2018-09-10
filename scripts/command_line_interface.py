@@ -4,7 +4,6 @@ import os
 import rospy
 import signal
 from three_dim_vec import Position
-from multiprocessing import Process
 from std_msgs.msg import Empty, Bool
 from pidrone_pkg.msg import Mode, State
 from geometry_msgs.msg import Pose, Twist
@@ -104,15 +103,6 @@ class CommandLineInterface(object):
     ##################################
     def position_control_callback(self, msg):
         self.position_control = msg.data
-
-def publish_heartbeat():
-    """ Publish the heartbeat of the command line interface """
-    rospy.init_node('command_line_interface_heartbeat')
-    heartbeat_pub = rospy.Publisher('/pidrone/heartbeat/command_line_interface', Empty, queue_size=1)
-    publish_rate = rospy.Rate(1)
-    while not rospy.is_shutdown():
-        heartbeat_pub.publish(Empty())
-        publish_rate.sleep()
 
 def main():
 
@@ -256,6 +246,4 @@ def main():
         raise
 
 if __name__ == '__main__':
-    heartbeat_pub_process = Process(target = publish_heartbeat)
-    heartbeat_pub_process.start()
     main()

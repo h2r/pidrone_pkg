@@ -20,7 +20,7 @@ class AnalyzeFlow(picamera.array.PiMotionAnalysis):
         # flow variables
         self.max_flow = camera_wh[0] / 16.0 * camera_wh[1] / 16.0 * 2**7
         self.flow_scale = .165
-        self.flow_coeff = self.flow_scale / self.max_flow
+        self.flow_coeff = 100 * self.flow_scale / self.max_flow # (multiply by 100 for cm to m conversion)
 
         self.altitude = 0.0
 
@@ -42,9 +42,9 @@ class AnalyzeFlow(picamera.array.PiMotionAnalysis):
         x = a['x']
         y = a['y']
 
-        # calculate the planar and yaw motions (multiply by 100 for cm to m conversion)
-        x_motion = 100 * np.sum(x) * self.flow_coeff * self.altitude
-        y_motion = 100 * np.sum(y) * self.flow_coeff * self.altitude
+        # calculate the planar and yaw motions
+        x_motion = np.sum(x) * self.flow_coeff * self.altitude
+        y_motion = np.sum(y) * self.flow_coeff * self.altitude
         twist_msg = TwistStamped()
         twist_msg.header.stamp = rospy.Time.now()
         twist_msg.twist.linear.x = self.near_zero(x_motion)

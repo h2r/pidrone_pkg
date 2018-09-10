@@ -17,7 +17,6 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
 
     Publisher:
     /pidrone/picamera/pose
-    /pidrone/picamera/transforming_on_first_image
 
     Subscribers:
     /pidrone/reset_transform
