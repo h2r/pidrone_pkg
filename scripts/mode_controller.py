@@ -8,7 +8,7 @@ import numpy as np
 import command_values as cmds
 from serial import SerialException
 from std_msgs.msg import Empty
-from pidrone_pkg.msg import Mode, Battery
+from pidrone_pkg.msg import Mode, Battery, State
 
 
 class ModeController(object):
@@ -69,6 +69,10 @@ class ModeController(object):
         """Update ir sensor heartbeat"""
         self.heartbeat_infrared = rospy.Time.now()
 
+    def heartbeat_state_estimator_callback(self, msg):
+        """Update state_estimator heartbeat"""
+        self.heartbeat_state_estimator = rospy.Time.now()
+
     def shouldIDisarm(self):
         """
         Disarm the drone if the battery values are too low or if there is a
@@ -95,6 +99,10 @@ class ModeController(object):
             print('\nSafety Failure: not receiving data from the IR sensor.')
             print('Check the infrared node\n')
             disarm = True
+        if curr_time - self.heartbeat_state_estimator > rospy.Duration.from_sec(1):
+            print('\nSafety Failure: not receiving a state estimate.')
+            print('Check the state_estimator node\n')
+            disarm = True
 
         return disarm
 
@@ -118,6 +126,7 @@ def main():
     mc.heartbeat_web_interface= curr_time
     mc.heartbeat_pid_controller = curr_time
     mc.heartbeat_flight_controller = curr_time
+    mc.heartbeat_state_estimator = curr_time
 
     # Publishers
     ############
@@ -133,6 +142,7 @@ def main():
     rospy.Subscriber("/pidrone/heartbeat/web_interface", Empty, mc.heartbeat_web_interface_callback)
     rospy.Subscriber("/pidrone/heartbeat/pid_controller", Empty, mc.heartbeat_pid_controller_callback)
     rospy.Subscriber("/pidrone/heartbeat/flight_controller", Empty, mc.heartbeat_flight_controller_callback)
+    rospy.Subscriber("/pidrone/state", State, mc.heartbeat_state_estimator_callback)
 
 
     # Non-ROS Setup
