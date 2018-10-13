@@ -96,18 +96,18 @@ class FlightController(object):
         Compute the ROS IMU message by reading data from the board.
         """
 
-        # extract roll, pitch, heading
+        # Extract roll, pitch, heading
         self.board.getData(MultiWii.ATTITUDE)
-        # extract lin_acc_x, lin_acc_y, lin_acc_z
+        # Extract lin_acc_x, lin_acc_y, lin_acc_z
         self.board.getData(MultiWii.RAW_IMU)
 
-        # calculate values to update imu_message:
+        # Calculate values to update imu_message:
         roll = np.deg2rad(self.board.attitude['angx'])
         pitch = -np.deg2rad(self.board.attitude['angy'])
         heading = np.deg2rad(self.board.attitude['heading'])
         # Note that at pitch angles near 90 degrees, the roll angle reading can
         # fluctuate a lot
-        # transform heading (similar to yaw) to standard math conventions, which
+        # Transform heading (yaw) to standard math conventions, which
         # means angles are in radians and positive rotation is CCW
         heading = (-heading) % (2 * np.pi)
         # When first powered up, heading should read near 0
@@ -116,9 +116,9 @@ class FlightController(object):
         quaternion_array = [previous_quaternion.x, previous_quaternion.y, previous_quaternion.z, previous_quaternion.w]
         previous_roll, previous_pitch, previous_heading = tf.transformations.euler_from_quaternion(quaternion_array)
 
-        # transform euler angles into quaternion
+        # Transform euler angles into quaternion
         quaternion = tf.transformations.quaternion_from_euler(roll, pitch, heading)
-        # calculate the linear accelerations
+        # Calculate the linear accelerations
         lin_acc_x = self.board.rawIMU['ax'] * self.accRawToMss - self.accZeroX
         lin_acc_y = self.board.rawIMU['ay'] * self.accRawToMss - self.accZeroY
         lin_acc_z = self.board.rawIMU['az'] * self.accRawToMss - self.accZeroZ

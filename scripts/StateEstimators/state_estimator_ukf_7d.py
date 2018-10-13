@@ -40,9 +40,9 @@ class UKFStateEstimator7D(object):
         # covariance matrix P.
         self.ready_to_filter = False
         self.printed_filter_start_notice = False
+        # Don't wait for the optical flow or camera pose data to start filtering.
+        # Just wait for IR and IMU data
         self.got_ir = False
-        # self.got_camera_pose = False
-        # self.got_optical_flow = False
         self.got_imu = False
         self.loop_hz = loop_hz
         
@@ -64,6 +64,10 @@ class UKFStateEstimator7D(object):
         # Localization wants angular velocities, so take from IMU and republish
         # in the state message
         self.angular_velocity = None
+        # Although not in the state vector, keep track of most recent roll and
+        # pitch values from the IMU (in radians)
+        self.roll = None
+        self.pitch = None
             
         self.in_callback = False
 
@@ -233,6 +237,11 @@ class UKFStateEstimator7D(object):
         self.last_control_input = np.array([data.linear_acceleration.x,
                                             data.linear_acceleration.y,
                                             data.linear_acceleration.z])
+        self.roll, self.pitch, _ = tf.transformations.euler_from_quaternion(
+                                                           [data.orientation.x,
+                                                            data.orientation.y,
+                                                            data.orientation.z,
+                                                            data.orientation.w])
         self.angular_velocity = data.angular_velocity
         if not self.ready_to_filter:
             self.initialize_input_time(data)
@@ -290,7 +299,6 @@ class UKFStateEstimator7D(object):
             # the corresponding state variable
             self.ukf.P[3, 3] = self.measurement_cov_optical_flow[0, 0]
             self.ukf.P[4, 4] = self.measurement_cov_optical_flow[1, 1]
-            # self.got_optical_flow = True
             self.check_if_ready_to_filter()
         self.in_callback = False
         
@@ -329,7 +337,6 @@ class UKFStateEstimator7D(object):
             self.ukf.P[0, 0] = self.measurement_cov_camera_pose[0, 0]
             self.ukf.P[1, 1] = self.measurement_cov_camera_pose[1, 1]
             self.ukf.P[6, 6] = self.measurement_cov_camera_pose[2, 2]
-            # self.got_camera_pose = True
             self.check_if_ready_to_filter()
         self.in_callback = False
             
@@ -352,9 +359,13 @@ class UKFStateEstimator7D(object):
         state_msg.header.stamp.nsecs = self.last_time_nsecs
         state_msg.header.frame_id = 'global'
         
-        # TODO: Consider using roll and pitch values directly from the IMU, as
-        #       the IMU implements its own filter on attitude
-        quaternion = self.get_quaternion_from_yaw(self.ukf.x[6])
+        # Convert RPY Euler angles (radians) to a quaternion, using the yaw
+        # estimate from the UKF (informed by measurements from
+        # camera_pose_data_callback) and the roll and pitch values directly from
+        # the IMU, as the IMU implements its own filter on attitude
+        quaternion = tf.transformations.quaternion_from_euler(self.roll,
+                                                              self.pitch,
+                                                              self.ukf.x[6])
         
         # Get the current state estimate from self.ukf.x, and fill the rest of
         # the message with NaN
@@ -384,11 +395,6 @@ class UKFStateEstimator7D(object):
         
         self.state_pub.publish(state_msg)
         
-    def get_quaternion_from_yaw(self, yaw):
-        return tf.transformations.quaternion_from_euler(0.0,
-                                                        0.0,
-                                                        yaw)
-        
     def apply_quaternion_vector_rotation(self, original_vector, yaw):
         """
         Rotate a vector from the drone's body frame to the global frame using
@@ -399,7 +405,9 @@ class UKFStateEstimator7D(object):
         # This quaternion describes rotation from the global frame to the body
         # frame, so take the quaternion's inverse by negating its real
         # component (w)
-        quat_global_to_body = self.get_quaternion_from_yaw(yaw)
+        quat_global_to_body = tf.transformations.quaternion_from_euler(self.roll,
+                                                                       self.pitch,
+                                                                       yaw)
         quat_body_to_global = list(quat_global_to_body) # copy the quaternion
         quat_body_to_global[3] = -quat_body_to_global[3]
         original_vector_as_quat = list(original_vector)
@@ -437,13 +445,13 @@ class UKFStateEstimator7D(object):
         
     def measurement_function(self, x):
         """
-        Transform the state x into measurement space. In this simple model, we
-        assume that the range measurement corresponds exactly to position along
-        the z-axis, as we are assuming there is no pitch and roll.
+        Transform the state x into measurement space.
         
         x : current state. A NumPy array
         """
-        H = np.array([[0, 0, 1, 0, 0, 0, 0],
+        # Conversion from altitude (alt) to slant range (r)
+        alt_to_r = 1.0/(np.cos(self.roll)*np.cos(self.pitch))
+        H = np.array([[0, 0, alt_to_r, 0, 0, 0, 0],
                       [1, 0, 0, 0, 0, 0, 0],
                       [0, 1, 0, 0, 0, 0, 0],
                       [0, 0, 0, 1, 0, 0, 0],
@@ -466,7 +474,7 @@ class UKFStateEstimator7D(object):
                 # Now that a prediction has been formed to bring the current
                 # prior state estimate to the same point in time as the
                 # measurement, perform a measurement update with the most recent
-                # IR range reading
+                # set of measurements
                 self.ukf.update(self.last_measurement_vector)
                 self.publish_current_state()
             rate.sleep()
