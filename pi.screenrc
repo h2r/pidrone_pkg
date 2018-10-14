@@ -38,35 +38,30 @@ acladd stefie10
 # `:title " MAKE" (sets the title to " MAKE")
 #screen -t " MAKE"
 
-#stuff "unset STY"
-#stuff "screen"
+#stuff "unset STY\n"
+#stuff "screen\n"
 
 screen -t " roscore"
-stuff "source setup.sh"
-stuff "roscore"
+stuff "source setup.sh\n"
+stuff "roscore\n"
 stuff ""
 
-screen -t " mode_controller"
-stuff "source setup.sh"
-stuff "cd $(rospack find pidrone_pkg)/scripts"
+screen -t " mode"
+stuff "source setup.sh\n"
+stuff "cd $(rospack find pidrone_pkg)/scripts\n"
 stuff "python mode_controller.py" # starting mode controller automatically is unsafe
 
-screen -t " command_line_interface"
-stuff "source setup.sh\n"
-stuff "cd $(rospack find pidrone_pkg)/scripts/\n"
-stuff "python command_line_interface.py\n"
-
-screen -t " flight_controller"
+screen -t " flight"
 stuff "source setup.sh\n"
 stuff "cd $(rospack find pidrone_pkg)/scripts/\n"
 stuff "python flight_controller_node.py\n"
 
-screen -t " pid_controller"
+screen -t " pid"
 stuff "source setup.sh\n"
 stuff "cd $(rospack find pidrone_pkg)/scripts/\n"
 stuff "python pid_controller.py\n"
 
-screen -t " state_estimator"
+screen -t " state"
 stuff "source setup.sh\n"
 stuff "cd $(rospack find pidrone_pkg)/scripts/\n"
 stuff "python state_estimator.py\n"
@@ -76,49 +71,27 @@ stuff "source setup.sh\n"
 stuff "cd $(rospack find pidrone_pkg)/scripts\n"
 stuff "python vision_flow_and_phase.py\n"
 
-screen -t " infrared"
+screen -t " ir"
 stuff "source setup.sh\n"
 stuff "cd $(rospack find pidrone_pkg)/scripts/\n"
 stuff "python infrared_pub.py\n"
 
-screen -t " rosbridge"
-stuff "source setup.sh"
-stuff "sleep 10s && roslaunch rosbridge_server rosbridge_websocket.launch"
-
-screen -t " web_video_server"
-stuff "source setup.sh"
-stuff " rosrun web_video_server web_video_server"
-
-screen -t " vim"
+screen -t " ros"
 stuff "source setup.sh\n"
-stuff "cd $(rospack find pidrone_pkg)/scripts\n"
-stuff "vim -p flow_pub_transform.py state_controller.py pid_class.py\n"
+stuff "sleep 10s && roslaunch pidrone_pkg web.launch\n"
 
 screen -t " emacs"
 stuff "source setup.sh\n"
 stuff "cd $(rospack find pidrone_pkg)/scripts\n"
 stuff "emacs\n"
 
-screen -t " free"
-stuff "source setup.sh"
-stuff "cd $(rospack find pidrone_pkg)/scripts/"
-
-screen -t " throttle_ir"
+screen -t " vim"
 stuff "source setup.sh\n"
 stuff "cd $(rospack find pidrone_pkg)/scripts\n"
-stuff "rosrun topic_tools throttle messages /pidrone/infrared 10.0\n"
+stuff "vim \n"
 
-screen -t " throttle_imu"
+
+screen -t " throttle"
 stuff "source setup.sh\n"
 stuff "cd $(rospack find pidrone_pkg)/scripts\n"
-stuff "rosrun topic_tools throttle messages /pidrone/imu 10.0\n"
-
-screen -t " throttle_optical_flow"
-stuff "source setup.sh\n"
-stuff "cd $(rospack find pidrone_pkg)/scripts\n"
-stuff "rosrun topic_tools throttle messages /pidrone/picamera/twist 10.0\n"
-
-screen -t " throttle_camera_pose"
-stuff "source setup.sh\n"
-stuff "cd $(rospack find pidrone_pkg)/scripts\n"
-stuff "rosrun topic_tools throttle messages /pidrone/picamera/pose 15.0\n"
+stuff "roslaunch pidrone_pkg throttle.launch\n"
