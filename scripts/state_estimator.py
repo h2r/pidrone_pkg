@@ -52,9 +52,9 @@ class StateEstimator(object):
         pidrone_pkg_dir = 'pidrone_pkg'
         
         if student_ukf:
-            program_str = 'rosrun ' + student_project_pkg_dir + ' StateEstimators/student_'
+            program_str = 'rosrun ' + student_project_pkg_dir + ' state_estimators/student_'
         else:
-            program_str = 'rosrun ' + pidrone_pkg_dir + ' scripts/StateEstimators/'
+            program_str = 'rosrun ' + pidrone_pkg_dir + ' scripts/state_estimators/'
             
         # TODO: Test this IR variance argument passing
         # TODO: Test if it is necessary to include "scripts/" in this command.
@@ -65,7 +65,7 @@ class StateEstimator(object):
             sim_cmd += ' --ir_var '+str(ir_var)
         
         self.process_cmds_dict = {
-                'ema': 'rosrun pidrone_pkg scripts/StateEstimators/state_estimator_ema.py',
+                'ema': 'rosrun pidrone_pkg scripts/state_estimators/state_estimator_ema.py',
                 'ukf2d': '{}state_estimator_ukf_2d.py'.format(program_str),
                 'ukf7d': '{}state_estimator_ukf_7d.py'.format(program_str),
                 'ukf12d': 'rosrun pidrone_pkg scripts/state_estimator_ukf_12d.py',

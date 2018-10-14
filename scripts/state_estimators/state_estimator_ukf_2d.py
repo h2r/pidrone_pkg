@@ -14,7 +14,6 @@ import matplotlib
 matplotlib.use('Pdf')
 from filterpy.kalman import UnscentedKalmanFilter
 from filterpy.kalman import MerweScaledSigmaPoints
-from filterpy.common.discretization import Q_discrete_white_noise
 
 # Other imports
 import numpy as np
@@ -136,7 +135,6 @@ class UKFStateEstimator2D(object):
         # Initialize the process noise covariance matrix Q:
         # TODO: Tune appropriately. Currently just a guess
         self.ukf.Q = np.diag([0.01, 1.0])*0.005
-        # self.ukf.Q = Q_discrete_white_noise(self.state_vector_dim)
         
         # Initialize the measurement covariance matrix R
         # IR slant range variance (m^2), determined experimentally in a static
@@ -189,8 +187,6 @@ class UKFStateEstimator2D(object):
         Compute the prior for the UKF based on the current state, a control
         input, and a time step.
         """
-        # self.ukf.Q = Q_discrete_white_noise(self.state_vector_dim, dt=self.dt, var=1.0)
-        # self.ukf.Q = np.diag([0.01, 1.0])*0.05*self.dt
         self.ukf.predict(dt=self.dt, u=self.last_control_input)
         
     def print_notice_if_first(self):
