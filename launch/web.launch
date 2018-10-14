@@ -1,7 +1,7 @@
 <launch>
   <!-- rosbridge and the web video server -->
   <include file="$(find rosbridge_server)/launch/rosbridge_websocket.launch" >
-    <arg name="port" value="8080"/>
+    <arg name="port" value="9090"/>
   </include>
-  <node type="web_video_server" pkg="web_video_server" />
+  <node name="web_video_server" type="web_video_server" pkg="web_video_server" />
 </launch>

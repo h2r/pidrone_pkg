@@ -76,7 +76,7 @@ stuff "source setup.sh\n"
 stuff "cd $(rospack find pidrone_pkg)/scripts/\n"
 stuff "python infrared_pub.py\n"
 
-screen -t " ros"
+screen -t " web"
 stuff "source setup.sh\n"
 stuff "sleep 10s && roslaunch pidrone_pkg web.launch\n"
 
