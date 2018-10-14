@@ -124,7 +124,9 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
                             self.lost = True
 
             self.previous_image = image
-
+        else:
+            image = np.reshape(np.fromstring(data, dtype=np.uint8), (240, 320, 3))
+            self.previous_image = image
         # if the camera is lost over ten times in a row, then publish lost
         # to disable position control
         if self.lost:

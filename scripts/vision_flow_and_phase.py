@@ -36,12 +36,18 @@ def main():
                     camera.start_recording("/dev/null", format='h264', splitter_port=1, motion_output=flow_analyzer)
                     camera.start_recording(phase_analyzer, format='bgr', splitter_port=2)
                     # nonblocking wait
+                    lastPubTime = None
+                    pubRate = 2
+                    pubDuration = rospy.Duration.from_sec(1.0/pubRate)
                     while not rospy.is_shutdown():
                         camera.wait_recording(1/100.0)
                         # publish the raw image
+                        now = rospy.Time.now()                        
                         if phase_analyzer.previous_image is not None:
-                            image_message = bridge.cv2_to_imgmsg(phase_analyzer.previous_image, encoding="bgr8")
-                            image_pub.publish(image_message)
+                            if (lastPubTime == None  or (now - lastPubTime) > pubDuration):
+                                image_message = bridge.cv2_to_imgmsg(phase_analyzer.previous_image, encoding="bgr8")
+                                image_pub.publish(image_message)
+                                lastPubTime = now
                 # safely shutdown the camera recording for flow_analyzer
                 camera.stop_recording(splitter_port=1)
             # safely shutdown the camera recording for phase_analyzer
