@@ -26,9 +26,8 @@ import os
 class UKFStateEstimator7D(object):
     """
     Class that estimates the state of the drone using an Unscented Kalman Filter
-    (UKF) applied to raw sensor data. This script tests the addition of position
-    estimates from the camera, which we get from position hold, localization, or
-    SLAM.
+    (UKF) applied to raw sensor data. The filter tracks 7 state variables to
+    estimate aspects of the drone's pose and twist in three-dimensional space.
     """
     # TODO: Make a reference to the UKF math document that is being written up,
     #       once it is in a complete enough state and can be placed in a shared
@@ -227,9 +226,7 @@ class UKFStateEstimator7D(object):
         
     def imu_data_callback(self, data):
         """
-        Handle the receipt of an Imu message. Only take the linear acceleration
-        along the z-axis.
-        
+        Handle the receipt of an Imu message.
         """
         if self.in_callback:
             return
@@ -279,8 +276,6 @@ class UKFStateEstimator7D(object):
         The message parts that we will be using:
             - x velocity (m/s)
             - y velocity (m/s)
-        
-        This method PREDICTS with the most recent control input and UPDATES.
         """
         if self.in_callback:
             return
@@ -309,8 +304,6 @@ class UKFStateEstimator7D(object):
             - x (meters)
             - y (meters)
             - yaw (radians)
-        
-        This method PREDICTS with the most recent control input and UPDATES.
         """
         if self.in_callback:
             return
@@ -350,9 +343,6 @@ class UKFStateEstimator7D(object):
             - Header
             - PoseWithCovariance
             - TwistWithCovariance
-        Note that a lot of these ROS message fields will be left empty, as the
-        1D UKF does not track information on the entire state space of the
-        drone.
         """
         state_msg = State()
         state_msg.header.stamp.secs = self.last_time_secs
@@ -492,7 +482,7 @@ def check_positive_float_duration(val):
         
 def main():
     parser = argparse.ArgumentParser(description=('Estimate the drone\'s state '
-                                     'with a UKF'))
+                                     'with a UKF in three spatial dimensions'))
     # Arguments to determine if the throttle command is being used. E.g.:
     #   rosrun topic_tools throttle messages /pidrone/infrared 40.0
     parser.add_argument('--ir_throttled', action='store_true',

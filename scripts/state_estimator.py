@@ -48,7 +48,7 @@ class StateEstimator(object):
         self.estimators = list(self.other_estimators)
         self.estimators.append(self.primary_estimator)
         
-        student_project_pkg_dir = 'pidrone_project2_ukf'
+        student_project_pkg_dir = 'project-ukf-yourGithubName'
         pidrone_pkg_dir = 'pidrone_pkg'
         
         if student_ukf:
