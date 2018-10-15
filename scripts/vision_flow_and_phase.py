@@ -37,7 +37,7 @@ def main():
                     camera.start_recording(phase_analyzer, format='bgr', splitter_port=2)
                     # nonblocking wait
                     lastPubTime = None
-                    pubRate = 2
+                    pubRate = 2 #Hz
                     pubDuration = rospy.Duration.from_sec(1.0/pubRate)
                     while not rospy.is_shutdown():
                         camera.wait_recording(1/100.0)
