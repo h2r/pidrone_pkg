@@ -49,7 +49,7 @@ stuff ""
 screen -t " mode"
 stuff "source setup.sh\n"
 stuff "cd $(rospack find pidrone_pkg)/scripts\n"
-stuff "sleep 5s \n python mode_controller.py\n" 
+stuff "sleep 5s\npython mode_controller.py\n" 
 
 screen -t " flight"
 stuff "source setup.sh\n"

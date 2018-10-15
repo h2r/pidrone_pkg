@@ -61,7 +61,7 @@ def main():
                 camera.start_recording(camera_transmitter, format='bgr', splitter_port=2)
                 last_time = None
                 lastPubTime = None
-                pubRate = 2 #Hz
+                pubRate = 10 #Hz
                 pubDuration = rospy.Duration.from_sec(1.0/pubRate)
 
                 while not rospy.is_shutdown():
