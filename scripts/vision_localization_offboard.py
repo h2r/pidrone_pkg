@@ -60,16 +60,23 @@ def main():
                 print "Starting Flow"
                 camera.start_recording(camera_transmitter, format='bgr', splitter_port=2)
                 last_time = None
+                lastPubTime = None
+                pubRate = 2 #Hz
+                pubDuration = rospy.Duration.from_sec(1.0/pubRate)
+
                 while not rospy.is_shutdown():
                     camera.wait_recording(1 / 40.0)
 
                     if camera_transmitter.prev_img is not None and camera_transmitter.prev_time != last_time:
-                        image_message = bridge.cv2_to_imgmsg(camera_transmitter.prev_img, encoding="bgr8")
-                        image_message.header.stamp = camera_transmitter.prev_rostime
-                        # print "stamp", image_message.header.stamp
-                        last_time = camera_transmitter.prev_rostime
-                        image_pub.publish(image_message)
-                        camera_info_pub.publish(cim.getCameraInfo())
+                        now = rospy.Time.now()                        
+                        if (lastPubTime == None  or (now - lastPubTime) > pubDuration):
+                            image_message = bridge.cv2_to_imgmsg(camera_transmitter.prev_img, encoding="bgr8")
+                            image_message.header.stamp = camera_transmitter.prev_rostime
+                            # print "stamp", image_message.header.stamp
+                            last_time = camera_transmitter.prev_rostime
+                            image_pub.publish(image_message)
+                            camera_info_pub.publish(cim.getCameraInfo())
+                            lastPubTime = now
 
                 camera.stop_recording(splitter_port=1)
                 camera.stop_recording(splitter_port=2)
