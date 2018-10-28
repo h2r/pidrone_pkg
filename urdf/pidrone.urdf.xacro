@@ -18,8 +18,8 @@
   </xacro:generic_camera>
 
   <!-- IR sensor -->
-  <xacro:ir_sensor name="ir" parent="base_link" ros_topic="/pidrone/infraread" update_rate="10" min_range="0.03" max_range="3.0" field_of_view="${40*pi/180}" ray_count="3">
+  <xacro:sonar_sensor name="ir" parent="base_link" ros_topic="/pidrone/infraread" update_rate="10" min_range="0.03" max_range="3.0" field_of_view="${40*pi/180}" ray_count="3">
     <origin xyz="-0.16 0.0 -0.012" rpy="0 ${90*pi/180} 0"/>
-  </xacro:ir_sensor>
+  </xacro:sonar_sensor>
 
 </robot>
