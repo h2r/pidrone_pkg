@@ -64,7 +64,7 @@ stuff "python pid_controller.py\n"
 screen -t " state"
 stuff "source setup.sh\n"
 stuff "cd $(rospack find pidrone_pkg)/scripts/\n"
-stuff "python state_estimator.py\n"
+stuff "python state_estimator.py --primary ukf7d \n"
 
 screen -t " vision"
 stuff "source setup.sh\n"
@@ -78,7 +78,7 @@ stuff "python infrared_pub.py\n"
 
 screen -t " web"
 stuff "source setup.sh\n"
-stuff "sleep 5s\n roslaunch pidrone_pkg web.launch\n"
+stuff "sleep 5s\n roslaunch pidrone_pkg web.launch \n"
 
 screen -t " emacs"
 stuff "source setup.sh\n"

@@ -153,8 +153,7 @@ class UKFStateEstimator7D(object):
                                          dt=1.0,
                                          hx=self.measurement_function,
                                          fx=self.state_transition_function,
-                                         points=sigma_points,
-                                         compute_log_likelihood=False)
+                                         points=sigma_points)
         self.initialize_ukf_matrices()
 
     def initialize_ukf_matrices(self):
