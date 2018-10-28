@@ -19,9 +19,9 @@ class ModeController(object):
     def __init__(self):
 
         # Desired, current, and previous modes of the drone
-        self.desired_mode = 'DISARMED'
-        self.curr_mode = 'DISARMED'
-        self.prev_mode = 'DISARMED'
+        self.desired_mode = Mode.DISARMED
+        self.curr_mode = Mode.DISARMED
+        self.prev_mode = Mode.DISARMED
 
         # Battery values
         self.vbat = None
@@ -109,7 +109,7 @@ class ModeController(object):
     def ctrl_c_handler(self, signal, frame):
         """Disarms the drone and exits the program if ctrl-c is pressed"""
         print "\nCaught ctrl-c! About to Disarm!"
-        self.cmd_mode_pub.publish('DISARMED')
+        self.cmd_mode_pub.publish(Mode.DISARMED)
         sys.exit()
 
 
@@ -155,41 +155,41 @@ def main():
         try:
             # if the current or desired mode is anything other than disarmed
             # preform as safety check
-            if mc.curr_mode != 'DISARMED' or mc.desired_mode != 'DISARMED':
+            if mc.curr_mode != Mode.DISARMED or mc.desired_mode != Mode.DISARMED:
                 # Break the loop if a safety check has failed
                 if mc.shouldIDisarm():
                     break
 
             # Finite State Machine
             ######################
-            if mc.curr_mode == 'DISARMED':
-                if mc.desired_mode == 'DISARMED':
-                    mc.cmd_mode_pub.publish('DISARMED')
-                elif mc.desired_mode == 'ARMED':
+            if mc.curr_mode == Mode.DISARMED:
+                if mc.desired_mode == Mode.DISARMED:
+                    mc.cmd_mode_pub.publish(Mode.DISARMED)
+                elif mc.desired_mode == Mode.ARMED:
                     print 'sending arm command'
-                    mc.cmd_mode_pub.publish('ARMED')
+                    mc.cmd_mode_pub.publish(Mode.ARMED)
                     rospy.sleep(1)
                 else:
                     print 'Cannot transition from Mode %s to Mode %s' % (mc.curr_mode, mc.desired_mode)
 
-            elif mc.curr_mode == 'ARMED':
-                if mc.desired_mode == 'ARMED':
+            elif mc.curr_mode == Mode.ARMED:
+                if mc.desired_mode == Mode.ARMED:
                     mc.cmd_mode_pub.publish('ARMED')
-                elif mc.desired_mode == 'FLYING':
+                elif mc.desired_mode == Mode.FLYING:
                     print 'sending fly command'
-                    mc.cmd_mode_pub.publish('FLYING')
-                elif mc.desired_mode == 'DISARMED':
+                    mc.cmd_mode_pub.publish(Mode.FLYING)
+                elif mc.desired_mode == Mode.DISARMED:
                     print 'sending disarm command'
-                    mc.cmd_mode_pub.publish('DISARMED')
+                    mc.cmd_mode_pub.publish(Mode.DISARMED)
                 else:
                     print 'Cannot transition from Mode %s to Mode %s' % (mc.curr_mode, mc.desired_mode)
 
-            elif mc.curr_mode == 'FLYING':
-                if mc.desired_mode == 'FLYING':
-                    mc.cmd_mode_pub.publish('FLYING')
-                elif mc.desired_mode == 'DISARMED':
+            elif mc.curr_mode == Mode.FLYING:
+                if mc.desired_mode == Mode.FLYING:
+                    mc.cmd_mode_pub.publish(Mode.FLYING)
+                elif mc.desired_mode == Mode.DISARMED:
                     print 'sending disarm command'
-                    mc.cmd_mode_pub.publish('DISARMED')
+                    mc.cmd_mode_pub.publish(Mode.DISARMED)
                 else:
                     print 'Cannot transition from Mode %s to Mode %s' % (mc.curr_mode, mc.desired_mode)
 
@@ -199,7 +199,7 @@ def main():
                 sys.exit()
         r.sleep()
 
-    mc.cmd_mode_pub.publish('DISARMED')
+    mc.cmd_mode_pub.publish(Mode.DISARMED)
     print 'Shutdown Received'
     print 'Sending DISARM command'
 
