@@ -6,9 +6,6 @@ map_data format:
 all on a single line: a list of length 3 lists where each inner list holds the kp, des, then ir reading
 """
 
-# so the ast function claims there's an EOF in there, but the readline thing reads
-# until EOF so that's basically impossible, I suspect it just has a length limit
-
 # most amazing and greatest python library
 import ast
 from slam_helper import FastSLAM
@@ -19,8 +16,6 @@ map_path = 'flight_data.txt'
 
 file = open(map_path, 'r')
 
-#map_data = file.readline()
-#file.close()
 
 map_data = ""
 for char in file.read():
