@@ -37,6 +37,8 @@ The following instructions describe how to use each of the five supported progra
 
 **Onboard**: run "vision_localization_onboard.py --SLAM --offline" on the pi. Press “m” to toggle mapping mode on, during which time you can fly to collect data for the map. Pressing “m” again will stop the mapping and begin running SLAM offline. It is highly recommended that you land the drone for this part. Once it tells you that it is finished making the map, press “r” to toggle localization over the map you have just made.
 
+**onboard, re-using map**: In this mode, the code will skip the mapping process and instead read in a map from a text file and localize over that. run "vision_localization_onboard.py --SLAM --offline --read [name of map file]." Simply press "r" to toggle localization as if you were running the normal localization code. 
+
 
 Happy Flying!
 
