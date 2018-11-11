@@ -32,10 +32,12 @@ NUM_FEATURES = 50
 
 
 class MATL(picamera.array.PiMotionAnalysis):
-    def __init__(self, camera, bridge):
+    def __init__(self, camera, bridge, read, filename):
         picamera.array.PiMotionAnalysis.__init__(self, camera)
         self.bridge = bridge
         self.br = tf.TransformBroadcaster()
+
+        print(read, filename)
 
         self.posepub = rospy.Publisher('/pidrone/picamera/pose', PoseStamped, queue_size=1)
         self.first_image_pub = rospy.Publisher("/pidrone/picamera/first_image", Image, queue_size=1, latch=True)

@@ -23,12 +23,15 @@ import argparse
 
 def main():
     parser = argparse.ArgumentParser(description='Estimate the drone\'s pose with SLAM or localization')
-    # Arguments to determine if the throttle command is being used. E.g.:
-    #   rosrun topic_tools throttle messages /pidrone/infrared 40.0
+
     parser.add_argument('--SLAM', action='store_true',
                         help=('Do you want to do SLAM?'))
     parser.add_argument('--offline', action='store_true',
                         help=('Run offline?'))
+    parser.add_argument('--read', action='store_true', 
+                        help="Read from existing map file?")
+    parser.add_argument('file', action="store", type=file, 
+                        help="Name of map file")
     args = parser.parse_args()
 
     node_name = os.path.splitext(os.path.basename(__file__))[0]
@@ -52,7 +55,7 @@ def main():
 
                 if args.SLAM:
                     if args.offline:
-                        phase_analyzer = MATL(camera, bridge)
+                        phase_analyzer = MATL(camera, bridge, args.read, args.filename)
                         rospy.Subscriber('/pidrone/map', Empty, phase_analyzer.map_callback)
                     else:
                         phase_analyzer = SLAM(camera, bridge)
