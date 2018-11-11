@@ -3,5 +3,7 @@
   <node name="throttle_ir" type="throttle" pkg="topic_tools" args="messages /pidrone/infrared 10.0" />
   <node name="throttle_imu" type="throttle" pkg="topic_tools" args="messages /pidrone/imu 10.0" />
   <node name="throttle_flow" type="throttle" pkg="topic_tools" args="messages /pidrone/picamera/twist 10.0" />
-  <node name="throttle_pose" type="throttle" pkg="topic_tools" args="messages /pidrone/picamera/pose 15.0" />  
+  <node name="throttle_pose" type="throttle" pkg="topic_tools" args="messages /pidrone/picamera/pose 15.0" />
+
+  <node name="ros_stuff" type="ros_stuff.py" pkg="pidrone_pkg" args="" />    
 </launch>

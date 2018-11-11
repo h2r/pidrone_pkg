@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import tf
 import tf2_ros
 import rospy
