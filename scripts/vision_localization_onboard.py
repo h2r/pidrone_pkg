@@ -7,6 +7,7 @@ This file can run SLAM or localization on board, offline or online
 
 
 from onboard_localization import *
+from offline_localization import *
 from onboard_slam import *
 from MATL import *
 from cv_bridge import CvBridge, CvBridgeError
@@ -28,10 +29,8 @@ def main():
                         help=('Do you want to do SLAM?'))
     parser.add_argument('--offline', action='store_true',
                         help=('Run offline?'))
-    parser.add_argument('--read', action='store_true', 
+    parser.add_argument('--read', action='store_true',
                         help="Read from existing map file?")
-    parser.add_argument('file', action="store", type=file, 
-                        help="Name of map file")
     args = parser.parse_args()
 
     node_name = os.path.splitext(os.path.basename(__file__))[0]
@@ -54,12 +53,13 @@ def main():
                 flow_analyzer.setup(camera.resolution)
 
                 if args.SLAM:
-                    if args.offline:
-                        phase_analyzer = MATL(camera, bridge, args.read, args.filename)
-                        rospy.Subscriber('/pidrone/map', Empty, phase_analyzer.map_callback)
-                    else:
-                        phase_analyzer = SLAM(camera, bridge)
+                    # run SLAM online
+                    phase_analyzer = SLAM(camera, bridge)
+                elif args.read:
+                    # localize over map file
+                    phase_analyzer = OfflineLocalizer(camera, bridge)
                 else:
+                    # default localization
                     phase_analyzer = Localizer(camera, bridge)
 
                 rospy.Subscriber('/pidrone/reset_transform', Empty, phase_analyzer.reset_callback)
