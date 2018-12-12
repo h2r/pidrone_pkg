@@ -385,15 +385,15 @@ def main(ControllerClass):
             # after flying, take the converged low i terms and set these as the
             # initial values, this allows the drone to "learn" and get steadier
             # with each flight until it converges
+            # NOTE: do not store the throttle_low.init_i or else the drone will
+            # take off abruptly after the first flight
             elif pid_controller.desired_mode == 'DISARMED':
                 pid_controller.pid.roll_low.init_i = pid_controller.pid.roll_low._i
                 pid_controller.pid.pitch_low.init_i = pid_controller.pid.pitch_low._i
-                pid_controller.pid.throttle_low.init_i = pid_controller.pid.throttle_low._i
                 # Uncomment below statements to print the converged values.
                 # Make sure verbose = 0 so that you can see these values
                 # print 'roll_low.init_i', pid_controller.pid.roll_low.init_i
                 # print 'pitch_low.init_i', pid_controller.pid.pitch_low.init_i
-                # print 'throttle_low.init_i', pid_controller.pid.throttle_low.init_i
 
         if verbose >= 2:
             if pid_controller.position_control:
