@@ -59,10 +59,13 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
     def write(self, data):
         ''' A method that is called everytime an image is taken '''
 
+        
+        image = np.reshape(np.fromstring(data, dtype=np.uint8), (240, 320, 3))
         # Run the following only if position control is enabled to prevent
         # wasting computation resources on unused position data
         if self.position_control:
-            image = np.reshape(np.fromstring(data, dtype=np.uint8), (240, 320, 3))
+            
+
             # if there is no first image stored, tell the user to capture an image
             if self.first:
                 self.first = False
@@ -123,7 +126,7 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
                         else:
                             self.lost = True
 
-            self.previous_image = image
+                self.previous_image = image
 
         # if the camera is lost over ten times in a row, then publish lost
         # to disable position control
