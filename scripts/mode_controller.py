@@ -27,7 +27,7 @@ class ModeController(object):
         self.vbat = None
         self.amperage = None
         # Adjust this based on how low the battery should discharge
-        self.minimum_voltage = 8
+        self.minimum_voltage = 4.5
 
         # Publisher to send the commanded mode to
         self.cmd_mode_pub = None
