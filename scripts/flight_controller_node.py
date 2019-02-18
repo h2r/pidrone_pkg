@@ -40,6 +40,7 @@ class FlightController(object):
         self.prev_mode = 'DISARMED'         #initialize as disarmed
         # store the command to send to the flight controller
         self.command = cmds.disarm_cmd      #initialize as disarmed
+        self.last_command = cmds.disarm_cmd
         # store the mode publisher
         self.modepub = None
         # store the time for angular velocity calculations
@@ -212,7 +213,9 @@ class FlightController(object):
         """ Send commands to the flight controller board """
         self.board.sendCMD(8, MultiWii.SET_RAW_RC, self.command)
         self.board.receiveDataPacket()
-        print 'command sent:', self.command
+        if (self.command != self.last_command):
+            print 'command sent:', self.command
+            self.last_command = self.command
 
     def near_zero(self, n):
         """ Set a number to zero if it is below a threshold value """
