@@ -18,6 +18,8 @@ CAMERA_SCALE = 290.
 # ----- keyframe parameters ----- #
 KEYFRAME_DIST_THRESHOLD = CAMERA_HEIGHT - 40
 KEYFRAME_YAW_THRESHOLD = 0.175  # 10 degrees
+DIST_THRESHOLD = 0.1
+MEASURE_WAIT_COUNT = 10
 # ----------------------------------------- #
 
 # ----- feature parameters DO NOT EDIT ----- #
@@ -77,8 +79,15 @@ class LocalizationParticleFilter:
         self.map_kp = None
         self.map_des = None
 
+        self.max_x, self.max_y, self.min_x, self.min_y = None, None, None, None
+
         self.particles = None
         self.measure_count = 0
+
+        self.last_x = None
+        self.last_y = None
+        self.curr_x = None
+        self.curr_y = None
 
         index_params = dict(algorithm=6, table_number=6, key_size=12, multi_probe_level=1)
         search_params = dict(checks=50)
@@ -101,8 +110,8 @@ class LocalizationParticleFilter:
         self.map_grid_size_y = None
         self.min_x, self.min_y = None, None
 
-        sigma_vx = 2
-        sigma_vy = 2
+        sigma_vx = 0.005
+        sigma_vy = 0.005
         sigma_vz = 0.0
         sigma_yaw = 0.01
         self.covariance_motion = np.array([[sigma_vx ** 2, 0, 0, 0],
@@ -124,11 +133,14 @@ class LocalizationParticleFilter:
         transform = self.compute_transform(prev_kp, prev_des, kp, des)
 
         if transform is not None:
+            
             x = -transform[0, 2]
             y = transform[1, 2]
             yaw = -np.arctan2(transform[1, 0], transform[0, 0])
 
             self.sample_motion_model(x, y, yaw)
+            self.measure_count += 1
+            """
 
             # if there is some previous keyframe
             if self.key_kp is not None and self.key_des is not None:
@@ -153,9 +165,22 @@ class LocalizationParticleFilter:
             else:
                 self.measurement_model(kp, des)
                 self.key_kp, self.key_des = kp, des
+            """
+        else:
+            print "lost!!!"
 
-        self.resample_particles()
-        return self.get_estimated_position()
+        particle = self.get_estimated_position()
+
+        if ((abs(self.last_x-self.curr_x) + abs(self.last_y-self.curr_y)) > DIST_THRESHOLD or (self.measure_count > MEASURE_WAIT_COUNT)):
+            self.measurement_model(kp, des)
+            particle = self.get_estimated_position()    
+            self.last_x = particle.x()
+            self.last_y = particle.y()
+            self.curr_x = self.last_x
+            self.curr_y = self.last_y
+            self.measure_count = 0
+
+        return particle
 
     def sample_motion_model(self, x, y, yaw):
         """
@@ -219,16 +244,21 @@ class LocalizationParticleFilter:
             """
 
             """
+            map_kp, map_des = [], []
             # NUMBER THREE gets all the kp and des from entire map
-            
             for g in range(self.map_grid_size_x):
                 for j in range(self.map_grid_size_y):
                     map_kp += self.map_kp[j][g]
                     map_des += self.map_des[j][g]
+            
 
-            pose, num = self.compute_location(kp, des, map_kp, map_des)
+            # this is a zero pro-processing strategy, it just uses the actual map and des from SLAM
+            if self.map_kp and self.map_des:
+                pose, num = self.compute_location(kp, des, self.map_kp, self.map_des)
+            else:
+                print "SOMETHING VERY WRONG"
             """
-
+            
             # compute weight of particle
             if pose is None:
                 q = PROB_THRESHOLD
@@ -244,12 +274,12 @@ class LocalizationParticleFilter:
 
                 # norm_pdf(x, 0, sigma) gets you the probability of x
                 q = norm_pdf(noisy_pose[0] - position[0], 0, self.sigma_x) \
-                    * norm_pdf(noisy_pose[1] - position[1], 0, self.sigma_y) \
-                    * norm_pdf(yaw_difference, 0, self.sigma_yaw)
+                    * norm_pdf(noisy_pose[1] - position[1], 0, self.sigma_y) 
 
             # keep floats from overflowing
             self.particles.weights[i] = max(q, PROB_THRESHOLD)
-            print "end msmt model"
+
+        self.resample_particles()
 
     def resample_particles(self):
         """""
@@ -288,7 +318,10 @@ class LocalizationParticleFilter:
             z += prob * self.particles.poses[i, 2]
             yaw += prob * self.particles.poses[i, 3]
 
-        return Particle(0, np.array([[x, y, z, yaw]]), np.array([weights_sum / self.particles.weights.size]))
+        particle = Particle(0, np.array([[x, y, z, yaw]]), np.array([weights_sum / self.particles.weights.size]))
+        self.curr_x = particle.x()
+        self.curr_y = particle.y()
+        return particle
 
     def initialize_particles(self, num_particles, kp, des):
         """
@@ -302,7 +335,7 @@ class LocalizationParticleFilter:
         weights = []
         poses = []
         new_poses = []
- 
+
         # go through every grid, trying to find matched features
         for x in range(self.map_grid_size_x):
             for y in range(self.map_grid_size_y):
@@ -330,9 +363,34 @@ class LocalizationParticleFilter:
         for i, count in enumerate(samples):
             for _ in range(count):
                 new_poses.append(poses[i])
+        """
+
+        self.key_kp, self.key_des = None, None
+        weights_sum = 0.0
+        weights = []
+        poses = []
+        new_poses = []
+
+        print "random initialization"
+
+        weights = [1 / float(num_particles) for _ in range(num_particles)]
+        poses = [[np.random.uniform(self.min_x,self.max_x), np.random.uniform(self.min_y,self.max_y), 0, 0] for _ in range(num_particles)]
+
+        samples = np.random.multinomial(num_particles, weights)  
+        for i, count in enumerate(samples):
+            for _ in range(count):
+                new_poses.append(poses[i])
+        """
 
         self.particles = ParticleSet(num_particles, np.array(new_poses))
-        return self.get_estimated_position()
+
+        particle = self.get_estimated_position()
+        self.last_x = particle.x()
+        self.last_y = particle.y()
+        self.curr_x = -particle.x()
+        self.curr_y = -particle.y()
+
+        return particle
 
     def compute_location(self, kp1, des1, kp2, des2):
         """
@@ -349,7 +407,10 @@ class LocalizationParticleFilter:
 
         if des1 is not None and des2 is not None and len(des1) != 0 and len(des2) != 0:
             des22 = np.asarray(des2, np.uint8)
-            matches = self.matcher.knnMatch(des1, des22, k=2)
+            des3 = np.asarray(des1, np.uint8)
+
+            matches = self.matcher.knnMatch(des3, des22, k=2)
+
 
             for match in matches:
                 if len(match) > 1 and match[0].distance < MATCH_RATIO*match[1].distance:
@@ -383,6 +444,7 @@ class LocalizationParticleFilter:
                     global_offset_y = math.sin(yaw) * offset_x + math.cos(yaw) * offset_y
                     pose = [transformed_center[0] + global_offset_x, transformed_center[1] + global_offset_y, z, yaw]
 
+        print "MATCHES", len(good)
         return pose, len(good)
 
     def compute_transform(self, kp1, des1, kp2, des2):
@@ -418,6 +480,18 @@ class LocalizationParticleFilter:
         :param map_kp: the keypoints from the SLAM-generated map as a list of pairs [[x1,y1],...,[xn,yn]]
         :param map_des: the descriptors from the SLAM_generated map as a list of lists of 8-bit integers
         """
+        x_list = [pt[0] for pt in map_kp]
+        y_list = [pt[1] for pt in map_kp]
+
+        self.max_x, self.min_x, self.max_y, self.min_y = max(x_list), min(x_list), max(y_list), min(y_list)
+
+        print "RAW MAP BOUNDS", self.min_x, self.max_x, self.min_y, self.max_y
+        self.map_kp = map_kp
+        self.map_des = map_des
+
+
+        ### GRID METHOD STUFF
+
 
         # find the minimum x and y values
         x_list = [pt[0] for pt in map_kp]
@@ -432,12 +506,14 @@ class LocalizationParticleFilter:
 
         max_x, self.min_x, max_y, self.min_y = max(x_list), min(x_list), max(y_list), min(y_list)
 
+        print "NORMALIZED MAP BOUNDS", self.min_x, max_x, self.min_y, max_y
+
         x_range = max_x - self.min_x
         y_range = max_y - self.min_y
 
         # divide the range into grids that are 10cm wide
-        self.map_grid_size_x = int(math.ceil(x_range * 0.1))
-        self.map_grid_size_y = int(math.ceil(y_range * 0.1))
+        self.map_grid_size_x = int(math.ceil(x_range / 0.1))
+        self.map_grid_size_y = int(math.ceil(y_range / 0.1))
 
         # create matrices to hold the kp and des in each grid
         map_grid_kp = [[[] for _ in range(self.map_grid_size_x)] for _ in range(self.map_grid_size_y)]
@@ -459,10 +535,11 @@ class LocalizationParticleFilter:
             for y in range(self.map_grid_size_y):
                 lst = map_grid_des[y][x]
                 for d in lst:
-                    for x in d:
-                        x = x.astype(np.uint8)
-        """
-
+                    d = np.asarray(d, np.uint8)
+                    #for x in d:
+                      #  x = x.astype(np.uint8)
+                      """
+        
         self.map_kp = map_grid_kp
         self.map_des = map_grid_des
 

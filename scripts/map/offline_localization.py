@@ -33,7 +33,7 @@ CAMERA_CENTER = np.float32([(CAMERA_WIDTH - 1) / 2., (CAMERA_HEIGHT - 1) / 2.]).
 
 # ---------- localization parameters ----------- #
 MAX_BAD_COUNT = -10
-NUM_PARTICLE = 30
+NUM_PARTICLE = 20
 NUM_FEATURES = 200
 
 

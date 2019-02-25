@@ -16,11 +16,14 @@ import os
 flight_path = 'flight_data.txt'
 
 file = open(flight_path, 'r')
+print "open"
 
 map_data = ""
 for i, char in enumerate(file.read()):
     if ord(char) > 32 and ord(char) <= 126: # don't write spaces, non alphanumeric things
         map_data += char
+
+print "filter"
 
 # get rid of weird numpy words
 map_data = string.replace(map_data, ",dtype=uint8)", "")
@@ -28,9 +31,12 @@ map_data = string.replace(map_data, "array(", "")
 
 unprocessed_map_data = ast.literal_eval(map_data)
 
+print "process"
+
 # data[0] is kp, data[1] is des, and data[2] is range reading
 map_data = []
 for i, data in enumerate(unprocessed_map_data):
+    print "loop"
     if (data[1] == None): # avoid using camera frames when drone was on the ground
         continue
     des_list = np.asarray(data[1], dtype=np.uint8)
@@ -50,11 +56,12 @@ for i in range(1, len(map_data)):
 
 particle = slam_estimator.particles[0]
 
+# one day it would be nice to find a way to combine different particles...
+
 # so we want to extract the lists of landmark kp and des from this particle
 landmark_keypoints = [[ln.x, ln.y] for ln in particle.landmarks]
 landmark_descriptors = [ln.des for ln in particle.landmarks]
 
-# in the future, could do something like filter the landmarks by their count...
 
 print "Writing map to file"
 map_file = open("map.txt", 'w')
