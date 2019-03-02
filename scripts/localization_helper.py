@@ -177,7 +177,7 @@ class LocalizationParticleFilter:
         for i in range(self.particles.num_particles):
             pose = self.particles.poses[i]
             old_yaw = pose[3]
-            pose[0] += (noisy_x_y_z_yaw[0] * np.cos(old_yaw) + noisy_x_y_z_yaw[1] * np.sin(old_yaw))
+            pose[0] += (noisy_x_y_z_yaw[0] * np.cos(old_yaw) - noisy_x_y_z_yaw[1] * np.sin(old_yaw))
             pose[1] += (noisy_x_y_z_yaw[0] * np.sin(old_yaw) + noisy_x_y_z_yaw[1] * np.cos(old_yaw))
             pose[2] = self.z
             pose[3] += noisy_x_y_z_yaw[3]
