@@ -38,5 +38,25 @@ The following instructions describe how to use each of the five supported progra
 **Onboard**: run "vision_localization_onboard.py --SLAM --offline" on the pi. Press “m” to toggle mapping mode on, during which time you can fly to collect data for the map. Pressing “m” again will stop the mapping and begin running SLAM offline. It is highly recommended that you land the drone for this part. Once it tells you that it is finished making the map, press “r” to toggle localization over the map you have just made.
 
 
+## Mapping for Localization
+
+### Create the map:
+You may use Microsoft Powerpoint or any other software to fill the white paper with symbols, emojis, logos, and icons (black and white would be enough). Then, print them and stitch them together. The material of the paper should not like the poster which reflects much light (no shiny surface). We have map in CIT 121, which would be a good example of how the map looks like.
+
+### Take photos of the map:
+The height of the camera should be from 30-60cm (so you may take serveral images to cover the whole map). Ideally it would be 55cm. The camera should be level. You may use some apps to ensure that your phone is level while you taking the photo. Also, there should be some overlap (5-10cm) between images, so the software can group the images based on overlaps.
+
+### Stitch images as a map:
+I recommand the microsoft image composite for stitching. The final image should be compressed in terms of the ratio like 5500 pixels to 3 meters.
+
+### Change parameters in code:
+In `offboard_localization.py`, map parameters should be changed to fit the new map. The name of the map should be changed in the code `create_map('map.jpg')`.
+In `localization_helper.py`, map parameters should be the same as above. The `ORB_GRID_SIZE_X` and `ORB_GRID_SIZE_Y` should be changed as well. The ratio between the grid size and resolution should be similar to previous setting.
+
+### Tips:
+It's a good idea to test the localization by holding the drone before flying it.
+
+
+
 Happy Flying!
 
