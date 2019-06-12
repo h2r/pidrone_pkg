@@ -305,7 +305,6 @@ def main():
     print '/pidrone/imu'
     print '/pidrone/mode'
     print '/pidrone/battery'
-    print '/heartbeat/flight_controller'
 
     # Subscriber
     ############
@@ -331,7 +330,6 @@ def main():
                 if fc.shouldIDisarm():
                     break
                 
-            fc.heartbeat_pub.publish(Empty())
             # update and publish flight controller readings
             fc.update_battery_message()
             fc.update_imu_message()
