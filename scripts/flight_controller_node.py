@@ -13,7 +13,7 @@ from h2rMultiWii import MultiWii
 from serial import SerialException
 from std_msgs.msg import Header, Empty
 from geometry_msgs.msg import Quaternion
-from pidrone_pkg.msg import Battery, Mode, RC
+from pidrone_pkg.msg import Battery, Mode, RC, State
 import os
 
 
