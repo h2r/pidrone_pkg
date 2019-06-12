@@ -289,6 +289,12 @@ def main():
 
     # create the FlightController object
     fc = FlightController()
+    curr_time = rospy.Time.now()
+    fc.heartbeat_infrared = curr_time
+    fc.heartbeat_web_interface= curr_time
+    fc.heartbeat_pid_controller = curr_time
+    fc.heartbeat_flight_controller = curr_time
+    fc.heartbeat_state_estimator = curr_time
 
     # Publisher
     ###########
@@ -341,13 +347,17 @@ def main():
 
             # sleep for the remainder of the loop time
             r.sleep()
-
-        print 'Shutdown received'
-        fc.board.sendCMD(8, MultiWii.SET_RAW_RC, cmds.disarm_cmd)
-        fc.board.receiveDataPacket()
+            
     except SerialException:
         print '\nCannot connect to the flight controller board.'
         print 'The USB is unplugged. Please check connection.'
+    except:
+        print 'there was an internal error'
+    finally:
+        print 'Shutdown received'
+        print 'Sending DISARM command'
+        fc.board.sendCMD(8, MultiWii.SET_RAW_RC, cmds.disarm_cmd)
+        fc.board.receiveDataPacket()
 
 
 if __name__ == '__main__':
