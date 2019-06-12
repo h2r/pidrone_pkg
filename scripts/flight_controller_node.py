@@ -29,6 +29,11 @@ class FlightController(object):
 
     Subscribers:
     /pidrone/fly_commands
+    /pidrone/desired/mode
+    /pidrone/heartbeat/infrared
+    /pidrone/heartbeat/web_interface
+    /pidrone/heartbeat/pid_controller
+    /pidrone/state
     """
 
     def __init__(self):
@@ -295,7 +300,7 @@ def main():
     fc.heartbeat_flight_controller = curr_time
     fc.heartbeat_state_estimator = curr_time
 
-    # Publisher
+    # Publishers
     ###########
     imupub = rospy.Publisher('/pidrone/imu', Imu, queue_size=1, tcp_nodelay=False)
     batpub = rospy.Publisher('/pidrone/battery', Battery, queue_size=1, tcp_nodelay=False)
@@ -305,7 +310,7 @@ def main():
     print '/pidrone/mode'
     print '/pidrone/battery'
 
-    # Subscriber
+    # Subscribers
     ############
     rospy.Subscriber("/pidrone/desired/mode", Mode, fc.desired_mode_callback)
     rospy.Subscriber('/pidrone/fly_commands', RC, fc.fly_commands_callback)
