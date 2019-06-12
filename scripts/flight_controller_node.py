@@ -28,7 +28,6 @@ class FlightController(object):
     /pidrone/mode
 
     Subscribers:
-    /pidrone/commanded/mode
     /pidrone/fly_commands
     """
 
@@ -308,7 +307,6 @@ def main():
 
     # Subscriber
     ############
-#    rospy.Subscriber('/pidrone/commanded/mode', Mode, fc.commanded_mode_callback)
     rospy.Subscriber("/pidrone/desired/mode", Mode, fc.desired_mode_callback)
     rospy.Subscriber('/pidrone/fly_commands', RC, fc.fly_commands_callback)
     # heartbeat subscribers
