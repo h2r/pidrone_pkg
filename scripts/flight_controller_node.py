@@ -60,6 +60,8 @@ class FlightController(object):
         self.battery_message = Battery()
         self.battery_message.vbat = None
         self.battery_message.amperage = None
+        # Adjust this based on how low the battery should discharge
+        self.minimum_voltage = 4.5
 
         # Accelerometer parameters
         ##########################
@@ -75,8 +77,8 @@ class FlightController(object):
 
     # ROS subscriber callback methods:
     ##################################
-    def commanded_mode_callback(self, msg):
-        """ Set the current mode to the commanded mode """
+    def desired_mode_callback(self, msg):
+        """ Set the current mode to the desired mode """
         self.prev_mode = self.curr_mode
         self.curr_mode = msg.mode
         self.update_command()
@@ -231,6 +233,53 @@ class FlightController(object):
         print "Successfully Disarmed"
         sys.exit()
 
+    # Heartbeat Callbacks: These update the last time that data was received
+    #                       from a node
+    def heartbeat_web_interface_callback(self, msg):
+        """Update web_interface heartbeat"""
+        self.heartbeat_web_interface = rospy.Time.now()
+
+    def heartbeat_pid_controller_callback(self, msg):
+        """Update pid_controller heartbeat"""
+        self.heartbeat_pid_controller = rospy.Time.now()
+
+    def heartbeat_infrared_callback(self, msg):
+        """Update ir sensor heartbeat"""
+        self.heartbeat_infrared = rospy.Time.now()
+
+    def heartbeat_state_estimator_callback(self, msg):
+        """Update state_estimator heartbeat"""
+        self.heartbeat_state_estimator = rospy.Time.now()
+
+    def shouldIDisarm(self):
+        """
+        Disarm the drone if the battery values are too low or if there is a
+        missing heartbeat
+        """
+        curr_time = rospy.Time.now()
+        disarm = False
+        if self.battery_message.vbat != None and self.battery_message.vbat < self.minimum_voltage:
+            print('\nSafety Failure: low battery\n')
+            disarm = True
+        if curr_time - self.heartbeat_web_interface > rospy.Duration.from_sec(3):
+            print('\nSafety Failure: web interface heartbeat\n')
+            print('The web interface stopped responding. Check your browser')
+            disarm = True
+        if curr_time - self.heartbeat_pid_controller > rospy.Duration.from_sec(1):
+            print('\nSafety Failure: not receiving flight commands.')
+            print('Check the pid_controller node\n')
+            disarm = True
+        if curr_time - self.heartbeat_infrared > rospy.Duration.from_sec(1):
+            print('\nSafety Failure: not receiving data from the IR sensor.')
+            print('Check the infrared node\n')
+            disarm = True
+        if curr_time - self.heartbeat_state_estimator > rospy.Duration.from_sec(1):
+            print('\nSafety Failure: not receiving a state estimate.')
+            print('Check the state_estimator node\n')
+            disarm = True
+
+        return disarm
+
 
 def main():
     # ROS Setup
@@ -246,7 +295,6 @@ def main():
     imupub = rospy.Publisher('/pidrone/imu', Imu, queue_size=1, tcp_nodelay=False)
     batpub = rospy.Publisher('/pidrone/battery', Battery, queue_size=1, tcp_nodelay=False)
     fc.modepub = rospy.Publisher('/pidrone/mode', Mode, queue_size=1, tcp_nodelay=False)
-    fc.heartbeat_pub = rospy.Publisher('/pidrone/heartbeat/flight_controller', Empty, queue_size=1, tcp_nodelay=False)
     print 'Publishing:'
     print '/pidrone/imu'
     print '/pidrone/mode'
@@ -255,8 +303,14 @@ def main():
 
     # Subscriber
     ############
-    rospy.Subscriber('/pidrone/commanded/mode', Mode, fc.commanded_mode_callback)
+#    rospy.Subscriber('/pidrone/commanded/mode', Mode, fc.commanded_mode_callback)
+    rospy.Subscriber("/pidrone/desired/mode", Mode, fc.desired_mode_callback)
     rospy.Subscriber('/pidrone/fly_commands', RC, fc.fly_commands_callback)
+    # heartbeat subscribers
+    rospy.Subscriber("/pidrone/heartbeat/infrared", Empty, fc.heartbeat_infrared_callback)
+    rospy.Subscriber("/pidrone/heartbeat/web_interface", Empty, fc.heartbeat_web_interface_callback)
+    rospy.Subscriber("/pidrone/heartbeat/pid_controller", Empty, fc.heartbeat_pid_controller_callback)
+    rospy.Subscriber("/pidrone/state", State, fc.heartbeat_state_estimator_callback)
 
 
     signal.signal(signal.SIGINT, fc.ctrl_c_handler)
@@ -264,6 +318,13 @@ def main():
     r = rospy.Rate(60)
     try:
         while not rospy.is_shutdown():
+            # if the current mode is anything other than disarmed
+            # preform as safety check
+            if fc.curr_mode != 'DISARMED':
+                # Break the loop if a safety check has failed
+                if fc.shouldIDisarm():
+                    break
+                
             fc.heartbeat_pub.publish(Empty())
             # update and publish flight controller readings
             fc.update_battery_message()
