@@ -398,7 +398,7 @@ def create_map(file_name):
     max_total_keypoints = ORB_FEATURES_PER_GRID_CELL * ORB_GRID_SIZE_X * ORB_GRID_SIZE_Y
 
     # the edgeThreshold and patchSize can be tuned if the gap between cell is too large
-    detector = cv2.ORB(nfeatures=max_total_keypoints, scoreType=cv2.ORB_FAST_SCORE)   
+    detector = cv2.ORB_create(nfeatures=max_total_keypoints, scoreType=cv2.ORB_FAST_SCORE)   
     kp = detector.detect(image, None)
     kp, des = detector.compute(image, kp)
 
