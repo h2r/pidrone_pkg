@@ -40,7 +40,7 @@ MAP_GRID_SIZE_Y = ORB_GRID_SIZE_Y * 3
 CELL_X = float(MAP_PIXEL_WIDTH) / MAP_GRID_SIZE_X
 CELL_Y = float(MAP_PIXEL_HEIGHT) / MAP_GRID_SIZE_Y
 PROB_THRESHOLD = 0.001
-MAP_FEATURES = 600
+ORB_FEATURES_PER_GRID_CELL = 500
 # -------------------------- #
 
 
@@ -394,12 +394,12 @@ def create_map(file_name):
 
     # read image and extract features
     image = cv2.imread(file_name)
+
+    max_total_keypoints = ORB_FEATURES_PER_GRID_CELL * ORB_GRID_SIZE_X * ORB_GRID_SIZE_Y
+
     # the edgeThreshold and patchSize can be tuned if the gap between cell is too large
-    detector = cv2.ORB(nfeatures=MAP_FEATURES, scoreType=cv2.ORB_FAST_SCORE)
-    max_total_keypoints = 500 * ORB_GRID_SIZE_X * ORB_GRID_SIZE_Y
-    detector_grid = cv2.GridAdaptedFeatureDetector(detector, maxTotalKeypoints=max_total_keypoints,
-                                                   gridCols=ORB_GRID_SIZE_X, gridRows=ORB_GRID_SIZE_Y)
-    kp = detector_grid.detect(image, None)
+    detector = cv2.ORB(nfeatures=max_total_keypoints, scoreType=cv2.ORB_FAST_SCORE)   
+    kp = detector.detect(image, None)
     kp, des = detector.compute(image, kp)
 
     # rearrange kp and des into grid
