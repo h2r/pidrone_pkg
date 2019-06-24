@@ -123,6 +123,11 @@ class FlightController(object):
         quaternion_array = [previous_quaternion.x, previous_quaternion.y, previous_quaternion.z, previous_quaternion.w]
         previous_roll, previous_pitch, previous_heading = tf.transformations.euler_from_quaternion(quaternion_array)
 
+        # Although quaternion_from_euler takes a heading in range [0, 2pi),
+        # euler_from_quaternion returns a heading in range [0, pi] or [0, -pi).
+        # Thus need to convert the returned heading back into the range [0, 2pi).
+        previous_heading = previous_heading % (2 * np.pi)
+
         # transform euler angles into quaternion
         quaternion = tf.transformations.quaternion_from_euler(roll, pitch, heading)
         # calculate the linear accelerations
