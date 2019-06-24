@@ -46,11 +46,6 @@ stuff "source setup.sh"
 stuff "roscore"
 stuff ""
 
-screen -t "MC"
-stuff "source setup.sh"
-stuff "cd $(rospack find pidrone_pkg)/scripts"
-stuff "python mode_controller.py" # starting mode controller automatically is unsafe
-
 screen -t "CLI"
 stuff "source setup.sh\n"
 stuff "cd $(rospack find pidrone_pkg)/scripts/\n"
