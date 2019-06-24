@@ -38,29 +38,18 @@ acladd stefie10
 # `:title " MAKE" (sets the title to " MAKE")
 #screen -t " MAKE"
 
-#stuff "unset STY
-"
-#stuff "screen
-"
+#stuff "unset STY\n"
+#stuff "screen\n"
 
 screen -t "rcore"
-stuff "source setup.sh
-"
-stuff "roscore
-"
+stuff "source setup.sh\n"
+stuff "roscore\n"
 stuff ""
-
-screen -t "MC"
-stuff "source setup.sh
-"
-stuff "cd $(rospack find pidrone_pkg)/scripts
-"
-stuff "python mode_controller.py" # starting mode controller automatically is unsafe
 
 screen -t "FC"
 stuff "source setup.sh\n"
 stuff "cd $(rospack find pidrone_pkg)/scripts/\n"
-stuff "python flight_controller_node.py\n"
+stuff "python flight_controller_node.py" # We require this be started manually
 
 screen -t "PID"
 stuff "source setup.sh\n"
@@ -83,26 +72,18 @@ stuff "cd $(rospack find pidrone_pkg)/scripts/\n"
 stuff "python infrared_pub.py\n"
 
 screen -t "rosbridge"
-stuff "source setup.sh
-"
-stuff "sleep 10s && roslaunch rosbridge_server rosbridge_websocket.launch
-"
+stuff "source setup.sh\n"
+stuff "sleep 10s && roslaunch rosbridge_server rosbridge_websocket.launch\n"
 
 screen -t "web_vid_serv"
-stuff "source setup.sh
-"
-stuff " rosrun web_video_server web_video_server"
+stuff "source setup.sh\n"
+stuff "rosrun web_video_server web_video_server"
 
 screen -t "free"
-stuff "source setup.sh
-"
-stuff "cd $(rospack find pidrone_pkg)/scripts/
-"
+stuff "source setup.sh\n"
+stuff "cd $(rospack find pidrone_pkg)/scripts/\n"
 
 
 screen -t " vim"
 stuff "source setup.sh\n"
 stuff "cd $(rospack find pidrone_pkg)/scripts\n"
-
-
-

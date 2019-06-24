@@ -1,6 +1,5 @@
 static_ip=192.168.42.1
-ip_addr="`ip addr show wlan0 | grep 'inet ' | awk '{print $2}' | cut -f1 -d
-'/'`"
+ip_addr="`ip addr show wlan0 | grep 'inet ' | awk '{print $2}' | cut -f1 -d '/'`"
 
 echo "IP address is: ${ip_addr}"
 if [[ "${ip_addr}" == "${static_ip}" ]]; then
