@@ -47,7 +47,7 @@ class AnalyzePhase:
         self.posepub = rospy.Publisher('/pidrone/picamera/pose', PoseStamped, queue_size=1)
         self.first_image_pub = rospy.Publisher("/pidrone/picamera/first_image", Image, queue_size=1, latch=True)
 
-        self.detector = cv2.ORB(nfeatures=NUM_FEATURES, scoreType=cv2.ORB_FAST_SCORE)
+        self.detector = cv2.ORB_create(nfeatures=NUM_FEATURES, scoreType=cv2.ORB_FAST_SCORE)
         map_grid_kp, map_grid_des = create_map('map.jpg')
         self.estimator = LocalizationParticleFilter(map_grid_kp, map_grid_des)
 
