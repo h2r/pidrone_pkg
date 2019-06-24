@@ -6,7 +6,7 @@ implements Monte-Carlo Localization using the pi-camera
 
 import numpy as np
 import cv2
-from pidrone_pkg.msg import axes_err, Mode, ERR
+from pidrone_pkg.msg import Mode
 from sensor_msgs.msg import Image, Range, CameraInfo
 from std_msgs.msg import Empty
 import rospy
