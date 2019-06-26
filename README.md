@@ -32,7 +32,7 @@ For Stefanie Tellex's class
   - Window `8`: Free window that can be used for anything.
   - Window `9`: Free window that can be used for anything.
 
-- Switch screen windows using `` ` `` + `<window number>`. For example,  `` ` `` + `0` switches to window 0.
+- Switch screen windows using `` ` `` + `<window number>`. For example,  `` ` `` + `0` switches to window `0`.
 
 ## Controls
 
