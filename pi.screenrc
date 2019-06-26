@@ -79,11 +79,10 @@ screen -t "web_vid_serv"
 stuff "source setup.sh\n"
 stuff "rosrun web_video_server web_video_server"
 
-screen -t "free"
+screen -t "free1"
 stuff "source setup.sh\n"
 stuff "cd $(rospack find pidrone_pkg)/scripts/\n"
 
-
-screen -t " vim"
+screen -t "free2"
 stuff "source setup.sh\n"
-stuff "cd $(rospack find pidrone_pkg)/scripts\n"
+stuff "cd $(rospack find pidrone_pkg)/scripts/\n"
