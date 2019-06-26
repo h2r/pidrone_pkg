@@ -21,16 +21,16 @@ For Stefanie Tellex's class
 
 - In the screen session (launched by `./start_pidrone_code.sh`):
 
-  - Window 0: Used for roscore. Responsible for starting a ROS Master.
-  - Window 1: Used for flight controller node. Responsible for receiving desired behavior (e.g. arm drone, move drone forward, etc.) and sending corresponding lower-level signals to flight controller to achieve said behavior.
-  - Window 2: Used for PID controller node. Node manages multiple PID controllers, such as throttle PID controller.
-  - Window 3: Used for running a state estimation algorithm. List of supported algorithms includes: exponential moving average, 2D UKF, 7D UKF, and more.
-  - Window 4: Used for reading data from camera and doing either: 1) optical flow and dead reckoning or 2) localization. Can run optical flow and dead reckoning via `python vision_flow_and_phase.py`; can run localization onboard with `python vision_localization_onboard.py` or offboard with `python vision_localization_offboard.py`.
-  - Window 5: Used for reading data from the IR sensor and publishing it to a ROS topic.
-  - Window 6: Used to run a web server that lets a client receive information about the drone or send control input to the drone.
-  - Window 7: Used to run a web video server that lets a client receive camera image data.
-  - Window 8: Free window that can be used for anything.
-  - Window 9: Free window that can be used for anything.
+  - Window `0`: Used for roscore. Responsible for starting a ROS Master.
+  - Window `1`: Used for flight controller node. Responsible for receiving desired behavior (e.g. arm drone, move drone forward, etc.) and sending corresponding lower-level signals to flight controller to achieve said behavior.
+  - Window `2`: Used for PID controller node. Node manages multiple PID controllers, such as throttle PID controller.
+  - Window `3`: Used for running a state estimation algorithm. List of supported algorithms includes: exponential moving average, 2D UKF, 7D UKF, and more.
+  - Window `4`: Used for reading data from camera and doing either: 1) optical flow and dead reckoning or 2) localization. Can run optical flow and dead reckoning via `python vision_flow_and_phase.py`; can run localization onboard with `python vision_localization_onboard.py` or offboard with `python vision_localization_offboard.py`.
+  - Window `5`: Used for reading data from the IR sensor and publishing it to a ROS topic.
+  - Window `6`: Used to run a web server that lets a client receive information about the drone or send control input to the drone.
+  - Window `7`: Used to run a web video server that lets a client receive camera image data.
+  - Window `8`: Free window that can be used for anything.
+  - Window `9`: Free window that can be used for anything.
 
 - Switch screen windows using `` ` `` + `<window number>`. For example,  `` ` `` + `0` switches to window 0.
 
