@@ -15,7 +15,7 @@ For Stefanie Tellex's class
    - `./start_pidrone_code.sh` (this launches a screen session)
 2. On base station:
    - Open `pidrone_pkg/web/index.html` (a.k.a. web interface) in a web browser; either double-click .html file or drag-and-drop it into a web browser to get it to render as a web page (meaningless to open/edit the file itself!).
-   - Type IP address or hostname of pidrone into `hostname` box and click `Connect`.
+   - Type IP address or hostname of drone into `hostname` box and click `Connect`.
 
 ## Programs Needed to Fly
 
