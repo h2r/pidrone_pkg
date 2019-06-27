@@ -6,7 +6,7 @@ implements Monte-Carlo Localization using the pi-camera
 
 import numpy as np
 import cv2
-from pidrone_pkg.msg import axes_err, Mode, ERR
+from pidrone_pkg.msg import Mode
 from sensor_msgs.msg import Image, Range, CameraInfo
 from std_msgs.msg import Empty
 import rospy
@@ -47,7 +47,7 @@ class AnalyzePhase:
         self.posepub = rospy.Publisher('/pidrone/picamera/pose', PoseStamped, queue_size=1)
         self.first_image_pub = rospy.Publisher("/pidrone/picamera/first_image", Image, queue_size=1, latch=True)
 
-        self.detector = cv2.ORB(nfeatures=NUM_FEATURES, scoreType=cv2.ORB_FAST_SCORE)
+        self.detector = cv2.ORB_create(nfeatures=NUM_FEATURES, scoreType=cv2.ORB_FAST_SCORE)
         map_grid_kp, map_grid_des = create_map('map.jpg')
         self.estimator = LocalizationParticleFilter(map_grid_kp, map_grid_des)
 
