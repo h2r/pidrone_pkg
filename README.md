@@ -45,6 +45,7 @@ For Stefanie Tellex's class
    into the ground fairly dramatically. It should only fall, since it is no
    longer recieving power, and this does not happen on battery power. Nobody
    has been hit by this!?
+- Starting with release v2.2, all releases work on ROS Kinetic. Older releases do not - they only work up to ROS Indigo. Furthermore, releases v2.2 and higher do not have backward compatibility with older versions of ROS.
 
 ## Misc
 
