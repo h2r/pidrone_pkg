@@ -40,12 +40,12 @@ For Stefanie Tellex's class
 
 ## Warnings
 
+- Starting with release v2.2-kinetic, all releases work on ROS Kinetic (unless specified otherwise). Older releases do not - they only work up to ROS Indigo. Furthermore, releases v2.2-kinetic and higher do not have backward compatibility with older versions of ROS.
 - When connected to the power supply, if the drone draws too much power, the
    supply will not be able to keep up and the drone will shut off and crash
    into the ground fairly dramatically. It should only fall, since it is no
    longer recieving power, and this does not happen on battery power. Nobody
    has been hit by this!?
-- Starting with release v2.2, all releases work on ROS Kinetic. Older releases do not - they only work up to ROS Indigo. Furthermore, releases v2.2 and higher do not have backward compatibility with older versions of ROS.
 
 ## Misc
 
