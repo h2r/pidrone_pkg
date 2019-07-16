@@ -6,7 +6,7 @@ For Stefanie Tellex's class
 
 1. Plug in the battery or power supply to the drone.
 2. Connect to the wifi network corresponding to the name of your drone.
-3. `ssh pi@192.168.42.1` or `ssh pi@<nameofdrone>.local`.
+3. `ssh duckiesky@192.168.42.1` or `ssh duckiesky@<nameofdrone>.local`.
 
 ## How to Fly
 
@@ -33,6 +33,7 @@ For Stefanie Tellex's class
   - Window `9`: Free window that can be used for anything.
 
 - Switch screen windows using `` ` `` + `<window number>`. For example,  `` ` `` + `0` switches to window `0`.
+- Exit the screen by using `` ` `` + `:` (i.e. `Shift` key + `;` key), then typing `quit` and pressing the `Enter` key. Altogether, you should see `:quit` at the bottom left of the terminal window before you press the `Enter` key.
 
 ## Controls
 
