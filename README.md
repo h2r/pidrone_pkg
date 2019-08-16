@@ -39,6 +39,38 @@ For Stefanie Tellex's class
 
 - See web interface for a list of drone input controls.
 
+## How to Connect to Home Network
+
+1. (Skip step if done before)
+   On drone, run the following:
+   - ```
+      cd /etc/wpa_supplicant
+      sudo ./generate_wpa_supplicant_conf.sh
+      ```
+      or alternatively
+      ```
+      roscd pidrone_pkg/
+      cd networking
+      sudo ./generate_wpa_supplicant_conf.sh
+      sudo mv wpa_supplicant.conf /etc/wpa_supplicant
+      ```
+      When prompted, enter credentials for home network.
+2. On drone, run the following:
+   - ```
+      roscd pidrone_pkg/
+      python networking/connect_to_user_wifi.py
+      ```
+      or alternatively
+      ```
+      cd /etc/wpa_supplicant
+      ./connect_to_user_wifi.sh
+      ```
+   - the ssh session to the drone will terminate shortly after. The wifi connection to the drone will disconnect.
+3. On base station:
+   - connect to home network (instead of drone network)
+   - open a terminal or command prompt and run `ssh duckiesky@<hostname>`, where `<hostname>` is the hostname of the drone (found in file `/etc/hostname`). The default is `duckiesky-drone`.
+   - A password prompt will appear. After entering the password, the ssh connection to the drone will be complete.
+
 ## Warnings
 
 - Starting with release v2.2-kinetic, all releases work on ROS Kinetic (unless specified otherwise). Older releases do not - they only work up to ROS Indigo. Furthermore, releases v2.2-kinetic and higher do not have backward compatibility with older versions of ROS.
