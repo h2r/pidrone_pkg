@@ -79,10 +79,11 @@ screen -t "web_vid_serv"
 stuff "source setup.sh\n"
 stuff "rosrun web_video_server web_video_server"
 
-screen -t "free1"
+screen -t "Battery"
 stuff "source setup.sh\n"
 stuff "cd $(rospack find pidrone_pkg)/scripts/\n"
+stuff "python check_battery.py\n"
 
-screen -t "free2"
+screen -t "free"
 stuff "source setup.sh\n"
 stuff "cd $(rospack find pidrone_pkg)/scripts/\n"
