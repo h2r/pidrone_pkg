@@ -13,7 +13,7 @@ def subscribe():
 	rate = rospy.Rate(.1)
 	while not rospy.is_shutdown():
 		rate.sleep()
-		print(Voltage: + str(bat_value))
+		print(Voltage + str(bat_value))
 
 if __name__ == '__main__':
 	subscribe()
