@@ -1,6 +1,10 @@
 import rospy
 import pidrone_pkg.msg._Battery
 
+CELLS = 3
+SAFE_VALUE = CELLS * 3
+MAX_VALUE = CELLS * 4.2
+
 def notify(data):
 	global bat_value
 	bat_value = data.vbat
@@ -14,6 +18,8 @@ def subscribe():
 	while not rospy.is_shutdown():
 		rate.sleep()
 		print("Voltage: " + str(bat_value))
+		if bat_value < SAFE_VALUE:
+			print("Battery too low, below " + str(SAFE_VALUE) + ". Max safe voltage to charge to is " + str(MAX_VALUE) + ".")
 
 if __name__ == '__main__':
 	subscribe()
