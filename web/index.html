@@ -80,7 +80,12 @@
 
                 <div class="col-sm text-center" style="margin-top:20px;">
                     <h4>Camera Image</h4>
-                    <img id="cameraImage" alt="Camera image" src="nocamera.jpg" width=320/>
+                    <input class="btn btn-primary my-2 my-sm-0" type="submit" value="Show Optical Flow" name="flowToggleBtn" onclick="toggleOpticalFlow(this)"/>
+                    <br>
+                    <div style="width: 320px; height: 240px; display: inline-block; position: relative; margin-top: 0.5rem;">
+                        <img id="cameraImage" alt="Camera image" src="nocamera.jpg" width=320/>
+                        <canvas id="cameraFlowCanvas" width=320 height="240" style="position: absolute; top: 0; left: 0;"></canvas>
+                    </div>
                     <div class="form-group">
                         <small id="imagetopicHelp" class="form-text text-muted">Make sure you run <code>rosrun web_video_server web_video_server</code> and the image stream.</small>
                     </div>

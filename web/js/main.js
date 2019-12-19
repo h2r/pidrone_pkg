@@ -39,6 +39,7 @@ var startTime;
 var heightChartPaused = false;
 var showingUkfAnalysis = false;
 var spanningFullWindow = false;
+var displayOpticalFlow = false;
 
 function closeSession(){
   console.log("Closing connections.");
@@ -233,6 +234,14 @@ function init() {
         messageType : 'geometry_msgs/PoseStamped',
         queue_length : 2,
         throttle_rate : 80
+    });
+
+    cameraFlowSub = new ROSLIB.Topic({
+      ros : ros,
+      name : '/pidrone/picamera/flow',
+      messageType : 'pidrone_pkg/OpticalFlow',
+      queue_length : 2,
+      throttle_rate : 100
     });
 
     emaIrSub = new ROSLIB.Topic({
@@ -447,6 +456,8 @@ function init() {
         updateCameraPoseXYChart(message);
     });
 
+    cameraFlowSub.subscribe(updateVisionFlow);
+
     function updateGroundTruthXYChart(msg) {
         xPos = msg.pose.position.x;
         yPos = msg.pose.position.y;
@@ -503,6 +514,57 @@ function init() {
             ];
             xyChart.update()
         }
+    }
+
+    function updateVisionFlow(msg) {
+        if(displayOpticalFlow) {
+            var rows = msg.rows;
+            var cols = msg.columns; // TODO: why is there an extra one...?
+    
+            // Get the [x, y] components of a flow vector at x, y with some scaling, flipping, constraining, etc...
+            function getVector(x, y) {
+                return [-constrain(2*msg.flow_x[(y * cols) + x], -12, 12), -constrain(2*msg.flow_y[(y * cols) + x], -12, 12)]
+            }
+    
+            var ctx = document.getElementById('cameraFlowCanvas').getContext('2d');
+    
+            ctx.clearRect(0, 0, 320, 240);
+    
+            ctx.strokeStyle = "#ccff00"; // Draw direction indicator
+            ctx.beginPath();
+            for(var ix = 0; ix < cols; ix++) {
+                for(var iy = 0; iy < rows; iy++) {
+                    var x = (ix * 16) + 8;
+                    var y = (iy * 16) + 8;
+                    var vec = getVector(ix, iy);
+                    ctx.moveTo(x, y);
+                    ctx.lineTo(x + vec[0], y + vec[1]);
+                    ctx.moveTo(x-1, y);
+                    ctx.lineTo(x+1, y);
+                    ctx.moveTo(x, y-1);
+                    ctx.lineTo(x, y+1);
+                }
+            }
+            ctx.stroke();
+    
+            ctx.strokeStyle = "#000"; // Draw center marker
+            ctx.beginPath();
+            for(var ix = 0; ix < cols; ix++) {
+                for(var iy = 0; iy < rows; iy++) {
+                    var x = (ix * 16) + 8;
+                    var y = (iy * 16) + 8;
+                    ctx.moveTo(x-1, y);
+                    ctx.lineTo(x+1, y);
+                    ctx.moveTo(x, y-1);
+                    ctx.lineTo(x, y+1);
+                }
+            }
+            ctx.stroke();
+        }
+    }
+
+    function constrain(num, min, max) {
+      return num > max ? max : (num < min ? min : num);
     }
 
     function updateCameraPoseXYChart(msg) {
@@ -1326,6 +1388,16 @@ function toggleUkfAnalysis(btn) {
 function togglePauseXYChart(btn) {
     // TODO: Implement this function
     console.log('Pause button pressed')
+}
+
+function toggleOpticalFlow(btn) {
+  displayOpticalFlow = !displayOpticalFlow;
+  if (displayOpticalFlow) {
+      btn.value = 'Hide Optical Flow'
+  } else {
+      btn.value = 'Show Optical Flow'
+      document.getElementById('cameraFlowCanvas').getContext('2d').clearRect(0, 0, 320, 240);
+  }
 }
 
 function publishVelocityMode() {

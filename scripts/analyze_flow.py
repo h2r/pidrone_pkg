@@ -4,6 +4,7 @@ import numpy as np
 import picamera.array
 from pidrone_pkg.msg import State
 from geometry_msgs.msg import TwistStamped
+from pidrone_pkg.msg import OpticalFlow
 
 
 class AnalyzeFlow(picamera.array.PiMotionAnalysis):
@@ -28,6 +29,7 @@ class AnalyzeFlow(picamera.array.PiMotionAnalysis):
         ############
         # Publisher:
         self.twistpub = rospy.Publisher('/pidrone/picamera/twist', TwistStamped, queue_size=1)
+        self.flowpub = rospy.Publisher('/pidrone/picamera/flow', OpticalFlow, queue_size=1)
         # Subscriber:
         rospy.Subscriber("/pidrone/state", State, self.state_callback)
 
@@ -50,8 +52,18 @@ class AnalyzeFlow(picamera.array.PiMotionAnalysis):
         twist_msg.twist.linear.x = self.near_zero(x_motion)
         twist_msg.twist.linear.y = - self.near_zero(y_motion)
 
+        # create the optical flow message
+        shape = np.shape(x)
+        flow_msg = OpticalFlow()
+        flow_msg.header.stamp = rospy.Time.now()
+        flow_msg.rows = shape[0]
+        flow_msg.columns = shape[1]
+        flow_msg.flow_x = x.flatten()
+        flow_msg.flow_y = y.flatten()
+
         # Update and publish the twist message
         self.twistpub.publish(twist_msg)
+        self.flowpub.publish(flow_msg)
 
     def near_zero(self, n):
         return 0 if abs(n) < 0.001 else n
