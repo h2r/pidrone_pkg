@@ -53,7 +53,7 @@ add_message_files(
   State.msg
   StateGroundTruth.msg
   UkfStats.msg
-
+  OpticalFlow.msg
 )
 
 ## Generate services in the 'srv' folder
