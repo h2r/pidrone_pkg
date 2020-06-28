@@ -7,6 +7,7 @@ import rospy
 import signal
 import traceback
 import numpy as np
+import command_values as cmds
 from pid_class import PID, PIDaxis
 from geometry_msgs.msg import Pose, Twist
 from pidrone_pkg.msg import Mode, RC, State
@@ -26,6 +27,7 @@ class PIDController(object):
 
         # Initialize in velocity control
         self.position_control = False
+        self.last_position_control = False
 
         # Initialize the current and desired positions
         self.current_position = Position()
@@ -63,9 +65,9 @@ class PIDController(object):
 
         # Initialize the 'position error to velocity error' PIDs:
         # left/right (roll) pid
-        self.lr_pid = PIDaxis(kp=10.0, ki=0.5, kd=5.0, midpoint=0, control_range=(-10.0, 10.0))
+        self.lr_pid = PIDaxis(kp=20.0, ki=5.0, kd=10.0, midpoint=0, control_range=(-10.0, 10.0))
         # front/back (pitch) pid
-        self.fb_pid = PIDaxis(kp=10.0, ki=0.5, kd=5.0, midpoint=0, control_range=(-10.0, 10.0))
+        self.fb_pid = PIDaxis(kp=20.0, ki=5.0, kd=10.0, midpoint=0, control_range=(-10.0, 10.0))
 
         # Initialize the pose callback time
         self.last_pose_time = None
@@ -159,14 +161,16 @@ class PIDController(object):
         """ Set whether or not position control is enabled """
         self.position_control = msg.data
         if self.position_control:
-            self.reset_callback(Empty())
-        print "Position Control", self.position_control
+            self.desired_position = self.current_position
+        if (self.position_control != self.last_position_control):
+            print "Position Control", self.position_control
+            self.last_position_control = self.position_control
 
     def reset_callback(self, empty):
         """ Reset the desired and current poses of the drone and set
         desired velocities to zero """
         self.current_position = Position(z=self.current_position.z)
-        self.desired_position = Position(z=self.current_position.z)
+        self.desired_position = self.current_position
         self.desired_velocity.x = 0
         self.desired_velocity.y = 0
 
@@ -328,7 +332,7 @@ class PIDController(object):
 
 def main(ControllerClass):
     # Verbosity between 0 and 2, 2 is most verbose
-    verbose = 2
+    verbose = 0
 
     # ROS Setup
     ###########
@@ -364,6 +368,8 @@ def main(ControllerClass):
     print 'PID Controller Started'
     while not rospy.is_shutdown():
         pid_controller.heartbeat_pub.publish(Empty())
+
+
         # Steps the PID. If we are not flying, this can be used to
         # examine the behavior of the PID based on published values
         fly_command = pid_controller.step()
@@ -380,20 +386,28 @@ def main(ControllerClass):
         # if the drone is flying, send the fly_command
         elif pid_controller.current_mode == 'FLYING':
             if pid_controller.desired_mode == 'FLYING':
+
+                # Safety check to ensure drone does not fly too high
+                if (pid_controller.current_state.pose_with_covariance.pose.position.z >
+                0.7):
+                    fly_command = cmds.disarm_cmd
+                    print("\n disarming because drone is too high \n")
+                    break
+
                 # Publish the ouput of pid step method
                 pid_controller.publish_cmd(fly_command)
             # after flying, take the converged low i terms and set these as the
             # initial values, this allows the drone to "learn" and get steadier
             # with each flight until it converges
+            # NOTE: do not store the throttle_low.init_i or else the drone will
+            # take off abruptly after the first flight
             elif pid_controller.desired_mode == 'DISARMED':
                 pid_controller.pid.roll_low.init_i = pid_controller.pid.roll_low._i
                 pid_controller.pid.pitch_low.init_i = pid_controller.pid.pitch_low._i
-                pid_controller.pid.throttle_low.init_i = pid_controller.pid.throttle_low._i
                 # Uncomment below statements to print the converged values.
                 # Make sure verbose = 0 so that you can see these values
-                # print 'roll_low.init_i', pid_controller.pid.roll_low.init_i
-                # print 'pitch_low.init_i', pid_controller.pid.pitch_low.init_i
-                # print 'throttle_low.init_i', pid_controller.pid.throttle_low.init_i
+                print 'roll_low.init_i', pid_controller.pid.roll_low.init_i
+                print 'pitch_low.init_i', pid_controller.pid.pitch_low.init_i
 
         if verbose >= 2:
             if pid_controller.position_control:

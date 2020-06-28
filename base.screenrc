@@ -1,66 +1,0 @@
-#
-# various settings suggested by other users
-#
-# derived from the Paradox pair programming screenrc, UChicago 2010
-#   ~ yes, we are all total newbs ~
-#
-
-startup_message off
-
-#defscrollback 5000
-defscrollback 5000
-
-escape ``
-
-# this hard status was stolen from the net, all credit goes to its originator
-hardstatus             alwayslastline
-#hardstatus string '%{= mK}%-Lw%{= KW}%50>%n%f* %t%{= mK}%+Lw%< %{= kG}%-=%D %d %M %Y %c:%s%{-}'
-hardstatus string '%{= kG}[ %{G}%H %{g}][%= %{= kw}%?%-Lw%?%{r}(%{W}%n*%f%t%?(%u)%?%{r})%{w}%?%+Lw%?%?%= %{g}][%{B} %d/%m %{W}%c %{g}]'
-
-# A hint for using multiuser mode:  make sure that both parties have identically
-# sized terminals, otherwise there could be graphical mismatches and undrawn text
-# for one party :(  .
-
-# turn multiuser mode on so others can connect.
-multiuser on
-
-# add the specified user to this screen session so that they can connect.
-# the initiating user is allowed automatically, but add both so either can
-# run this script without modification.
-
-#acladd gen
-acladd oberlin
-acladd stefie10 
-
-# Starts a new screen with title " MAKE"
-# this is basically equivalent to pressing the following from within screen:
-# `c (starts a new window)
-# `:title " MAKE" (sets the title to " MAKE")
-
-
-screen -t " rviz"
-stuff "source setup.sh"
-stuff "rosrun rviz rviz"
-
-screen -t " vim"
-stuff "source setup.sh"
-stuff "cd $(rospack find pidrone_pkg)/"
-stuff "vim -p scripts/h2rMultiWii.py"
-
-screen -t " emacs"
-stuff "source setup.sh"
-stuff "cd $(rospack find pidrone_pkg)"
-stuff "emacs -nw scripts/h2rMultiWii.py"
-
-
-screen -t " git"
-stuff "source setup.sh"
-stuff "cd $(rospack find pidrone_pkg)/"
-
-screen -t " free"
-stuff "source setup.sh"
-stuff "cd $(rospack find pidrone_pkg)/"
-
-screen -t " free"
-stuff "source setup.sh"
-stuff "cd $(rospack find pidrone_pkg)/"

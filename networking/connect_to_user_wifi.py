@@ -8,4 +8,4 @@ if __name__ == "__main__":
     os.system("sudo ifdown wlan0")
 # Starting wpa_supplicant
     os.system("sudo wpa_supplicant -B -i wlan0 -c /etc/wpa_supplicant/wpa_supplicant.conf")
-    os.system("sudo ifup wlan0=rlab_wifi")
+    os.system("sudo ifup wlan0=user_wifi")
