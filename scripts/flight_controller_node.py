@@ -64,8 +64,9 @@ class FlightController(object):
         self.battery_message = Battery()
         self.battery_message.vbat = None
         self.battery_message.amperage = None
-        # Adjust this based on how low the battery should discharge
-        self.minimum_voltage = 4.5
+        # 3s battery should safe discharge is 10.5V (3.5V per cell)
+        # minimum is 9V (3V per cell)
+        self.minimum_voltage = 10.5
 
         # Accelerometer parameters
         ##########################
