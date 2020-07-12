@@ -123,6 +123,7 @@ class PIDController(object):
             self.desired_position.x = msg.position.x
             self.desired_position.y = msg.position.y
             # the desired z must be above z and below the range of the ir sensor (.55meters)
+            desired_z = self.last_desired_position.z + msg.position.z
             self.desired_position.z = msg.position.z if 0 <= desired_z <= 0.5 else self.last_desired_position.z
         # set the desired positions relative to the current position (except for z to make it more responsive)
         else:
@@ -387,12 +388,7 @@ def main(ControllerClass):
         elif pid_controller.current_mode == 'FLYING':
             if pid_controller.desired_mode == 'FLYING':
 
-                # Safety check to ensure drone does not fly too high
-                if (pid_controller.current_state.pose_with_covariance.pose.position.z >
-                0.7):
-                    fly_command = cmds.disarm_cmd
-                    print("\n disarming because drone is too high \n")
-                    break
+
 
                 # Publish the ouput of pid step method
                 pid_controller.publish_cmd(fly_command)

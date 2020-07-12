@@ -3,7 +3,6 @@ import os
 import rospy
 import signal
 import Adafruit_ADS1x15
-from std_msgs.msg import Empty
 from sensor_msgs.msg import Range
 
 
@@ -62,8 +61,7 @@ def main():
     # Publishers
     ############
     ir.range_pub = rospy.Publisher('/pidrone/infrared', Range, queue_size=1)
-    ir.heartbeat_pub = rospy.Publisher('/pidrone/heartbeat/infrared', Empty, queue_size=1)
-    print 'Publishing IR'
+    print('Publishing IR')
 
     # Non-ROS Setup
     ###############
@@ -73,7 +71,6 @@ def main():
     signal.signal(signal.SIGINT, ir.ctrl_c_handler)
 
     while not rospy.is_shutdown():
-        ir.heartbeat_pub.publish(Empty())
         ir.get_range()
         ir.publish_range(ir.distance)
         r.sleep()
