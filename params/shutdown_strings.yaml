@@ -3,7 +3,7 @@ prev_value:
   "\nINFO: value before cutoff: "
 change_cutoff:
   "\nINFO: if you would like to change the threshold, then edit
-  the value in thresholds.yaml"
+  the value in thresholds.yaml in the params directory"
 
 # specific safety failure strings
 battery:
