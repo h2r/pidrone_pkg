@@ -1,5 +1,5 @@
 # general info strings
-prev_val:
+prev_value:
   "\nINFO: value before cutoff: "
 change_cutoff:
   "\nINFO: if you would like to change the threshold, then edit
@@ -41,6 +41,6 @@ acc:
 gyro:
   x: "\nSafety Failure: Crash predicted based on roll rate"
   y: "\nSafety Failure: Crash predicted based on pitch rate"
-  z: "Safety Failure: Crash predicted based on yaw rate"
+  z: "\nSafety Failure: Crash predicted based on yaw rate"
 
 altitude: "\nSafety Failure: Drone is flying too high"

@@ -1,0 +1,149 @@
+
+# test flight normal
+rosbag: normal_liftoff
+input: fly the drone with the pid tuned so that it quickly lifts to setpoint. fly around the map
+expected: no safety failures
+output: no safety failures
+
+# test flight slow
+rosbag: slow_liftoff
+input: fly the drone with the pid tuned so that it slowly lifts to setpoint. fly around the map
+expected: no safety failures
+output: no safety failures
+
+# test flight too fast
+rosbag: n/a
+input: fly the drone with the pid tuned so that it takes off too fast
+expected: safety failure from z-axis acceleration
+output:
+    Safety Failure: Crash predicted based on pitch rate
+    INFO: if you would like to change the threshold, then edit the value in thresholds.yaml
+    INFO: value before cutoff: -3.05892055539
+    INFO: Sending DISARM command
+
+# test check_alititude
+rosbag: check_alititude
+input: arm drone close to ground. lift with hand above height threshold.
+output:
+    Safety Failure: Drone is flying too high
+    INFO: if you would like to change the threshold, then edit the value in thresholds.yaml
+    INFO: value before cutoff: 0.507127568493
+    INFO: Sending DISARM command
+
+# test check_accelerations
+
+    ## test postive x-axis
+    rosbag: check_accel_x_pos
+    input: arm drone. use hand to thrust drone in positive x-axis
+    output:
+        Safety Failure: Crash predicted based on X-axis acceleration
+        INFO: if you would like to change the threshold, then edit the value in thresholds.yaml
+        INFO: value before cutoff: 11.2605106868
+        INFO: Sending DISARM command
+
+    ## test negative x-axis
+    rosbag: check_accel_x_neg
+    input: arm drone. use hand to thrust drone in negative x-axis
+    output:
+        Safety Failure: Crash predicted based on X-axis acceleration
+        INFO: if you would like to change the threshold, then edit the value in thresholds.yaml
+        INFO: value before cutoff: -23.6029466744
+        INFO: Sending DISARM command
+
+    ## test postive y-axis
+    rosbag: check_accel_y_pos
+    input: arm drone. use hand to thrust drone in positive y-axis
+    output:
+        Safety Failure: Crash predicted based on Y-axis acceleration
+        INFO: if you would like to change the threshold, then edit the value in thresholds.yaml
+        INFO: value before cutoff: 21.0482279669
+        INFO: Sending DISARM command
+
+    ## test negative y-axis
+    rosbag: check_accel_y_neg
+    input: arm drone. use hand to thrust drone in negative y-axis
+    output:
+        Safety Failure: Crash predicted based on Y-axis acceleration
+        INFO: if you would like to change the threshold, then edit the value in thresholds.yaml
+        INFO: value before cutoff: -16.128889755
+        INFO: Sending DISARM command
+
+    ## test postive z-axis
+    rosbag: check_altitude_z_pos
+    input: arm drone. use hand to thrust drone in positive z-axis
+    output:
+        Safety Failure: Crash predicted based on Z-axis acceleration
+        INFO: if you would like to change the threshold, then edit the value in thresholds.yaml
+        INFO: value before cutoff: 18.283687766
+        INFO: Sending DISARM command
+
+    ## test negative z-axis
+    rosbag: check_accel_z_neg
+    input: arm drone. use hand to thrust drone in negative z-axis
+    output:
+        Safety Failure: Crash predicted based on Z-axis acceleration
+        INFO: if you would like to change the threshold, then edit the value in thresholds.yaml
+        INFO: value before cutoff: -15.4114765005
+        INFO: Sending DISARM command
+
+    ## test pos x,y direction
+    rosbag: check_accel_x_y_pos
+    input: arm drone. use hand to thrust drone in positive x and y direction
+    output:
+        Safety Failure: Crash predicted based on X-axis acceleration
+        INFO: if you would like to change the threshold, then edit the value in thresholds.yaml
+        INFO: value before cutoff: 10.3531743647
+        INFO: Sending DISARM command
+
+# test check_angular_velocities
+
+    ## test positive roll
+    input: arm drone and roll hard right by hand
+    output:
+        Safety Failure: Crash predicted based on roll rate
+        INFO: if you would like to change the threshold, then edit the value in thresholds.yaml
+        INFO: value before cutoff: 6.18942309104
+        INFO: Sending DISARM command
+
+    ## test negative roll
+    input: arm drone and roll hard left by hand
+    output:
+        Safety Failure: Crash predicted based on roll rate
+        INFO: if you would like to change the threshold, then edit the value in thresholds.yaml
+        INFO: value before cutoff: -2.91523945217
+        INFO: Sending DISARM command
+
+    ## test positive pitch
+    input: arm drone and pitch nose up hard by hand
+    output:
+        Safety Failure: Crash predicted based on pitch rate
+        INFO: if you would like to change the threshold, then edit the value in thresholds.yaml
+        INFO: value before cutoff: 4.86890767357
+        INFO: Sending DISARM command
+
+    ## test negative pitch
+    input: arm drone and pitch nose down hard by hand
+    output:
+        Safety Failure: Crash predicted based on pitch rate
+        INFO: if you would like to change the threshold, then edit the value in thresholds.yaml
+        INFO: value before cutoff: -3.13265799573
+        INFO: Sending DISARM command
+
+    ## test clockwise yaw
+    input: arm drone and yaw hard clockwise by hand
+    expected: safety failure due to negative yaw rate (since math convention is ccw=positive yaw)
+    output:
+        Safety Failure: Crash predicted based on yaw rate
+        INFO: if you would like to change the threshold, then edit the value in thresholds.yaml
+        INFO: value before cutoff: -3.03257311458
+        INFO: Sending DISARM command
+
+    ## test counter-clockwise yaw
+    input: arm drone and yaw hard counter-clockwise by hand
+    expected: safety failure due to postive yaw rate (since math convention is ccw=positive yaw)
+    output:
+        Safety Failure: Crash predicted based on yaw rate
+        INFO: if you would like to change the threshold, then edit the value in thresholds.yaml
+        INFO: value before cutoff: 4.81545352283
+        INFO: Sending DISARM command
+

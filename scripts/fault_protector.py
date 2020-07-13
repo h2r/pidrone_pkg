@@ -103,13 +103,13 @@ class FaultProtector(object):
         az = imu_msg.linear_acceleration.z
         if abs(ax) > self.thresholds["acceleration"]["x"]:
             self.shutdown = True
-            self.shutdown_cause += self.strs["acc"]["x"] + self.strs["change_cutoff"] + self.strs["prev_val"] + str(ax)
+            self.shutdown_cause += self.strs["acc"]["x"] + self.strs["change_cutoff"] + self.strs["prev_value"] + str(ax)
         if abs(ay) > self.thresholds["acceleration"]["y"]:
             self.shutdown = True
-            self.shutdown_cause += self.strs["acc"]["y"] + self.strs["change_cutoff"] + self.strs["prev_val"] + str(ay)
+            self.shutdown_cause += self.strs["acc"]["y"] + self.strs["change_cutoff"] + self.strs["prev_value"] + str(ay)
         if abs(az) > self.thresholds["acceleration"]["z"]:
             self.shutdown = True
-            self.shutdown_cause += self.strs["acc"]["z"] + self.strs["change_cutoff"] + self.strs["prev_val"] + str(az)
+            self.shutdown_cause += self.strs["acc"]["z"] + self.strs["change_cutoff"] + self.strs["prev_value"] + str(az)
 
     def check_angular_rates(self, imu_msg):
         roll_rate = imu_msg.angular_velocity.x
@@ -117,13 +117,13 @@ class FaultProtector(object):
         yaw_rate = imu_msg.angular_velocity.z
         if abs(roll_rate) > self.thresholds["angular_velocity"]["x"]:
             self.shutdown = True
-            self.shutdown_cause += self.strs["gyro"]["x"] + self.strs["change_cutoff"] + self.strs["prev_val"] + str(roll_rate)
+            self.shutdown_cause += self.strs["gyro"]["x"] + self.strs["change_cutoff"] + self.strs["prev_value"] + str(roll_rate)
         if abs(pitch_rate) > self.thresholds["angular_velocity"]["y"]:
             self.shutdown = True
-            self.shutdown_cause += self.strs["gyro"]["y"] + self.strs["change_cutoff"] + self.strs["prev_val"] + str(pitch_rate)
+            self.shutdown_cause += self.strs["gyro"]["y"] + self.strs["change_cutoff"] + self.strs["prev_value"] + str(pitch_rate)
         if abs(yaw_rate) > self.thresholds["angular_velocity"]["z"]:
             self.shutdown = True
-            self.shutdown_cause += self.strs["gyro"]["z"] + self.strs["change_cutoff"] + self.strs["prev_val"] + str(yaw_rate)
+            self.shutdown_cause += self.strs["gyro"]["z"] + self.strs["change_cutoff"] + self.strs["prev_value"] + str(yaw_rate)
 
     def check_altitude(self):
         if self.altitude > self.thresholds["altitude"]:
@@ -132,7 +132,7 @@ class FaultProtector(object):
 
     def check_battery(self, battery_voltage):
         if battery_voltage is not None and battery_voltage < self.thresholds["battery_voltage"]:
-            self.shutdown_cause += self.strs["battery"] + self.strs["prev_val"] + str(battery_voltage)
+            self.shutdown_cause += self.strs["battery"] + self.strs["prev_value"] + str(battery_voltage)
             self.shutdown = True
 
     def should_i_shutdown(self, mode, prev_mode, battery_voltage, imu_msg):
