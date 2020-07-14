@@ -2332,6 +2332,29 @@ fieldset:disabled a.btn {
   pointer-events: none;
 }
 
+.btn-trim {
+  color: #fff;
+  background-color: slategray;
+  border-color: grey;
+  /*margin-top: 10px;*/
+  /*margin-bottom: 10px;*/
+  /*margin-right: 10px;*/
+  /*margin-left: 10px;*/
+}
+
+.btn-trim:hover {
+  color: #fff;
+  background-color: dimgrey;
+  border-color: grey;
+}
+
+.btn-trim:active {
+  color: #fff;
+  background-color: darkslategrey;
+  border-color: grey;
+}
+
+
 .btn-primary {
   color: #fff;
   background-color: #007bff;

@@ -25,3 +25,50 @@
     transition-delay: 1s;
     visibility: visible;
 }
+
+
+/* Create three unequal columns that floats next to each other */
+.trim-column {
+    float: left;
+}
+
+.trim-left {
+    margin-left:auto;
+    margin-right:0;
+    margin-top:-35px;
+    display: flex;
+    align-items: center;
+    flex-direction: column;
+}
+.trim-right {
+    flex-direction: column;
+    margin-left:0;
+    margin-right:20px;
+    margin-top:-35px;
+    display: flex;
+    align-items: center;
+}
+
+.trim-middle {
+    padding:5px;
+}
+
+.trim-up {
+    padding-bottom:5px;
+}
+
+.trim-button-row {
+    flex-direction: column;
+    padding:5px;
+}
+
+.trim-throttle {
+    flex-direction: column;
+    margin-left: auto;
+    margin-right: auto;
+    margin-top: 0;
+}
+
+.trim-yaw {
+    flex-direction: column;
+}
