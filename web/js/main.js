@@ -181,6 +181,61 @@ function init() {
       messageType : 'std_msgs/Empty'
     });
 
+    trimRightPub = new ROSLIB.Topic({
+      ros : ros,
+      name : '/pidrone/trim/right',
+      messageType : 'std_msgs/Empty'
+    });
+
+    trimLeftPub = new ROSLIB.Topic({
+      ros : ros,
+      name : '/pidrone/trim/left',
+      messageType : 'std_msgs/Empty'
+    });
+
+    trimFrontPub = new ROSLIB.Topic({
+      ros : ros,
+      name : '/pidrone/trim/front',
+      messageType : 'std_msgs/Empty'
+    });
+
+    trimBackPub = new ROSLIB.Topic({
+      ros : ros,
+      name : '/pidrone/trim/back',
+      messageType : 'std_msgs/Empty'
+    });
+
+    trimThrottleUpPub = new ROSLIB.Topic({
+      ros : ros,
+      name : '/pidrone/trim/throttle/up',
+      messageType : 'std_msgs/Empty'
+    });
+
+    trimThrottleDownPub = new ROSLIB.Topic({
+      ros : ros,
+      name : '/pidrone/trim/throttle/down',
+      messageType : 'std_msgs/Empty'
+    });
+
+    trimSavePub = new ROSLIB.Topic({
+      ros : ros,
+      name : '/pidrone/trim/save',
+      messageType : 'std_msgs/Empty'
+    });
+
+    trimYawCCWPub = new ROSLIB.Topic({
+      ros : ros,
+      name : '/pidrone/trim/yaw/ccw',
+      messageType : 'std_msgs/Empty'
+    });
+
+    trimYawCWPub = new ROSLIB.Topic({
+      ros : ros,
+      name : '/pidrone/trim/yaw/cw',
+      messageType : 'std_msgs/Empty'
+    });
+
+
     /*
      * ROS Subscribers
      */
@@ -279,7 +334,7 @@ function init() {
       //printProperties(message);
       var mynumber = myround(message.vbat, 2);
       document.getElementById('vbat').innerHTML=mynumber
-      if (message.vbat <= 11.3) {
+      if (message.vbat <= 10.0) {
         document.getElementById('vbat').innerHTML=mynumber + " EMPTY!";
         $('#vbat').addClass('alert-danger').removeClass('alert-success');
       } else {
@@ -1357,9 +1412,49 @@ function setControls () {
 }
 
 /*
+ * Functions to adjust the drone trim
+ */
+function trimRight() {
+    trimRightPub.publish(emptyMsg)
+}
+
+function trimLeft() {
+    trimLeftPub.publish(emptyMsg)
+}
+
+function trimForward() {
+    trimFrontPub.publish(emptyMsg)
+}
+
+function trimBackward(){
+    trimBackPub.publish(emptyMsg)
+}
+
+function trimThrottleUp(){
+    trimThrottleUpPub.publish(emptyMsg)
+}
+
+function trimThrottleDown(){
+    trimThrottleDownPub.publish(emptyMsg)
+}
+
+function saveTrim() {
+    trimSavePub.publish(emptyMsg)
+}
+
+function trimYawCCW() {
+    trimYawCCWPub.publish(emptyMsg)
+}
+
+function trimYawCW() {
+    trimYawCWPub.publish(emptyMsg)
+}
+
+
+
+/*
  * Listen for key events
 */
-
 $(document).keyup(function(event){
   var char = String.fromCharCode(event.which || event.keyCode);
   if (char == "J" || char == "L" || char == "K" || char == "I" || char == "W" || char == "S" || char == "A" || char == "D") {
@@ -1373,6 +1468,7 @@ $(document).keypress(function(event){
     publishArm();
   } else if (char == ' ') {
     publishDisarm();
+    event.preventDefault()
   } else if (char == 'r') {
     publishResetTransform();
   } else if (char == 't') {

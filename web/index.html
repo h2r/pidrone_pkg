@@ -107,6 +107,7 @@
                     <div id="position_state"></div>
                 </div>
 
+
                 <div class="form-inline" style="margin-top: 20px; margin-bottom:20px;">
                     <div class="form-group">
                         <label for="controlX">x:</label>
@@ -119,13 +120,64 @@
                 </div>
                 <input class="btn btn-primary my-2 my-sm-0" type="submit" value="Set" name="controlSetBtn" onclick="setControls()"/>
 
+
             <div id="xychart" style="margin-top:20px;">
                 <h4>Top View</h4>
                 <input class="btn btn-primary my-2 my-sm-0" type="submit" value="Pause" name="xyPauseBtn" onclick="togglePauseXYChart(this)"/>
                 <canvas id="xyChart" width="400" height="250"></canvas>
             </div>
 
+            <div id="trim" style="margin-top:20px;">
+                <h4>Trim</h4>
+
+                    <div class="form-inline">
+                            <div class="trim-column trim-left">
+                                <h6>left</h6>
+                                <input class="btn btn-trim my-2 my-sm-0" type="submit" value=&#8592 name="trimLeft" onclick="trimLeft()"/>
+                            </div>
+                            <div class="trim-column trim-middle">
+                                <div class="trim-button-row">
+                                    <h6>front</h6>
+                                    <input class="btn btn-trim my-2 my-sm-0" type="submit" value=&#8593 name="trimFront" onclick="trimForward()"/>
+                                </div>
+                                <div class="trim-button-row">
+                                    <input class="btn btn-trim my-2 my-sm-0" type="submit" value=&#8595 name="trimBack" onclick="trimBackward()"/>
+                                    <h6 style="padding-top:10px">back</h6>
+                                </div>
+                            </div>
+                            <div class="trim-column trim-right">
+                                <h6>right</h6>
+                                <input class="btn btn-trim my-2 my-sm-0" type="submit" value=&#8594 name="trimRight" onclick="trimRight()"/>
+                            </div>
+                            <div class="trim-throttle">
+                                <h5>Takeoff</h5>
+                                <div class="trim-button-row">
+                                    <input class="btn btn-trim my-2 my-sm-0" type="submit" value="faster" name="throttleUp" onclick="trimThrottleUp()"/>
+                                </div>
+                                <div class="trim-button-row">
+                                    <input class="btn btn-trim my-2 my-sm-0" type="submit" value="slower" name="throttleDown" onclick="trimThrottleDown()"/>
+                                </div>
+
+                            </div>
+                            <div class="trim-yaw">
+                                <h5>Yaw</h5>
+                                <div style="flex-direction: row; display: flex;">
+                                    <div style="flex-direction: column; padding-right: 10px">
+                                        <h6>CCW</h6>
+                                        <input class="btn btn-trim my-2 my-sm-0" type="submit" value=&#10226; name="yawCCW" onclick="trimYawCCW()"/>
+                                    </div>
+                                    <div style="flex-direction: column">
+                                        <h6>CW</h6>
+                                        <input class="btn btn-trim my-2 my-sm-0" type="submit" value=&#10227; name="yawCW" onclick="trimYawCW()"/>
+                                    </div>
+                                </div>
+                            </div>
+                    </div>
+                </div>
+                <input class="btn btn-primary my-2 my-sm-0" type="submit" value="Save" name="SaveTrim" onclick="saveTrim()"/>
+
             </div>
+
         </div>
         <hr>
 
