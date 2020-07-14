@@ -295,7 +295,7 @@ def main():
 
     signal.signal(signal.SIGINT, fc.ctrl_c_handler)
     # set the loop rate (Hz)
-    rate = rospy.Rate(60)
+    rate = rospy.Rate(30)
     try:
         while not rospy.is_shutdown():
             # if the current mode is anything other than disarmed

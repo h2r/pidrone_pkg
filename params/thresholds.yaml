@@ -1,6 +1,6 @@
 # safe thresholds for the drone
 
-battery_voltage: 10.0 # (Volts)
+battery_voltage: 5.0 # (Volts)
 
 acceleration:  # (g)
   x: 10.0
@@ -8,9 +8,9 @@ acceleration:  # (g)
   z: 10.0
 
 angular_velocity:  # (rad/s)
-  x: 2.5   # roll rate
-  y: 2.5   # pitch rate
-  z: 2.5   # yaw rate
+  x: 3.0   # roll rate
+  y: 3.0   # pitch rate
+  z: 3.0   # yaw rate
 
 altitude: 0.5  # (meters)
 

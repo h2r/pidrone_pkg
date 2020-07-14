@@ -1,31 +1,41 @@
-velocity:
-  x:
-    p:
-    i:
-    d:
+roll:
+  velocity:
+    kp: 450.0
+    ki: 0.0
+    kd: 0.0
+    k: -15.0
 
-  y:
-    p:
-    i:
-    d:
+  position:
+    kp: 0.0
+    ki: 0.0
+    kd: 0.0
 
-  z:
-    p:
-    i:
-    d:
+pitch:
+  velocity:
+    kp: 450.0
+    ki: 0.0
+    kd: 0.0
+    k: -10.0
 
-position:
-  x:
-    p:
-    i:
-    d:
+  position:
+    kp: 0.0
+    ki: 0.0
+    kd: 0.0
 
-  y:
-    p:
-    i:
-    d:
+yaw:
+  velocity:
+    kp: 2.0
+    ki: 0.0
+    kd: 0.0
+    k: 0.0
 
-  z:
-    p:
-    i:
-    d:
+  position:
+    kp: 0.0
+    ki: 0.0
+    kd: 0.0
+
+throttle:
+  kp: 50.0
+  ki: 0.0
+  kd: 10.0
+  k: 10.0

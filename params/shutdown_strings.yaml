@@ -1,5 +1,5 @@
 # general info strings
-prev_val:
+prev_value:
   "\nINFO: value before cutoff: "
 change_cutoff:
   "\nINFO: if you would like to change the threshold, then edit
