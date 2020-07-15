@@ -1,11 +1,16 @@
 #!/usr/bin/env python
 from __future__ import division
+
+import rospkg
 import rospy
 
 
 #####################################################
 #						PID							#
 #####################################################
+import yaml
+
+
 class PIDaxis():
     def __init__(self, kp, ki, kd, i_range=None, d_range=None, control_range=(1000, 2000), midpoint=1500, smoothing=True):
         # Tuning
@@ -88,6 +93,7 @@ class PID:
         self.trim_controller_cap_plane = 0.05
         self.trim_controller_thresh_plane = 0.0001
 
+
         self.roll = roll
         self.roll_low = roll_low
 
@@ -105,13 +111,18 @@ class PID:
         self._t = None
 
         # Tuning values specific to each drone
-        self.roll_low.init_i = 0.0
-        self.pitch_low.init_i = 0.0
-        self.throttle_low.init_i = 100
+        rospack = rospkg.RosPack()
+        path = rospack.get_path('pidrone_pkg')
+        with open("%s/params/pid.yaml" % path) as f:
+            tuning_values = yaml.load(f)
+        self.trim_roll = tuning_values["roll_offset"]
+        self.trim_pitch = tuning_values["pitch_offset"]
+        self.trim_throttle = tuning_values["throttle_offset"]
+        self.trim_yaw = tuning_values["yaw_offset"]
         self.reset()
 
     def reset(self):
-        """ Reset each pid and restore the initial i terms """
+        """ Reset each pid  """
         # reset time variable
         self._t = None
 
@@ -122,11 +133,6 @@ class PID:
         self.pitch_low.reset()
         self.throttle.reset()
         self.throttle_low.reset()
-
-        # restore tuning values
-        self.roll_low._i = self.roll_low.init_i
-        self.pitch_low._i = self.pitch_low.init_i
-        self.throttle_low._i = self.throttle_low.init_i
 
     def step(self, error, cmd_yaw_velocity=0):
         """ Compute the control variables from the error using the step methods
@@ -158,6 +164,7 @@ class PID:
                 self.roll_low.step(error.x, time_elapsed)
 
             cmd_r = self.roll_low._i + self.roll.step(error.x, time_elapsed)
+        cmd_r = max(1200, min(cmd_r + self.trim_roll, 2000))
 
         # Compute pitch command
         #######################
@@ -174,9 +181,11 @@ class PID:
                 self.pitch_low.step(error.y, time_elapsed)
 
             cmd_p = self.pitch_low._i + self.pitch.step(error.y, time_elapsed)
+        cmd_p = max(1200, min(cmd_p + self.trim_pitch, 2000))
 
         # Compute yaw command
         cmd_y = 1500 + cmd_yaw_velocity
+        cmd_y = max(1200, min(cmd_y + self.trim_yaw, 2000))
 
         # Compute throttle command
         if abs(error.z) < self.trim_controller_thresh_throttle:
@@ -192,9 +201,6 @@ class PID:
                 self.throttle_low.step(error.z, time_elapsed)
 
             cmd_t = self.throttle_low._i + self.throttle.step(error.z, time_elapsed)
+        cmd_t = max(1200, min(cmd_t + self.trim_throttle, 2000))
 
-        # Print statements for the low and high i components
-        # print "Roll  low, hi:", self.roll_low._i, self.roll._i
-        # print "Pitch low, hi:", self.pitch_low._i, self.pitch._i
-        # print "Throttle low, hi:", self.throttle_low._i, self.throttle._i
         return [cmd_r, cmd_p, cmd_y, cmd_t]
