@@ -108,7 +108,7 @@
                 </div>
 
                 <div class="form-inline" style="margin-top: 20px; margin-bottom:20px;">
-                    <div class="form-group">
+                    <div class="form-group" id="controlForm">
                         <label for="controlX">x:</label>
                         <input type="number" step="0.1" class="form-control mx-2" id="controlX" value="0" onchange="changeHeightChartYScaleMin()"/>
                         <label for="controlY">y:</label>
@@ -117,7 +117,8 @@
                         <input type="number" step="0.1" class="form-control mx-2" id="controlZ" value="0" onchange="changeHeightChartYScaleMax()"/>
                     </div>
                 </div>
-                <input class="btn btn-primary my-2 my-sm-0" type="submit" value="Set" name="controlSetBtn" onclick="setControls()"/>
+                <input id="controlFormSubmit" class="btn btn-primary my-2 my-sm-0" type="submit" value="Set" name="controlSetBtn" onclick="setControls()"/>
+
 
             <div id="xychart" style="margin-top:20px;">
                 <h4>Top View</h4>

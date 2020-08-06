@@ -29,7 +29,7 @@ var positionMsg;
 var twistMsg;
 var poseMsg;
 var positionPub;
-var positionControlPub;
+var relativePositionControlPub;
 var velocityControlPub;
 var heartbeatPub;
 var heightChart;
@@ -48,6 +48,9 @@ function closeSession(){
 
 /* This code runs when you load the page */
 function init() {
+    $('#controlForm').hide()
+    $('#controlFormSubmit').hide()
+
     // Connect to ROS.
     var url = 'ws://' + document.getElementById('hostname').value + ':9090'
     ros = new ROSLIB.Ros({
@@ -157,9 +160,15 @@ function init() {
         messageType : 'geometry_msgs/Twist'
     });
 
-    positionControlPub = new ROSLIB.Topic({
+    relativePositionControlPub = new ROSLIB.Topic({
         ros : ros,
-        name : '/pidrone/desired/pose',
+        name : '/pidrone/desired/pose/relative',
+        messageType : 'geometry_msgs/Pose'
+    });
+
+    absolutePositionControlPub = new ROSLIB.Topic({
+        ros : ros,
+        name : '/pidrone/desired/pose/absolute',
         messageType : 'geometry_msgs/Pose'
     });
 
@@ -218,7 +227,7 @@ function init() {
         queue_length : 2,
         throttle_rate : 80
     });
-    
+
     ukf7dsub = new ROSLIB.Topic({
         ros : ros,
         name : '/pidrone/state/ukf_7d',
@@ -250,7 +259,7 @@ function init() {
         queue_length : 2,
         throttle_rate : 80
     });
-    
+
     ukfStatsSub = new ROSLIB.Topic({
         ros : ros,
         name : '/pidrone/ukf_stats',
@@ -390,7 +399,7 @@ function init() {
 
     ukf2dsub.subscribe(ukfCallback);
     ukf7dsub.subscribe(ukfCallback);
-    
+
     ukfStatsSub.subscribe(function(message) {
         currTime = message.header.stamp.secs + message.header.stamp.nsecs/1.0e9;
         if (!gotFirstHeight) {
@@ -403,7 +412,7 @@ function init() {
             spanningFullWindow = true;
             heightChartMinTime = tVal - windowSize;
             heightChartMaxTime = tVal;
-            
+
             // Remove first element of array while difference compared to current
             // time is greater than the windowSize
             while (residualData.length > 0 &&
@@ -442,7 +451,7 @@ function init() {
             heightChart.update();
         }
     });
-    
+
     cameraPoseSub.subscribe(function(message) {
         updateCameraPoseXYChart(message);
     });
@@ -772,53 +781,18 @@ function publishToggleMap() {
 
 function publishArm() {
   console.log("arm");
-  if (positionMsg.data == true) {
-    poseMsg.position.x = 0
-    poseMsg.position.y = 0
-    poseMsg.position.z = 0
-    positionControlPub.publish(poseMsg)
-  } else {
-    twistMsg.linear.x = 0
-    twistMsg.linear.y = 0
-    twistMsg.linear.z = 0
-    velocityControlPub.publish(twistMsg)
-  }
   modeMsg.mode = "ARMED"
   modepub.publish(modeMsg);
 }
 
 function publishDisarm() {
   console.log("disarm");
-  if (positionMsg.data == true) {
-    poseMsg.position.x = 0
-    poseMsg.position.y = 0
-    poseMsg.position.z = 0
-    positionControlPub.publish(poseMsg)
-  } else {
-    twistMsg.linear.x = 0
-    twistMsg.linear.y = 0
-    twistMsg.linear.z = 0
-    twistMsg.angular.z = 0
-    velocityControlPub.publish(twistMsg)
-  }
   modeMsg.mode = "DISARMED"
   modepub.publish(modeMsg);
 }
 
 function publishTakeoff() {
   console.log("takeoff");
-  if (positionMsg.data == true) {
-    poseMsg.position.x = 0
-    poseMsg.position.y = 0
-    poseMsg.position.z = 0
-    positionControlPub.publish(poseMsg)
-  } else {
-    twistMsg.linear.x = 0
-    twistMsg.linear.y = 0
-    twistMsg.linear.z = 0
-    twistMsg.angular.z = 0
-    velocityControlPub.publish(twistMsg)
-  }
   modeMsg.mode = "FLYING"
   modepub.publish(modeMsg);
 }
@@ -829,7 +803,7 @@ function publishTranslateLeft() {
     poseMsg.position.x = -0.1
     poseMsg.position.y = 0
     poseMsg.position.z = 0
-    positionControlPub.publish(poseMsg)
+    relativePositionControlPub.publish(poseMsg)
   } else {
     twistMsg.linear.x = -0.1
     twistMsg.linear.y = 0
@@ -845,7 +819,7 @@ function publishTranslateRight() {
     poseMsg.position.x = 0.1
     poseMsg.position.y = 0
     poseMsg.position.z = 0
-    positionControlPub.publish(poseMsg)
+    relativePositionControlPub.publish(poseMsg)
   } else {
     twistMsg.linear.x = 0.1
     twistMsg.linear.y = 0
@@ -861,7 +835,7 @@ function publishTranslateForward() {
     poseMsg.position.x = 0
     poseMsg.position.y = 0.1
     poseMsg.position.z = 0
-    positionControlPub.publish(poseMsg)
+    relativePositionControlPub.publish(poseMsg)
   } else {
     twistMsg.linear.x = 0
     twistMsg.linear.y = 0.1
@@ -877,7 +851,7 @@ function publishTranslateBackward() {
     poseMsg.position.x = 0
     poseMsg.position.y = -0.1
     poseMsg.position.z = 0
-    positionControlPub.publish(poseMsg)
+    relativePositionControlPub.publish(poseMsg)
   } else {
     twistMsg.linear.x = 0
     twistMsg.linear.y = -0.1
@@ -892,7 +866,7 @@ function publishTranslateUp() {
   poseMsg.position.x = 0
   poseMsg.position.y = 0
   poseMsg.position.z = 0.05
-  positionControlPub.publish(poseMsg)
+  relativePositionControlPub.publish(poseMsg)
 }
 
 function publishTranslateDown() {
@@ -900,7 +874,7 @@ function publishTranslateDown() {
   poseMsg.position.x = 0
   poseMsg.position.y = 0
   poseMsg.position.z = -0.05
-  positionControlPub.publish(poseMsg)
+  relativePositionControlPub.publish(poseMsg)
 }
 
 function publishYawLeft() {
@@ -1331,29 +1305,25 @@ function togglePauseXYChart(btn) {
 function publishVelocityMode() {
     positionMsg.data = false;
     positionPub.publish(positionMsg)
+    $('#controlForm').hide()
+    $('#controlFormSubmit').hide()
 }
 
 function publishPositionMode() {
     positionMsg.data = true;
     positionPub.publish(positionMsg)
+    $('#controlForm').show()
+    $('#controlFormSubmit').show()
 }
 
 function setControls () {
     x = document.getElementById("controlX").value;
     y = document.getElementById("controlY").value;
     z = document.getElementById("controlZ").value;
-
-    if (positionMsg.data == true) {
-        poseMsg.position.x = Number(parseFloat(x));
-        poseMsg.position.y = Number(parseFloat(y));
-        poseMsg.position.z = Number(parseFloat(z));
-        positionControlPub.publish(poseMsg);
-    } else {
-        twistMsg.linear.x = Number(parseFloat(x));
-        twistMsg.linear.y = Number(parseFloat(y));
-        twistMsg.linear.z = Number(parseFloat(z));
-        velocityControlPub.publish(twistMsg);
-    }
+    poseMsg.position.x = Number(parseFloat(x));
+    poseMsg.position.y = Number(parseFloat(y));
+    poseMsg.position.z = Number(parseFloat(z));
+    absolutePositionControlPub.publish(poseMsg);
 }
 
 /*
