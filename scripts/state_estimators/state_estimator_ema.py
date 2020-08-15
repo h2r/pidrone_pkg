@@ -128,8 +128,8 @@ class EMAStateEstimator(object):
         self.calc_angle_comp_values()
         # the constant for the ema filter
         alpha = 0.4
-        velocity.x = self.near_zero((1.0 - alpha) * velocity.x + alpha * (new_vel.x - self.mw_angle_comp_x))
-        velocity.y = self.near_zero((1.0 - alpha) * velocity.y + alpha * (new_vel.y - self.mw_angle_comp_y))
+        velocity.x = (1.0 - alpha) * velocity.x + alpha * (new_vel.x - self.mw_angle_comp_x)
+        velocity.y = (1.0 - alpha) * velocity.y + alpha * (new_vel.y - self.mw_angle_comp_y)
         self.state.twist_with_covariance.twist.linear = velocity
 
     def filter_range(self, range_reading):
@@ -170,10 +170,6 @@ class EMAStateEstimator(object):
         # v = w * r  :  (linear velocity = angular velocity * radius)
         self.mw_angle_comp_x = angular_velocities.x * altitude * self.mw_angle_coeff
         self.mw_angle_comp_y = angular_velocities.y * altitude * self.mw_angle_coeff
-
-    def near_zero(self, n):
-        """ Set a number to zero if it is below a threshold value """
-        return 0.0 if abs(n) < 1e-6 else n
 
     def ctrl_c_handler(self, signal, frame):
         """ Exit the program """

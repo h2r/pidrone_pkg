@@ -29,12 +29,15 @@ var positionMsg;
 var twistMsg;
 var poseMsg;
 var positionPub;
-var positionControlPub;
+var relativePositionControlPub;
 var velocityControlPub;
 var heartbeatPub;
 var heightChart;
+var xVelChart;
+var yVelChart;
 var windowSize = 5;
 var gotFirstHeight = false;
+var gotFirstVelocity = false;
 var startTime;
 var heightChartPaused = false;
 var showingUkfAnalysis = false;
@@ -48,6 +51,9 @@ function closeSession(){
 
 /* This code runs when you load the page */
 function init() {
+    $('#controlForm').hide()
+    $('#controlFormSubmit').hide()
+
     // Connect to ROS.
     var url = 'ws://' + document.getElementById('hostname').value + ':9090'
     ros = new ROSLIB.Ros({
@@ -157,9 +163,15 @@ function init() {
         messageType : 'geometry_msgs/Twist'
     });
 
-    positionControlPub = new ROSLIB.Topic({
+    relativePositionControlPub = new ROSLIB.Topic({
         ros : ros,
-        name : '/pidrone/desired/pose',
+        name : '/pidrone/desired/pose/relative',
+        messageType : 'geometry_msgs/Pose'
+    });
+
+    absolutePositionControlPub = new ROSLIB.Topic({
+        ros : ros,
+        name : '/pidrone/desired/pose/absolute',
         messageType : 'geometry_msgs/Pose'
     });
 
@@ -211,6 +223,14 @@ function init() {
       throttle_rate : 80
     });
 
+    velsub = new ROSLIB.Topic({
+      ros : ros,
+      name : '/pidrone/picamera/twist',
+      messageType : 'geometry_msgs/TwistStamped',
+      queue_length : 2,
+      throttle_rate : 80
+    });
+
     ukf2dsub = new ROSLIB.Topic({
         ros : ros,
         name : '/pidrone/state/ukf_2d',
@@ -218,7 +238,7 @@ function init() {
         queue_length : 2,
         throttle_rate : 80
     });
-    
+
     ukf7dsub = new ROSLIB.Topic({
         ros : ros,
         name : '/pidrone/state/ukf_7d',
@@ -250,7 +270,7 @@ function init() {
         queue_length : 2,
         throttle_rate : 80
     });
-    
+
     ukfStatsSub = new ROSLIB.Topic({
         ros : ros,
         name : '/pidrone/ukf_stats',
@@ -331,6 +351,52 @@ function init() {
       //console.log('tVal: ' + tVal)
     });
 
+    var velChartMaxTime = 0;
+    var velChartMaxTime = windowSize;
+    velsub.subscribe(function(message) {
+         currTime = message.header.stamp.secs + message.header.stamp.nsecs/1.0e9;
+         if (!gotFirstVelocity) {
+             gotFirstVelocity = true;
+             startTime = currTime;
+         }
+         tVal = currTime - startTime;
+         // Have the plot scroll in time, showing a window of windowSize seconds
+         if (tVal > windowSize) {
+             velChartMinTime = tVal - windowSize;
+             velChartMaxTime = tVal;
+             xVelChart.options.scales.xAxes[0].ticks.min = velChartMinTime;
+             xVelChart.options.scales.xAxes[0].ticks.max = velChartMaxTime;
+             yVelChart.options.scales.xAxes[0].ticks.min = velChartMinTime;
+             yVelChart.options.scales.xAxes[0].ticks.max = velChartMaxTime;
+             // Remove first element of array while difference compared to current
+             // time is greater than the windowSize
+             while (rawXVelocityData.length > 0 &&
+                    (tVal - rawXVelocityData[0].x > windowSize)) {
+                 rawXVelocityData.splice(0, 1);
+             }
+             while (rawYVelocityData.length > 0 &&
+                    (tVal - rawYVelocityData[0].x > windowSize)) {
+                 rawYVelocityData.splice(0, 1);
+             }
+         }
+           // Add new reading to end of the data array
+           // x-y pair
+           var xVelxyPair = {
+               x: tVal,
+               y: message.twist.linear.x
+           }
+           var yVelxyPair = {
+               x: tVal,
+               y:message.twist.linear.y
+           }
+           rawXVelocityData.push(xVelxyPair)
+           rawYVelocityData.push(yVelxyPair)
+           xVelChart.data.datasets[0].data = rawXVelocityData;
+           yVelChart.data.datasets[0].data = rawYVelocityData;
+           xVelChart.update();
+           yVelChart.update();
+         });
+
     function ukfCallback(message) {
       //printProperties(message);
       currTime = message.header.stamp.secs + message.header.stamp.nsecs/1.0e9;
@@ -390,7 +456,7 @@ function init() {
 
     ukf2dsub.subscribe(ukfCallback);
     ukf7dsub.subscribe(ukfCallback);
-    
+
     ukfStatsSub.subscribe(function(message) {
         currTime = message.header.stamp.secs + message.header.stamp.nsecs/1.0e9;
         if (!gotFirstHeight) {
@@ -403,7 +469,7 @@ function init() {
             spanningFullWindow = true;
             heightChartMinTime = tVal - windowSize;
             heightChartMaxTime = tVal;
-            
+
             // Remove first element of array while difference compared to current
             // time is greater than the windowSize
             while (residualData.length > 0 &&
@@ -442,7 +508,7 @@ function init() {
             heightChart.update();
         }
     });
-    
+
     cameraPoseSub.subscribe(function(message) {
         updateCameraPoseXYChart(message);
     });
@@ -772,53 +838,18 @@ function publishToggleMap() {
 
 function publishArm() {
   console.log("arm");
-  if (positionMsg.data == true) {
-    poseMsg.position.x = 0
-    poseMsg.position.y = 0
-    poseMsg.position.z = 0
-    positionControlPub.publish(poseMsg)
-  } else {
-    twistMsg.linear.x = 0
-    twistMsg.linear.y = 0
-    twistMsg.linear.z = 0
-    velocityControlPub.publish(twistMsg)
-  }
   modeMsg.mode = "ARMED"
   modepub.publish(modeMsg);
 }
 
 function publishDisarm() {
   console.log("disarm");
-  if (positionMsg.data == true) {
-    poseMsg.position.x = 0
-    poseMsg.position.y = 0
-    poseMsg.position.z = 0
-    positionControlPub.publish(poseMsg)
-  } else {
-    twistMsg.linear.x = 0
-    twistMsg.linear.y = 0
-    twistMsg.linear.z = 0
-    twistMsg.angular.z = 0
-    velocityControlPub.publish(twistMsg)
-  }
   modeMsg.mode = "DISARMED"
   modepub.publish(modeMsg);
 }
 
 function publishTakeoff() {
   console.log("takeoff");
-  if (positionMsg.data == true) {
-    poseMsg.position.x = 0
-    poseMsg.position.y = 0
-    poseMsg.position.z = 0
-    positionControlPub.publish(poseMsg)
-  } else {
-    twistMsg.linear.x = 0
-    twistMsg.linear.y = 0
-    twistMsg.linear.z = 0
-    twistMsg.angular.z = 0
-    velocityControlPub.publish(twistMsg)
-  }
   modeMsg.mode = "FLYING"
   modepub.publish(modeMsg);
 }
@@ -829,7 +860,7 @@ function publishTranslateLeft() {
     poseMsg.position.x = -0.1
     poseMsg.position.y = 0
     poseMsg.position.z = 0
-    positionControlPub.publish(poseMsg)
+    relativePositionControlPub.publish(poseMsg)
   } else {
     twistMsg.linear.x = -0.1
     twistMsg.linear.y = 0
@@ -845,7 +876,7 @@ function publishTranslateRight() {
     poseMsg.position.x = 0.1
     poseMsg.position.y = 0
     poseMsg.position.z = 0
-    positionControlPub.publish(poseMsg)
+    relativePositionControlPub.publish(poseMsg)
   } else {
     twistMsg.linear.x = 0.1
     twistMsg.linear.y = 0
@@ -861,7 +892,7 @@ function publishTranslateForward() {
     poseMsg.position.x = 0
     poseMsg.position.y = 0.1
     poseMsg.position.z = 0
-    positionControlPub.publish(poseMsg)
+    relativePositionControlPub.publish(poseMsg)
   } else {
     twistMsg.linear.x = 0
     twistMsg.linear.y = 0.1
@@ -877,7 +908,7 @@ function publishTranslateBackward() {
     poseMsg.position.x = 0
     poseMsg.position.y = -0.1
     poseMsg.position.z = 0
-    positionControlPub.publish(poseMsg)
+    relativePositionControlPub.publish(poseMsg)
   } else {
     twistMsg.linear.x = 0
     twistMsg.linear.y = -0.1
@@ -892,7 +923,7 @@ function publishTranslateUp() {
   poseMsg.position.x = 0
   poseMsg.position.y = 0
   poseMsg.position.z = 0.05
-  positionControlPub.publish(poseMsg)
+  relativePositionControlPub.publish(poseMsg)
 }
 
 function publishTranslateDown() {
@@ -900,7 +931,7 @@ function publishTranslateDown() {
   poseMsg.position.x = 0
   poseMsg.position.y = 0
   poseMsg.position.z = -0.05
-  positionControlPub.publish(poseMsg)
+  relativePositionControlPub.publish(poseMsg)
 }
 
 function publishYawLeft() {
@@ -933,9 +964,40 @@ function publishZeroVelocity() {
 }
 
 /*
+ * Handle velocity charts
+ */
+ var rawXVelocityDataset = {
+   label: 'Raw X Velocity Readings',
+   data: Array(0), // initialize array of length 0
+   borderWidth: 1.5,
+   pointRadius: 0,
+   fill: false,
+   borderColor: 'rgba(255, 80, 0, 0.8)',
+   backgroundColor: 'rgba(255, 80, 0, 0)',
+   lineTension: 0, // remove smoothing
+   itemID: 0
+ };
+ var rawXVelocityData = Array(0);
+
+ var rawYVelocityDataset = {
+   label: 'Raw Y Velocity Readings',
+   data: Array(0), // initialize array of length 0
+   borderWidth: 1.5,
+   pointRadius: 0,
+   fill: false,
+   borderColor: 'rgba(255, 80, 0, 0.8)',
+   backgroundColor: 'rgba(255, 80, 0, 0)',
+   lineTension: 0, // remove smoothing
+   itemID: 0
+ };
+ var rawYVelocityData = Array(0);
+
+
+
+
+/*
  * Handle IR chart and UKF map
  */
-
 
 var rawIrDataset = {
   label: 'Raw IR Readings',
@@ -1056,6 +1118,8 @@ var minusSigmaData = Array(0);
 
 var ctx;
 var xyctx;
+var xvelctx;
+var yvelctx;
 
 function loadHeightChartStandardView() {
     ctx = document.getElementById("heightChart").getContext('2d');
@@ -1154,7 +1218,97 @@ function loadHeightChartUkfAnalysis() {
     });
 }
 
+function loadXVelChart() {
+    xvelctx = document.getElementById("xVelChart").getContext('2d');
+    xVelChart = new Chart(xvelctx, {
+        type: 'line',
+        data: {
+            datasets: [
+                rawXVelocityDataset
+            ]
+        },
+        options: {
+            animation: {
+               duration: 0,
+            },
+            scales: {
+                yAxes: [{
+                    ticks: {
+                        beginAtZero: true,
+                        min: -0.5,
+                        max: 0.5,
+                        stepSize: 0.1
+                    },
+                    scaleLabel: {
+                        display: true,
+                        labelString: 'Velocity (m/s)'
+                    }
+                }],
+                xAxes: [{
+                    type: 'linear',
+                    display: false,
+                    ticks: {
+                        min: 0,
+                        max: windowSize,
+                        stepSize: windowSize
+                    }
+                }]
+            },
+            legend: {
+              display: true
+              }
+         }
+    });
+}
+
+function loadYVelChart() {
+    yvelctx = document.getElementById("yVelChart").getContext('2d');
+    yVelChart = new Chart(yvelctx, {
+        type: 'line',
+        data: {
+            datasets: [
+                rawYVelocityDataset
+            ]
+        },
+        options: {
+            animation: {
+               duration: 0,
+            },
+            scales: {
+                yAxes: [{
+                    ticks: {
+                        beginAtZero: true,
+                        min: -0.5,
+                        max: 0.5,
+                        stepSize: 0.1
+                    },
+                    scaleLabel: {
+                        display: true,
+                        labelString: 'Velocity (m/s)'
+                    }
+                }],
+                xAxes: [{
+                    type: 'linear',
+                    display: false,
+                    ticks: {
+                        min: 0,
+                        max: windowSize,
+                        stepSize: windowSize
+                    }
+                }]
+            },
+            legend: {
+              display: true
+              }
+         }
+    });
+}
+
+
+
 $(document).ready(function() {
+    loadXVelChart();
+    loadYVelChart();
     loadHeightChartStandardView();
     xyctx = document.getElementById("xyChart").getContext('2d');
     xyChart = new Chart(xyctx, {
@@ -1331,29 +1485,25 @@ function togglePauseXYChart(btn) {
 function publishVelocityMode() {
     positionMsg.data = false;
     positionPub.publish(positionMsg)
+    $('#controlForm').hide()
+    $('#controlFormSubmit').hide()
 }
 
 function publishPositionMode() {
     positionMsg.data = true;
     positionPub.publish(positionMsg)
+    $('#controlForm').show()
+    $('#controlFormSubmit').show()
 }
 
 function setControls () {
     x = document.getElementById("controlX").value;
     y = document.getElementById("controlY").value;
     z = document.getElementById("controlZ").value;
-
-    if (positionMsg.data == true) {
-        poseMsg.position.x = Number(parseFloat(x));
-        poseMsg.position.y = Number(parseFloat(y));
-        poseMsg.position.z = Number(parseFloat(z));
-        positionControlPub.publish(poseMsg);
-    } else {
-        twistMsg.linear.x = Number(parseFloat(x));
-        twistMsg.linear.y = Number(parseFloat(y));
-        twistMsg.linear.z = Number(parseFloat(z));
-        velocityControlPub.publish(twistMsg);
-    }
+    poseMsg.position.x = Number(parseFloat(x));
+    poseMsg.position.y = Number(parseFloat(y));
+    poseMsg.position.z = Number(parseFloat(z));
+    absolutePositionControlPub.publish(poseMsg);
 }
 
 /*
@@ -1373,6 +1523,7 @@ $(document).keypress(function(event){
     publishArm();
   } else if (char == ' ') {
     publishDisarm();
+    event.preventDefault()
   } else if (char == 'r') {
     publishResetTransform();
   } else if (char == 't') {

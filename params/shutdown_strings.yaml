@@ -1,0 +1,46 @@
+# general info strings
+prev_value:
+  "\nINFO: value before cutoff: "
+change_cutoff:
+  "\nINFO: if you would like to change the threshold, then edit
+  the value in thresholds.yaml in the params directory"
+
+# specific safety failure strings
+battery:
+  "\nSafety Failure: low battery"
+
+web_interface:
+  "\nSafety Failure: web interface not responding
+   \nINFO: Check your browser"
+
+pid:
+  "\nSafety Failure: not receiving pid heartbeat.
+   \nINFO: Check the pid_controller node"
+
+infrared:
+  "\nSafety Failure: not receiving data from the IR sensor.
+   \nINFO: Check the infrared node"
+
+camera:
+  "\nSafety Failure: not receiving data from the camera sensor.
+   \nINFO: Restart the vision node and check your camera connections"
+
+state_estimator:
+  "\nSafety Failure: not receiving a state estimate.
+   \nINFO: Check the state_estimator node"
+
+fly_commands:
+  "\nSafety Failure: not receiving fly commands.
+   \nINFO: Check the pid_controller node"
+
+acc:
+  x: "\nSafety Failure: Crash predicted based on X-axis acceleration"
+  y: "\nSafety Failure: Crash predicted based on Y-axis acceleration"
+  z: "\nSafety Failure: Crash predicted based on Z-axis acceleration"
+
+gyro:
+  x: "\nSafety Failure: Crash predicted based on roll rate"
+  y: "\nSafety Failure: Crash predicted based on pitch rate"
+  z: "\nSafety Failure: Crash predicted based on yaw rate"
+
+altitude: "\nSafety Failure: Drone is flying too high"

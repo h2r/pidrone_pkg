@@ -43,7 +43,8 @@ class PIDaxis():
             self._i = max(self.i_range[0], min(self._i, self.i_range[1]))
 
         # Find the d component
-        self._d = (err - self._old_err) * self.kd / time_elapsed
+        if time_elapsed != 0.0:
+            self._d = (err - self._old_err) * self.kd / time_elapsed
         if self.d_range is not None:
             self._d = max(self.d_range[0], min(self._d, self.d_range[1]))
         self._old_err = err
@@ -78,10 +79,10 @@ class PID:
 
                  # Kv 2300 motors have midpoint 1300, Kv 2550 motors have midpoint 1250
                  throttle=PIDaxis(1.0/height_factor * battery_factor, 0.5/height_factor * battery_factor,
-                                  2.0/height_factor * battery_factor, i_range=(-400, 400), control_range=(1200, 2000),
+                                  2.0/height_factor * battery_factor, i_range=(-100, 100), control_range=(1200, 2000),
                                   d_range=(-40, 40), midpoint=1250),
                  throttle_low=PIDaxis(1.0/height_factor * battery_factor, 0.05/height_factor * battery_factor,
-                                      2.0/height_factor * battery_factor, i_range=(0, 400), control_range=(1200, 2000),
+                                      2.0/height_factor * battery_factor, i_range=(0, 200), control_range=(1200, 2000),
                                       d_range=(-40, 40), midpoint=1250)
                  ):
 
@@ -107,7 +108,7 @@ class PID:
         # Tuning values specific to each drone
         self.roll_low.init_i = 0.0
         self.pitch_low.init_i = 0.0
-        self.throttle_low.init_i = 100
+        self.throttle_low.init_i = 200.0
         self.reset()
 
     def reset(self):
@@ -134,7 +135,7 @@ class PID:
         """
         # First time around prevent time spike
         if self._t is None:
-            time_elapsed = 1
+            time_elapsed = 0.0
         else:
             time_elapsed = rospy.get_time() - self._t
 
@@ -193,8 +194,4 @@ class PID:
 
             cmd_t = self.throttle_low._i + self.throttle.step(error.z, time_elapsed)
 
-        # Print statements for the low and high i components
-        # print "Roll  low, hi:", self.roll_low._i, self.roll._i
-        # print "Pitch low, hi:", self.pitch_low._i, self.pitch._i
-        # print "Throttle low, hi:", self.throttle_low._i, self.throttle._i
         return [cmd_r, cmd_p, cmd_y, cmd_t]

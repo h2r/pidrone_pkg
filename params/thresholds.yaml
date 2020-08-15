@@ -1,0 +1,23 @@
+# safe thresholds for the drone
+
+battery_voltage: 10.0 # (Volts)
+
+acceleration:  # (g)
+  x: 10.0
+  y: 10.0
+  z: 10.0
+
+angular_velocity:  # (rad/s)
+  x: 2.5   # roll rate
+  y: 2.5   # pitch rate
+  z: 2.5   # yaw rate
+
+altitude: 0.5  # (meters)
+
+heartbeat:  # (seconds)
+  web_interface: 2.0
+  pid_controller: 0.25
+  infrared: 0.25
+  camera: 0.25
+  state_estimator: 0.25
+  fly_commands: 0.25

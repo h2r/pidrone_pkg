@@ -47,14 +47,12 @@ class AnalyzeFlow(picamera.array.PiMotionAnalysis):
         y_motion = np.sum(y) * self.flow_coeff * self.altitude
         twist_msg = TwistStamped()
         twist_msg.header.stamp = rospy.Time.now()
-        twist_msg.twist.linear.x = self.near_zero(x_motion)
-        twist_msg.twist.linear.y = - self.near_zero(y_motion)
+        twist_msg.twist.linear.x = x_motion
+        twist_msg.twist.linear.y = - y_motion
 
         # Update and publish the twist message
         self.twistpub.publish(twist_msg)
 
-    def near_zero(self, n):
-        return 0 if abs(n) < 0.001 else n
 
     def state_callback(self, msg):
         """
