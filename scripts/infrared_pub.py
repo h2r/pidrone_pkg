@@ -66,7 +66,7 @@ def main():
     # Non-ROS Setup
     ###############
     # set the while loop frequency
-    r = rospy.Rate(100)
+    r = rospy.Rate(60)
     # set up the ctrl-c handler
     signal.signal(signal.SIGINT, ir.ctrl_c_handler)
 
