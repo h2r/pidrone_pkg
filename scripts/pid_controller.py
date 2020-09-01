@@ -151,6 +151,8 @@ class PIDController(object):
         filtered_desired_velocity to be zero, and reset both the PositionPID
         and VelocityPID
         '''
+        # start drone in velocity control
+        self.position_control_pub.publish(False)
         # reset position control variables
         self.desired_position.x = 0.0
         self.desired_position.y = 0.0
@@ -221,8 +223,6 @@ def main(ControllerClass):
     while not rospy.is_shutdown():
         fly_command = cmds.disarm_cmd
         pid_controller.heartbeat_pub.publish(Empty())
-        if pid_controller.current_mode == 'ARMED':
-            pid_controller.position_control_pub.publish(False)
         if pid_controller.current_mode == 'FLYING' and pid_controller.desired_mode == 'FLYING':
             fly_command = pid_controller.step()
         else:
