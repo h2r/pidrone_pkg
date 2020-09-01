@@ -2,9 +2,9 @@ import rospy
 import rospkg
 import yaml
 from sensor_msgs.msg import Range
-from geometry_msgs.msg import TwistStamped
+from geometry_msgs.msg import TwistStamped, PoseStamped
 from pidrone_pkg.msg import RC, State
-from std_msgs.msg import Header, Empty
+from std_msgs.msg import Header, Empty, Bool
 
 
 class FaultProtector(object):
@@ -24,7 +24,8 @@ class FaultProtector(object):
         self.heartbeat_flight_controller = curr_time
         self.heartbeat_state_estimator = curr_time
         self.heartbeat_fly_commands = curr_time
-        # variables modified by callbacks
+        self.heartbeat_camera_pose = curr_time
+        # callbacks variables
         self.altitude = 0.0
 
         # import safe values
@@ -47,6 +48,12 @@ class FaultProtector(object):
         rospy.Subscriber('/pidrone/picamera/twist', TwistStamped, self.heartbeat_camera_callback)
         rospy.Subscriber('/pidrone/infrared', Range, self.heartbeat_infrared_callback)
         rospy.Subscriber('/pidrone/fly_commands', RC, self.heartbeat_fly_commands_callback)
+        rospy.Subscriber('/pidrone/picamera/pose', PoseStamped, self.heartbeat_pose_callback)
+
+        # Publishers
+        ############
+        self.position_control_pub = rospy.Publisher('/pidrone/position_control', Bool, queue_size=1)
+
 
     # Heartbeat Callbacks: These update the last time that data was received
     #                       from a node
@@ -70,6 +77,10 @@ class FaultProtector(object):
     def heartbeat_camera_callback(self, msg):
         """Update camera sensor heartbeat"""
         self.heartbeat_camera = rospy.Time.now()
+
+    def heartbeat_pose_callback(self, msg):
+        """turn off position control if the camera is lost (unrelated to disarming) """
+        self.heartbeat_camera_pose = rospy.Time.now()
 
     def heartbeat_fly_commands_callback(self, msg):
         """Update camera sensor heartbeat"""
@@ -96,6 +107,9 @@ class FaultProtector(object):
             if curr_time - self.heartbeat_fly_commands > rospy.Duration.from_sec(self.thresholds["heartbeat"]["fly_commands"]):
                 self.shutdown = True
                 self.shutdown_cause += self.strs["fly_commands"]
+        # turn off position_control if the camera is lost (unrelated to disarming)
+        if curr_time - self.heartbeat_camera_pose > rospy.Duration.from_sec(self.thresholds["position_control"]):
+            self.position_control_pub.publish(False)
 
     def check_accelerations(self, imu_msg):
         ax = imu_msg.linear_acceleration.x
@@ -131,7 +145,7 @@ class FaultProtector(object):
             self.shutdown_cause += self.strs["altitude"] + self.strs["change_cutoff"] + self.strs["prev_value"] + str(self.altitude)
 
     def check_battery(self, battery_voltage):
-        if battery_voltage is not None and battery_voltage < self.thresholds["battery_voltage"]:
+        if battery_voltage is not None and battery_voltage < self.thresholds["battery"]["min_flying_voltage"]:
             self.shutdown_cause += self.strs["battery"] + self.strs["prev_value"] + str(battery_voltage)
             self.shutdown = True
 

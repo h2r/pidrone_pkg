@@ -60,6 +60,12 @@ class FlightController(object):
         # store the time for angular velocity calculations
         self.time = rospy.Time.now()
 
+        # import safe values
+        rospack = rospkg.RosPack()
+        path = rospack.get_path('pidrone_pkg')
+        with open("%s/params/thresholds.yaml" % path) as f:
+            self.thresholds = yaml.load(f)
+
         # Initialize the Imu Message
         ############################
         header = Header()
@@ -223,6 +229,11 @@ class FlightController(object):
         # Update Battery message:
         self.battery_message.vbat = self.board.analog['vbat'] * 0.10
         self.battery_message.amperage = self.board.analog['amperage']
+        # shutdown the Pi to prevent the battery from draining too low
+        if self.battery_message.vbat < self.thresholds["battery"]["min_voltage"]:
+            print("WARNING: The battery voltage is getting too low")
+            print("INFO: Shutting down")
+            os.system("echo 'bigbubba\n' | sudo -S shutdown -h now")
 
     def update_command(self):
         """ Set command values if the mode is ARMED or DISARMED """
@@ -268,6 +279,17 @@ class FlightController(object):
 
 
 def main():
+
+    # Determine if the user wants to fly or just use the FC sensors
+    value = raw_input("Are you ready to fly? [y/n] ").lower()
+    if value == "y" or value == "yes":
+        sensors_only = False
+        print("INFO: Drone is ready to arm. \n")
+    else:
+        sensors_only = True
+        print("INFO: Entering sensors only mode.")
+        print("INFO: You will need to restart this script if you want to fly.\n")
+
     # ROS Setup
     ###########
     node_name = os.path.splitext(os.path.basename(__file__))[0]
@@ -298,28 +320,31 @@ def main():
     rate = rospy.Rate(60)
     try:
         while not rospy.is_shutdown():
-            # if the current mode is anything other than disarmed
-            # preform as safety check
-            if fc.curr_mode != 'DISARMED':
-                # Break the loop if a safety check has failed
-                if fp.should_i_shutdown(mode=fc.curr_mode,
-                                        prev_mode=fc.prev_mode,
-                                        battery_voltage=fc.battery_message.vbat,
-                                        imu_msg=fc.imu_message):
-                    fc.shutdown_reason += fp.get_shutdown_cause()
-                    break
             # update and publish flight controller readings
             fc.update_battery_message()
             fc.update_imu_message()
             imupub.publish(fc.imu_message)
             batpub.publish(fc.battery_message)
 
-            # update and send the flight commands to the board
-            fc.update_command()
-            fc.send_cmd()
+            if not sensors_only:
+                # if the current mode is anything other than disarmed
+                # preform as safety check
+                if fc.curr_mode != 'DISARMED':
+                    # Break the loop if a safety check has failed
+                    if fp.should_i_shutdown(mode=fc.curr_mode,
+                                            prev_mode=fc.prev_mode,
+                                            battery_voltage=fc.battery_message.vbat,
+                                            imu_msg=fc.imu_message):
+                        fc.shutdown_reason += fp.get_shutdown_cause()
+                        break
 
-            # publish the current mode of the drone
-            fc.modepub.publish(fc.curr_mode)
+
+                # update and send the flight commands to the board
+                fc.update_command()
+                fc.send_cmd()
+
+                # publish the current mode of the drone
+                fc.modepub.publish(fc.curr_mode)
 
             # sleep for the remainder of the loop time
             rate.sleep()

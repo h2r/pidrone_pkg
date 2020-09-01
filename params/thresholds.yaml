@@ -1,6 +1,8 @@
 # safe thresholds for the drone
 
-battery_voltage: 10.0 # (Volts)
+battery:
+  min_flying_voltage: 11.1 # (Volts)
+  min_voltage: 10.5 # (Volts)
 
 acceleration:  # (g)
   x: 10.0
@@ -8,9 +10,9 @@ acceleration:  # (g)
   z: 10.0
 
 angular_velocity:  # (rad/s)
-  x: 2.5   # roll rate
-  y: 2.5   # pitch rate
-  z: 2.5   # yaw rate
+  x: 3.0   # roll rate
+  y: 3.0   # pitch rate
+  z: 3.0   # yaw rate
 
 altitude: 0.5  # (meters)
 
@@ -21,3 +23,6 @@ heartbeat:  # (seconds)
   camera: 0.25
   state_estimator: 0.25
   fly_commands: 0.25
+
+# how long to stay in position control if the camera is lost
+position_control: 2.0  # (seconds)
