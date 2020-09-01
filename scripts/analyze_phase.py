@@ -3,6 +3,7 @@ import cv2
 import rospy
 import picamera
 import numpy as np
+from sensor_msgs.msg import Image
 from pidrone_pkg.msg import State
 from std_msgs.msg import Empty, Bool
 from geometry_msgs.msg import PoseStamped
@@ -17,6 +18,7 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
 
     Publisher:
     /pidrone/picamera/pose
+    /pidrone/picamera/lost
 
     Subscribers:
     /pidrone/reset_transform
@@ -38,11 +40,13 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
 
         # first image vars
         self.first = True
+        self.new_first = True
 
         # ROS Setup
         ###########
         # Publisher
         self.posepub = rospy.Publisher('/pidrone/picamera/pose', PoseStamped, queue_size=1)
+
         # Subscribers
         rospy.Subscriber("/pidrone/reset_transform", Empty, self.reset_callback)
         rospy.Subscriber("/pidrone/position_control", Bool, self.position_control_callback)
@@ -50,40 +54,33 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
 
     def write(self, data):
         ''' A method that is called everytime an image is taken '''
-        # Run the following only if position control is enabled to prevent
-        # wasting computation resources on unused position data
-        if self.position_control:
-            image = np.reshape(np.fromstring(data, dtype=np.uint8), (240, 320, 3))
-            if self.first_image is None:
-                self.first_image = image
-                self.previous_image = image
+        image = np.reshape(np.fromstring(data, dtype=np.uint8), (240, 320, 3))
+        if self.first_image is None:
+            self.first_image = image
+            self.previous_image = image
+            self.new_first = True
+        else:
+            self.new_first = False
+            # try to estimate the transformations from the first image
+            transform_first = cv2.estimateRigidTransform(self.first_image, image, True)
+            if transform_first is not None:
+                # calculate the x,y and translations, and yaw rotation from the transformation
+                translation_first, yaw_first = self.translation_and_yaw(transform_first)
+                self.pose_msg.pose.position.x = translation_first[0]*self.altitude
+                self.pose_msg.pose.position.y = translation_first[1]*self.altitude
+                self.publish_pose(yaw_first)
             else:
-                # try to estimate the transformations from the first image
-                transform_first = cv2.estimateRigidTransform(self.first_image, image, False)
-                # if the first image was visible (the transformation was succesful) :
-                if transform_first is not None:
-                    # calculate the x,y, and yaw translations from the transformation
-                    translation_first, yaw_first = self.translation_and_yaw(transform_first)
-                    # use an EMA filter to smooth the position and yaw values
-                    self.pose_msg.pose.position.x = translation_first[0]*self.altitude
-                    self.pose_msg.pose.position.y = translation_first[1]*self.altitude
-                    self.publish_pose(yaw_first)
-                    # update first image data
-                # else the first image was not visible (the transformation was not succesful) :
-                else:
-                    # try to estimate the transformation from the previous image
-                    transform_previous = cv2.estimateRigidTransform(self.previous_image, image, False)
-
-                    # if the previous image was visible (the transformation was succesful)
-                    # calculate the position by adding the displacement from the previous image
-                    # to the current position estimate
-                    if transform_previous is not None:
-                        int_displacement, yaw_previous = self.translation_and_yaw(transform_previous)
-                        self.pose_msg.pose.position.x = self.x_position_from_state + (int_displacement[0]*self.altitude)
-                        self.pose_msg.pose.position.y = self.y_position_from_state + (int_displacement[1]*self.altitude)
-                        self.publish_pose(yaw_previous)
-                self.previous_image = image
-
+                # try to estimate the transformation from the previous image
+                transform_previous = cv2.estimateRigidTransform(self.previous_image, image, True)
+                # if the previous image was visible (the transformation was succesful)
+                # calculate the position by adding the displacement from the previous image
+                # to the current position estimate
+                if transform_previous is not None:
+                    int_displacement, yaw_previous = self.translation_and_yaw(transform_previous)
+                    self.pose_msg.pose.position.x = self.x_position_from_state + (int_displacement[0]*self.altitude)
+                    self.pose_msg.pose.position.y = self.y_position_from_state + (int_displacement[1]*self.altitude)
+                    self.publish_pose(yaw_previous)
+            self.previous_image = image
 
     # normalize image
     def translation_and_yaw(self, transform):
@@ -100,7 +97,7 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
     # subscribe /pidrone/reset_transform
     def reset_callback(self, msg):
         """ Reset the current position and orientation """
-        print "Resetting Phase"
+        print("Resetting Phase")
         # reset position control variables
         self.first_image = None
         # reset the pose values
