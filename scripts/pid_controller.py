@@ -12,10 +12,10 @@ from pid_class import PID, PIDaxis
 from geometry_msgs.msg import Pose, Twist
 from pidrone_pkg.msg import Mode, RC, State
 from std_msgs.msg import Float32, Empty, Bool
-from three_dim_vec import Position, Velocity, Error, RPY
+
 
 # frequency of inner loop velocity controller
-INNER_LOOP_FREQUENCY = 100  
+INNER_LOOP_FREQUENCY = 100
 INNER_LOOP_PERIOD = 1.0 / INNER_LOOP_FREQUENCY
 # frequency of outer loop position controller
 OUTER_LOOP_FREQUENCY = 30
@@ -43,9 +43,6 @@ class PIDController(object):
         # Initialize the current and desired velocities
         self.current_velocity = Twist()
         self.desired_velocity = Twist()
-
-        # Initialize the velocity error
-        self.prev_velocity_error = Twist()
 
         # Initialize the primary PID
         self.pid = PID(period=INNER_LOOP_PERIOD)
@@ -162,7 +159,6 @@ class PIDController(object):
         self.x_velocity_from_position = 0
         self.y_velocity_from_position = 0
         # reset velocity control_variables
-        self.prev_velocity_error = Error(0,0,0)
         self.desired_velocity.linear.x = 0.0
         self.desired_velocity.linear.y = 0.0
         self.desired_velocity.angular.z = 0.0
@@ -237,4 +233,3 @@ def main(ControllerClass):
 
 if __name__ == '__main__':
     main(PIDController)
-    
