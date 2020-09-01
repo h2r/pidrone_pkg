@@ -5,6 +5,8 @@ localization.py
 runs localization for the PiDrone, helper code located in localization_helper
 """
 
+import rospkg
+import yaml
 import numpy as np
 import picamera
 import picamera.array
@@ -16,10 +18,14 @@ import tf
 from localization_helper import LocalizationParticleFilter, create_map, PROB_THRESHOLD
 
 # ---------- map parameters ----------- #
-MAP_PIXEL_WIDTH = 3227  # in pixel
-MAP_PIXEL_HEIGHT = 2447
-MAP_REAL_WIDTH = 1.4  # in meter
-MAP_REAL_HEIGHT = 1.07
+rospack = rospkg.RosPack()
+path = rospack.get_path('pidrone_pkg')
+with open("%s/params/localization.yaml" % path) as f:
+    params = yaml.load(f)
+MAP_PIXEL_WIDTH = params["map"]["pixel_width"]  # in pixel
+MAP_PIXEL_HEIGHT = params["map"]["pixel_height"]
+MAP_REAL_WIDTH = params["map"] ["real_width"] # in meter
+MAP_REAL_HEIGHT = params["map"]["real_height"]
 
 # ---------- camera parameters ----------- #
 CAMERA_WIDTH = 320
@@ -31,8 +37,8 @@ CAMERA_CENTER = np.float32([(CAMERA_WIDTH - 1) / 2., (CAMERA_HEIGHT - 1) / 2.]).
 
 # ---------- localization parameters ----------- #
 MAX_BAD_COUNT = -10
-NUM_PARTICLE = 30
-NUM_FEATURES = 200
+NUM_PARTICLE = 15
+NUM_FEATURES = 500
 
 
 class Localizer(picamera.array.PiMotionAnalysis):
@@ -84,8 +90,7 @@ class Localizer(picamera.array.PiMotionAnalysis):
         # start MCL localization
         if self.locate_position:
             curr_kp, curr_des = self.detector.detectAndCompute(curr_img, None)
-
-            if curr_kp is not None and curr_kp is not None:
+            if curr_kp is not None and curr_des is not None:
                 # generate particles for the first time
                 if self.first_locate:
                     particle = self.estimator.initialize_particles(NUM_PARTICLE, curr_kp, curr_des)
@@ -101,7 +106,6 @@ class Localizer(picamera.array.PiMotionAnalysis):
                     self.posemsg.pose.orientation.y = y
                     self.posemsg.pose.orientation.z = z
                     self.posemsg.pose.orientation.w = w
-
                     self.posepub.publish(self.posemsg)
                     print 'first', particle
                 else:
@@ -136,17 +140,20 @@ class Localizer(picamera.array.PiMotionAnalysis):
                         self.map_counter = min(self.map_counter + 1, -MAX_BAD_COUNT)
 
                     # if it's been a while without a significant average weight
-                    if self.map_counter < MAX_BAD_COUNT:
-                        self.first_locate = True
-                        self.map_counter = 0
-                        print 'Restart localization'
+                    ##### this code causes the drone to jump around too much for position control ###
+                    # if self.map_counter < MAX_BAD_COUNT:
+                    #     self.first_locate = True
+                    #     self.map_counter = 0
+                    #     print 'Restart localization'
 
                     print 'count', self.map_counter
+
+                self.prev_kp = curr_kp
+                self.prev_des = curr_des
+
             else:
                 print "CANNOT FIND ANY FEATURES !!!!!"
 
-            self.prev_kp = curr_kp
-            self.prev_des = curr_des
 
         self.prev_img = curr_img
         self.prev_time = curr_time

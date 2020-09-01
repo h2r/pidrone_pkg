@@ -4,6 +4,8 @@ picam_localization_distance
 implements Monte-Carlo Localization using the pi-camera
 """""
 
+import rospkg
+import yaml
 import numpy as np
 import cv2
 from pidrone_pkg.msg import Mode
@@ -18,10 +20,14 @@ from localization_helper import LocalizationParticleFilter, create_map, PROB_THR
 import os
 
 # ---------- map parameters ----------- #
-MAP_PIXEL_WIDTH = 3227  # in pixel
-MAP_PIXEL_HEIGHT = 2447
-MAP_REAL_WIDTH = 1.4  # in meter
-MAP_REAL_HEIGHT = 1.07
+rospack = rospkg.RosPack()
+path = rospack.get_path('pidrone_pkg')
+with open("%s/params/localization.yaml" % path) as f:
+    params = yaml.load(f)
+MAP_PIXEL_WIDTH = params["map"]["pixel_width"]  # in pixel
+MAP_PIXEL_HEIGHT = params["map"]["pixel_height"]
+MAP_REAL_WIDTH = params["map"] ["real_width"] # in meter
+MAP_REAL_HEIGHT = params["map"]["real_height"]
 # ------------------------------------- #
 
 # ---------- camera parameters ----------- #

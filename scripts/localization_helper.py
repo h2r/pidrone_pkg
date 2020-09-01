@@ -5,16 +5,22 @@ global_position_estimator_distance
 Implements Monte-Carlo Localization for the PiDrone
 """""
 
+import rospkg
+import yaml
 import math
 import numpy as np
 import cv2
 
 
 # ---------- map parameters ----------- #
-MAP_PIXEL_WIDTH = 3227  # in pixel
-MAP_PIXEL_HEIGHT = 2447
-MAP_REAL_WIDTH = 1.4  # in meter
-MAP_REAL_HEIGHT = 1.07
+rospack = rospkg.RosPack()
+path = rospack.get_path('pidrone_pkg')
+with open("%s/params/localization.yaml" % path) as f:
+    params = yaml.load(f)
+MAP_PIXEL_WIDTH = params["map"]["pixel_width"]  # in pixel
+MAP_PIXEL_HEIGHT = params["map"]["pixel_height"]
+MAP_REAL_WIDTH = params["map"] ["real_width"] # in meter
+MAP_REAL_HEIGHT = params["map"]["real_height"]
 # -------------------------- #
 
 # ----- camera parameters DO NOT EDIT ----- #
@@ -105,8 +111,8 @@ class LocalizationParticleFilter:
         self.angle_x = 0.0
         self.angle_y = 0.0
 
-        self.sigma_x = 0.05
-        self.sigma_y = 0.05
+        self.sigma_x = 0.025
+        self.sigma_y = 0.025
         self.sigma_yaw = 0.01
 
         sigma_vx = 0.01
@@ -249,9 +255,9 @@ class LocalizationParticleFilter:
         """""
         weights_sum = np.sum(self.particles.weights)
         x = 0.0
-        y = 0
-        z = 0
-        yaw = 0
+        y = 0.0
+        z = 0.0
+        yaw = 0.0
 
         normal_weights = self.particles.weights / float(weights_sum)
         for i, prob in enumerate(normal_weights):
@@ -319,7 +325,7 @@ class LocalizationParticleFilter:
         good = []
         pose = None
 
-        if des1 is not None and des2 is not None:
+        if (des1 is not None and len(des1)>2 and des2 is not None and len(des2)>2):
             matches = self.matcher.knnMatch(des1, des2, k=2)
 
             for match in matches:
@@ -349,7 +355,7 @@ class LocalizationParticleFilter:
     def compute_transform(self, kp1, des1, kp2, des2):
         transform = None
 
-        if des1 is not None and des2 is not None:
+        if (des1 is not None and len(des1)>2 and des2 is not None and len(des2)>2):
             matches = self.matcher.knnMatch(des1, des2, k=2)
 
             good = []
