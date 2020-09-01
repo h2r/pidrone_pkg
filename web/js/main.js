@@ -284,7 +284,7 @@ function init() {
      */
 
      positionSub.subscribe(function(message) {
-        var position = message.data;
+        position = message.data;
         var text = "";
         if (position) {
             text = "Position Mode";
@@ -293,6 +293,7 @@ function init() {
         }
         element = document.getElementById("position_state");
         element.textContent = text;
+        positionMsg.data = false
      });
 
     batterysub.subscribe(function(message) {
@@ -387,7 +388,7 @@ function init() {
            }
            var yVelxyPair = {
                x: tVal,
-               y:message.twist.linear.y
+               y: message.twist.linear.y
            }
            rawXVelocityData.push(xVelxyPair)
            rawYVelocityData.push(yVelxyPair)
@@ -419,8 +420,24 @@ function init() {
               ukfData.splice(0, 1);
               ukfPlusSigmaData.splice(0, 1);
               ukfMinusSigmaData.splice(0, 1);
+              ukfXVelocityData.splice(0, 1);
+              ukfYVelocityData.splice(0, 1);
           }
       }
+      var xVelPair = {
+        x: tVal,
+        y: message.twist_with_covariance.twist.linear.x
+      }
+      ukfXVelocityData.push(xVelPair)
+      var yVelPair = {
+        x: tVal,
+        y: message.twist_with_covariance.twist.linear.y
+      }
+      ukfYVelocityData.push(yVelPair)
+
+      xVelChart.data.datasets[1].data = ukfXVelocityData;
+      yVelChart.data.datasets[1].data = ukfYVelocityData;
+
       // Add new height estimate to end of the data array
       // x-y pair
       var zEstimate = message.pose_with_covariance.pose.position.z;
@@ -992,6 +1009,31 @@ function publishZeroVelocity() {
  };
  var rawYVelocityData = Array(0);
 
+ var ukfXVelocityDataset = {
+  label: 'UKF Filtered X Velocity',
+  data: Array(0), // initialize array of length 0
+  borderWidth: 1.5,
+  pointRadius: 0,
+  fill: false,
+  borderColor: 'rgba(49, 26, 140, 0.8)',
+  backgroundColor: 'rgba(49, 26, 140, 0.1)',
+  lineTension: 0, // remove smoothing
+  itemID: 1
+}
+var ukfXVelocityData = Array(0);
+
+var ukfYVelocityDataset = {
+  label: 'UKF Filtered Y Velocity',
+  data: Array(0), // initialize array of length 0
+  borderWidth: 1.5,
+  pointRadius: 0,
+  fill: false,
+  borderColor: 'rgba(49, 26, 140, 0.8)',
+  backgroundColor: 'rgba(49, 26, 140, 0.1)',
+  lineTension: 0, // remove smoothing
+  itemID: 1
+}
+var ukfYVelocityData = Array(0);
 
 
 
@@ -1224,7 +1266,8 @@ function loadXVelChart() {
         type: 'line',
         data: {
             datasets: [
-                rawXVelocityDataset
+                rawXVelocityDataset,
+                ukfXVelocityDataset
             ]
         },
         options: {
@@ -1267,7 +1310,8 @@ function loadYVelChart() {
         type: 'line',
         data: {
             datasets: [
-                rawYVelocityDataset
+                rawYVelocityDataset,
+                ukfYVelocityDataset
             ]
         },
         options: {
