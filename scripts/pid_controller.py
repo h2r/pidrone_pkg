@@ -14,6 +14,12 @@ from pidrone_pkg.msg import Mode, RC, State
 from std_msgs.msg import Float32, Empty, Bool
 from three_dim_vec import Position, Velocity, Error, RPY
 
+# frequency of inner loop velocity controller
+INNER_LOOP_FREQUENCY = 100  
+INNER_LOOP_PERIOD = 1.0 / INNER_LOOP_FREQUENCY
+# frequency of outer loop position controller
+OUTER_LOOP_FREQUENCY = 30
+OUTER_LOOP_PERIOD = 1.0 / OUTER_LOOP_FREQUENCY
 
 class PIDController(object):
     ''' Controls the flight of the drone by running a PID controller on the
@@ -27,77 +33,71 @@ class PIDController(object):
 
         # Initialize in velocity control
         self.position_control = False
+        self.last_position_control = False
 
         # Initialize the current and desired positions
-        self.current_position = Position()
-        self.desired_position = Position(z=0.3)
-
-        # Initialize the position error
-        self.position_error = Error()
+        self.current_position = Pose().position
+        self.desired_position = Pose().position
+        self.desired_position.z = 0.3
 
         # Initialize the current and desired velocities
-        self.current_velocity = Velocity()
-        self.desired_velocity = Velocity()
+        self.current_velocity = Twist()
+        self.desired_velocity = Twist()
 
         # Initialize the velocity error
-        self.velocity_error = Error()
+        self.prev_velocity_error = Twist()
 
         # Initialize the primary PID
-        self.pid = PID()
+        self.pid = PID(period=INNER_LOOP_PERIOD)
 
-        # Initialize the error used for the PID which is vx, vy, z where vx and
-        # vy are velocities, and z is the error in the altitude of the drone
-        self.pid_error = Error()
-
-        # Initialize the 'position error to velocity error' PIDs:
-        # left/right (roll) pid
-        self.lr_pid = PIDaxis(kp=20.0, ki=5.0, kd=10.0, midpoint=0, control_range=(-10.0, 10.0))
-        # front/back (pitch) pid
-        self.fb_pid = PIDaxis(kp=20.0, ki=5.0, kd=10.0, midpoint=0, control_range=(-10.0, 10.0))
-
-        # Initialize the pose callback time
-        self.last_pose_time = None
-
-        # Initialize the desired yaw velocity
-        self.desired_yaw_velocity = 0
-
-        # Initialize the current and  previous roll, pitch, yaw values
-        self.current_rpy = RPY()
-        self.previous_rpy = RPY()
-
-        # initialize the current and previous states
-        self.state = State()
+        # Initialize the position PIDs:
+        # x axis (roll) pid
+        self.x_position_pid = PIDaxis(kp=0.15, ki=0.05, kd=0.0, midpoint=0, control_range=(-0.05, 0.05))
+        self.x_velocity_from_position = 0
+        # y axis (pitch) pid
+        self.y_position_pid = PIDaxis(kp=0.15, ki=0.05, kd=0.0, midpoint=0, control_range=(-0.05, 0.05))
+        self.y_velocity_from_position = 0
+        # timer for outer loop
+        self._outer_loop_timer = 0.0
 
         # Store the command publisher
         self.cmdpub = None
 
 
+
     # ROS SUBSCRIBER CALLBACK METHODS
     #################################
-    def state_callback(self, state):
+    def current_state_callback(self, state):
         """ Store the drone's current state for calculations """
-        self.state = state
-        self.state_to_three_dim_vec_structs()
+        # store the positions
+        pose = state.pose_with_covariance.pose
+        self.current_position.x = pose.position.x
+        self.current_position.y = pose.position.y
+        self.current_position.z = pose.position.z
+        # store the linear velocities
+        twist = state.twist_with_covariance.twist
+        self.current_velocity.linear.x = twist.linear.x
+        self.current_velocity.linear.y = twist.linear.y
+        self.current_velocity.linear.z = twist.linear.z
 
-    def desired_twist_callback(self, msg):
-        """ Update the desired twist """
-        self.desired_velocity.x = msg.linear.x
-        self.desired_velocity.y = msg.linear.y
-        self.desired_velocity.z = msg.linear.z
-        self.desired_yaw_velocity = msg.angular.z
-        self.desired_velocity_start_time = None
-
-    def desired_relative_pose_callback(self, msg):
-        """ Update the desired pose relative to the current pose """
-        self.desired_position.x += msg.position.x
-        self.desired_position.y += msg.position.y
-        self.desired_position.z += msg.position.z
-
-    def desired_absolute_pose_callback(self, msg):
-        """ Update the desired pose to the msg values """
+    def absolute_desired_pose_callback(self, msg):
+        """ Update desired pose to message values """
         self.desired_position.x = msg.position.x
         self.desired_position.y = msg.position.y
         self.desired_position.z = msg.position.z
+
+    def relative_desired_pose_callback(self, msg):
+        """ Update desired pose relative to current values """
+        self.desired_position.x = self.current_position.x + msg.position.x
+        self.desired_position.y = self.current_position.y + msg.position.y
+        self.desired_position.z = self.current_position.z + msg.position.z
+
+    def desired_twist_callback(self, msg):
+        """ Update the desired twist """
+        self.desired_velocity.linear.x = msg.linear.x
+        self.desired_velocity.linear.y = msg.linear.y
+        self.desired_velocity.linear.z = msg.linear.z
+        self.desired_velocity.angular.z = msg.angular.z # yaw velocity
 
     def current_mode_callback(self, msg):
         """ Update the current mode """
@@ -110,100 +110,72 @@ class PIDController(object):
     def position_control_callback(self, msg):
         """ Set whether or not position control is enabled """
         self.position_control = msg.data
-        # if position control is engaged, set the desired position to the current one
-        if (self.position_control):
-            self.reset_callback(Empty())
+        if self.position_control:
+            self.desired_position.x = self.current_position.x
+            self.desired_position.y = self.current_position.y
+            # raise the drone since estimateRigidTransform works better when camera is further from surface
+            self.desired_position.z = 0.2
+        if (self.position_control != self.last_position_control):
+            print("Position Control" if self.position_control else "Velocity Control")
+            self.last_position_control = self.position_control
+
     def reset_callback(self, empty):
-        """ Reset the desired poses of the drone. """
+        """ Reset the desired and current poses of the drone and set
+        desired velocities to zero """
         self.desired_position.x = self.current_position.x
         self.desired_position.y = self.current_position.y
-        self.desired_position.z = 0.25 # move drone closer to ground for position hold
+        self.desired_velocity.linear.x = 0.0
+        self.desired_velocity.linear.y = 0.0
 
     # Step Method
     #############
     def step(self):
         """ Returns the commands generated by the pid """
-        self.calc_error()
-        return self.pid.step(self.pid_error, self.desired_yaw_velocity)
+        velocity_error_x = self.desired_velocity.linear.x - self.current_velocity.linear.x
+        velocity_error_y = self.desired_velocity.linear.y - self.current_velocity.linear.y
+        velocity_error_yaw = self.desired_velocity.angular.z
+        altitude_error = self.desired_position.z - self.current_position.z
+        if self.position_control:
+            if self._outer_loop_timer > OUTER_LOOP_PERIOD:
+                self._outer_loop_timer = 0.0
+                position_error_x = self.desired_position.x - self.current_position.x
+                position_error_y = self.desired_position.y - self.current_position.y
+                self.x_velocity_from_position = self.x_position_pid.step(position_error_x, OUTER_LOOP_PERIOD)
+                self.y_velocity_from_position = self.y_position_pid.step(position_error_y, OUTER_LOOP_PERIOD)
+            self._outer_loop_timer += INNER_LOOP_PERIOD
+            velocity_error_x += self.x_velocity_from_position
+            velocity_error_y += self.y_velocity_from_position
+        return self.pid.step(velocity_error_x, velocity_error_y, velocity_error_yaw, altitude_error)
 
     # HELPER METHODS
     ################
-    def state_to_three_dim_vec_structs(self):
-        """
-        Convert the values from the state estimator into ThreeDimVec structs to
-        make calculations concise
-        """
-        # store the positions
-        pose = self.state.pose_with_covariance.pose
-        self.current_position.x = pose.position.x
-        self.current_position.y = pose.position.y
-        self.current_position.z = pose.position.z
-
-        # store the linear velocities
-        twist = self.state.twist_with_covariance.twist
-        self.current_velocity.x = twist.linear.x
-        self.current_velocity.y = twist.linear.y
-        self.current_velocity.z = twist.linear.z
-
-        # store the orientations
-        self.previous_rpy = self.current_rpy
-        quaternion = (pose.orientation.x, pose.orientation.y, pose.orientation.z, pose.orientation.w)
-        r,p,y = tf.transformations.euler_from_quaternion(quaternion)
-        self.current_rpy = RPY(r,p,y)
-
-
-    def calc_error(self):
-        """ Calculate the error in velocity, and if in position hold, add the
-        error from lr_pid and fb_pid to the velocity error to control the
-        position of the drone
-        """
-        # store the time difference
-        pose_dt = 0.0
-        if self.last_pose_time != None:
-            pose_dt = rospy.get_time() - self.last_pose_time
-        self.last_pose_time = rospy.get_time()
-        # calculate the velocity error
-        self.velocity_error = self.desired_velocity - self.current_velocity
-        # calculate the z position error
-        dz = self.desired_position.z - self.current_position.z
-        # calculate the pid_error from the above values
-        self.pid_error.x = self.velocity_error.x
-        self.pid_error.y = self.velocity_error.y
-        self.pid_error.z = dz
-        self.pid_error = self.pid_error * 100.0  #scale the error
-        if self.position_control:
-            # calculate the position error
-            self.position_error = self.desired_position - self.current_position
-            # calculate a value to add to the velocity error based based on the
-            # position error in the x (roll) direction
-            lr_step = self.lr_pid.step(self.position_error.x, pose_dt)
-            # calculate a value to add to the velocity error based based on the
-            # position error in the y (pitch) direction
-            fb_step = self.fb_pid.step(self.position_error.y, pose_dt)
-            self.pid_error.x += lr_step
-            self.pid_error.y += fb_step
-
-
     def reset(self):
         ''' Set desired_position to be current position, set
         filtered_desired_velocity to be zero, and reset both the PositionPID
         and VelocityPID
         '''
         # reset position control variables
-        self.position_error = Error(0,0,0)
-        self.desired_position = Position(self.current_position.x,self.current_position.y,0.3)
+        self.desired_position.x = 0.0
+        self.desired_position.y = 0.0
+        self.current_position.x = 0.0
+        self.current_position.y = 0.0
+        self.x_velocity_from_position = 0
+        self.y_velocity_from_position = 0
         # reset velocity control_variables
-        self.velocity_error = Error(0,0,0)
-        self.desired_velocity = Velocity(0,0,0)
+        self.prev_velocity_error = Error(0,0,0)
+        self.desired_velocity.linear.x = 0.0
+        self.desired_velocity.linear.y = 0.0
+        self.desired_velocity.angular.z = 0.0
+        # reset altitude setpoint
+        self.desired_position.z = 0.3
         # reset the pids
         self.pid.reset()
-        self.lr_pid.reset()
-        self.fb_pid.reset()
+        self.x_position_pid.reset()
+        self.y_position_pid.reset()
 
     def ctrl_c_handler(self, signal, frame):
         """ Gracefully handles ctrl-c """
-        print 'Caught ctrl-c\n Stopping Controller'
-        self.publish_cmd(cmds.disarm_cmd)
+        print('Caught ctrl-c\n Stopping Controller')
         sys.exit()
 
     def publish_cmd(self, cmd):
@@ -234,9 +206,9 @@ def main(ControllerClass):
 
     # Subscribers
     #############
-    rospy.Subscriber('/pidrone/state', State, pid_controller.state_callback)
-    rospy.Subscriber('/pidrone/desired/pose/relative', Pose, pid_controller.desired_relative_pose_callback)
-    rospy.Subscriber('/pidrone/desired/pose/absolute', Pose, pid_controller.desired_absolute_pose_callback)
+    rospy.Subscriber('/pidrone/state', State, pid_controller.current_state_callback)
+    rospy.Subscriber('/pidrone/desired/pose/absolute', Pose, pid_controller.absolute_desired_pose_callback)
+    rospy.Subscriber('/pidrone/desired/pose/relative', Pose, pid_controller.relative_desired_pose_callback)
     rospy.Subscriber('/pidrone/desired/twist', Twist, pid_controller.desired_twist_callback)
     rospy.Subscriber('/pidrone/mode', Mode, pid_controller.current_mode_callback)
     rospy.Subscriber('/pidrone/desired/mode', Mode, pid_controller.desired_mode_callback)
@@ -248,25 +220,21 @@ def main(ControllerClass):
     # set up ctrl-c handler
     signal.signal(signal.SIGINT, pid_controller.ctrl_c_handler)
     # set the loop rate (Hz)
-    loop_rate = rospy.Rate(60)
-    print 'PID Controller Started'
+    loop_rate = rospy.Rate(INNER_LOOP_FREQUENCY)
+    print('PID Controller Started')
     while not rospy.is_shutdown():
-        # publish heartbeat
+        fly_command = cmds.disarm_cmd
         pid_controller.heartbeat_pub.publish(Empty())
-        fly_command = cmds.idle_cmd
-
-        # if the drone is flying, step the PID and publish the output
-        if pid_controller.desired_mode == 'FLYING' and pid_controller.current_mode == 'FLYING':
+        if pid_controller.current_mode == 'ARMED':
+            pid_controller.position_control_pub.publish(False)
+        if pid_controller.current_mode == 'FLYING' and pid_controller.desired_mode == 'FLYING':
             fly_command = pid_controller.step()
-
         else:
             pid_controller.reset()
-            pid_controller.position_control_pub.publish(False) # start flight in velocity mode
-
         pid_controller.publish_cmd(fly_command)
-
         loop_rate.sleep()
 
 
 if __name__ == '__main__':
     main(PIDController)
+    
