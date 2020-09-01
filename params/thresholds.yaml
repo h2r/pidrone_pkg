@@ -1,8 +1,8 @@
 # safe thresholds for the drone
 
 battery:
-  min_flying_voltage: 11.1 # (Volts)
-  min_voltage: 10.5 # (Volts)
+  min_flying_voltage: 10.5 # (Volts)
+  min_voltage: 9.5 # (shutdown the Pi if the battery gets below this Voltage)
 
 acceleration:  # (g)
   x: 10.0

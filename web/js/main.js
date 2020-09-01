@@ -300,7 +300,7 @@ function init() {
       //printProperties(message);
       var mynumber = myround(message.vbat, 2);
       document.getElementById('vbat').innerHTML=mynumber
-      if (message.vbat <= 11.3) {
+      if (message.vbat <= 11.1) {
         document.getElementById('vbat').innerHTML=mynumber + " EMPTY!";
         $('#vbat').addClass('alert-danger').removeClass('alert-success');
       } else {
