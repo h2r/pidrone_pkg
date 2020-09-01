@@ -1,0 +1,5 @@
+map:
+  pixel_width: 3339  # (pixels)
+  pixel_height: 2676  # (pixels)
+  real_width: 1.015  # (meters)
+  real_height: 0.81  # (meters)
