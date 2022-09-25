@@ -152,8 +152,7 @@ class UKFStateEstimator12D(object):
                                          dt=1.0,
                                          hx=self.measurement_function,
                                          fx=self.state_transition_function,
-                                         points=sigma_points,
-                                         compute_log_likelihood=False)
+                                         points=sigma_points)
                                          #residual_x=self.residual_x_account_for_angles)
         self.initialize_ukf_matrices()
 
