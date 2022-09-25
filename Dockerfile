@@ -84,7 +84,7 @@ ENV HOME=/home/$hostuser
 RUN mkdir $HOME/repo
 RUN mkdir -p $HOME/catkin_ws/src
 
-RUN cd $HOME/catkin_ws/src && git clone https://github.com/UbiquityRobotics/raspicam_node && cd $HOME/catkin_ws && catkin_make
+RUN cd $HOME/catkin_ws/src && git clone https://github.com/UbiquityRobotics/raspicam_node
 
 
 

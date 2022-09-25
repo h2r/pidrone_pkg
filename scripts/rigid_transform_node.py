@@ -9,14 +9,12 @@ import numpy as np
 from std_msgs.msg import Empty, Bool
 from geometry_msgs.msg import PoseStamped
 from sensor_msgs.msg import CompressedImage
-from brown2022_msgs.msg import State
+from pidrone_pkg.msg import State
 from sensor_msgs.msg import Range
 from cv_bridge import CvBridge
 
-from duckietown.dtros import DTROS, NodeType
 
-
-class RigidTransformNode(DTROS):
+class RigidTransformNode(object):
     """
     A class that uses OpenCV's estimateRigidTransform method to calculate
     the change in position of the drone.
@@ -32,10 +30,7 @@ class RigidTransformNode(DTROS):
     """
     def __init__(self, node_name):
         # initialize the DTROS parent class
-        super(RigidTransformNode, self).__init__(
-            node_name=node_name,
-            node_type=NodeType.PERCEPTION
-        )
+        rospy.init_node(node_name)
 
         camera_wh = (320, 240)
 
