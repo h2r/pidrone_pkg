@@ -217,6 +217,7 @@ class FlightController(object):
             except SerialException:
                 print '\nCannot connect to the flight controller board.'
                 print 'The USB is unplugged. Please check connection.'
+                raise
                 sys.exit()
         return board
 
