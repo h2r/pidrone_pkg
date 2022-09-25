@@ -38,8 +38,10 @@ RUN apt-get install -y screen
 RUN apt-get install -y emacs
 RUN apt-get install -y git
 RUN apt-get install -y netcat nmap wget iputils-ping openssh-client vim less
+RUN apt-get install -y python-numpy
+RUN apt-get install -y python-smbus
 RUN pip install picamera
-RUN pip install filterpy
+
 
 ARG hostuser
 ARG hostgroup
@@ -49,6 +51,7 @@ ARG hostname
 
 RUN echo Host user is $hostuser:$hostuser
 RUN groupadd --gid $hostgid $hostgroup
+RUN adduser $hostuser i2c
 RUN adduser --disabled-password --gecos '' --gid $hostgid --uid $hostuid $hostuser
 RUN adduser $hostuser sudo
 # Ensure sudo group users are not asked for a p3assword when using sudo command

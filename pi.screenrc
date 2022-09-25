@@ -62,10 +62,10 @@ stuff "source setup.sh\n"
 stuff "cd $(rospack find pidrone_pkg)/scripts\n"
 stuff "python vision_flow_and_phase.py\n"
 
-screen -t "IR"
+screen -t "TOF"
 stuff "source setup.sh\n"
 stuff "cd $(rospack find pidrone_pkg)/scripts/\n"
-stuff "python infrared_pub.py\n"
+stuff "python tof_node.py\n"
 
 screen -t "rosbridge"
 stuff "source setup.sh\n"
