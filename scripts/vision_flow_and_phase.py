@@ -18,11 +18,14 @@ def main():
     image_pub = rospy.Publisher("/pidrone/picamera/image_raw", Image, queue_size=1, tcp_nodelay=False)
 
     print "Vision started"
-
+    
     try:
+        print "bridge"
         bridge = CvBridge()
-
-        with picamera.PiCamera(framerate=90) as camera:
+        print "picam"
+        camera = picamera.PiCamera(framerate=30)
+        with picamera.PiCamera(framerate=30) as camera:
+            print "camera", camera
             camera.resolution = (320, 240)
             # instantiate phase_analyzer object
             with AnalyzePhase(camera) as phase_analyzer:

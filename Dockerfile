@@ -41,8 +41,16 @@ RUN apt-get install -y netcat nmap wget iputils-ping openssh-client vim less
 RUN apt-get install -y python-numpy
 RUN apt-get install -y python-smbus
 RUN apt-get install -y python-scipy
+RUN apt-get install -y locate
 RUN apt-get install -y ros-kinetic-rosbridge-suite
 RUN apt-get install -y ros-kinetic-web-video-server
+
+# check out the version that has the buggy port of libmmal to 64 bit.
+# this didn't actually work sadly, got a weird mmal error when trying
+# to open picamera, but I think I still need it for raspicam_node.
+RUN git clone https://github.com/raspberrypi/userland && cd userland && git checkout 4a57ea4107a4d48564242b21608ab259da5ced35 && ./buildme --aarch64
+
+
 RUN pip install picamera
 
 
@@ -53,15 +61,18 @@ ARG hostgid
 ARG hostname
 ARG i2cgid
 ARG dialoutgid
+ARG videogid
 
 RUN echo Host user is $hostuser:$hostuser
 RUN groupadd --gid $hostgid $hostgroup
 RUN groupmod --gid $i2cgid i2c
 RUN groupmod --gid $dialoutgid dialout
+RUN groupmod --gid $videogid video
 RUN adduser --disabled-password --gecos '' --gid $hostgid --uid $hostuid $hostuser
 RUN adduser $hostuser sudo
 RUN adduser $hostuser i2c
 RUN adduser $hostuser dialout
+RUN adduser $hostuser video
 # Ensure sudo group users are not asked for a p3assword when using sudo command
 # by ammending sudoers file
 RUN echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> \
@@ -71,13 +82,18 @@ USER $hostuser
 WORKDIR /home/$hostuser
 ENV HOME=/home/$hostuser
 RUN mkdir $HOME/repo
-RUN mkdir -p $HOME/catkin_ws/
+RUN mkdir -p $HOME/catkin_ws/src
+
+RUN cd $HOME/catkin_ws/src && git clone https://github.com/UbiquityRobotics/raspicam_node && cd $HOME/catkin_ws && catkin_make
+
 
 
 # print some info on start
 RUN echo "echo -e 'Welcome! You are now in a docker container ().'" >> $HOME/.bashrc
 RUN echo "echo -e \"Docker ID: $(basename $(cat /proc/1/cpuset))\"" >> $HOME/.bashrc
+run echo "export LD_LIBRARY_PATH=/opt/vc/lib/:$LD_LIBRARY_PATH" >> $HOME/.bashrc
 RUN echo "export ROS_MASTER_URI=http://$hostname:11311" >> $HOME/.bashrc
 RUN echo "cd $HOME/catkin_ws/src/pidrone_pkg && source setup.sh" >> $HOME/.bashrc
+
 CMD ["bash"]
 

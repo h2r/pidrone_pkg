@@ -60,7 +60,17 @@ stuff "python state_estimator.py -p ukf7d\n"
 screen -t "Vision"
 stuff "source setup.sh\n"
 stuff "cd $(rospack find pidrone_pkg)/scripts\n"
-stuff "python vision_flow_and_phase.py\n"
+stuff "roslaunch pidrone_pkg raspicam_node.launch\n"
+
+screen -t "Optical Flow"
+stuff "source setup.sh\n"
+stuff "cd $(rospack find pidrone_pkg)/scripts\n"
+stuff "python optical_flow_node.py\n"
+
+screen -t "Rigid Transform"
+stuff "source setup.sh\n"
+stuff "cd $(rospack find pidrone_pkg)/scripts\n"
+stuff "python rigid_transform_node.py\n"
 
 screen -t "TOF"
 stuff "source setup.sh\n"
