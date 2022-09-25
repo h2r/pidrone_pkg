@@ -4,7 +4,7 @@
 # derived from the Paradox pair programming screenrc, UChicago 2010
 #   ~ yes, we are all total newbs ~
 #
-
+shell /bin/bash
 startup_message off
 
 #defscrollback 5000
@@ -27,10 +27,6 @@ multiuser on
 # add the specified user to this screen session so that they can connect.
 # the initiating user is allowed automatically, but add both so either can
 # run this script without modification.
-
-#acladd gen
-acladd oberlin
-acladd stefie10
 
 # Starts a new screen with title " MAKE"
 # this is basically equivalent to pressing the following from within screen:

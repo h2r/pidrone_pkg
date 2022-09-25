@@ -38,12 +38,14 @@ RUN apt-get install -y screen
 RUN apt-get install -y emacs
 RUN apt-get install -y git
 RUN apt-get install -y netcat nmap wget iputils-ping openssh-client vim less
-
+RUN pip install picamera
+RUN pip install filterpy
 
 ARG hostuser
 ARG hostgroup
 ARG hostuid
 ARG hostgid
+ARG hostname
 
 RUN echo Host user is $hostuser:$hostuser
 RUN groupadd --gid $hostgid $hostgroup
@@ -61,10 +63,10 @@ RUN mkdir $HOME/repo
 RUN mkdir -p $HOME/catkin_ws/
 
 
-# Different shell color
-RUN echo "export PS1='\[\033[01;31m\]\u@\h\[\033[00m\]:\[\033[01;33m\]\w\[\033[00m\]$ '" >> $HOME/.bashrc
-
 # print some info on start
 RUN echo "echo -e 'Welcome! You are now in a docker container ().'" >> $HOME/.bashrc
 RUN echo "echo -e \"Docker ID: $(basename $(cat /proc/1/cpuset))\"" >> $HOME/.bashrc
+RUN echo "export ROS_MASTER_URI=http://$hostname:11311" >> $HOME/.bashrc
+RUN echo "cd $HOME/catkin_ws/src/pidrone_pkg && source setup.sh" >> $HOME/.bashrc
 CMD ["bash"]
+
