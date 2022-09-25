@@ -35,31 +35,19 @@ class ToFNode(object):
 
         self._i2c_address = 0x29
         self._sensor_name = "tof"
-        self._frequency = int(max(1, 10))
-        self._mode = rospy.get_param('~mode', 'BETTER')
+        self._mode = 'BETTER'
 
         # create a VL53L0X sensor handler
-        self._sensor = VL53L0X(i2c_address=self._i2c_address)
+        self._sensor = VL53L0X()
         self._sensor.open()
         # create publisher
-        self._pub = rospy.Publisher(
-            "~range",
-            Range,
-            queue_size=1,
-            dt_topic_type=TopicType.DRIVER,
-            dt_help="The distance to the closest object detected by the sensor"
-        )
+        self._pub = rospy.Publisher('/pidrone/range', Range, queue_size=1)
 
         # start ranging
         self._sensor.start_ranging()
-        max_frequency = min(self._frequency, int(1.0 / self._accuracy.timing_budget))
-        if self._frequency > max_frequency:
-            self.logwarn("Frequency of " + self._frequency + " Hz not supported.")
-            self._frequency = max_frequency
- 
+
         # create timers
-        self.timer = rospy.Timer(rospy.Duration.from_sec(1.0 / max_frequency), self._timer_cb)
-        self._fragment_reminder = DTReminder(frequency=self._display_fragment_frequency)
+        self.timer = rospy.Timer(rospy.Duration.from_sec(1.0 / 30), self._timer_cb)
 
     def _timer_cb(self, _):
         # detect range
@@ -71,10 +59,10 @@ class ToFNode(object):
                 frame_id="/tof"
             ),
             radiation_type=Range.INFRARED,
-            field_of_view=self._accuracy.fov,
-            min_range=self._accuracy.min_range,
-            max_range=self._accuracy.max_range,
-            range=distance_mm / 1000
+            field_of_view=10,
+            min_range=50 / 1000.0,
+            max_range=1200 / 1000.0,
+            range=distance_mm / 1000.0
         )
         # publish
         self._pub.publish(msg)
@@ -88,5 +76,6 @@ class ToFNode(object):
 
 
 if __name__ == '__main__':
+    rospy.init_node("tof_node")    
     node = ToFNode()
     rospy.spin()
