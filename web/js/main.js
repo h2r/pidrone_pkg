@@ -205,7 +205,7 @@ function init() {
 
     irsub = new ROSLIB.Topic({
       ros : ros,
-      name : '/pidrone/infrared',
+      name : '/pidrone/range',
       messageType : 'sensor_msgs/Range',
       queue_length : 2,
       throttle_rate : 80
