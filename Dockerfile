@@ -34,6 +34,11 @@ RUN apt-get install -y ros-kinetic-moveit-simple-controller-manager
 RUN apt-get install -y ros-kinetic-trac-ik-kinematics-plugin
 RUN apt-get install -y gdb
 RUN apt-get install -y mlocate
+RUN apt-get install -y screen
+RUN apt-get install -y emacs
+RUN apt-get install -y git
+RUN apt-get install -y netcat nmap wget iputils-ping openssh-client vim less
+
 
 ARG hostuser
 ARG hostgroup
@@ -53,6 +58,8 @@ USER $hostuser
 WORKDIR /home/$hostuser
 ENV HOME=/home/$hostuser
 RUN mkdir $HOME/repo
+RUN mkdir -p $HOME/catkin_ws/
+
 
 # Different shell color
 RUN echo "export PS1='\[\033[01;31m\]\u@\h\[\033[00m\]:\[\033[01;33m\]\w\[\033[00m\]$ '" >> $HOME/.bashrc
