@@ -4,26 +4,22 @@ from __future__ import division
 import rospy
 import numpy as np
 from geometry_msgs.msg import TwistStamped
-from duckietown_msgs.msg import H264MotionVectors
+from raspicam_node.msg import MotionVectors
 import numpy as np
 import rospy
 import tf
 from sensor_msgs.msg import Imu, Range
 from std_msgs.msg import Empty
 
-from duckietown.dtros import DTROS, NodeType
 
 
-class OpticalFlowNode(DTROS):
+class OpticalFlowNode(object):
     """
     Subscribe to the optical flow vectors and publish linear velocity as a Twist message.
     """
     def __init__(self, node_name):
-        # initialize the DTROS parent class
-        super(OpticalFlowNode, self).__init__(
-            node_name=node_name,
-            node_type=NodeType.PERCEPTION
-        )
+
+        rospy.init_node(node_name)
         self.twistpub = rospy.Publisher('/pidrone/picamera/twist', TwistStamped, queue_size=1)
         # flow variables
         camera_wh = (320, 240)        
@@ -35,8 +31,8 @@ class OpticalFlowNode(DTROS):
         self.altitude_ts = rospy.Time.now()
 
         # subscribers
-        self._sub_mv = rospy.Subscriber('~motion_vectors', H264MotionVectors, self.motion_cb, queue_size=1)
-        self._sub_alt = rospy.Subscriber('~altitude', Range, self.altitude_cb, queue_size=1)
+        self._sub_mv = rospy.Subscriber('/raspicam_node/motion_vectors', MotionVectors, self.motion_cb, queue_size=1)
+        self._sub_alt = rospy.Subscriber('/pidrone/range', Range, self.altitude_cb, queue_size=1)
 
 
 
