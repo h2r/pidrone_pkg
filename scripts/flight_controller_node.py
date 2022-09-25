@@ -14,6 +14,7 @@ from serial import SerialException
 from std_msgs.msg import Header, Empty
 from geometry_msgs.msg import Quaternion
 from pidrone_pkg.msg import Battery, Mode, RC, State
+from sensor_msgs.msg import Range
 import os
 
 
@@ -30,7 +31,7 @@ class FlightController(object):
     Subscribers:
     /pidrone/fly_commands
     /pidrone/desired/mode
-    /pidrone/heartbeat/infrared
+    /pidrone/heartbeat/range
     /pidrone/heartbeat/web_interface
     /pidrone/heartbeat/pid_controller
     /pidrone/state
@@ -271,7 +272,7 @@ class FlightController(object):
         disarm = False
         if self.battery_message.vbat != None and self.battery_message.vbat < self.minimum_voltage:
             print('\nSafety Failure: low battery\n')
-            disarm = True
+            disarm = False
         if curr_time - self.heartbeat_web_interface > rospy.Duration.from_sec(3):
             print('\nSafety Failure: web interface heartbeat\n')
             print('The web interface stopped responding. Check your browser')
@@ -322,7 +323,7 @@ def main():
     rospy.Subscriber("/pidrone/desired/mode", Mode, fc.desired_mode_callback)
     rospy.Subscriber('/pidrone/fly_commands', RC, fc.fly_commands_callback)
     # heartbeat subscribers
-    rospy.Subscriber("/pidrone/heartbeat/infrared", Empty, fc.heartbeat_infrared_callback)
+    rospy.Subscriber("/pidrone/range", Range, fc.heartbeat_infrared_callback)
     rospy.Subscriber("/pidrone/heartbeat/web_interface", Empty, fc.heartbeat_web_interface_callback)
     rospy.Subscriber("/pidrone/heartbeat/pid_controller", Empty, fc.heartbeat_pid_controller_callback)
     rospy.Subscriber("/pidrone/state", State, fc.heartbeat_state_estimator_callback)
