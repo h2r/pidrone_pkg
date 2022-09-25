@@ -49,13 +49,16 @@ ARG hostuid
 ARG hostgid
 ARG hostname
 ARG i2cgid
+ARG dialoutgid
 
 RUN echo Host user is $hostuser:$hostuser
 RUN groupadd --gid $hostgid $hostgroup
 RUN groupmod --gid $i2cgid i2c
+RUN groupmod --gid $dialoutgid dialout
 RUN adduser --disabled-password --gecos '' --gid $hostgid --uid $hostuid $hostuser
 RUN adduser $hostuser sudo
 RUN adduser $hostuser i2c
+RUN adduser $hostuser dialout
 # Ensure sudo group users are not asked for a p3assword when using sudo command
 # by ammending sudoers file
 RUN echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> \

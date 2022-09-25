@@ -211,7 +211,8 @@ class FlightController(object):
         #  it becomes .../USB1)
         try:
             board = MultiWii('/dev/ttyUSB0')
-        except SerialException:
+        except SerialException as e:
+            print("usb0 failed: " + str(e))
             try:
                 board = MultiWii('/dev/ttyUSB1')
             except SerialException:
