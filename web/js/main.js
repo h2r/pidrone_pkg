@@ -707,10 +707,7 @@ function init() {
 
   function imageStream() {
     var image = document.getElementById('cameraImage');
-    image.src = "http://" + document.getElementById('hostname').value + ":8080/stream?topic=/pidrone/picamera/image_raw&quality=70";
-
-    var firstImage = document.getElementById('firstImage');
-    firstImage.src = "http://" + document.getElementById('hostname').value + ":8080/stream?topic=/pidrone/picamera/first_image&quality=70";
+    image.src = "http://" + document.getElementById('hostname').value + ":8080/stream?topic=/raspicam_node/image&quality=70&type=ros_compressed";
 
   }
 
