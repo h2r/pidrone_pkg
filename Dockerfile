@@ -41,6 +41,8 @@ RUN apt-get install -y netcat nmap wget iputils-ping openssh-client vim less
 RUN apt-get install -y python-numpy
 RUN apt-get install -y python-smbus
 RUN apt-get install -y python-scipy
+RUN apt-get install -y ros-kinetic-rosbridge-suite
+RUN apt-get install -y ros-kinetic-web-video-server
 RUN pip install picamera
 
 
