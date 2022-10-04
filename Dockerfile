@@ -51,7 +51,7 @@ RUN apt-get install -y ros-kinetic-web-video-server
 RUN git clone https://github.com/raspberrypi/userland && cd userland && git checkout 4a57ea4107a4d48564242b21608ab259da5ced35 && ./buildme --aarch64
 
 
-RUN pip install picamera
+#RUN pip install picamera
 
 
 ARG hostuser
@@ -65,7 +65,7 @@ ARG videogid
 
 RUN echo Host user is $hostuser:$hostuser
 RUN groupadd --gid $hostgid $hostgroup
-RUN groupmod --gid $i2cgid i2c
+RUN groupmod --gid $i2cgid i2c; exit 0
 RUN groupmod --gid $dialoutgid dialout
 RUN groupmod --gid $videogid video
 RUN adduser --disabled-password --gecos '' --gid $hostgid --uid $hostuid $hostuser
@@ -78,13 +78,18 @@ RUN adduser $hostuser video
 RUN echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> \
 /etc/sudoers
 
+RUN rm /bin/sh && ln -s /bin/bash /bin/sh
+
 USER $hostuser
 WORKDIR /home/$hostuser
 ENV HOME=/home/$hostuser
 RUN mkdir $HOME/repo
 RUN mkdir -p $HOME/catkin_ws/src
 
-RUN cd $HOME/catkin_ws/src && git clone https://github.com/UbiquityRobotics/raspicam_node
+
+
+RUN cd $HOME/catkin_ws/src && git clone https://github.com/UbiquityRobotics/raspicam_node && cd .. && source /opt/ros/kinetic/setup.bash && catkin_make
+
 
 
 
