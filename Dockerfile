@@ -97,7 +97,7 @@ RUN echo "echo -e 'Welcome! You are now in a docker container ().'" >> $HOME/.ba
 RUN echo "echo -e \"Docker ID: $(basename $(cat /proc/1/cpuset))\"" >> $HOME/.bashrc
 run echo "export LD_LIBRARY_PATH=/opt/vc/lib/:$LD_LIBRARY_PATH" >> $HOME/.bashrc
 RUN echo "export ROS_MASTER_URI=http://$hostname:11311" >> $HOME/.bashrc
-RUN echo "source $HOME/raspicam_node_ws/devel/setup.bash" >> $HOME/.bashrc
+RUN echo "export ROS_PACKAGE_PATH=$ROS_PACKAGE_PATH:$HOME/raspicam_node_ws/src" >> $HOME/.bashrc
 RUN echo "cd $HOME/catkin_ws/src/pidrone_pkg && source setup.sh" >> $HOME/.bashrc
 
 CMD ["bash"]
