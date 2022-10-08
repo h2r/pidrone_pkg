@@ -12,3 +12,4 @@ source ../../devel/setup.bash
 export ROS_HOSTNAME="${my_hostname}"
 export ROS_MASTER_URI="http://${my_hostname}:11311"
 export PS1="\[\033[00;33m\][pidrone - ${ROS_MASTER_URI}]\[\033[00m\] \w$ "
+export PYTHONPATH=`pwd`/scripts:$PYTHONPATH
