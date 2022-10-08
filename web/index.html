@@ -61,12 +61,19 @@
         <div class="row mt-2">
             <div class="col-sm text-center">
 
+	      <table><tr><td>
                 <div id="heightchart">
-                    <h4>Height Readings</h4>
+                    <h4>Height</h4>
                     <input class="btn btn-primary my-2 my-sm-0" type="submit" value="Pause" name="heightPauseBtn" onclick="togglePauseHeightChart(this)"/>
                     <input class="btn btn-primary my-2 my-sm-0" type="submit" value="UKF Analysis" name="ukfAnalysisBtn" onclick="toggleUkfAnalysis(this)"/>
-                    <canvas id="heightChart" width="600" height="250"></canvas>
-                </div>
+                    <canvas id="heightChart" width="300" height="250"></canvas>
+                </div></td><td>
+                <div id="velocitychart">
+                    <h4>Velocity</h4>
+                    <input class="btn btn-primary my-2 my-sm-0" type="submit" value="Pause (TODO)" name="heightPauseBtn" onclick="togglePauseVelocityChart(this)"/>
+                    <input class="btn btn-primary my-2 my-sm-0" type="submit" value="UKF Analysis (TODO)" name="velukfAnalysisBtn" onclick="toggleVelUkfAnalysis(this)"/>
+                    <canvas id="velocityChart" width="300" height="250"></canvas>
+                </div>	</td></tr></table>	
 
                 <div class="form-inline">
                     <div class="form-group">
