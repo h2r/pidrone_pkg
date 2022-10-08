@@ -1244,7 +1244,7 @@ function loadVelocityChartStandardView() {
                     },
                     scaleLabel: {
                         display: true,
-                        labelString: 'Velocity (m/s)'
+                        labelString: 'Speed (m/s)'
                     }
                 }],
                 xAxes: [{
