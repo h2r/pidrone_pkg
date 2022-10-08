@@ -1069,6 +1069,7 @@ function loadHeightChartStandardView() {
             ]
         },
         options: {
+	    responsive: false,
             animation: {
                duration: 0,
             },
@@ -1242,6 +1243,7 @@ $(document).ready(function() {
             ]
         },
         options: {
+	    responsive: false,
             animation: {
                duration: 0,
             },
