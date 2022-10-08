@@ -350,8 +350,8 @@ function init() {
     var velocityChartMaxTime;
     velsub.subscribe(function(message) {
       //printProperties(message);
-	console.log("Range: " + message.twist.linear.x);
-	console.log("Range: " + message.twist.linear.y);
+	//console.log("Range: " + message.twist.linear.x);
+	//console.log("Range: " + message.twist.linear.y);
 	vel = Math.sqrt(message.twist.linear.x**2 + message.twist.linear.y**2)
       currTime = message.header.stamp.secs + message.header.stamp.nsecs/1.0e9;
       if (!gotFirstVelocity) {
