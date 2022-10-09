@@ -180,7 +180,7 @@ class PID:
             cmd_p = self.pitch_low._i + self.pitch.step(error.y, time_elapsed)
 
         # Compute yaw command
-        cmd_y = 1500 # + cmd_yaw_velocity
+        cmd_y = 1500 + cmd_yaw_velocity
 
         # Compute throttle command
         if abs(error.z) < self.trim_controller_thresh_throttle:
