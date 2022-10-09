@@ -245,7 +245,7 @@ class PIDController(object):
             self.desired_velocity_start_time = curr_time
 
         # set the desired yaw velocity to zero if the duration is up
-        if self.desired_yaw_velocity_start_time is not None:
+        if self.desired_yaw_velocity_start_time != None:
             # the amount of time the set point velocity is not zero
             duration = curr_time - self.desired_yaw_velocity_start_time
             if duration > self.desired_yaw_velocity_travel_time:
