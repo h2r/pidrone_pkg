@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import tf
+import traceback
 import sys
 import yaml
 import rospy
@@ -95,7 +96,7 @@ class FlightController(object):
             p = msg.pitch
             y = msg.yaw
             t = msg.throttle
-            self.command = [r,p,y,t]
+            self.command = [r,p,t,y]
 
     # Update methods:
     #################
@@ -227,6 +228,8 @@ class FlightController(object):
         """ Send commands to the flight controller board """
         self.board.sendCMD(8, MultiWii.SET_RAW_RC, self.command)
         self.board.receiveDataPacket()
+        #print('command sent:', self.command)
+        
         if (self.command != self.last_command):
             print 'command sent:', self.command
             self.last_command = self.command
@@ -258,6 +261,7 @@ class FlightController(object):
     def heartbeat_infrared_callback(self, msg):
         """Update ir sensor heartbeat"""
         self.heartbeat_infrared = rospy.Time.now()
+        self.range = msg.range
 
     def heartbeat_state_estimator_callback(self, msg):
         """Update state_estimator heartbeat"""
@@ -271,7 +275,7 @@ class FlightController(object):
         curr_time = rospy.Time.now()
         disarm = False
         if self.battery_message.vbat != None and self.battery_message.vbat < self.minimum_voltage:
-            print('\nSafety Failure: low battery\n')
+            #print('\nSafety Failure: low battery\n')
             disarm = False
         if curr_time - self.heartbeat_web_interface > rospy.Duration.from_sec(3):
             print('\nSafety Failure: web interface heartbeat\n')
@@ -285,6 +289,10 @@ class FlightController(object):
             print('\nSafety Failure: not receiving data from the IR sensor.')
             print('Check the infrared node\n')
             disarm = True
+
+        if self.range > 0.05:
+            print('\nSafety Failure: too high.')
+            disarm = True            
         if curr_time - self.heartbeat_state_estimator > rospy.Duration.from_sec(1):
             print('\nSafety Failure: not receiving a state estimate.')
             print('Check the state_estimator node\n')
@@ -303,6 +311,7 @@ def main():
     fc = FlightController()
     curr_time = rospy.Time.now()
     fc.heartbeat_infrared = curr_time
+    fc.range = None
     fc.heartbeat_web_interface= curr_time
     fc.heartbeat_pid_controller = curr_time
     fc.heartbeat_flight_controller = curr_time
@@ -336,10 +345,10 @@ def main():
         while not rospy.is_shutdown():
             # if the current mode is anything other than disarmed
             # preform as safety check
-            if fc.curr_mode != 'DISARMED':
                 # Break the loop if a safety check has failed
-                if fc.shouldIDisarm():
-                    break
+            if fc.shouldIDisarm():
+                print "mode", fc.curr_mode
+                break
                 
             # update and publish flight controller readings
             fc.update_battery_message()
@@ -360,8 +369,9 @@ def main():
     except SerialException:
         print '\nCannot connect to the flight controller board.'
         print 'The USB is unplugged. Please check connection.'
-    except:
-        print 'there was an internal error'
+    except Exception as e:
+        print 'there was an internal error', e
+        print traceback.format_exc()
     finally:
         print 'Shutdown received'
         print 'Sending DISARM command'

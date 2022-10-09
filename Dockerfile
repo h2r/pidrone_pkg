@@ -50,6 +50,8 @@ RUN apt-get install -y ros-kinetic-web-video-server
 # to open picamera, but I think I still need it for raspicam_node.
 RUN git clone https://github.com/raspberrypi/userland && cd userland && git checkout 4a57ea4107a4d48564242b21608ab259da5ced35 && ./buildme --aarch64
 
+RUN rosdep init
+
 
 #RUN pip install picamera
 
@@ -85,6 +87,7 @@ WORKDIR /home/$hostuser
 ENV HOME=/home/$hostuser
 RUN mkdir $HOME/repo
 RUN mkdir -p $HOME/catkin_ws/src
+RUN rosdep update
 
 
 RUN mkdir -p raspicam_node_ws/src && cd raspicam_node_ws/src/ && git clone https://github.com/UbiquityRobotics/raspicam_node && cd .. && source /opt/ros/kinetic/setup.bash && catkin_make

@@ -42,6 +42,7 @@ stuff "source setup.sh\n"
 stuff "roscore\n"
 stuff ""
 
+
 screen -t "FC"
 stuff "source setup.sh\n"
 stuff "cd $(rospack find pidrone_pkg)/scripts/\n"
@@ -55,7 +56,7 @@ stuff "python pid_controller.py\n"
 screen -t "SE"
 stuff "source setup.sh\n"
 stuff "cd $(rospack find pidrone_pkg)/scripts/\n"
-stuff "python state_estimator.py -p ukf7d\n"
+stuff "python state_estimator.py -p ema\n"
 
 screen -t "Vision"
 stuff "source setup.sh\n"
