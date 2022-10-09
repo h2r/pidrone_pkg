@@ -38,58 +38,46 @@ multiuser on
 #stuff "screen\n"
 
 screen -t "rcore"
-stuff "source setup.sh\n"
 stuff "roscore\n"
 stuff ""
 
 
 screen -t "FC"
-stuff "source setup.sh\n"
 stuff "cd $(rospack find pidrone_pkg)/scripts/\n"
 stuff "python flight_controller_node.py" # We require this be started manually
 
 screen -t "PID"
-stuff "source setup.sh\n"
 stuff "cd $(rospack find pidrone_pkg)/scripts/\n"
 stuff "python pid_controller.py\n"
 
 screen -t "SE"
-stuff "source setup.sh\n"
 stuff "cd $(rospack find pidrone_pkg)/scripts/\n"
 stuff "python state_estimator.py -p ema\n"
 
 screen -t "Vision"
-stuff "source setup.sh\n"
 stuff "cd $(rospack find pidrone_pkg)/scripts\n"
-stuff "roslaunch pidrone_pkg raspicam_node.launch\n"
+stuff "sleep 10s && roslaunch --wait pidrone_pkg raspicam_node.launch\n"
 
 screen -t "Optical Flow"
-stuff "source setup.sh\n"
 stuff "cd $(rospack find pidrone_pkg)/scripts\n"
 stuff "python optical_flow_node.py\n"
 
 screen -t "Rigid Transform"
-stuff "source setup.sh\n"
 stuff "cd $(rospack find pidrone_pkg)/scripts\n"
-stuff "python rigid_transform_node.py\n"
+stuff "python rigid_transform_node.py"
 
 screen -t "TOF"
-stuff "source setup.sh\n"
 stuff "cd $(rospack find pidrone_pkg)/scripts/\n"
 stuff "python tof_node.py\n"
 
 screen -t "rosbridge"
-stuff "source setup.sh\n"
-stuff "sleep 10s && roslaunch rosbridge_server rosbridge_websocket.launch\n"
+stuff "roslaunch --wait rosbridge_server rosbridge_websocket.launch\n"
 
 screen -t "web_vid_serv"
-stuff "source setup.sh\n"
 stuff "rosrun web_video_server web_video_server"
 
 screen -t "free1"
-stuff "source setup.sh\n"
 stuff "cd $(rospack find pidrone_pkg)/scripts/\n"
 
 screen -t "free2"
-stuff "source setup.sh\n"
 stuff "cd $(rospack find pidrone_pkg)/scripts/\n"

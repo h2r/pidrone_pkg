@@ -50,9 +50,6 @@ RUN apt-get install -y ros-kinetic-web-video-server
 # to open picamera, but I think I still need it for raspicam_node.
 RUN git clone https://github.com/raspberrypi/userland && cd userland && git checkout 4a57ea4107a4d48564242b21608ab259da5ced35 && ./buildme --aarch64
 
-RUN rosdep init
-
-
 #RUN pip install picamera
 
 

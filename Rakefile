@@ -3,6 +3,7 @@ task :build do
 end
 
 task :create do
+  sh "docker stop pidrone_pkg || true"
   sh "docker rm pidrone_pkg || true"
   sh "docker create -i -t --name pidrone_pkg --network=host --privileged --volume /home/duckie/catkin_ws:/home/duckie/catkin_ws pidrone_pkg:ente"
 end
