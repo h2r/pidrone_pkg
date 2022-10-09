@@ -77,12 +77,16 @@ class PID:
                  yaw=PIDaxis(0.0, 0.0, 0.0),
 
                  # Kv 2300 motors have midpoint 1300, Kv 2550 motors have midpoint 1250
-                 throttle=PIDaxis(1.0/height_factor * battery_factor, 0.5/height_factor * battery_factor,
-                                  2.0/height_factor * battery_factor, i_range=(-400, 400), control_range=(1200, 2000),
-                                  d_range=(-40, 40), midpoint=1250),
-                 throttle_low=PIDaxis(1.0/height_factor * battery_factor, 0.05/height_factor * battery_factor,
-                                      2.0/height_factor * battery_factor, i_range=(0, 400), control_range=(1200, 2000),
-                                      d_range=(-40, 40), midpoint=1250)
+                 throttle=PIDaxis(1.0/height_factor * battery_factor,
+                                  0, #0.5/height_factor * battery_factor,
+                                  0, #2.0/height_factor * battery_factor,
+                                  i_range=(-400, 400), control_range=(1200, 2000),
+                                  d_range=(-40, 40), midpoint=1000),
+                 throttle_low=PIDaxis(1.0/height_factor * battery_factor,
+                                      0, #0.05/height_factor * battery_factor,
+                                      0, #2.0/height_factor * battery_factor,
+                                      i_range=(0, 400), control_range=(1200, 2000),
+                                      d_range=(-40, 40), midpoint=1000)
                  ):
 
         self.trim_controller_cap_plane = 0.05
@@ -107,7 +111,7 @@ class PID:
         # Tuning values specific to each drone
         self.roll_low.init_i = 0.0
         self.pitch_low.init_i = 0.0
-        self.throttle_low.init_i = 100
+        self.throttle_low.init_i = 50
         self.reset()
 
     def reset(self):
@@ -176,13 +180,14 @@ class PID:
             cmd_p = self.pitch_low._i + self.pitch.step(error.y, time_elapsed)
 
         # Compute yaw command
-        cmd_y = 1500 + cmd_yaw_velocity
+        cmd_y = 1500 # + cmd_yaw_velocity
 
         # Compute throttle command
         if abs(error.z) < self.trim_controller_thresh_throttle:
             self.throttle_low._i += self.throttle._i
             self.throttle._i = 0
             cmd_t = self.throttle_low.step(error.z, time_elapsed)
+            print "low"
         else:
             if error.z > self.trim_controller_cap_throttle:
                 self.throttle_low.step(self.trim_controller_cap_throttle, time_elapsed)
@@ -193,8 +198,10 @@ class PID:
 
             cmd_t = self.throttle_low._i + self.throttle.step(error.z, time_elapsed)
 
+
         # Print statements for the low and high i components
         # print "Roll  low, hi:", self.roll_low._i, self.roll._i
         # print "Pitch low, hi:", self.pitch_low._i, self.pitch._i
         # print "Throttle low, hi:", self.throttle_low._i, self.throttle._i
+        print cmd_t
         return [cmd_r, cmd_p, cmd_y, cmd_t]
