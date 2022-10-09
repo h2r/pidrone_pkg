@@ -33,10 +33,13 @@ var positionControlPub;
 var velocityControlPub;
 var heartbeatPub;
 var heightChart;
+var velocityChart;
 var windowSize = 5;
 var gotFirstHeight = false;
+var gotFirstVelocity = false;
 var startTime;
 var heightChartPaused = false;
+var velocityChartPaused = false;
 var showingUkfAnalysis = false;
 var spanningFullWindow = false;
 
@@ -211,6 +214,15 @@ function init() {
       throttle_rate : 80
     });
 
+
+    velsub = new ROSLIB.Topic({
+      ros : ros,
+      name : '/pidrone/picamera/twist',
+      messageType : 'geometry_msgs/TwistStamped',
+      queue_length : 2,
+      throttle_rate : 80
+    });
+
     ukf2dsub = new ROSLIB.Topic({
         ros : ros,
         name : '/pidrone/state/ukf_2d',
@@ -329,6 +341,49 @@ function init() {
       }
       //console.log("Data: " + heightChart.data.datasets[0].data);
       //console.log('tVal: ' + tVal)
+    });
+
+
+
+
+    var velocityChartMinTime;
+    var velocityChartMaxTime;
+    velsub.subscribe(function(message) {
+      //printProperties(message);
+	//console.log("Range: " + message.twist.linear.x);
+	//console.log("Range: " + message.twist.linear.y);
+	vel = Math.sqrt(message.twist.linear.x**2 + message.twist.linear.y**2)
+      currTime = message.header.stamp.secs + message.header.stamp.nsecs/1.0e9;
+      if (!gotFirstVelocity) {
+          gotFirstVelocity = true;
+          startTime = currTime;
+      }
+      tVal = currTime - startTime;
+      // Have the plot scroll in time, showing a window of windowSize seconds
+      if (tVal > windowSize) {
+          spanningFullWindow = true;
+          velocityChartMinTime = tVal - windowSize;
+          velocityChartMaxTime = tVal;
+          // Remove first element of array while difference compared to current
+          // time is greater than the windowSize
+          while (rawVelocityData.length > 0 &&
+                 (tVal - rawVelocityData[0].x > windowSize)) {
+              rawVelocityData.splice(0, 1);
+          }
+      }
+      // Add new range reading to end of the data array
+      // x-y pair
+      var xyPair = {
+          x: tVal,
+          y: vel
+      }
+      rawVelocityData.push(xyPair)
+      if (!velocityChartPaused && !showingUkfAnalysis) {
+          velocityChart.options.scales.xAxes[0].ticks.min = velocityChartMinTime;
+          velocityChart.options.scales.xAxes[0].ticks.max = velocityChartMaxTime;
+          velocityChart.data.datasets[0].data = rawVelocityData.slice();
+          velocityChart.update();
+      }
     });
 
     function ukfCallback(message) {
@@ -947,6 +1002,19 @@ var rawIrDataset = {
 };
 var rawIrData = Array(0);
 
+var rawVelocityDataset = {
+  label: 'Raw Velocity Readings',
+  data: Array(0), // initialize array of length 0
+  borderWidth: 1.5,
+  pointRadius: 0,
+  fill: false,
+  borderColor: 'rgba(255, 80, 0, 0.8)',
+    backgroundColor: 'rgba(255, 80, 0, 0)',
+  lineTension: 0, // remove smoothing
+  itemID: 0
+};
+var rawVelocityData = Array(0);
+
 var ukfDataset = {
   label: 'UKF Filtered Height',
   data: Array(0), // initialize array of length 0
@@ -1152,8 +1220,64 @@ function loadHeightChartUkfAnalysis() {
     });
 }
 
+function loadVelocityChartStandardView() {
+    ctx = document.getElementById("velocityChart").getContext('2d');
+    velocityChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            datasets: [
+                rawVelocityDataset
+            ]
+        },
+        options: {
+	    responsive: false,
+            animation: {
+               duration: 0,
+            },
+            scales: {
+                yAxes: [{
+                    ticks: {
+                        beginAtZero: true,
+                        min: 0,
+                        max: 0.6,
+                        stepSize: 0.1
+                    },
+                    scaleLabel: {
+                        display: true,
+                        labelString: 'Speed (m/s)'
+                    }
+                }],
+                xAxes: [{
+                    type: 'linear',
+                    display: false,
+                    ticks: {
+                        min: 0,
+                        max: windowSize,
+                        stepSize: windowSize
+                    }
+                }]
+            },
+            legend: {
+              display: true,
+              labels: {
+                  // Filter out UKF standard deviation datasets and datasets
+                  // that have no data in them
+                  filter: function(itemInLegend, chartData) {
+                      var itemIndex = itemInLegend.datasetIndex;
+                      return ((itemIndex != ukfPlusSigmaDataset.itemID &&
+                               itemIndex != ukfMinusSigmaDataset.itemID) &&
+                               (chartData.datasets[itemIndex].data.length != 0));
+                  }
+              }
+            },
+        }
+    });
+}
+
+
 $(document).ready(function() {
     loadHeightChartStandardView();
+    loadVelocityChartStandardView();    
     xyctx = document.getElementById("xyChart").getContext('2d');
     xyChart = new Chart(xyctx, {
         type: 'line',
