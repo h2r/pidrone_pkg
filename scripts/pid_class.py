@@ -63,9 +63,6 @@ class PIDaxis():
 
 class PID:
 
-    height_factor = 1.238
-    battery_factor = 0.75
-
     def __init__(self,
 
                  roll=PIDaxis(2.0, 1.0, 0.0, control_range=(1400, 1600), midpoint=1500, i_range=(-100, 100)),
@@ -77,16 +74,11 @@ class PID:
                  yaw=PIDaxis(0.0, 0.0, 0.0),
 
                  # Kv 2300 motors have midpoint 1300, Kv 2550 motors have midpoint 1250
-                 throttle=PIDaxis(1.0/height_factor * battery_factor,
+                 throttle=PIDaxis(1,
                                   0, #0.5/height_factor * battery_factor,
-                                  0, #2.0/height_factor * battery_factor,
-                                  i_range=(-400, 400), control_range=(1200, 2000),
-                                  d_range=(-40, 40), midpoint=1000),
-                 throttle_low=PIDaxis(1.0/height_factor * battery_factor,
-                                      0, #0.05/height_factor * battery_factor,
-                                      0, #2.0/height_factor * battery_factor,
-                                      i_range=(0, 400), control_range=(1200, 2000),
-                                      d_range=(-40, 40), midpoint=1000)
+                                  1,
+                                  i_range=(-400, 400), control_range=(1200, 1375),
+                                  d_range=(-40, 40), midpoint=1350)
                  ):
 
         self.trim_controller_cap_plane = 0.05
@@ -104,14 +96,12 @@ class PID:
         self.trim_controller_thresh_throttle = 5.0
 
         self.throttle = throttle
-        self.throttle_low = throttle_low
 
         self._t = None
 
         # Tuning values specific to each drone
         self.roll_low.init_i = 0.0
         self.pitch_low.init_i = 0.0
-        self.throttle_low.init_i = 50
         self.reset()
 
     def reset(self):
@@ -125,12 +115,10 @@ class PID:
         self.pitch.reset()
         self.pitch_low.reset()
         self.throttle.reset()
-        self.throttle_low.reset()
 
         # restore tuning values
         self.roll_low._i = self.roll_low.init_i
         self.pitch_low._i = self.pitch_low.init_i
-        self.throttle_low._i = self.throttle_low.init_i
 
     def step(self, error, cmd_yaw_velocity=0):
         """ Compute the control variables from the error using the step methods
@@ -182,26 +170,14 @@ class PID:
         # Compute yaw command
         cmd_y = 1500 + cmd_yaw_velocity
 
-        # Compute throttle command
-        if abs(error.z) < self.trim_controller_thresh_throttle:
-            self.throttle_low._i += self.throttle._i
-            self.throttle._i = 0
-            cmd_t = self.throttle_low.step(error.z, time_elapsed)
-            print "low"
-        else:
-            if error.z > self.trim_controller_cap_throttle:
-                self.throttle_low.step(self.trim_controller_cap_throttle, time_elapsed)
-            elif error.z < -self.trim_controller_cap_throttle:
-                self.throttle_low.step(-self.trim_controller_cap_throttle, time_elapsed)
-            else:
-                self.throttle_low.step(error.z, time_elapsed)
+        cmd_t = self.throttle.step(error.z, time_elapsed)
+        
+        #cmd_t = 1250
 
-            cmd_t = self.throttle_low._i + self.throttle.step(error.z, time_elapsed)
-
-
+        print "%d, %.3f, %.3f, %.3f, %.3f" % (cmd_t, error.z, self.throttle._p, self.throttle._i, self.throttle._d)
         # Print statements for the low and high i components
         # print "Roll  low, hi:", self.roll_low._i, self.roll._i
         # print "Pitch low, hi:", self.pitch_low._i, self.pitch._i
         # print "Throttle low, hi:", self.throttle_low._i, self.throttle._i
-        print cmd_t
+        #print cmd_t
         return [cmd_r, cmd_p, cmd_y, cmd_t]

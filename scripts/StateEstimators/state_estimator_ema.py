@@ -102,7 +102,7 @@ class EMAStateEstimator(object):
         # raw measured translations and rotation by analyze_transform
         position_reading = pose.position
         # constant used for the EMA filter
-        alpha = 0.2
+        alpha = 1 # 0.2
         # blend the new measurement with the old position using an EMA filter
         smoothed_x = (1.0 - alpha) * last_position.x + alpha * position_reading.x
         smoothed_y = (1.0 - alpha) * last_position.y + alpha * position_reading.y
@@ -135,7 +135,7 @@ class EMAStateEstimator(object):
     def filter_range(self, range_reading):
         """ Smooth the range reading using and ema filter """
         # the ema filter constant
-        alpha = 0.8
+        alpha = 1 #0.8
         # get the roll and pitch
         r,p,_ = self.get_r_p_y()
         # the z-position of the drone which is calculated by multiplying the
@@ -143,7 +143,7 @@ class EMAStateEstimator(object):
         curr_altitude = range_reading * np.cos(r) * np.cos(p)
         prev_altitude = self.state.pose_with_covariance.pose.position.z
         # use an ema filter to smoothe the range reading
-        smoothed_altitude= (1.0 - alpha) * curr_altitude + alpha * prev_altitude
+        smoothed_altitude= alpha * curr_altitude + (1 - alpha) * prev_altitude
         # ensure that the range value is between 0 and 0.55 m
         smoothed_altitude = max(0, min(smoothed_altitude, 0.55))
         # update the current z position

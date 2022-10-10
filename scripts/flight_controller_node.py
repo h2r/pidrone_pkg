@@ -1,13 +1,18 @@
 #!/usr/bin/env python
-
-import tf
 import traceback
 import sys
 import yaml
+
 import rospy
 import rospkg
 import signal
 import numpy as np
+
+print "tf import"
+import tf
+print "done tf import"
+
+
 import command_values as cmds
 from sensor_msgs.msg import Imu
 from h2rMultiWii import MultiWii
@@ -40,7 +45,9 @@ class FlightController(object):
 
     def __init__(self):
         # Connect to the flight controller board
+        print "getboard"
         self.board = self.getBoard()
+        print "done"
         # stores the current and previous modes
         self.curr_mode = 'DISARMED'         #initialize as disarmed
         self.prev_mode = 'DISARMED'         #initialize as disarmed
@@ -71,10 +78,12 @@ class FlightController(object):
 
         # Accelerometer parameters
         ##########################
+        print "loading"
         rospack = rospkg.RosPack()
         path = rospack.get_path('pidrone_pkg')
         with open("%s/params/multiwii.yaml" % path) as f:
             means = yaml.load(f)
+        print "done"
         self.accRawToMss = 9.8 / means["az"]
         self.accZeroX = means["ax"] * self.accRawToMss
         self.accZeroY = means["ay"] * self.accRawToMss
@@ -290,7 +299,7 @@ class FlightController(object):
             print('Check the infrared node\n')
             disarm = True
 
-        if self.range > 0.2:
+        if self.range > 0.5:
             print('\nSafety Failure: too high: ' + str(self.range))
             disarm = True            
         if curr_time - self.heartbeat_state_estimator > rospy.Duration.from_sec(1):
@@ -305,8 +314,9 @@ def main():
     # ROS Setup
     ###########
     node_name = os.path.splitext(os.path.basename(__file__))[0]
+    print "init"
     rospy.init_node(node_name)
-
+    print "done"
     # create the FlightController object
     fc = FlightController()
     curr_time = rospy.Time.now()
