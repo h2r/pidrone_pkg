@@ -49,9 +49,13 @@ function closeSession(){
   return false;
 }
 
-/* This code runs when you load the page */
-function init() {
+/* This code runs when you click 'connect' */
+function connect() {
     // Connect to ROS.
+    if(ros && ros.isConnected) {
+	return
+    }
+    
     var url = 'ws://' + document.getElementById('hostname').value + ':9090'
     ros = new ROSLIB.Ros({
         url : url
