@@ -201,7 +201,7 @@ def main():
     rospy.Subscriber("/pidrone/reset_transform", Empty, state_estimator.reset_callback)
     rospy.Subscriber('/pidrone/picamera/twist', TwistStamped, state_estimator.twist_callback)
     rospy.Subscriber('/pidrone/picamera/pose', PoseStamped, state_estimator.pose_callback)
-    rospy.Subscriber('/pidrone/infrared', Range, state_estimator.range_callback)
+    rospy.Subscriber('/pidrone/range', Range, state_estimator.range_callback)
     rospy.Subscriber('/pidrone/imu', Imu, state_estimator.imu_callback)
 
     # set up ctrl-c handler

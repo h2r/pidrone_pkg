@@ -10,6 +10,15 @@ __version__ = "1.5"
 
 import serial, time, struct
 import numpy as np
+class PID:
+    def __init__(self, kp, ki, kd):
+        self.kp = kp
+        self.ki = ki
+        self.kd = kd
+    def __str__(self):
+        print repr(self)
+    def __repr__(self):
+        return "PID(%f, %f, %f)" % (self.kp, self.ki, self.kd)
 
 class MultiWii:
 
@@ -31,6 +40,7 @@ class MultiWii:
     ANALOG = 110
     RC_TUNING = 111
     PID = 112
+    PID_STRUCT = struct.Struct('<BBBBBBBBBBBBBBBBBBBBBBBBBBBBBB')    
     BOX = 113
     MISC = 114
     MOTOR_PINS = 115
@@ -72,6 +82,8 @@ class MultiWii:
         self.motor = {'m1':0,'m2':0,'m3':0,'m4':0,'elapsed':0,'timestamp':0}
         self.attitude = {'angx':0,'angy':0,'heading':0,'elapsed':0,'timestamp':0}
         self.message = {'angx':0,'angy':0,'heading':0,'roll':0,'pitch':0,'yaw':0,'throttle':0,'elapsed':0,'timestamp':0}
+
+        self.pid = {'roll':None, 'pitch': None, 'yaw':None, 'alt':None ,'pos':None, 'posr':None, 'navr':None, 'level':None, 'mag':None, 'vel':None}
 
         self.ident = {"version":"", "multitype":"", "msp_version":"", "capability":""}
         self.status = {}
@@ -264,6 +276,21 @@ class MultiWii:
             self.rcChannels['elapsed']= elapsed
             self.rcChannels['timestamp']= readTime
             return self.rcChannels
+
+        elif code == MultiWii.PID:
+            temp = MultiWii.PID_STRUCT.unpack(data)
+            self.pid['roll']   = PID(temp[0], temp[1], temp[2])
+            self.pid['pitch']  = PID(temp[3], temp[4], temp[5])
+            self.pid['yaw']    = PID(temp[6], temp[7], temp[8])
+            self.pid['alt']    = PID(temp[9], temp[10], temp[11])
+            self.pid['pos']    = PID(temp[12], temp[13], temp[14])
+            self.pid['posr']   = PID(temp[15], temp[16], temp[17])
+            self.pid['navr']   = PID(temp[18], temp[19], temp[20])
+            self.pid['level']  = PID(temp[21], temp[22], temp[23])
+            self.pid['mag']    = PID(temp[24], temp[25], temp[26])
+            self.pid['vel']    = PID(temp[27], temp[28], temp[29])
+            print self.pid
+        
         elif code == MultiWii.RAW_IMU:
             temp = MultiWii.RAW_IMU_STRUCT.unpack(data)
             self.rawIMU['cmd'] = code

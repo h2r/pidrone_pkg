@@ -31,8 +31,8 @@ class PIDController(object):
 
         # Initialize the current and desired positions
         self.current_position = Position()
-        self.desired_position = Position(z=0.3)
-        self.last_desired_position = Position(z=0.3)
+        self.desired_position = Position(z=0.1)
+        self.last_desired_position = Position(z=0.1)
 
         # Initialize the position error
         self.position_error = Error()
@@ -306,7 +306,7 @@ class PIDController(object):
         '''
         # reset position control variables
         self.position_error = Error(0,0,0)
-        self.desired_position = Position(self.current_position.x,self.current_position.y,0.3)
+        self.desired_position = Position(self.current_position.x,self.current_position.y,0.05)
         # reset velocity control_variables
         self.velocity_error = Error(0,0,0)
         self.desired_velocity = Velocity(0,0,0)
