@@ -45,7 +45,7 @@ var spanningFullWindow = false;
 
 function closeSession(){
   console.log("Closing connections.");
-  ros.disconnect();
+  ros.close();
   return false;
 }
 
