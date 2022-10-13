@@ -95,10 +95,18 @@ RUN mkdir -p raspicam_node_ws/src && cd raspicam_node_ws/src/ && git clone https
 # print some info on start
 RUN echo "echo -e 'Welcome! You are now in a docker container ().'" >> $HOME/.bashrc
 RUN echo "echo -e \"Docker ID: $(basename $(cat /proc/1/cpuset))\"" >> $HOME/.bashrc
-run echo "export LD_LIBRARY_PATH=/opt/vc/lib/:$LD_LIBRARY_PATH" >> $HOME/.bashrc
+
+run echo "export LD_LIBRARY_PATH=/opt/vc/lib/:/home/$USER/raspicam_node_ws/devel/lib:\$LD_LIBRARY_PATH" >> $HOME/.bashrc
+
+run echo "export PYTHONPATH=\$PYTHONPATH:/home/$USER/raspicam_node_ws/devel/python2.7/dist-packages" >> $HOME/.bashrc
+
+run echo "export PYTHONPATH=\$PYTHONPATH:/home/$USER/catkin_ws/src/pidrone_pkg/scripts" >> $HOME/.bashrc
+
+
 RUN echo "export ROS_MASTER_URI=http://$hostname:11311" >> $HOME/.bashrc
 RUN echo "cd $HOME/catkin_ws/src/pidrone_pkg && source setup.sh" >> $HOME/.bashrc
 RUN echo "export ROS_PACKAGE_PATH=\$ROS_PACKAGE_PATH:$HOME/raspicam_node_ws/src" >> $HOME/.bashrc
+
 
 CMD ["bash"]
 
