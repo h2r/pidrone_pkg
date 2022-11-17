@@ -58,7 +58,7 @@ class DroneSimulator(object):
         '''
         Initialize ROS publishers
         '''
-        self.ir_pub = rospy.Publisher('/pidrone/infrared', Range, queue_size=1)
+        self.ir_pub = rospy.Publisher('/pidrone/range', Range, queue_size=1)
         self.imu_pub = rospy.Publisher('/pidrone/imu', Imu, queue_size=1)
         
         # Create the publisher to publish state estimates
@@ -312,7 +312,7 @@ class DroneSimulator1D(DroneSimulator):
         '''
         self.ir_info = {'id' : 0,
                         'hz' : 57,
-                        'topic' : '/pidrone/infrared',
+                        'topic' : '/pidrone/range',
                         'times' : [],
                         'times_copy' : [],
                         'filenames' : {'ir' : 'ir_RAW'},
@@ -497,7 +497,7 @@ class DroneSimulator2D(DroneSimulator):
         '''
         self.ir_info = {'id' : 0,
                         'hz' : 57,
-                        'topic' : '/pidrone/infrared',
+                        'topic' : '/pidrone/range',
                         'times' : [],
                         'times_copy' : [],
                         'filenames' : {'ir' : 'ir_RAW'},
@@ -858,7 +858,7 @@ class DroneSimulator3D(DroneSimulator):
         '''
         self.ir_info = {'id' : 0,
                         'hz' : 57,
-                        'topic' : '/pidrone/infrared',
+                        'topic' : '/pidrone/range',
                         'times' : [],
                         'times_copy' : [],
                         'filenames' : {'ir' : 'ir_RAW'},
