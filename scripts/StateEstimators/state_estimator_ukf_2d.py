@@ -42,7 +42,7 @@ class UKFStateEstimator2D(object):
         self.got_ir = False
         self.loop_hz = loop_hz
         
-        self.ir_topic_str = '/pidrone/infrared'
+        self.ir_topic_str = '/pidrone/range'
         self.imu_topic_str = '/pidrone/imu'
         throttle_suffix = '_throttle'
         

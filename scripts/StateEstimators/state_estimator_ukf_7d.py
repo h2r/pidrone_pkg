@@ -46,7 +46,7 @@ class UKFStateEstimator7D(object):
         self.got_imu = False
         self.loop_hz = loop_hz
         
-        self.ir_topic_str = '/pidrone/infrared'
+        self.ir_topic_str = '/pidrone/range'
         self.imu_topic_str = '/pidrone/imu'
         self.optical_flow_topic_str = '/pidrone/picamera/twist'
         self.camera_pose_topic_str = '/pidrone/picamera/pose'
