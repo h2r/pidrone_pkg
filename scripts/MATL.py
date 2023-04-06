@@ -109,9 +109,9 @@ class MATL(picamera.array.PiMotionAnalysis):
             self.localization_estimator = LocalizationParticleFilter()
             self.localization_estimator.create_map(map_kp, map_des)
 
-            print '\n'
-            print "The map is completed with ", len(map), "landmarks!"
-            print self.state
+            print('\n')
+            print("The map is completed with ", len(map), "landmarks!")
+            print(self.state)
         else:
             curr_kp, curr_des = self.detector.detectAndCompute(curr_img, None)
 
@@ -139,7 +139,7 @@ class MATL(picamera.array.PiMotionAnalysis):
 
                             self.posepub.publish(self.posemsg)
 
-                            print 'first', particle
+                            print('first', particle)
                         else:
                             particle = self.localization_estimator.update(self.z, self.angle_x, self.angle_y,
                                                                         self.prev_kp, self.prev_des, curr_kp, curr_des)
@@ -162,7 +162,7 @@ class MATL(picamera.array.PiMotionAnalysis):
 
                             self.posepub.publish(self.posemsg)
 
-                            print '--pose', self.pos[0], self.pos[1], self.pos[3]
+                            print('--pose', self.pos[0], self.pos[1], self.pos[3])
 
                             # if average particle weight is close to initial weight
                             if is_almost_equal(particle.weight(), PROB_THRESHOLD):
@@ -176,14 +176,14 @@ class MATL(picamera.array.PiMotionAnalysis):
                             if self.map_counter < MAX_BAD_COUNT:
                                 self.first_locate = True
                                 self.map_counter = 0
-                                print 'Restart localization'
-                            print 'count', self.map_counter
+                                print('Restart localization')
+                            print('count', self.map_counter)
 
                 self.prev_kp = curr_kp
                 self.prev_des = curr_des
 
             else:
-                print "CANNOT FIND ANY FEATURES !!!!!"
+                print("CANNOT FIND ANY FEATURES !!!!!")
 
         self.prev_img = curr_img
         self.prev_time = curr_time
@@ -207,9 +207,9 @@ class MATL(picamera.array.PiMotionAnalysis):
         elif self.state == "STANDBY":
             self.state = "LOCALIZING"
         else:
-            print "ILLEGAL STATE"
+            print("ILLEGAL STATE")
 
-        print self.state
+        print(self.state)
 
     def map_callback(self, data):
         """
@@ -225,9 +225,9 @@ class MATL(picamera.array.PiMotionAnalysis):
         elif self.state == "STANDBY":
             self.state = "MAPPING"
         else:
-            print "ILLEGAL STATE"
+            print("ILLEGAL STATE")
 
-        print self.state
+        print(self.state)
 
     def state_callback(self, data):
         """ update z, angle x, and angle y data when /pidrone/state is published to """

@@ -121,7 +121,7 @@ class FastSLAM:
         """
 
         # print the average number of landmarks per particles
-        print "LM: ", np.sum([len(p.landmarks) for p in self.particles]) / float(self.num_particles)
+        print("LM: ", np.sum([len(p.landmarks) for p in self.particles]) / float(self.num_particles))
 
         # write poses to a text file to be animated
         if POSE:

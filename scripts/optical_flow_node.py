@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from __future__ import division
+
 import rospy
 import numpy as np
 from geometry_msgs.msg import TwistStamped

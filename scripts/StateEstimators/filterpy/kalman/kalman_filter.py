@@ -118,7 +118,7 @@ for more information.
 Copyright 2014-2018 Roger R Labbe Jr.
 """
 
-from __future__ import absolute_import, division
+
 
 from copy import deepcopy
 from math import log, exp, sqrt

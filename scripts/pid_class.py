@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-from __future__ import division
+
 import rospy
 
 
@@ -174,7 +174,7 @@ class PID:
         
         #cmd_t = 1250
 
-        print "%d, %.3f, %.3f, %.3f, %.3f" % (cmd_t, error.z, self.throttle._p, self.throttle._i, self.throttle._d)
+        print("%d, %.3f, %.3f, %.3f, %.3f" % (cmd_t, error.z, self.throttle._p, self.throttle._i, self.throttle._d))
         # Print statements for the low and high i components
         # print "Roll  low, hi:", self.roll_low._i, self.roll._i
         # print "Pitch low, hi:", self.pitch_low._i, self.pitch._i

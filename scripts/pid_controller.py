@@ -136,7 +136,7 @@ class PIDController(object):
         if self.desired_position != self.last_desired_position:
             # the drone is moving between desired positions
             self.moving = True
-            print 'moving'
+            print('moving')
 
     def desired_twist_callback(self, msg):
         """ Update the desired twist """
@@ -163,7 +163,7 @@ class PIDController(object):
         if self.position_control:
             self.desired_position = self.current_position
         if (self.position_control != self.last_position_control):
-            print "Position Control", self.position_control
+            print("Position Control", self.position_control)
             self.last_position_control = self.position_control
 
     def reset_callback(self, empty):
@@ -189,7 +189,7 @@ class PIDController(object):
                         self.pid_error -= self.velocity_error * 100
                     else:
                         self.moving = False
-                        print 'not moving'
+                        print('not moving')
             else:
                 self.position_control_pub.publish(False)
 
@@ -317,7 +317,7 @@ class PIDController(object):
 
     def ctrl_c_handler(self, signal, frame):
         """ Gracefully handles ctrl-c """
-        print 'Caught ctrl-c\n Stopping Controller'
+        print('Caught ctrl-c\n Stopping Controller')
         sys.exit()
 
     def publish_cmd(self, cmd):
@@ -365,7 +365,7 @@ def main(ControllerClass):
     signal.signal(signal.SIGINT, pid_controller.ctrl_c_handler)
     # set the loop rate (Hz)
     loop_rate = rospy.Rate(60)
-    print 'PID Controller Started'
+    print('PID Controller Started')
     while not rospy.is_shutdown():
         pid_controller.heartbeat_pub.publish(Empty())
 
@@ -406,21 +406,21 @@ def main(ControllerClass):
                 pid_controller.pid.pitch_low.init_i = pid_controller.pid.pitch_low._i
                 # Uncomment below statements to print the converged values.
                 # Make sure verbose = 0 so that you can see these values
-                print 'roll_low.init_i', pid_controller.pid.roll_low.init_i
-                print 'pitch_low.init_i', pid_controller.pid.pitch_low.init_i
+                print('roll_low.init_i', pid_controller.pid.roll_low.init_i)
+                print('pitch_low.init_i', pid_controller.pid.pitch_low.init_i)
 
         if verbose >= 2:
             if pid_controller.position_control:
-                print 'current position:', pid_controller.current_position
-                print 'desired position:', pid_controller.desired_position
-                print 'position error:', pid_controller.position_error
+                print('current position:', pid_controller.current_position)
+                print('desired position:', pid_controller.desired_position)
+                print('position error:', pid_controller.position_error)
             else:
-                print 'current velocity:', pid_controller.current_velocity
-                print 'desired velocity:', pid_controller.desired_velocity
-                print 'velocity error:  ', pid_controller.velocity_error
-            print 'pid_error:       ', pid_controller.pid_error
+                print('current velocity:', pid_controller.current_velocity)
+                print('desired velocity:', pid_controller.desired_velocity)
+                print('velocity error:  ', pid_controller.velocity_error)
+            print('pid_error:       ', pid_controller.pid_error)
         if verbose >= 1:
-            print 'r,p,y,t:', fly_command
+            print('r,p,y,t:', fly_command)
 
         loop_rate.sleep()
 

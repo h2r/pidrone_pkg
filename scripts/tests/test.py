@@ -249,12 +249,12 @@ good = []
 for match in matches:
     if len(match) > 1 and match[0].distance < 0.7 * match[1].distance:
         good.append(match[0])
-print len(good)
+print(len(good))
 
 src_pts = np.float32([kp1[m.queryIdx].pt for m in good]).reshape(-1, 1, 2)
 dst_pts = np.float32([kp2[m.trainIdx].pt for m in good]).reshape(-1, 1, 2)
 transform = cv2.estimateRigidTransform(src_pts, dst_pts, False)
-print transform[0, 2], transform[1, 2]
+print(transform[0, 2], transform[1, 2])
 
 cv2.imshow('img1', img1)
 cv2.imshow('img2', img2)

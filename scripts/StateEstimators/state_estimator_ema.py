@@ -68,7 +68,7 @@ class EMAStateEstimator(object):
     def reset_callback(self, empty):
         """ Reset the current pose of the drone except for the z postion """
         self.state.header.stamp = rospy.Time.now()
-        print 'Resetting position in x and y and orientation'
+        print('Resetting position in x and y and orientation')
         self.state.pose_with_covariance.pose.position.x = 0
         self.state.pose_with_covariance.pose.position.y = 0
         # reset the orientation
@@ -177,7 +177,7 @@ class EMAStateEstimator(object):
 
     def ctrl_c_handler(self, signal, frame):
         """ Exit the program """
-        print '\nCaught ctrl-c. Stopping node.'
+        print('\nCaught ctrl-c. Stopping node.')
         sys.exit()
 
 
@@ -206,10 +206,10 @@ def main():
 
     # set up ctrl-c handler
     signal.signal(signal.SIGINT, state_estimator.ctrl_c_handler)
-    print 'waiting for velocity and range data'
+    print('waiting for velocity and range data')
     while not state_estimator.received_twist_data and not state_estimator.received_range_data:
         pass
-    print 'Publishing State'
+    print('Publishing State')
 
     # set the publishing rate (Hz)
     rate = rospy.Rate(60)

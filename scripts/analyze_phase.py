@@ -69,7 +69,7 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
             # if there is no first image stored, tell the user to capture an image
             if self.first:
                 self.first = False
-                print "Capturing a new first image"
+                print("Capturing a new first image")
                 self.first_image = image
                 self.previous_image = image
                 self.last_first_time = rospy.get_time()
@@ -95,7 +95,7 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
                     self.first_image_counter += 1
                     self.max_first_counter = max(self.max_first_counter, self.first_image_counter)
                     self.last_first_time = rospy.get_time()
-                    print "count:", self.first_image_counter
+                    print("count:", self.first_image_counter)
                 # else the first image was not visible (the transformation was not succesful) :
                 else:
                     # try to estimate the transformation from the previous image
@@ -108,19 +108,19 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
                         if self.last_first_time is None:
                             self.last_first_time = rospy.get_time()
                         time_since_first = rospy.get_time() - self.last_first_time
-                        print "integrated", time_since_first
-                        print "max_first_counter: ", self.max_first_counter
+                        print("integrated", time_since_first)
+                        print("max_first_counter: ", self.max_first_counter)
                         int_displacement, yaw_previous = self.translation_and_yaw(transform_previous)
                         self.pose_msg.pose.position.x = self.x_position_from_state + (int_displacement[0]*self.altitude)
                         self.pose_msg.pose.position.y = self.y_position_from_state + (int_displacement[1]*self.altitude)
                         _,_,z,w = tf.transformations.quaternion_from_euler(0,0,yaw_previous)
                         self.pose_msg.pose.orientation.z = z
                         self.pose_msg.pose.orientation.w = w
-                        print "Lost the first image !"
+                        print("Lost the first image !")
                     # if the previous image wasn't visible (the transformation was not
                     # succesful), reset the pose and print lost
                     else:
-                        print "Lost!"
+                        print("Lost!")
                         if self.lost:
                             self.consecutive_lost_counter += 1
                         else:
@@ -157,7 +157,7 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
     # subscribe /pidrone/reset_transform
     def reset_callback(self, msg):
         """ Reset the current position and orientation """
-        print "Resetting Phase"
+        print("Resetting Phase")
 
         # reset position control variables
         self.first = True
@@ -176,7 +176,7 @@ class AnalyzePhase(picamera.array.PiMotionAnalysis):
     def position_control_callback(self, msg):
         ''' Set whether the pose is calculated and published '''
         self.position_control = msg.data
-        print "Position Control", self.position_control
+        print("Position Control", self.position_control)
 
     def state_callback(self, msg):
         """

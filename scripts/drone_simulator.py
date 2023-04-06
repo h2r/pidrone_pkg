@@ -30,7 +30,7 @@ class DroneSimulator(object):
         
         if not self.publish_ros and not self.save_to_csv:
             # If none of these two args are specified, default to ROS publishing
-            print 'Publishing to ROS topics by default'
+            print('Publishing to ROS topics by default')
             self.publish_ros = True
         if self.publish_ros:
             # Importing from within a class/function may not be good Python
@@ -72,7 +72,7 @@ class DroneSimulator(object):
         If directory dir does not exist, create it
         '''
         if not os.path.isdir(dir):
-            print 'Creating directory:', dir
+            print('Creating directory:', dir)
             os.mkdir(dir)
         
     def create_logs_dir(self):
@@ -107,9 +107,9 @@ class DroneSimulator(object):
         self.time_header = ['Seconds', 'Nanoseconds']
         
         # For each sensor type
-        for _, info_dict in self.info_dicts.iteritems():
+        for _, info_dict in self.info_dicts.items():
             # For each filename corresponding to the sensor
-            for key, filename in info_dict['filenames'].iteritems():
+            for key, filename in info_dict['filenames'].items():
                 with open(os.path.join(self.logs_full_dir, filename+'.csv'), 'w') as csv_file:
                     csv_writer = csv.writer(csv_file, delimiter=' ')
                     csv_writer.writerow(self.time_header + info_dict['headers'][key])
@@ -123,7 +123,7 @@ class DroneSimulator(object):
         while not sorted_all_data:
             first_key = True
             got_nonempty_times_list = False
-            for _, info_dict in self.info_dicts.iteritems():
+            for _, info_dict in self.info_dicts.items():
                 num = info_dict['id']
                 time_list = info_dict['times']
                 if time_list:
@@ -153,7 +153,7 @@ class DroneSimulator(object):
         '''
         Generate sample times based on the Hz of each sensor
         '''
-        for _, info_dict in self.info_dicts.iteritems():
+        for _, info_dict in self.info_dicts.items():
             time_list = info_dict['times']
             hz = info_dict['hz']
             curr_time = self.start_time
@@ -250,12 +250,12 @@ class DroneSimulator(object):
                 csv_writer.writerow(times[num] + data)
                 
     def copy_times_lists(self):
-        for _, info_dict in self.info_dicts.iteritems():
+        for _, info_dict in self.info_dicts.items():
             info_dict['times_copy'] = list(info_dict['times'])
             
     def write_all_to_csv(self):
         # For each sensor type
-        for _, info_dict in self.info_dicts.iteritems():
+        for _, info_dict in self.info_dicts.items():
             # For each filename corresponding to the sensor
             for key in info_dict['filenames']:
                 self.write_to_csv(filename=info_dict['filenames'][key],
@@ -280,11 +280,11 @@ class DroneSimulator(object):
         '''
         Start the drone sensor output
         '''
-        print 'Starting simulation...'
+        print('Starting simulation...')
         self.generate_data(duration=duration, time_std_dev=0.3)
         if self.save_to_csv:
             self.write_all_to_csv()
-        print '\nSimulation complete.'
+        print('\nSimulation complete.')
         
         
         

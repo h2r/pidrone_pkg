@@ -17,15 +17,15 @@ def main():
     # display the camera feed
     image_pub = rospy.Publisher("/pidrone/picamera/image_raw", Image, queue_size=1, tcp_nodelay=False)
 
-    print "Vision started"
+    print("Vision started")
     
     try:
-        print "bridge"
+        print("bridge")
         bridge = CvBridge()
-        print "picam"
+        print("picam")
         camera = picamera.PiCamera(framerate=30)
         with picamera.PiCamera(framerate=30) as camera:
-            print "camera", camera
+            print("camera", camera)
             camera.resolution = (320, 240)
             # instantiate phase_analyzer object
             with AnalyzePhase(camera) as phase_analyzer:
@@ -50,11 +50,11 @@ def main():
             # safely shutdown the camera recording for phase_analyzer
             camera.stop_recording(splitter_port=2)
 
-        print "Shutdown Received"
+        print("Shutdown Received")
         sys.exit()
 
     except Exception as e:
-        print "Camera Error!"
+        print("Camera Error!")
         raise
 
 

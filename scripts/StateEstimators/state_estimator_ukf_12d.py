@@ -83,7 +83,7 @@ class UKFStateEstimator12D(object):
         Initialize ROS-related objects, e.g., the node, subscribers, etc.
         '''
         self.node_name = os.path.splitext(os.path.basename(__file__))[0]
-        print 'Initializing {} node...'.format(self.node_name)
+        print('Initializing {} node...'.format(self.node_name))
         rospy.init_node(self.node_name)
         
         # Subscribe to topics to which the drone publishes in order to get raw
@@ -229,7 +229,7 @@ class UKFStateEstimator12D(object):
         
     def print_notice_if_first(self):
         if not self.printed_filter_start_notice:
-            print 'Starting filter'
+            print('Starting filter')
             self.printed_filter_start_notice = True
         
     def imu_data_callback(self, data):
@@ -358,7 +358,7 @@ class UKFStateEstimator12D(object):
         if self.ready_to_filter:
             self.print_notice_if_first()
             self.update_input_time(data)
-            print 'BEFORE PREDICT Z:', self.ukf.x[2]
+            print('BEFORE PREDICT Z:', self.ukf.x[2])
             self.ukf_predict()
                         
             # Now that a prediction has been formed to bring the current prior
@@ -367,10 +367,10 @@ class UKFStateEstimator12D(object):
             measurement_z = np.array([data.range])
             # Ensure that we are using subtraction to compute the residual
             #self.ukf.residual_z = np.subtract
-            print 'AFTER PREDICT Z:', self.ukf.x[2]
+            print('AFTER PREDICT Z:', self.ukf.x[2])
             # Multiply slant range by cos(roll)*cos(pitch) to get altitude estimate
             raw_slant_range_as_altitude = measurement_z[0]*np.cos(self.ukf.x[6])*np.cos(self.ukf.x[7])
-            print 'Raw slant range transformed to altitude:', raw_slant_range_as_altitude
+            print('Raw slant range transformed to altitude:', raw_slant_range_as_altitude)
             #print 'Raw range:', measurement_z[0]
             self.ukf.update(measurement_z,
                             hx=self.measurement_function_ir,
@@ -381,7 +381,7 @@ class UKFStateEstimator12D(object):
             # print 'TEMP RESIDUAL:', temp_residual
             # self.ukf.x = self.ukf.x_prior + np.dot(self.ukf.K, temp_residual)
             
-            print 'AFTER UPDATE Z:', self.ukf.x[2]
+            print('AFTER UPDATE Z:', self.ukf.x[2])
             #print 'KALMAN GAIN Z:', self.ukf.K[2]
             #print 'RESIDUAL:', self.ukf.y
             #print
@@ -674,10 +674,10 @@ def main():
         rospy.spin()
     finally:
         # Upon termination of this script, print out a helpful message
-        print '{} node terminating.'.format(se.node_name)
-        print 'Most recent state vector:'
-        print se.ukf.x
-        print 'NUM BAD UPDATES:', se.num_bad_updates
+        print('{} node terminating.'.format(se.node_name))
+        print('Most recent state vector:')
+        print(se.ukf.x)
+        print('NUM BAD UPDATES:', se.num_bad_updates)
         # print 'Most recent state covariance matrix:'
         # print se.ukf.P
         
