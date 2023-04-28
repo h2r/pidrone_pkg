@@ -1,6 +1,6 @@
 <launch>
   <arg name="enable_raw" default="false"/>
-  <arg name="enable_imv" default="false"/>
+  <arg name="enable_imv" default="true"/>
   <arg name="camera_id" default="0"/>
 
 
