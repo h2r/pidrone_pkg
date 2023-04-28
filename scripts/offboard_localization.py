@@ -185,7 +185,7 @@ def main():
 
     phase_analyzer = AnalyzePhase()
     rospy.Subscriber("/pidrone/reset_transform", Empty, phase_analyzer.reset_callback)
-    rospy.Subscriber('/pidrone/picamera/image_raw', Image, phase_analyzer.image_callback)
+    rospy.Subscriber('/pidrone/raspicam_node/image', Image, phase_analyzer.image_callback)
     rospy.Subscriber('/pidrone/state', State, phase_analyzer.state_callback)
 
     print "Start"
