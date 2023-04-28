@@ -248,12 +248,12 @@ class UKFStateEstimator7D(object):
         self.in_callback = True
         if self.ready_to_filter:
             self.update_input_time(data)
-            self.last_measurement_vector[0] = data.range
+            self.last_measurement_vector[0] = data.range * np.cos(r) * np.cos(p)
         else:
             self.initialize_input_time(data)
             # Got a raw slant range reading, so update the initial state
             # vector of the UKF
-            self.ukf.x[2] = data.range
+            self.ukf.x[2] = data.range 
             self.ukf.x[5] = 0.0  # initialize velocity as 0 m/s
             # Update the state covariance matrix to reflect estimated
             # measurement error. Variance of the measurement -> variance of
@@ -450,7 +450,17 @@ class UKFStateEstimator7D(object):
                       [0, 0, 0, 0, 0, 0, 1]])
         result = np.dot(H, x)
         return result
-        
+
+    def get_r_p_y(self):
+        """ Return the roll, pitch, and yaw from the orientation quaternion """
+        x = self.state.pose_with_covariance.pose.orientation.x
+        y = self.state.pose_with_covariance.pose.orientation.y
+        z = self.state.pose_with_covariance.pose.orientation.z
+        w = self.state.pose_with_covariance.pose.orientation.w
+        quaternion = (x,y,z,w)
+        r,p,y = tf.transformations.euler_from_quaternion(quaternion)
+        return r,p,y
+    
     def start_loop(self):
         """
         Begin the UKF's loop of predicting and updating. Publish a state
