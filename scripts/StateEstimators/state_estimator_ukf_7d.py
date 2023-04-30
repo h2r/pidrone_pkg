@@ -239,6 +239,16 @@ class UKFStateEstimator7D(object):
             self.check_if_ready_to_filter()
         self.in_callback = False
                         
+    def get_r_p_y(self):
+        """ Return the roll, pitch, and yaw from the orientation quaternion """
+        x = self.state.pose_with_covariance.pose.orientation.x
+        y = self.state.pose_with_covariance.pose.orientation.y
+        z = self.state.pose_with_covariance.pose.orientation.z
+        w = self.state.pose_with_covariance.pose.orientation.w
+        quaternion = (x,y,z,w)
+        r,p,y = tf.transformations.euler_from_quaternion(quaternion)
+        return r,p,y
+    
     def ir_data_callback(self, data):
         """
         Handle the receipt of a Range message from the IR sensor.
@@ -246,14 +256,21 @@ class UKFStateEstimator7D(object):
         if self.in_callback:
             return
         self.in_callback = True
+
+        # get the roll and pitch
+        r,p,_ = self.get_r_p_y()
+        # the z-position of the drone which is calculated by multiplying the
+        # the range reading by the cosines of the roll and pitch
+        tof_height = data.range*np.cos(r)*np.cos(p)
+
         if self.ready_to_filter:
             self.update_input_time(data)
-            self.last_measurement_vector[0] = data.range
+            self.last_measurement_vector[0] = tof_height
         else:
             self.initialize_input_time(data)
             # Got a raw slant range reading, so update the initial state
             # vector of the UKF
-            self.ukf.x[2] = data.range
+            self.ukf.x[2] = tof_height
             self.ukf.x[5] = 0.0  # initialize velocity as 0 m/s
             # Update the state covariance matrix to reflect estimated
             # measurement error. Variance of the measurement -> variance of

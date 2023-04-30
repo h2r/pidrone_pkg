@@ -45,6 +45,8 @@ class UKFStateEstimator2D(object):
         self.ir_topic_str = '/pidrone/range'
         self.imu_topic_str = '/pidrone/imu'
         throttle_suffix = '_throttle'
+
+        self.imu_orientation = None # imu measured pitch and roll are used to calculate actual height from range sensor
         
         if ir_throttled:
             self.ir_topic_str += throttle_suffix
@@ -73,7 +75,7 @@ class UKFStateEstimator2D(object):
         Initialize ROS-related objects, e.g., the node, subscribers, etc.
         """
         self.node_name = os.path.splitext(os.path.basename(__file__))[0]
-        print 'Initializing {} node...'.format(self.node_name)
+        print('Initializing {} node...'.format(self.node_name))
         rospy.init_node(self.node_name)
         
         # Subscribe to topics to which the drone publishes in order to get raw
@@ -194,9 +196,21 @@ class UKFStateEstimator2D(object):
         
     def print_notice_if_first(self):
         if not self.printed_filter_start_notice:
-            print 'Starting filter'
+            print('Starting filter')
             self.printed_filter_start_notice = True
         
+    def get_r_p_y(self):
+        if self.imu_orientation is None:
+            return 0,0,0 # imu callback hasn't happened yet
+        """ Return the roll, pitch, and yaw from the orientation quaternion """
+        x = self.imu_orientation.x
+        y = self.imu_orientation.y
+        z = self.imu_orientation.z
+        w = self.imu_orientation.w
+        quaternion = (x,y,z,w)
+        r,p,y = tf.transformations.euler_from_quaternion(quaternion)
+        return r,p,y
+
     def imu_data_callback(self, data):
         """
         Handle the receipt of an Imu message. Only take the linear acceleration
@@ -205,6 +219,10 @@ class UKFStateEstimator2D(object):
         if self.in_callback:
             return
         self.in_callback = True
+
+        # save imu orientation to compensate range measurement for pitch and roll
+        self.imu_orientation = data.orientation
+
         self.last_control_input = np.array([data.linear_acceleration.z])
         if abs(data.linear_acceleration.z) < 0.3:
             # Adaptive filtering. Lower the process noise if acceleration is low
@@ -220,14 +238,21 @@ class UKFStateEstimator2D(object):
         if self.in_callback:
             return
         self.in_callback = True
-        self.last_measurement_vector = np.array([data.range])
+
+        # get the roll and pitch
+        r,p,_ = self.get_r_p_y()
+        # the z-position of the drone which is calculated by multiplying the
+        # the range reading by the cosines of the roll and pitch
+        tof_height = data.range*np.cos(r)*np.cos(p)
+
+        self.last_measurement_vector = np.array([tof_height])
         if self.ready_to_filter:
             self.update_input_time(data)
         else:
             self.initialize_input_time(data)
             # Got a raw slant range reading, so update the initial state
             # vector of the UKF
-            self.ukf.x[0] = data.range
+            self.ukf.x[0] = tof_height
             self.ukf.x[1] = 0.0  # initialize velocity as 0 m/s
             # Update the state covariance matrix to reflect estimated
             # measurement error. Variance of the measurement -> variance of
@@ -373,9 +398,9 @@ def main():
         se.start_loop()
     finally:
         # Upon termination of this script, print out a helpful message
-        print '{} node terminating.'.format(se.node_name)
-        print 'Most recent state vector:'
-        print se.ukf.x
+        print('{} node terminating.'.format(se.node_name))
+        print('Most recent state vector:')
+        print(se.ukf.x)
         
 if __name__ == '__main__':
     main()
