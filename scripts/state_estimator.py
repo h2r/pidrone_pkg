@@ -68,7 +68,7 @@ class StateEstimator(object):
                 'ema': 'rosrun pidrone_pkg scripts/StateEstimators/state_estimator_ema.py',
                 'ukf2d': '{}state_estimator_ukf_2d.py'.format(program_str),
                 'ukf7d': '{}state_estimator_ukf_7d.py'.format(program_str),
-                'ukf12d': 'rosrun pidrone_pkg scripts/state_estimator_ukf_12d.py',
+                'ukf12d': 'rosrun pidrone_pkg scripts/StateEstimators/state_estimator_ukf_12d.py',
                 'mocap': 'rosrun pidrone_pkg scripts/state_estimator_mocap.py',  # TODO: Implement this
                 'simulator': sim_cmd
         }
