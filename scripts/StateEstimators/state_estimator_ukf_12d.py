@@ -49,6 +49,8 @@ class UKFStateEstimator12D(object):
         self.optical_flow_topic_str = '/pidrone/picamera/twist'
         throttle_suffix = '_throttle'
         
+        self.imu_orientation = None # imu measured pitch and roll are used to calculate actual height from range sensor
+        
         if ir_throttled:
             self.ir_topic_str += throttle_suffix
         if imu_throttled:
@@ -232,6 +234,18 @@ class UKFStateEstimator12D(object):
             print 'Starting filter'
             self.printed_filter_start_notice = True
         
+    def get_r_p_y(self):
+        if self.imu_orientation is None:
+            return 0,0,0 # imu callback hasn't happened yet
+        """ Return the roll, pitch, and yaw from the orientation quaternion """
+        x = self.imu_orientation.x
+        y = self.imu_orientation.y
+        z = self.imu_orientation.z
+        w = self.imu_orientation.w
+        quaternion = (x,y,z,w)
+        r,p,y = tf.transformations.euler_from_quaternion(quaternion)
+        return r,p,y
+
     def imu_data_callback(self, data):
         '''
         Handle the receipt of an Imu message, which includes linear
@@ -243,6 +257,10 @@ class UKFStateEstimator12D(object):
         if self.in_callback:
             return
         self.in_callback = True
+
+        # save imu orientation to compensate range measurement for pitch and roll
+        self.imu_orientation = data.orientation
+
         euler_angles = tf.transformations.euler_from_quaternion(
                                                            [data.orientation.x,
                                                             data.orientation.y,

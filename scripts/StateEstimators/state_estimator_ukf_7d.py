@@ -51,7 +51,9 @@ class UKFStateEstimator7D(object):
         self.optical_flow_topic_str = '/pidrone/picamera/twist'
         self.camera_pose_topic_str = '/pidrone/picamera/pose'
         throttle_suffix = '_throttle'
-        
+
+        self.imu_orientation = None # imu measured pitch and roll are used to calculate actual height from range sensor
+
         if ir_throttled:
             self.ir_topic_str += throttle_suffix
         if imu_throttled:
@@ -219,6 +221,19 @@ class UKFStateEstimator7D(object):
         if not self.printed_filter_start_notice:
             print 'Starting filter'
             self.printed_filter_start_notice = True
+
+    def get_r_p_y(self):
+        if self.imu_orientation is None:
+            return 0,0,0 # imu callback hasn't happened yet
+        """ Return the roll, pitch, and yaw from the orientation quaternion """
+        x = self.imu_orientation.x
+        y = self.imu_orientation.y
+        z = self.imu_orientation.z
+        w = self.imu_orientation.w
+
+        quaternion = (x,y,z,w)
+        r,p,y = tf.transformations.euler_from_quaternion(quaternion)
+        return r,p,y
         
     def imu_data_callback(self, data):
         """
@@ -229,6 +244,10 @@ class UKFStateEstimator7D(object):
         if self.in_callback:
             return
         self.in_callback = True
+
+        # save imu orientation to compensate range measurement for pitch and roll
+        self.imu_orientation = data.orientation
+
         self.last_control_input = np.array([data.linear_acceleration.x,
                                             data.linear_acceleration.y,
                                             data.linear_acceleration.z])
@@ -239,15 +258,6 @@ class UKFStateEstimator7D(object):
             self.check_if_ready_to_filter()
         self.in_callback = False
                         
-    def get_r_p_y(self):
-        """ Return the roll, pitch, and yaw from the orientation quaternion """
-        x = self.state.pose_with_covariance.pose.orientation.x
-        y = self.state.pose_with_covariance.pose.orientation.y
-        z = self.state.pose_with_covariance.pose.orientation.z
-        w = self.state.pose_with_covariance.pose.orientation.w
-        quaternion = (x,y,z,w)
-        r,p,y = tf.transformations.euler_from_quaternion(quaternion)
-        return r,p,y
     
     def ir_data_callback(self, data):
         """
