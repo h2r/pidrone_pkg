@@ -2,7 +2,9 @@
 
 # ROS imports
 import rospy
+import tf
 from sensor_msgs.msg import Imu, Range
+from geometry_msgs.msg import PoseStamped, TwistStamped
 from pidrone_pkg.msg import State
 
 # UKF imports
@@ -14,13 +16,11 @@ import matplotlib
 matplotlib.use('Pdf')
 from filterpy.kalman import UnscentedKalmanFilter
 from filterpy.kalman import MerweScaledSigmaPoints
-from filterpy.common.discretization import Q_discrete_white_noise
 
 # Other imports
 import numpy as np
 import argparse
 import os
-import tf
 
 
 class UKFStateEstimator2D(object):
