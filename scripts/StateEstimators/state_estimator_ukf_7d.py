@@ -172,6 +172,7 @@ class UKFStateEstimator7D(object):
         # IR slant range variance (m^2), determined experimentally in a static
         # setup with mean range around 0.335 m:
         self.measurement_cov_ir = np.array([2.2221e-05])
+        
         self.measurement_cov_optical_flow = np.diag([0.01, 0.01])
         # Estimated standard deviation of 5 cm = 0.05 m ->
         # variance of 0.05^2 = 0.0025
