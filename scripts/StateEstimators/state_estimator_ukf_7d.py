@@ -26,9 +26,8 @@ import os
 class UKFStateEstimator7D(object):
     """
     Class that estimates the state of the drone using an Unscented Kalman Filter
-    (UKF) applied to raw sensor data. This script tests the addition of position
-    estimates from the camera, which we get from position hold, localization, or
-    SLAM.
+    (UKF) applied to raw sensor data. The filter tracks 7 state variables to
+    estimate aspects of the drone's pose and twist in three-dimensional space.
     """
     # TODO: Make a reference to the UKF math document that is being written up,
     #       once it is in a complete enough state and can be placed in a shared
