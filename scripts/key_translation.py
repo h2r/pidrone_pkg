@@ -34,7 +34,7 @@ h:  hover
 q:  quit
 """
     try:
-        print msg
+        print(msg)
         while not rospy.is_shutdown():
             ch = getch.getch(0.1)
             if ch == None:
@@ -42,7 +42,7 @@ q:  quit
 
             if ord(ch) == 32:
                 # disarm
-                print "disarming"
+                print("disarming")
                 mode.mode = 4
                 mode.x_velocity = 0
                 mode.y_velocity = 0
@@ -51,7 +51,7 @@ q:  quit
                 modepub.publish(mode)
             elif ch == ";":
                 # arm
-                print "arm"
+                print("arm")
                 mode.mode = 0
                 mode.x_velocity = 0
                 mode.y_velocity = 0
@@ -60,7 +60,7 @@ q:  quit
                 modepub.publish(mode)
             elif ch == "y":
                 # land
-                print "land"
+                print("land")
                 mode.x_velocity = 0
                 mode.y_velocity = 0
                 mode.z_velocity = 0
@@ -69,7 +69,7 @@ q:  quit
                 modepub.publish(mode)
             elif ch == "h":
                 # hover
-                print "hover"
+                print("hover")
                 mode.mode = 5
                 mode.x_velocity = 0
                 mode.y_velocity = 0
@@ -77,7 +77,7 @@ q:  quit
                 mode.yaw_velocity = 0
                 modepub.publish(mode)
             elif ch == "t":
-                print "takeoff"
+                print("takeoff")
                 mode.x_velocity = 0
                 mode.y_velocity = 0
                 mode.z_velocity = 0
@@ -85,7 +85,7 @@ q:  quit
                 mode.mode = 5
                 modepub.publish(mode)
             elif ch == "j":
-                print "left"
+                print("left")
                 mode.mode = 5
                 mode.x_velocity = -3
                 mode.y_velocity = 0
@@ -93,7 +93,7 @@ q:  quit
                 mode.yaw_velocity = 0
                 modepub.publish(mode)
             elif ch == "l":
-                print "right"
+                print("right")
                 mode.mode = 5
                 mode.x_velocity = 3
                 mode.y_velocity = 0
@@ -101,7 +101,7 @@ q:  quit
                 mode.yaw_velocity = 0
                 modepub.publish(mode)
             elif ch == "k":
-                print "backward"
+                print("backward")
                 mode.mode = 5
                 mode.x_velocity = 0
                 mode.y_velocity = -3
@@ -109,7 +109,7 @@ q:  quit
                 mode.yaw_velocity = 0
                 modepub.publish(mode)
             elif ch == "i":
-                print "forward"
+                print("forward")
                 mode.mode = 5
                 mode.x_velocity = 0
                 mode.y_velocity = 3
@@ -117,7 +117,7 @@ q:  quit
                 mode.yaw_velocity = 0
                 modepub.publish(mode)
             elif ch == "a":
-                print "yaw left"
+                print("yaw left")
                 mode.mode = 5
                 mode.x_velocity = 0
                 mode.y_velocity = 0
@@ -125,7 +125,7 @@ q:  quit
                 mode.yaw_velocity = -50
                 modepub.publish(mode)
             elif ch == "d":
-                print "yaw right"
+                print("yaw right")
                 mode.mode = 5
                 mode.x_velocity = 0
                 mode.y_velocity = 0
@@ -133,7 +133,7 @@ q:  quit
                 mode.yaw_velocity = 50
                 modepub.publish(mode)
             elif ch == "w":
-                print "up"
+                print("up")
                 mode.mode = 5
                 mode.x_velocity = 0
                 mode.y_velocity = 0
@@ -141,7 +141,7 @@ q:  quit
                 mode.yaw_velocity = 0
                 modepub.publish(mode)
             elif ch == "s":
-                print "down"
+                print("down")
                 mode.mode = 5
                 mode.x_velocity = 0
                 mode.y_velocity = 0
@@ -153,12 +153,12 @@ q:  quit
             elif ord(ch) == 3: # Ctrl-C
                 break
             else:
-                print "unknown character: '%d'" % ord(ch)
+                print("unknown character: '%d'" % ord(ch))
                 pass
-            print msg
+            print(msg)
             rate.sleep()
     finally:
-        print "sending disarm"
+        print("sending disarm")
         mode.mode = 4
         modepub.publish(mode)
         time.sleep(0.25)

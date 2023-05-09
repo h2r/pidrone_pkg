@@ -81,13 +81,13 @@ class Mocap(object):
 
     def ctrl_c_handler(self, signal, frame):
         """ Stop subscribing to and publishing the mocap data """
-        print "\nCaught ctrl-c. Stopping node."
+        print("\nCaught ctrl-c. Stopping node.")
         sys.exit()
         
     
 def main():
     # Instantiate a Mocap object
-    rigid_body_name = raw_input('Enter the name of the rigid body: ')
+    rigid_body_name = input('Enter the name of the rigid body: ')
     mc = Mocap(rigid_body_name)
 
     # ROS setup
@@ -111,22 +111,22 @@ def main():
     # wait for data from the mocap
     # set up ctrl-c handler
     signal.signal(signal.SIGINT, mc.ctrl_c_handler)
-    print 'waiting for mocap data'
+    print('waiting for mocap data')
     while not mc.received_data:
         pass
 
     # print the topics that are being published to
-    print 'Publishing to:'
-    print mc.mocap_pose_topic
-    print mc.mocap_twist_topic
-    print mc.mocap_accel_topic
+    print('Publishing to:')
+    print(mc.mocap_pose_topic)
+    print(mc.mocap_twist_topic)
+    print(mc.mocap_accel_topic)
 
     try:
         # Keep the node running for the callback methods
         rospy.spin()
     finally:
         # Upon termination of this script, print out a message
-        print '{} node terminating.'.format(node_name)
+        print('{} node terminating.'.format(node_name))
         
 
 if __name__ == '__main__':

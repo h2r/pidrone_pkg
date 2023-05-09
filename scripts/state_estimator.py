@@ -137,7 +137,7 @@ class StateEstimator(object):
                 process_cmds.append(other_cmd)
             
         for p in process_cmds:
-            print 'Starting:', p
+            print('Starting:', p)
             # NOTE: shell=True could be security hazard
             self.processes.append((p, subprocess.Popen(p, shell=True)))
             
@@ -171,8 +171,8 @@ class StateEstimator(object):
                         print ('Please enter the list number of which UKF to use'
                                ' for comparison against ground truth:')
                         for num, ukf in enumerate(possible_ukfs):
-                            print '{}: {}'.format(num+1, ukf)
-                        selection = raw_input()
+                            print('{}: {}'.format(num+1, ukf))
+                        selection = input()
                         try:
                             selection = int(selection)
                             if selection <= 0 or selection > len(possible_ukfs):
@@ -180,7 +180,7 @@ class StateEstimator(object):
                             ukf_to_use = possible_ukfs[selection]
                             got_good_input = True
                         except ValueError:
-                            print 'Invalid input.'
+                            print('Invalid input.')
                 elif len(possible_ukfs) == 1:
                     # This is the only other option; otherwise, do_setup would
                     # be False
@@ -357,16 +357,16 @@ def main():
                             ir_var=args.ir_var,
                             loop_hz=args.loop_hz)
     except Exception as e:
-        print e
+        print(e)
     finally:
         # Terminate the subprocess calls. Note, however, that if Ctrl-C is
         # entered in stdin, it seems that the subprocesses also get the Ctrl-C
         # input and are terminating based on KeyboardInterrupt
-        print 'Terminating subprocess calls...'
+        print('Terminating subprocess calls...')
         for process_name, process in se.processes:
-            print 'Terminating:', process_name
+            print('Terminating:', process_name)
             process.terminate()
-        print 'Done.'
+        print('Done.')
 
 
 if __name__ == "__main__":

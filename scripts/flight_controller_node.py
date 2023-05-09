@@ -8,9 +8,9 @@ import rospkg
 import signal
 import numpy as np
 
-print "tf import"
+print("tf import")
 import tf
-print "done tf import"
+print("done tf import")
 
 
 import command_values as cmds
@@ -45,9 +45,9 @@ class FlightController(object):
 
     def __init__(self):
         # Connect to the flight controller board
-        print "getboard"
+        print("getboard")
         self.board = self.getBoard()
-        print "done"
+        print("done")
         # stores the current and previous modes
         self.curr_mode = 'DISARMED'         #initialize as disarmed
         self.prev_mode = 'DISARMED'         #initialize as disarmed
@@ -78,12 +78,12 @@ class FlightController(object):
 
         # Accelerometer parameters
         ##########################
-        print "loading"
+        print("loading")
         rospack = rospkg.RosPack()
         path = rospack.get_path('pidrone_pkg')
         with open("%s/params/multiwii.yaml" % path) as f:
             means = yaml.load(f)
-        print "done"
+        print("done")
         self.accRawToMss = 9.8 / means["az"]
         self.accZeroX = means["ax"] * self.accRawToMss
         self.accZeroY = means["ay"] * self.accRawToMss
@@ -223,12 +223,12 @@ class FlightController(object):
         try:
             board = MultiWii('/dev/ttyUSB0')
         except SerialException as e:
-            print("usb0 failed: " + str(e))
+            print(("usb0 failed: " + str(e)))
             try:
                 board = MultiWii('/dev/ttyUSB1')
             except SerialException:
-                print '\nCannot connect to the flight controller board.'
-                print 'The USB is unplugged. Please check connection.'
+                print('\nCannot connect to the flight controller board.')
+                print('The USB is unplugged. Please check connection.')
                 raise
                 sys.exit()
         return board
@@ -240,7 +240,7 @@ class FlightController(object):
         #print('command sent:', self.command)
         
         if (self.command != self.last_command):
-            print 'command sent:', self.command
+            print('command sent:', self.command)
             self.last_command = self.command
 
     def near_zero(self, n):
@@ -249,12 +249,12 @@ class FlightController(object):
 
     def ctrl_c_handler(self, signal, frame):
         """ Disarm the drone and quits the flight controller node """
-        print "\nCaught ctrl-c! About to Disarm!"
+        print("\nCaught ctrl-c! About to Disarm!")
         self.board.sendCMD(8, MultiWii.SET_RAW_RC, cmds.disarm_cmd)
         self.board.receiveDataPacket()
         rospy.sleep(1)
         self.modepub.publish('DISARMED')
-        print "Successfully Disarmed"
+        print("Successfully Disarmed")
         sys.exit()
 
     # Heartbeat Callbacks: These update the last time that data was received
@@ -300,7 +300,7 @@ class FlightController(object):
             disarm = True
 
         if self.range > 0.5:
-            print('\nSafety Failure: too high: ' + str(self.range))
+            print(('\nSafety Failure: too high: ' + str(self.range)))
             disarm = True            
         if curr_time - self.heartbeat_state_estimator > rospy.Duration.from_sec(1):
             print('\nSafety Failure: not receiving a state estimate.')
@@ -314,9 +314,9 @@ def main():
     # ROS Setup
     ###########
     node_name = os.path.splitext(os.path.basename(__file__))[0]
-    print "init"
+    print("init")
     rospy.init_node(node_name)
-    print "done"
+    print("done")
     # create the FlightController object
     fc = FlightController()
     curr_time = rospy.Time.now()
@@ -332,10 +332,10 @@ def main():
     imupub = rospy.Publisher('/pidrone/imu', Imu, queue_size=1, tcp_nodelay=False)
     batpub = rospy.Publisher('/pidrone/battery', Battery, queue_size=1, tcp_nodelay=False)
     fc.modepub = rospy.Publisher('/pidrone/mode', Mode, queue_size=1, tcp_nodelay=False)
-    print 'Publishing:'
-    print '/pidrone/imu'
-    print '/pidrone/mode'
-    print '/pidrone/battery'
+    print('Publishing:')
+    print('/pidrone/imu')
+    print('/pidrone/mode')
+    print('/pidrone/battery')
 
     # Subscribers
     ############
@@ -357,7 +357,7 @@ def main():
             # preform as safety check
                 # Break the loop if a safety check has failed
             if fc.shouldIDisarm():
-                print "mode", fc.curr_mode
+                print("mode", fc.curr_mode)
                 break
                 
             # update and publish flight controller readings
@@ -377,14 +377,14 @@ def main():
             r.sleep()
             
     except SerialException:
-        print '\nCannot connect to the flight controller board.'
-        print 'The USB is unplugged. Please check connection.'
+        print('\nCannot connect to the flight controller board.')
+        print('The USB is unplugged. Please check connection.')
     except Exception as e:
-        print 'there was an internal error', e
-        print traceback.format_exc()
+        print('there was an internal error', e)
+        print(traceback.format_exc())
     finally:
-        print 'Shutdown received'
-        print 'Sending DISARM command'
+        print('Shutdown received')
+        print('Sending DISARM command')
         fc.board.sendCMD(8, MultiWii.SET_RAW_RC, cmds.disarm_cmd)
         fc.board.receiveDataPacket()
 

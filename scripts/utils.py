@@ -2,7 +2,7 @@
 Support code for fast slam
 """""
 
-from __future__ import division
+
 import cv2
 import numpy as np
 from numpy import dot

@@ -29,7 +29,7 @@ class IR(object):
         voltage = self.adc.read_adc(0, self.GAIN)
         if voltage <= 0:
             voltage = 1
-            print "ERROR: BAD VOLTAGE!!!"
+            print("ERROR: BAD VOLTAGE!!!")
         self.distance = ((1.0 / voltage) * self.m + self.b) / 100.0 # 100 is for cm -> m
 
     def publish_range(self, range):
@@ -44,7 +44,7 @@ class IR(object):
 
     def ctrl_c_handler(self, signal, frame):
         """Gracefully quit the infrared_pub node"""
-        print "\nCaught ctrl-c! Stopping node."
+        print("\nCaught ctrl-c! Stopping node.")
         sys.exit()
 
 def main():
@@ -63,7 +63,7 @@ def main():
     ############
     ir.range_pub = rospy.Publisher('/pidrone/infrared', Range, queue_size=1)
     ir.heartbeat_pub = rospy.Publisher('/pidrone/heartbeat/infrared', Empty, queue_size=1)
-    print 'Publishing IR'
+    print('Publishing IR')
 
     # Non-ROS Setup
     ###############

@@ -286,7 +286,7 @@ class LocalizationParticleFilter:
 
         # cannot find a match
         if len(poses) == 0:
-            print "Random Initialization"
+            print("Random Initialization")
             for x in range(MAP_GRID_SIZE_X):
                 for y in range(MAP_GRID_SIZE_Y):
                     poses.append([(x * CELL_X + CELL_X / 2.0) / METER_TO_PIXEL,

@@ -11,7 +11,7 @@ def setRosParams():
     with open('/proc/cpuinfo', 'r') as myfile:
         data=myfile.readlines()
         serial = data[-1].split()[-1][0:-1]
-        print "serial", serial
+        print("serial", serial)
         rospy.set_param('/manifest/robot_serial', serial)
     
     rospack = rospkg.RosPack()

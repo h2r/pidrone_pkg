@@ -16,7 +16,7 @@ class PID:
         self.ki = ki
         self.kd = kd
     def __str__(self):
-        print repr(self)
+        print(repr(self))
     def __repr__(self):
         return "PID(%f, %f, %f)" % (self.kp, self.ki, self.kd)
 
@@ -185,10 +185,10 @@ class MultiWii:
 
         header = self.ser.read(5)
         if len(header) == 0:
-            print "timeout on receiveDataPacket"
+            print("timeout on receiveDataPacket")
             return None
         elif header[0] != '$':
-            print "Didn't get valid header: ", header
+            print("Didn't get valid header: ", header)
             raise
 
         datalength = MultiWii.codeS.unpack(header[-2])[0]
@@ -212,8 +212,8 @@ class MultiWii:
             self.boxids = temp
             return self.boxids
         elif code == MultiWii.SET_BOX:
-            print "data", data
-            print "len", len(data)
+            print("data", data)
+            print("len", len(data))
         elif code == MultiWii.BOX:
             assert datalength % 2 == 0
             temp = struct.unpack('<'+'H'*(datalength/2), data)
@@ -228,14 +228,14 @@ class MultiWii:
             self.analog['timestamp']= readTime
             return self.analog
         elif code == MultiWii.BOXNAMES:
-            print "datalength", datalength
+            print("datalength", datalength)
             assert datalength % 2 == 0
             temp = struct.unpack('<'+'s' * datalength, data)
             temp = "".join(temp)[:-1].split(";")
             self.boxnames = temp
             return self.boxnames
         elif code == MultiWii.STATUS:
-            print data
+            print(data)
             temp = struct.unpack('<'+'HHHIb',data)
             self.status['cycleTime'] = temp[0]
             self.status['i2c_errors_count'] = temp[1]
@@ -245,8 +245,8 @@ class MultiWii:
             self.status['timestamp']= readTime
             return self.status
         elif code == MultiWii.ACC_CALIBRATION:
-            print "data", data
-            print "len", len(data)
+            print("data", data)
+            print("len", len(data))
 
         elif code == MultiWii.IDENT:
             temp = struct.unpack('<'+'BBBI',data)
@@ -289,7 +289,7 @@ class MultiWii:
             self.pid['level']  = PID(temp[21], temp[22], temp[23])
             self.pid['mag']    = PID(temp[24], temp[25], temp[26])
             self.pid['vel']    = PID(temp[27], temp[28], temp[29])
-            print self.pid
+            print(self.pid)
         
         elif code == MultiWii.RAW_IMU:
             temp = MultiWii.RAW_IMU_STRUCT.unpack(data)
@@ -328,7 +328,7 @@ class MultiWii:
         elif code == MultiWii.SET_RAW_RC:
             return "Set Raw RC"
         else:
-            print "No return error!: %d" % code
+            print("No return error!: %d" % code)
             raise
 
     """ Implement me to check the checksum. """
@@ -345,31 +345,31 @@ class MultiWii:
     """
     def calibrate(self, fname):
         self.sendCMD(0, MultiWii.ACC_CALIBRATION, [])
-        print self.receiveDataPacket()
+        print(self.receiveDataPacket())
 
         # ignore the first 200 because it takes a while to settle.
         for i in range(200):
             raw_imu = self.getData(MultiWii.RAW_IMU)
             time.sleep(0.01)
-            print raw_imu
+            print(raw_imu)
 
 
         raw_imu_totals = {}
         samples = 0.0
         for i in range(1000):
             raw_imu = self.getData(MultiWii.RAW_IMU)
-            print raw_imu
+            print(raw_imu)
             if raw_imu != None:
-                for key, value in raw_imu.iteritems():
+                for key, value in raw_imu.items():
                     raw_imu_totals.setdefault(key, 0.0)
                     raw_imu_totals[key] += value
                 samples += 1
                 time.sleep(0.01)
 
-        for key, value in raw_imu_totals.iteritems():
+        for key, value in raw_imu_totals.items():
             raw_imu_totals[key] = raw_imu_totals[key] / samples
 
-        print raw_imu_totals
+        print(raw_imu_totals)
 
         import yaml
         f = open(fname, "w")

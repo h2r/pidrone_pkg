@@ -103,7 +103,7 @@ class AnalyzePhase:
                     self.posemsg.pose.orientation.z = z
                     self.posemsg.pose.orientation.w = w
 
-                    print 'first', particle
+                    print('first', particle)
                 else:
                     particle = self.estimator.update(self.z, self.angle_x, self.angle_y, self.prev_kp, self.prev_des,
                                                      curr_kp, curr_des)
@@ -125,7 +125,7 @@ class AnalyzePhase:
                     self.posemsg.pose.orientation.w = w
                     self.posepub.publish(self.posemsg)
 
-                    print '--pose', self.pos[0], self.pos[1], self.pos[3]
+                    print('--pose', self.pos[0], self.pos[1], self.pos[3])
 
                     # if all particles are not good estimations
                     if is_almost_equal(particle.weight(), PROB_THRESHOLD):
@@ -139,11 +139,11 @@ class AnalyzePhase:
                     if self.map_counter < MAX_BAD_COUNT:
                         self.first_locate = True
                         self.map_counter = 0
-                        print 'Restart localization'
+                        print('Restart localization')
 
-                    print 'count', self.map_counter
+                    print('count', self.map_counter)
             else:
-                print "CANNOT FIND ANY FEATURES !!!!!"
+                print("CANNOT FIND ANY FEATURES !!!!!")
 
             self.prev_kp = curr_kp
             self.prev_des = curr_des
@@ -165,7 +165,7 @@ class AnalyzePhase:
 
     def reset_callback(self, data):
         """start localization when '/pidrone/reset_transform' is published to (press 'r')"""
-        print "Start localization"
+        print("Start localization")
         self.locate_position = True
         self.first_locate = True
         self.map_counter = 0
@@ -188,7 +188,7 @@ def main():
     rospy.Subscriber('/raspicam_node/image', Image, phase_analyzer.image_callback)
     rospy.Subscriber('/pidrone/state', State, phase_analyzer.state_callback)
 
-    print "Start"
+    print("Start")
 
     rospy.spin()
 
