@@ -41,8 +41,6 @@ class UKFStateEstimator7D(object):
         self.ready_to_filter = False
         self.printed_filter_start_notice = False
         self.got_ir = False
-        # self.got_camera_pose = False
-        # self.got_optical_flow = False
         self.got_imu = False
         self.loop_hz = loop_hz
         
@@ -172,7 +170,7 @@ class UKFStateEstimator7D(object):
         # IR slant range variance (m^2), determined experimentally in a static
         # setup with mean range around 0.335 m:
         self.measurement_cov_ir = np.array([2.2221e-05])
-        
+
         self.measurement_cov_optical_flow = np.diag([0.01, 0.01])
         # Estimated standard deviation of 5 cm = 0.05 m ->
         # variance of 0.05^2 = 0.0025
@@ -317,7 +315,6 @@ class UKFStateEstimator7D(object):
             # the corresponding state variable
             self.ukf.P[3, 3] = self.measurement_cov_optical_flow[0, 0]
             self.ukf.P[4, 4] = self.measurement_cov_optical_flow[1, 1]
-            # self.got_optical_flow = True
             self.check_if_ready_to_filter()
         self.in_callback = False
         
@@ -356,7 +353,6 @@ class UKFStateEstimator7D(object):
             self.ukf.P[0, 0] = self.measurement_cov_camera_pose[0, 0]
             self.ukf.P[1, 1] = self.measurement_cov_camera_pose[1, 1]
             self.ukf.P[6, 6] = self.measurement_cov_camera_pose[2, 2]
-            # self.got_camera_pose = True
             self.check_if_ready_to_filter()
         self.in_callback = False
             
