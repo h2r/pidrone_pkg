@@ -331,8 +331,25 @@ class PIDController(object):
 
 
 def main(ControllerClass):
-    # Verbosity between 0 and 2, 2 is most verbose
-    verbose = 0
+
+    parser = argparse.ArgumentParser(
+                    prog='PID Controller',
+                    description= """
+                    Controls the flight of the drone by running a PID controller on the error calculated by 
+                    the desired and current velocity and position of the drone
+                    """,
+                    epilog='For more info check https://github.com/h2r/pidrone_pkg/tree/ente'
+                    )
+
+    parser.add_argument(
+        '-v',
+        '--verbose',
+        choices=[0,1,2],
+        default=0,
+        help="Verbosity between 0 and 2, 2 is most verbose"
+        )
+    
+    args = parser.parse_args()
 
     # ROS Setup
     ###########
@@ -409,7 +426,7 @@ def main(ControllerClass):
                 print('roll_low.init_i', pid_controller.pid.roll_low.init_i)
                 print('pitch_low.init_i', pid_controller.pid.pitch_low.init_i)
 
-        if verbose >= 2:
+        if args.verbose >= 2:
             if pid_controller.position_control:
                 print('current position:', pid_controller.current_position)
                 print('desired position:', pid_controller.desired_position)
@@ -419,7 +436,7 @@ def main(ControllerClass):
                 print('desired velocity:', pid_controller.desired_velocity)
                 print('velocity error:  ', pid_controller.velocity_error)
             print('pid_error:       ', pid_controller.pid_error)
-        if verbose >= 1:
+        if args.verbose >= 1:
             print('r,p,y,t:', fly_command)
 
         loop_rate.sleep()
