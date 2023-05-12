@@ -88,7 +88,7 @@ class UKFStateEstimator7D(object):
         Initialize ROS-related objects, e.g., the node, subscribers, etc.
         """
         self.node_name = os.path.splitext(os.path.basename(__file__))[0]
-        print 'Initializing {} node...'.format(self.node_name)
+        print('Initializing {} node...'.format(self.node_name))
         rospy.init_node(self.node_name)
         
         # Create the publisher to publish state estimates
@@ -217,7 +217,7 @@ class UKFStateEstimator7D(object):
         
     def print_notice_if_first(self):
         if not self.printed_filter_start_notice:
-            print 'Starting filter'
+            print('Starting filter')
             self.printed_filter_start_notice = True
 
     def get_r_p_y(self):
@@ -273,12 +273,16 @@ class UKFStateEstimator7D(object):
 
         if self.ready_to_filter:
             self.update_input_time(data)
+
             self.last_measurement_vector[0] = tof_height
+
         else:
             self.initialize_input_time(data)
             # Got a raw slant range reading, so update the initial state
             # vector of the UKF
+            
             self.ukf.x[2] = tof_height
+            
             self.ukf.x[5] = 0.0  # initialize velocity as 0 m/s
             # Update the state covariance matrix to reflect estimated
             # measurement error. Variance of the measurement -> variance of
@@ -473,7 +477,17 @@ class UKFStateEstimator7D(object):
                       [0, 0, 0, 0, 0, 0, 1]])
         result = np.dot(H, x)
         return result
-        
+
+    def get_r_p_y(self):
+        """ Return the roll, pitch, and yaw from the orientation quaternion """
+        x = self.state.pose_with_covariance.pose.orientation.x
+        y = self.state.pose_with_covariance.pose.orientation.y
+        z = self.state.pose_with_covariance.pose.orientation.z
+        w = self.state.pose_with_covariance.pose.orientation.w
+        quaternion = (x,y,z,w)
+        r,p,y = tf.transformations.euler_from_quaternion(quaternion)
+        return r,p,y
+    
     def start_loop(self):
         """
         Begin the UKF's loop of predicting and updating. Publish a state
@@ -534,9 +548,9 @@ def main():
         se.start_loop()
     finally:
         # Upon termination of this script, print out a helpful message
-        print '{} node terminating.'.format(se.node_name)
-        print 'Most recent state vector:'
-        print se.ukf.x
+        print('{} node terminating.'.format(se.node_name))
+        print('Most recent state vector:')
+        print(se.ukf.x)
         # print 'Most recent state covariance matrix:'
         # print se.ukf.P
         

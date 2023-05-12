@@ -59,8 +59,8 @@ class StateEstimation1D(object):
         the subscribers, etc.
         '''
         self.node_name = 'state_estimator_ukf_1d_roslib_offboard'
-        print 'Initializing {} connection to ROS master running on {}...'.format(
-                self.node_name, self.hostname)
+        print('Initializing {} connection to ROS master running on {}...'.format(
+                self.node_name, self.hostname))
         self.ros = roslibpy.Ros(host=self.hostname, port=9090)
         
         self.ir_sub = roslibpy.Topic(ros=self.ros, name=self.ir_topic_str, message_type='sensor_msgs/Range')
@@ -69,10 +69,10 @@ class StateEstimation1D(object):
         self.state_pub = roslibpy.Topic(ros=self.ros, name='/pidrone/state', message_type='pidrone_pkg/State')
         
     def start_subscribers(self):
-        print 'Starting subscribers...'
+        print('Starting subscribers...')
         self.ir_sub.subscribe(self.ir_data_callback)
         self.imu_sub.subscribe(self.imu_data_callback)
-        print 'Subscribers started'
+        print('Subscribers started')
         
     def initialize_ukf(self):
         '''
@@ -172,7 +172,7 @@ class StateEstimation1D(object):
         
     def print_notice_if_first(self):
         if not self.printed_filter_start_notice:
-            print 'Starting filter'
+            print('Starting filter')
             self.printed_filter_start_notice = True
         
     def imu_data_callback(self, data):
@@ -363,9 +363,9 @@ def main():
         se.run()
     finally:
         # Upon termination of this script, print out a helpful message
-        print '{} node terminating.'.format(se.node_name)
-        print 'Most recent state vector:'
-        print se.ukf.x
+        print('{} node terminating.'.format(se.node_name))
+        print('Most recent state vector:')
+        print(se.ukf.x)
         
 if __name__ == '__main__':
     main()

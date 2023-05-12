@@ -8,4 +8,4 @@ def g():
 
 board.arm()
 board.disarm()
-print g()
+print(g())

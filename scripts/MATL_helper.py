@@ -297,7 +297,7 @@ class LocalizationParticleFilter:
 
         # cannot find a match
         if len(poses) == 0:
-            print "Random Initialization"
+            print("Random Initialization")
             for x in range(self.map_grid_size_x):
                 for y in range(self.map_grid_size_y):
                     poses.append([(self.min_x + x * CELL_X + CELL_X / 2.0),
@@ -365,7 +365,7 @@ class LocalizationParticleFilter:
                     global_offset_x = math.cos(yaw) * offset_x + math.sin(yaw) * offset_y
                     global_offset_y = math.sin(yaw) * offset_x + math.cos(yaw) * offset_y
                     pose = [transformed_center[0] + global_offset_x, transformed_center[1] + global_offset_y, z, yaw]
-        print "computed pose: ", pose
+        print("computed pose: ", pose)
         return pose, len(good)
 
     def compute_transform(self, kp1, des1, kp2, des2):
@@ -409,9 +409,9 @@ class LocalizationParticleFilter:
         # adjust kp x and y values to all be in the first quadrant
         min_x, min_y = float(min(x_list)), float(min(y_list))
         if min_x < 0:
-            x_list = map(lambda n: n - min_x, x_list)
+            x_list = [n - min_x for n in x_list]
         if min_y < 0:
-            y_list = map(lambda n: n - min_y, y_list)
+            y_list = [n - min_y for n in y_list]
 
         max_x, self.min_x, max_y, self.min_y = max(x_list), min(x_list), max(y_list), min(y_list)
 

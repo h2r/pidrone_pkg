@@ -27,7 +27,7 @@ def transform_drone_axes(translation, rotation):
                               "world")
 
 def ctrl_c_handler(signal, frame):
-    print "\nCaught Ctrl-C. Stopping node."
+    print("\nCaught Ctrl-C. Stopping node.")
     sys.exit()
 
 def main():

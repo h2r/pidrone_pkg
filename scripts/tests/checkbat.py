@@ -6,7 +6,7 @@ def voltage(data):
 def main():
     board = MW('/dev/ttyUSB0')
     data = board.getData(MW.ANALOG)
-    print 'BATTERY VOLTAGE IS\t{}v'.format(voltage(data))
+    print('BATTERY VOLTAGE IS\t{}v'.format(voltage(data)))
     board.close()
 
 if __name__ == '__main__':

@@ -19,7 +19,7 @@ for more information.
 """
 
 
-from __future__ import absolute_import, division, unicode_literals
+
 
 import math
 from math import cos, sin
@@ -497,7 +497,7 @@ def plot_discrete_cdf(xs, ys, ax=None, xlabel=None, ylabel=None,
         ax = plt.gca()
 
     if xs is None:
-        xs = range(len(ys))
+        xs = list(range(len(ys)))
     ys = np.cumsum(ys)
     ax.plot(xs, ys, label=label)
     ax.set_xlabel(xlabel)

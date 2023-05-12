@@ -63,7 +63,7 @@ def main():
                 rospy.Subscriber('/pidrone/state', State, phase_analyzer.state_callback)
 
                 camera.start_recording("/dev/null", format='h264', splitter_port=1, motion_output=flow_analyzer)
-                print "Starting Flow"
+                print("Starting Flow")
                 camera.start_recording(phase_analyzer, format='bgr', splitter_port=2)
                 last_time = None
                 while not rospy.is_shutdown():
@@ -78,9 +78,9 @@ def main():
 
                 camera.stop_recording(splitter_port=1)
                 camera.stop_recording(splitter_port=2)
-        print "Shutdown Received"
+        print("Shutdown Received")
     except Exception:
-        print "Camera Error!!"
+        print("Camera Error!!")
         raise
 
 

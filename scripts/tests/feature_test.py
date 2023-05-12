@@ -121,13 +121,13 @@ flann = cv2.FlannBasedMatcher(index_params, search_params)
 kp2 = detector3.detect(img2, None)
 kp2, des2 = detector2.compute(img2, kp2)
 img2 = cv2.drawKeypoints(img2, kp2, color=(0, 255, 0), flags=0)
-print len(kp2), len(des2)
+print(len(kp2), len(des2))
 
 start_time1 = time.time()
 kp1, des1 = detector.detectAndCompute(img1, None)
 img1 = cv2.drawKeypoints(img1, kp1, color=(0, 255, 0), flags=0)
 end_time1 = time.time()
-print len(kp1), len(des1)
+print(len(kp1), len(des1))
 
 start_time2 = time.time()
 for _ in range(50):
@@ -137,7 +137,7 @@ for _ in range(50):
         if len(match) > 1 and match[0].distance < 0.7 * match[1].distance:
             good.append(match[0])
 end_time2 = time.time()
-print len(good)
+print(len(good))
 
 if len(good) > MIN_MATCH_COUNT:
     src_pts = np.float32([kp1[m.queryIdx].pt for m in good]).reshape(-1, 1, 2)
@@ -156,7 +156,7 @@ if len(good) > MIN_MATCH_COUNT:
     dcenter = cv2.perspectiveTransform(center, M)
     cv2.circle(img2, (int(dcenter[0][0][0]), int(dcenter[0][0][1])), 3, (255, 0, 0), 2)
     dcenter = [dcenter[0][0][0] / float(METER_TO_PIXEL), (MAP_PIXEL_HEIGHT - dcenter[0][0][1]) / float(METER_TO_PIXEL)]
-    print dcenter
+    print(dcenter)
 
     start_time3 = time.time()
     src_pts = np.float32([kp1[m.queryIdx].pt for m in good]).reshape(-1, 1, 2)
@@ -166,24 +166,24 @@ if len(good) > MIN_MATCH_COUNT:
     cv2.circle(img2, (int(dcenter[0][0][0]), int(dcenter[0][0][1])), 3, (0, 0, 255), 2)
     dcenter = [dcenter[0][0][0] / float(METER_TO_PIXEL), (MAP_PIXEL_HEIGHT - dcenter[0][0][1]) / float(METER_TO_PIXEL)]
     end_time3 = time.time()
-    print transform
-    print dcenter
+    print(transform)
+    print(dcenter)
     yaw = np.arctan2(transform[1, 0], transform[0, 0])
     global_offset_x = math.cos(yaw) * offset_x + math.sin(yaw) * offset_y
     global_offset_y = math.sin(yaw) * offset_x + math.cos(yaw) * offset_y
     dcenter = [dcenter[0] + global_offset_x, dcenter[1] + global_offset_y]
-    print dcenter
-    print yaw
+    print(dcenter)
+    print(yaw)
 
 else:
-    print "Not enough matches are found - %d/%d" % (len(good), MIN_MATCH_COUNT)
+    print("Not enough matches are found - %d/%d" % (len(good), MIN_MATCH_COUNT))
     matchesMask = None
 
 out = drawMatches(img1, kp1, img2, kp2, good, matchesMask)
 
-print "compute feature", end_time1 - start_time1
-print "find match", end_time2 - start_time2
-print "transform", end_time3 - start_time3
+print("compute feature", end_time1 - start_time1)
+print("find match", end_time2 - start_time2)
+print("transform", end_time3 - start_time3)
 
 # cv2.imwrite('mapping44.jpg', out)
 

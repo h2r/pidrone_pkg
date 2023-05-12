@@ -85,7 +85,7 @@ class AnalyzePhase:
                     self.posemsg.pose.orientation.w = w
                     self.posepub.publish(self.posemsg)
 
-                    print 'first', pose
+                    print('first', pose)
                 else:
                     pose, weight = self.estimator.run(self.z, self.prev_kp, self.prev_des,
                                                       curr_kp, curr_des)
@@ -107,10 +107,10 @@ class AnalyzePhase:
                     self.posemsg.pose.orientation.w = w
                     self.posepub.publish(self.posemsg)
 
-                    print '--pose', self.pos[0], self.pos[1], self.pos[3]
-                    print '--weight', weight
+                    print('--pose', self.pos[0], self.pos[1], self.pos[3])
+                    print('--weight', weight)
             else:
-                print "CANNOT FIND ANY FEATURES !!!!!"
+                print("CANNOT FIND ANY FEATURES !!!!!")
 
             self.prev_kp = curr_kp
             self.prev_des = curr_des
@@ -132,7 +132,7 @@ class AnalyzePhase:
 
     def reset_callback(self, data):
         """start localization when '/pidrone/reset_transform' is published to (press 'r')"""
-        print "Start localization"
+        print("Start localization")
         self.locate_position = True
         self.first_locate = True
 
@@ -146,7 +146,7 @@ def main():
     rospy.Subscriber('/pidrone/picamera/image_raw', Image, phase_analyzer.image_callback)
     rospy.Subscriber('/pidrone/state', State, phase_analyzer.state_callback)
 
-    print "Start"
+    print("Start")
 
     rospy.spin()
 

@@ -253,7 +253,9 @@ class UKFStateEstimator2D(object):
             self.initialize_input_time(data)
             # Got a raw slant range reading, so update the initial state
             # vector of the UKF
+
             self.ukf.x[0] = tof_height
+
             self.ukf.x[1] = 0.0  # initialize velocity as 0 m/s
             # Update the state covariance matrix to reflect estimated
             # measurement error. Variance of the measurement -> variance of

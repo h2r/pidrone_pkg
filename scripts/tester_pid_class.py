@@ -1,4 +1,4 @@
-from __future__ import division
+
 import rospy
 from std_msgs.msg import Float32
 

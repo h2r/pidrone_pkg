@@ -14,7 +14,7 @@ This is licensed under an MIT license. See the readme.MD file
 for more information.
 """
 
-from __future__ import division
+
 
 from math import exp
 import warnings
@@ -164,7 +164,7 @@ def do_plot_test():
     x, y = mnormal(mean=(0, 0), cov=p, size=5000).T
     sd = 2
     a, w, h = covariance_ellipse(p, sd)
-    print(np.degrees(a), w, h)
+    print((np.degrees(a), w, h))
 
     count = 0
     color = []
@@ -183,7 +183,7 @@ def do_plot_test():
                     alpha=0.3,
                     facecolor='none')
 
-    print(count / len(x))
+    print((count / len(x)))
 
 def test_norm_cdf():
     # test using the 68-95-99.7 rule
@@ -288,9 +288,9 @@ def test_logpdf2():
 
     p = logpdf(z, mean, cov, allow_singular=False)
     p2 = log_multivariate_normal_density(z, mean, cov)
-    print('p', p)
-    print('p2', p2)
-    print('p-p2', p-p2)
+    print(('p', p))
+    print(('p2', p2))
+    print(('p-p2', p-p2))
 
 def covariance_3d_plot_test():
     import matplotlib.pyplot as plt

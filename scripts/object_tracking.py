@@ -1,4 +1,4 @@
-from __future__ import division
+
 import cv2
 from pidrone_pkg.msg import State
 from sensor_msgs.msg import Image
@@ -56,23 +56,23 @@ class ObjectTracker(picamera.array.PiMotionAnalysis):
                     self.curr_obj_coordinates = obj_coordinates
 
                 self.error = (np.subtract(self.curr_obj_coordinates, CAMERA_CENTER) * self.z) / 290. * np.array((1, -1))
-                print "ERROR: ", self.error
-                print "density: ", density
+                print("ERROR: ", self.error)
+                print("density: ", density)
 
                 obj_pose = Pose()
                 obj_pose.position.x = self.error[0]
                 obj_pose.position.y = self.error[1]
                 self.obj_pose_pub.publish(obj_pose)
             else:
-                print "CANNOT FIND ANY FEATURES !!!!!"
+                print("CANNOT FIND ANY FEATURES !!!!!")
 
         self.prev_img = curr_img
 
     def reset_callback(self, data):
         if not self.track_object:
-            print "Start tracking object"
+            print("Start tracking object")
         else:
-            print "Stop tracking object"
+            print("Stop tracking object")
 
         self.track_object = not self.track_object
         self.curr_obj_coordinates = None
@@ -143,9 +143,9 @@ def main():
 
                 camera.stop_recording(splitter_port=1)
             camera.stop_recording(splitter_port=2)
-        print "Shutdown Received"
+        print("Shutdown Received")
     except Exception:
-        print "Camera Error!!"
+        print("Camera Error!!")
         raise
 
 

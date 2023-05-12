@@ -156,7 +156,7 @@ class RigidTransformNode(object):
                     self.first_image_counter += 1
                     self.max_first_counter = max(self.max_first_counter, self.first_image_counter)
                     self.last_first_time = rospy.get_time()
-                    print("count:", self.first_image_counter)
+                    print(("count:", self.first_image_counter))
                 # else the first image was not visible (the transformation was not succesful) :
                 else:
                     # try to estimate the transformation from the previous image
@@ -169,8 +169,8 @@ class RigidTransformNode(object):
                         if self.last_first_time is None:
                             self.last_first_time = rospy.get_time()
                         time_since_first = rospy.get_time() - self.last_first_time
-                        print("integrated", time_since_first)
-                        print("max_first_counter: ", self.max_first_counter)
+                        print(("integrated", time_since_first))
+                        print(("max_first_counter: ", self.max_first_counter))
                         int_displacement, yaw_previous = self.translation_and_yaw(transform_previous)
                         self.pose_msg.pose.position.x = self.x_position_from_state + (int_displacement[0]*self.altitude)
                         self.pose_msg.pose.position.y = self.y_position_from_state + (int_displacement[1]*self.altitude)
@@ -238,7 +238,7 @@ class RigidTransformNode(object):
     def position_control_callback(self, msg):
         ''' Set whether the pose is calculated and published '''
         self.position_control = msg.data
-        print("Position Control", self.position_control)
+        print(("Position Control", self.position_control))
 
     def state_callback(self, msg):
         """
