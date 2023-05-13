@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import rospy
-
+import argparse
 import numpy as np
 
 from sensor_msgs.msg import Range
@@ -12,12 +12,23 @@ from dt_vl53l0x import \
     Vl53l0xAccuracyMode
 
 
+# addition 2023-03-11 by joshua-8 is a variance parameter and artificial noise to challenge the ukf filter more.
+parser = argparse.ArgumentParser()
+parser.add_argument("--variance", type=float, default=None,
+                    help="how much random noise should be added to the distance readings? variance, meters")
+args = parser.parse_args()
+simulated_noise_sd = None
+if args.variance:
+    simulated_noise_sd = np.sqrt(args.variance)
+    # numpy random uses standard deviation not variance but ukf seems to use variance
+    print("simulating noise with standard deviation: "+str(simulated_noise_sd))
 
 
 class ToFNode(object):
     """
     This class implements the communication logic with a Time-of-Flight sensor on the i2c bus.
     It publishes both range measurements as well as display fragments to show on an LCD screen.
+
 
     NOTE: Out-of-range readings do not stop the stream of messages. Instead, a message with a
           range value well outside the domain [min_range, max_range] will be published.
@@ -30,8 +41,6 @@ class ToFNode(object):
     """
 
     def __init__(self):
-        # get parameters
-
 
         self._i2c_address = 0x29
         self._sensor_name = "tof"
@@ -47,11 +56,19 @@ class ToFNode(object):
         self._sensor.start_ranging()
 
         # create timers
-        self.timer = rospy.Timer(rospy.Duration.from_sec(1.0 / 30), self._timer_cb)
+        self.timer = rospy.Timer(
+            rospy.Duration.from_sec(1.0 / 30), self._timer_cb)
 
     def _timer_cb(self, _):
         # detect range
         distance_mm = self._sensor.get_distance()
+
+        # add noise with normal distribution and specified Standard Deviation
+        # multiply by 1000 to convert from meters to millimeters
+        if simulated_noise_sd is not None:
+            distance_mm = distance_mm + 1000 * \
+                np.random.normal(loc=0, scale=simulated_noise_sd)
+
         # pack observation into a message
         msg = Range(
             header=Header(
@@ -76,6 +93,6 @@ class ToFNode(object):
 
 
 if __name__ == '__main__':
-    rospy.init_node("tof_node")    
+    rospy.init_node("tof_node")
     node = ToFNode()
     rospy.spin()
