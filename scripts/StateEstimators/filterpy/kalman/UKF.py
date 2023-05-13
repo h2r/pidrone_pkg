@@ -711,7 +711,7 @@ class UnscentedKalmanFilter(object):
         xs, ps = Xs.copy(), Ps.copy()
         sigmas_f = zeros((num_sigmas, dim_x))
 
-        for k in reversed(list(range(n-1))):
+        for k in reversed(range(n-1)):
             # create sigma points from state estimate, pass through state func
             sigmas = self.points_fn.sigma_points(xs[k], ps[k])
             for i in range(num_sigmas):

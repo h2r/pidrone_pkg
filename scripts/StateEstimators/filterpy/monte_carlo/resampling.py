@@ -100,7 +100,7 @@ def stratified_resample(weights):
 
     N = len(weights)
     # make N subdivisions, and chose a random position within each one
-    positions = (random(N) + list(range(N))) / N
+    positions = (random(N) + range(N)) / N
 
     indexes = np.zeros(N, 'i')
     cumulative_sum = np.cumsum(weights)

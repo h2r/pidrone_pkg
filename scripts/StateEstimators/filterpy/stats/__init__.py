@@ -15,7 +15,7 @@ for more information.
 
 #pylint: disable=wildcard-import
 
-
+from __future__ import absolute_import
 
 #__all__ = ["stats"]
 

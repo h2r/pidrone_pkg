@@ -16,7 +16,7 @@ This is licensed under an MIT license. See the readme.MD file
 for more information.
 """
 
-
+from __future__ import division
 import numpy as np
 from scipy.linalg import cholesky
 from filterpy.common import pretty_str

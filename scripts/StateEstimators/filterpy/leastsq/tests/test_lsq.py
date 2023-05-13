@@ -274,7 +274,7 @@ def test_second_order():
         assert near_equal(y, y0)
         ys.append(y)
 
-    plt.scatter(list(range(len(xs))), xs, c='r', marker='+')
+    plt.scatter(range(len(xs)), xs, c='r', marker='+')
     plt.plot(ys, c='g')
     plt.plot([0, len(xs)-1], [ys[0], ys[-1]], c='b')
 
