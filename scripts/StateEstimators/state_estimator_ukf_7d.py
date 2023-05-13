@@ -477,16 +477,6 @@ class UKFStateEstimator7D(object):
                       [0, 0, 0, 0, 0, 0, 1]])
         result = np.dot(H, x)
         return result
-
-    def get_r_p_y(self):
-        """ Return the roll, pitch, and yaw from the orientation quaternion """
-        x = self.imu_orientation.x
-        y = self.imu_orientation.y
-        z = self.imu_orientation.z
-        w = self.imu_orientation.w
-        quaternion = (x,y,z,w)
-        r,p,y = tf.transformations.euler_from_quaternion(quaternion)
-        return r,p,y
     
     def start_loop(self):
         """
