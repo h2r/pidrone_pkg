@@ -49,6 +49,8 @@ class UKFStateEstimator12D(object):
         self.optical_flow_topic_str = '/pidrone/picamera/twist'
         throttle_suffix = '_throttle'
         
+        self.imu_orientation = None # imu measured pitch and roll are used to calculate actual height from range sensor
+        
         if ir_throttled:
             self.ir_topic_str += throttle_suffix
         if imu_throttled:
@@ -232,6 +234,18 @@ class UKFStateEstimator12D(object):
             print('Starting filter')
             self.printed_filter_start_notice = True
         
+    def get_r_p_y(self):
+        if self.imu_orientation is None:
+            return 0,0,0 # imu callback hasn't happened yet
+        """ Return the roll, pitch, and yaw from the orientation quaternion """
+        x = self.imu_orientation.x
+        y = self.imu_orientation.y
+        z = self.imu_orientation.z
+        w = self.imu_orientation.w
+        quaternion = (x,y,z,w)
+        r,p,y = tf.transformations.euler_from_quaternion(quaternion)
+        return r,p,y
+
     def imu_data_callback(self, data):
         '''
         Handle the receipt of an Imu message, which includes linear
@@ -243,6 +257,10 @@ class UKFStateEstimator12D(object):
         if self.in_callback:
             return
         self.in_callback = True
+
+        # save imu orientation to compensate range measurement for pitch and roll
+        self.imu_orientation = data.orientation
+
         euler_angles = tf.transformations.euler_from_quaternion(
                                                            [data.orientation.x,
                                                             data.orientation.y,
@@ -345,7 +363,17 @@ class UKFStateEstimator12D(object):
         self.num_complete_optical_flow += 1
         #print '--OPTICAL FLOW:', self.num_complete_optical_flow
         self.in_callback = False
-                        
+    
+    def get_r_p_y(self):
+        """ Return the roll, pitch, and yaw from the orientation quaternion """
+        x = self.state.pose_with_covariance.pose.orientation.x
+        y = self.state.pose_with_covariance.pose.orientation.y
+        z = self.state.pose_with_covariance.pose.orientation.z
+        w = self.state.pose_with_covariance.pose.orientation.w
+        quaternion = (x,y,z,w)
+        r,p,y = tf.transformations.euler_from_quaternion(quaternion)
+        return r,p,y
+
     def ir_data_callback(self, data):
         '''
         Handle the receipt of a Range message from the IR sensor.
@@ -361,10 +389,17 @@ class UKFStateEstimator12D(object):
             print('BEFORE PREDICT Z:', self.ukf.x[2])
             self.ukf_predict()
                         
+            # get the roll and pitch
+            r,p,_ = self.get_r_p_y()
+            # the z-position of the drone which is calculated by multiplying the
+            # the range reading by the cosines of the roll and pitch
+            tof_height = data.range*np.cos(r)*np.cos(p)
+
+            
             # Now that a prediction has been formed to bring the current prior
             # state estimate to the same point in time as the measurement,
             # perform a measurement update with the slant range reading
-            measurement_z = np.array([data.range])
+            measurement_z = np.array([tof_height])
             # Ensure that we are using subtraction to compute the residual
             #self.ukf.residual_z = np.subtract
             print('AFTER PREDICT Z:', self.ukf.x[2])
@@ -394,7 +429,7 @@ class UKFStateEstimator12D(object):
             self.initialize_input_time(data)
             # Got a raw slant range reading, so update the initial state
             # vector of the UKF
-            self.ukf.x[2] = data.range
+            self.ukf.x[2] = tof_height
             # Update the state covariance matrix to reflect estimated
             # measurement error. Variance of the measurement -> variance of
             # the corresponding state variable

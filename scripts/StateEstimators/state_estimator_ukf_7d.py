@@ -26,9 +26,8 @@ import os
 class UKFStateEstimator7D(object):
     """
     Class that estimates the state of the drone using an Unscented Kalman Filter
-    (UKF) applied to raw sensor data. This script tests the addition of position
-    estimates from the camera, which we get from position hold, localization, or
-    SLAM.
+    (UKF) applied to raw sensor data. The filter tracks 7 state variables to
+    estimate aspects of the drone's pose and twist in three-dimensional space.
     """
     # TODO: Make a reference to the UKF math document that is being written up,
     #       once it is in a complete enough state and can be placed in a shared
@@ -41,8 +40,6 @@ class UKFStateEstimator7D(object):
         self.ready_to_filter = False
         self.printed_filter_start_notice = False
         self.got_ir = False
-        # self.got_camera_pose = False
-        # self.got_optical_flow = False
         self.got_imu = False
         self.loop_hz = loop_hz
         
@@ -51,7 +48,9 @@ class UKFStateEstimator7D(object):
         self.optical_flow_topic_str = '/pidrone/picamera/twist'
         self.camera_pose_topic_str = '/pidrone/picamera/pose'
         throttle_suffix = '_throttle'
-        
+
+        self.imu_orientation = None # imu measured pitch and roll are used to calculate actual height from range sensor
+
         if ir_throttled:
             self.ir_topic_str += throttle_suffix
         if imu_throttled:
@@ -170,6 +169,7 @@ class UKFStateEstimator7D(object):
         # IR slant range variance (m^2), determined experimentally in a static
         # setup with mean range around 0.335 m:
         self.measurement_cov_ir = np.array([2.2221e-05])
+
         self.measurement_cov_optical_flow = np.diag([0.01, 0.01])
         # Estimated standard deviation of 5 cm = 0.05 m ->
         # variance of 0.05^2 = 0.0025
@@ -219,6 +219,19 @@ class UKFStateEstimator7D(object):
         if not self.printed_filter_start_notice:
             print('Starting filter')
             self.printed_filter_start_notice = True
+
+    def get_r_p_y(self):
+        if self.imu_orientation is None:
+            return 0,0,0 # imu callback hasn't happened yet
+        """ Return the roll, pitch, and yaw from the orientation quaternion """
+        x = self.imu_orientation.x
+        y = self.imu_orientation.y
+        z = self.imu_orientation.z
+        w = self.imu_orientation.w
+
+        quaternion = (x,y,z,w)
+        r,p,y = tf.transformations.euler_from_quaternion(quaternion)
+        return r,p,y
         
     def imu_data_callback(self, data):
         """
@@ -229,6 +242,10 @@ class UKFStateEstimator7D(object):
         if self.in_callback:
             return
         self.in_callback = True
+
+        # save imu orientation to compensate range measurement for pitch and roll
+        self.imu_orientation = data.orientation
+
         self.last_control_input = np.array([data.linear_acceleration.x,
                                             data.linear_acceleration.y,
                                             data.linear_acceleration.z])
@@ -239,6 +256,7 @@ class UKFStateEstimator7D(object):
             self.check_if_ready_to_filter()
         self.in_callback = False
                         
+    
     def ir_data_callback(self, data):
         """
         Handle the receipt of a Range message from the IR sensor.
@@ -246,14 +264,25 @@ class UKFStateEstimator7D(object):
         if self.in_callback:
             return
         self.in_callback = True
+
+        # get the roll and pitch
+        r,p,_ = self.get_r_p_y()
+        # the z-position of the drone which is calculated by multiplying the
+        # the range reading by the cosines of the roll and pitch
+        tof_height = data.range*np.cos(r)*np.cos(p)
+
         if self.ready_to_filter:
             self.update_input_time(data)
-            self.last_measurement_vector[0] = data.range * np.cos(r) * np.cos(p)
+
+            self.last_measurement_vector[0] = tof_height
+
         else:
             self.initialize_input_time(data)
             # Got a raw slant range reading, so update the initial state
             # vector of the UKF
-            self.ukf.x[2] = data.range 
+            
+            self.ukf.x[2] = tof_height
+            
             self.ukf.x[5] = 0.0  # initialize velocity as 0 m/s
             # Update the state covariance matrix to reflect estimated
             # measurement error. Variance of the measurement -> variance of
@@ -289,7 +318,6 @@ class UKFStateEstimator7D(object):
             # the corresponding state variable
             self.ukf.P[3, 3] = self.measurement_cov_optical_flow[0, 0]
             self.ukf.P[4, 4] = self.measurement_cov_optical_flow[1, 1]
-            # self.got_optical_flow = True
             self.check_if_ready_to_filter()
         self.in_callback = False
         
@@ -328,7 +356,6 @@ class UKFStateEstimator7D(object):
             self.ukf.P[0, 0] = self.measurement_cov_camera_pose[0, 0]
             self.ukf.P[1, 1] = self.measurement_cov_camera_pose[1, 1]
             self.ukf.P[6, 6] = self.measurement_cov_camera_pose[2, 2]
-            # self.got_camera_pose = True
             self.check_if_ready_to_filter()
         self.in_callback = False
             
