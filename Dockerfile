@@ -11,40 +11,42 @@ FROM ros:noetic
 # Install software
 RUN apt-get update
 RUN apt-get install -y --no-install-recommends apt-utils
-RUN apt-get install -y emacs
-RUN apt-get install -y sudo
-RUN apt-get install -y python-pip
-RUN apt-get install -y net-tools
-RUN apt-get install -y iproute2
-RUN apt-get install -y iputils-ping
-RUN apt-get install -y openssh-client openssh-server
-RUN apt-get install -y ros-noetic-desktop-full
-RUN apt-get install -y ros-noetic-navigation
-RUN apt-get install -y ros-noetic-ros-control ros-noetic-ros-controllers
-RUN apt-get install -y ros-noetic-joy
-RUN apt-get install -y ros-noetic-gmapping ros-noetic-navigation
-RUN apt-get install -y ros-noetic-rviz-imu-plugin
+RUN apt-get install -y emacs \
+    sudo \
+    python3-pip \
+    net-tools \
+    iproute2 \
+    iputils-ping \
+    openssh-client openssh-server \
+    ros-noetic-desktop-full \
+    ros-noetic-navigation \
+    ros-noetic-ros-control ros-noetic-ros-controllers \
+    ros-noetic-joy \
+    ros-noetic-gmapping ros-noetic-navigation \
+    ros-noetic-rviz-imu-plugin \
+    ros-noetic-moveit \
+    ros-noetic-moveit-commander \
+    ros-noetic-moveit-visual-tools \
+    ros-noetic-moveit-ros-visualization \
+    ros-noetic-moveit-planners-ompl \
+    ros-noetic-moveit-simple-controller-manager \
+    ros-noetic-trac-ik-kinematics-plugin \
+    gdb \
+    mlocate \
+    screen \
+    emacs \
+    git \
+    netcat nmap wget iputils-ping openssh-client vim less \
+    python3-numpy \
+    python3-smbus \
+    python3-scipy \
+    locate \
+    ros-noetic-rosbridge-suite \
+    ros-noetic-web-video-server \
+    python-is-python3
+
 RUN apt-get install -y ros-noetic-ar-track-alvar
-RUN apt-get install -y ros-noetic-moveit
-RUN apt-get install -y ros-noetic-moveit-commander
-RUN apt-get install -y ros-noetic-moveit-visual-tools
-RUN apt-get install -y ros-noetic-moveit-ros-visualization
-RUN apt-get install -y ros-noetic-moveit-planners-ompl
-RUN apt-get install -y ros-noetic-moveit-simple-controller-manager
-RUN apt-get install -y ros-noetic-trac-ik-kinematics-plugin
-RUN apt-get install -y gdb
-RUN apt-get install -y mlocate
-RUN apt-get install -y screen
-RUN apt-get install -y emacs
-RUN apt-get install -y git
-RUN apt-get install -y netcat nmap wget iputils-ping openssh-client vim less
-RUN apt-get install -y python-numpy
-RUN apt-get install -y python-smbus
-RUN apt-get install -y python-scipy
-RUN apt-get install -y locate
-RUN apt-get install -y ros-noetic-rosbridge-suite
-RUN apt-get install -y ros-noetic-web-video-server
-RUN apt-get install -y python-is-python3
+
 # check out the version that has the buggy port of libmmal to 64 bit.
 # this didn't actually work sadly, got a weird mmal error when trying
 # to open picamera, but I think I still need it for raspicam_node.
