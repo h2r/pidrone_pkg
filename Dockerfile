@@ -11,7 +11,7 @@ FROM ros:noetic
 # Install software
 RUN apt-get update
 RUN apt-get install -y --no-install-recommends apt-utils
-RUN apt-get install -y emacs \
+RUN apt-get install -y emacs
 RUN apt-get install -y sudo
 RUN apt-get install -y python-pip
 RUN apt-get install -y net-tools
