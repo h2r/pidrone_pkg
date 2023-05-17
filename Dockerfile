@@ -1,50 +1,50 @@
-# This image allows you to have a Ubuntu 16.04 + ROS Kinetic setup.
+# This image allows you to have a Ubuntu 16.04 + ROS noetic setup.
 # You can mount the path to the 'robotdev' repository in your host
 # machine to the same path in the container. We ask you to use the
 # same username in the container as in your host machine. This
 # simplifies the maintenance of the 'robotdev' repository.
-# This setup relies on the nice ros:kinetic image provided
+# This setup relies on the nice ros:noetic image provided
 # on Docker Hub.
 # /author: Kaiyu Zheng
-FROM ros:kinetic
+FROM ros:noetic
 
 # Install software
 RUN apt-get update
 RUN apt-get install -y --no-install-recommends apt-utils
-RUN apt-get install -y emacs
-RUN apt-get install -y sudo
-RUN apt-get install -y python-pip
-RUN apt-get install -y net-tools
-RUN apt-get install -y iproute2
-RUN apt-get install -y iputils-ping
-RUN apt-get install -y openssh-client openssh-server
-RUN apt-get install -y ros-kinetic-desktop-full
-RUN apt-get install -y ros-kinetic-navigation
-RUN apt-get install -y ros-kinetic-ros-control ros-kinetic-ros-controllers
-RUN apt-get install -y ros-kinetic-joy
-RUN apt-get install -y ros-kinetic-gmapping ros-kinetic-navigation
-RUN apt-get install -y ros-kinetic-rviz-imu-plugin
-RUN apt-get install -y ros-kinetic-ar-track-alvar
-RUN apt-get install -y ros-kinetic-moveit
-RUN apt-get install -y ros-kinetic-moveit-commander
-RUN apt-get install -y ros-kinetic-moveit-visual-tools
-RUN apt-get install -y ros-kinetic-moveit-ros-visualization
-RUN apt-get install -y ros-kinetic-moveit-planners-ompl
-RUN apt-get install -y ros-kinetic-moveit-simple-controller-manager
-RUN apt-get install -y ros-kinetic-trac-ik-kinematics-plugin
-RUN apt-get install -y gdb
-RUN apt-get install -y mlocate
-RUN apt-get install -y screen
-RUN apt-get install -y emacs
-RUN apt-get install -y git
-RUN apt-get install -y netcat nmap wget iputils-ping openssh-client vim less
-RUN apt-get install -y python-numpy
-RUN apt-get install -y python-smbus
-RUN apt-get install -y python-scipy
-RUN apt-get install -y locate
-RUN apt-get install -y ros-kinetic-rosbridge-suite
-RUN apt-get install -y ros-kinetic-web-video-server
-
+RUN apt-get install -y emacs \
+    sudo \
+    python-pip \
+    net-tools \
+    iproute2 \
+    iputils-ping \
+    openssh-client openssh-server \
+    ros-noetic-desktop-full \
+    ros-noetic-navigation \
+    ros-noetic-ros-control ros-noetic-ros-controllers \
+    ros-noetic-joy \
+    ros-noetic-gmapping ros-noetic-navigation \
+    ros-noetic-rviz-imu-plugin \
+    ros-noetic-ar-track-alvar \
+    ros-noetic-moveit \
+    ros-noetic-moveit-commander \
+    ros-noetic-moveit-visual-tools \
+    ros-noetic-moveit-ros-visualization \
+    ros-noetic-moveit-planners-ompl \
+    ros-noetic-moveit-simple-controller-manager \
+    ros-noetic-trac-ik-kinematics-plugin \
+    gdb \
+    mlocate \
+    screen \
+    emacs \
+    git \
+    netcat nmap wget iputils-ping openssh-client vim less \
+    python-numpy \
+    python-smbus \
+    python-scipy \
+    locate \
+    ros-noetic-rosbridge-suite \
+    ros-noetic-web-video-server \
+    python-is-python3
 # check out the version that has the buggy port of libmmal to 64 bit.
 # this didn't actually work sadly, got a weird mmal error when trying
 # to open picamera, but I think I still need it for raspicam_node.
@@ -87,18 +87,21 @@ RUN mkdir -p $HOME/catkin_ws/src
 RUN rosdep update
 
 
-RUN mkdir -p raspicam_node_ws/src && cd raspicam_node_ws/src/ && git clone https://github.com/UbiquityRobotics/raspicam_node && cd .. && source /opt/ros/kinetic/setup.bash && catkin_make
+# RUN mkdir -p raspicam_node_ws/src && cd raspicam_node_ws/src/ && git clone -b noetic-devel https://github.com/UbiquityRobotics/raspicam_node && cd .. && source /opt/ros/noetic/setup.bash && catkin_make
 
-
-
+# WORKDIR $HOME/catkin_ws/src
+# RUN git clone -b noetic-devel https://github.com/UbiquityRobotics/raspicam_node.git
 
 # print some info on start
 RUN echo "echo -e 'Welcome! You are now in a docker container ().'" >> $HOME/.bashrc
 RUN echo "echo -e \"Docker ID: $(basename $(cat /proc/1/cpuset))\"" >> $HOME/.bashrc
+RUN touch /etc/ros/rosdep/sources.list.d/30-ubiquity.list
+RUN echo "yaml https://raw.githubusercontent.com/UbiquityRobotics/rosdep/master/raspberry-pi.yaml" >> /etc/ros/rosdep/sources.list.d/30-ubiquity.list
+RUN rosdep update
+RUN cd $HOME/catkin_ws && rosdep install --from-paths src --ignore-src --rosdistro=$ROS_DISTRO -y
+# run echo "export LD_LIBRARY_PATH=/opt/vc/lib/:/home/$USER/raspicam_node_ws/devel/lib:\$LD_LIBRARY_PATH" >> $HOME/.bashrc
 
-run echo "export LD_LIBRARY_PATH=/opt/vc/lib/:/home/$USER/raspicam_node_ws/devel/lib:\$LD_LIBRARY_PATH" >> $HOME/.bashrc
-
-run echo "export PYTHONPATH=\$PYTHONPATH:/home/$USER/raspicam_node_ws/devel/python2.7/dist-packages" >> $HOME/.bashrc
+#run echo "export PYTHONPATH=\$PYTHONPATH:/home/$USER/raspicam_node_ws/devel/python2.7/dist-packages" >> $HOME/.bashrc
 
 run echo "export PYTHONPATH=\$PYTHONPATH:/home/$USER/catkin_ws/src/pidrone_pkg/scripts" >> $HOME/.bashrc
 
@@ -109,5 +112,4 @@ RUN echo "export ROS_PACKAGE_PATH=\$ROS_PACKAGE_PATH:$HOME/raspicam_node_ws/src"
 
 
 CMD ["bash"]
-
 
