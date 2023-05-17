@@ -45,7 +45,7 @@ RUN apt-get install -y emacs \
     ros-noetic-web-video-server \
     python-is-python3
 
-RUN apt-get install -y ros-noetic-ar-track-alvar
+#RUN apt-get install -y ros-noetic-ar-track-alvar
 
 # check out the version that has the buggy port of libmmal to 64 bit.
 # this didn't actually work sadly, got a weird mmal error when trying
@@ -97,8 +97,8 @@ RUN rosdep update
 # print some info on start
 RUN echo "echo -e 'Welcome! You are now in a docker container ().'" >> $HOME/.bashrc
 RUN echo "echo -e \"Docker ID: $(basename $(cat /proc/1/cpuset))\"" >> $HOME/.bashrc
-RUN touch /etc/ros/rosdep/sources.list.d/30-ubiquity.list
-RUN echo "yaml https://raw.githubusercontent.com/UbiquityRobotics/rosdep/master/raspberry-pi.yaml" >> /etc/ros/rosdep/sources.list.d/30-ubiquity.list
+RUN sudo touch /etc/ros/rosdep/sources.list.d/30-ubiquity.list
+RUN sudo echo "yaml https://raw.githubusercontent.com/UbiquityRobotics/rosdep/master/raspberry-pi.yaml" >> /etc/ros/rosdep/sources.list.d/30-ubiquity.list
 RUN rosdep update
 RUN cd $HOME/catkin_ws && rosdep install --from-paths src --ignore-src --rosdistro=$ROS_DISTRO -y
 # run echo "export LD_LIBRARY_PATH=/opt/vc/lib/:/home/$USER/raspicam_node_ws/devel/lib:\$LD_LIBRARY_PATH" >> $HOME/.bashrc
