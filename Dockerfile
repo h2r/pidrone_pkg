@@ -97,9 +97,9 @@ RUN rosdep update
 # print some info on start
 RUN echo "echo -e 'Welcome! You are now in a docker container ().'" >> $HOME/.bashrc
 RUN echo "echo -e \"Docker ID: $(basename $(cat /proc/1/cpuset))\"" >> $HOME/.bashrc
-RUN sudo touch /etc/ros/rosdep/sources.list.d/30-ubiquity.list && echo "yaml https://raw.githubusercontent.com/UbiquityRobotics/rosdep/master/raspberry-pi.yaml" >> /etc/ros/rosdep/sources.list.d/30-ubiquity.list
-RUN rosdep update
-RUN cd $HOME/catkin_ws && rosdep install --from-paths src --ignore-src --rosdistro=$ROS_DISTRO -y
+#RUN sudo touch /etc/ros/rosdep/sources.list.d/30-ubiquity.list && echo "yaml https://raw.githubusercontent.com/UbiquityRobotics/rosdep/master/raspberry-pi.yaml" >> /etc/ros/rosdep/sources.list.d/30-ubiquity.list
+#RUN rosdep update
+#RUN cd $HOME/catkin_ws && rosdep install --from-paths src --ignore-src --rosdistro=$ROS_DISTRO -y
 # run echo "export LD_LIBRARY_PATH=/opt/vc/lib/:/home/$USER/raspicam_node_ws/devel/lib:\$LD_LIBRARY_PATH" >> $HOME/.bashrc
 
 #run echo "export PYTHONPATH=\$PYTHONPATH:/home/$USER/raspicam_node_ws/devel/python2.7/dist-packages" >> $HOME/.bashrc
