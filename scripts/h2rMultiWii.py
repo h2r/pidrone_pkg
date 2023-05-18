@@ -184,6 +184,7 @@ class MultiWii:
         start = time.time()
 
         header = str(self.ser.read(5))
+        print(header.decode('utf-8'))
         if len(header) == 0:
             print("timeout on receiveDataPacket")
             return None
