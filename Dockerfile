@@ -44,6 +44,7 @@ RUN apt-get install -y python-scipy
 RUN apt-get install -y locate
 RUN apt-get install -y ros-kinetic-rosbridge-suite
 RUN apt-get install -y ros-kinetic-web-video-server
+RUN apt-get install -y nano
 
 # check out the version that has the buggy port of libmmal to 64 bit.
 # this didn't actually work sadly, got a weird mmal error when trying
