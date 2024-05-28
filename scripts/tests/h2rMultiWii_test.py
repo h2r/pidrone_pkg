@@ -23,7 +23,7 @@ def main():
         loop_iteration_duration = loop_iteration_end_time - loop_iteration_start_time
         loop_frequency = 1 / loop_iteration_duration
 
-        print(f"Loop frequency: {loop_frequency} Hz")
+        print("Loop frequency [Hz]:", loop_frequency)
 
     loop_end_time = time.time()
     total_loop_duration = loop_end_time - loop_start_time
