@@ -1,29 +1,35 @@
-from h2rMultiWii import MultiWii
 import time
+from ..h2rMultiWii import MultiWii
 
 def main():
-    board = MultiWii("/dev/ttyUSB0")
-    # mw_data = board.getData(MultiWii.ATTITUDE)
-    # print mw_data
-    # cmds = [1500, 1500, 1000, 900]
-    # board.sendCMD(8, MultiWii.SET_RAW_RC, cmds)
-    # time.sleep(1)
+    board = MultiWii("/dev/ttyACM0")
+    loop_start_time = time.time()
+    loop_count = 0
 
-    # cmds = [1500, 1500, 1000, 1000]
-    # board.sendCMD(8, MultiWii.SET_RAW_RC, cmds)
-    # time.sleep(1)
+    while time.time() - loop_start_time < 10.0:
+        loop_count += 1
+        loop_iteration_start_time = time.time()
 
+        # board.getData(MultiWii.ATTITUDE)
+        # print(board.attitude)
+        # board.getData(MultiWii.RAW_IMU)
 
-    # cmds = [1500, 1500, 1500, 1500]
-    # board.sendCMD(8, MultiWii.SET_RAW_RC, cmds)
-    # time.sleep(1)
-    print("Calibrate ACC... make sure we are level and still.")
-    board.send_raw_command(0, MultiWii.ACC_CALIBRATION, [])
-    board.receiveDataPacket()
+        # board.getData(MultiWii.MOTOR)
+        # board.getData(MultiWii.ANALOG)
+        board.send_raw_command(8,MultiWii.SET_RAW_RC, [1500, 1500, 1500, 1000, 1000, 1000, 1000, 1000])
+        board.receiveDataPacket()
 
-    time.sleep(2)
+        loop_iteration_end_time = time.time()
+        loop_iteration_duration = loop_iteration_end_time - loop_iteration_start_time
+        loop_frequency = 1 / loop_iteration_duration
 
+        print(f"Loop frequency: {loop_frequency} Hz")
 
-    
+    loop_end_time = time.time()
+    total_loop_duration = loop_end_time - loop_start_time
+    average_loop_frequency = loop_count / total_loop_duration
+
+    print(f"Average loop frequency: {average_loop_frequency} Hz")
+
 if __name__ == "__main__":
     main()
