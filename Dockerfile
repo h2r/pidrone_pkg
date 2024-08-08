@@ -107,8 +107,9 @@ run echo "export PYTHONPATH=\$PYTHONPATH:/home/$USER/catkin_ws/src/pidrone_pkg/s
 RUN echo "export ROS_MASTER_URI=http://$hostname:11311" >> $HOME/.bashrc
 RUN echo "cd $HOME/catkin_ws/src/pidrone_pkg && source setup.sh" >> $HOME/.bashrc
 RUN echo "export ROS_PACKAGE_PATH=\$ROS_PACKAGE_PATH:$HOME/raspicam_node_ws/src" >> $HOME/.bashrc
-
+RUN sudo apt-get install libopencv-dev -y
 
 CMD ["bash"]
+
 
 

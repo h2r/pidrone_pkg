@@ -105,8 +105,8 @@ class FlightController(object):
             p = msg.pitch
             y = msg.yaw
             t = msg.throttle
-            self.command = [r,p,y,t].append(cmds.idle_cmd[4:8])
-            print("Command length", len(self.command))
+            self.command = [r, p, y, t] + cmds.idle_cmd[4:8]
+
 
     # Update methods:
     #################
@@ -236,7 +236,7 @@ class FlightController(object):
 
     def send_rc_cmd(self):
         """ Send commands to the flight controller board """
-        assert len(self.command) is 8, "COMMAND HAS WRONG SIZE"
+        assert len(self.command) is 8, "COMMAND HAS WRONG SIZE, expected 8, got "+str(len(self.command))
         self.board.send_raw_command(8, MultiWii.SET_RAW_RC, self.command)
         self.board.receiveDataPacket()
         if (self.command != self.last_command):
@@ -307,9 +307,6 @@ class FlightController(object):
             print('Check the state_estimator node\n')
             disarm = True
 
-        ##### TODO: REMOVE THIS
-        disarm = False
-        #######################
         return disarm
 
 
@@ -374,7 +371,7 @@ def main():
             fc.send_rc_cmd()
 
             # publish the current mode of the drone
-            # fc.modepub.publish(fc.curr_mode)
+            fc.modepub.publish(fc.curr_mode)
 
             # sleep for the remainder of the loop time
             r.sleep()

@@ -77,8 +77,8 @@ class PID:
                  throttle=PIDaxis(1,
                                   0, #0.5/height_factor * battery_factor,
                                   1,
-                                  i_range=(-400, 400), control_range=(1200, 1375),
-                                  d_range=(-40, 40), midpoint=1350)
+                                  i_range=(-400, 400), control_range=(1200, 1700),
+                                  d_range=(-40, 40), midpoint=1600)
                  ):
 
         self.trim_controller_cap_plane = 0.05
