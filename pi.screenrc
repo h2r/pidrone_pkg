@@ -73,7 +73,7 @@ screen -t "rosbridge"
 stuff "roslaunch --wait rosbridge_server rosbridge_websocket.launch\n"
 
 screen -t "web_vid_serv"
-stuff "rosrun web_video_server web_video_server"
+stuff "rosrun web_video_server web_video_server\n"
 
 screen -t "free1"
 stuff "cd $(rospack find pidrone_pkg)/scripts/\n"
