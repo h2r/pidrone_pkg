@@ -43,8 +43,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends apt-utils \
     locate \
     ros-kinetic-rosbridge-suite \
     ros-kinetic-web-video-server \
-    nano \
-    ros-kinetic-vl53l1x
+    nano
 
 # check out the version that has the buggy port of libmmal to 64 bit.
 # this didn't actually work sadly, got a weird mmal error when trying
