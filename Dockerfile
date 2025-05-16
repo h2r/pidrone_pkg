@@ -63,7 +63,7 @@ ARG dialoutgid
 ARG videogid
 
 RUN echo Host user is $hostuser:$hostuser
-RUN groupadd --gid $hostgid $hostgroup
+RUN groupadd --gid $hostgid $hostgroup && groupadd i2c
 RUN groupmod --gid $i2cgid i2c; exit 0
 RUN groupmod --gid $dialoutgid dialout
 RUN groupmod --gid $videogid video
