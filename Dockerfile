@@ -87,8 +87,8 @@ RUN mkdir $HOME/repo
 RUN mkdir -p $HOME/catkin_ws/src
 RUN rosdep update
 
-
-RUN mkdir -p raspicam_node_ws/src && cd raspicam_node_ws/src/ && git clone https://github.com/UbiquityRobotics/raspicam_node && cd .. && source /opt/ros/kinetic/setup.bash && catkin_make
+RUN cd $HOME/catkin_ws/src && git clone https://github.com/okalachev/vl53l1x_ros.git && cd .. && source /opt/ros/kinetic/setup.bash && catkin_make -DCATKIN_WHITELIST_PACKAGES="vl53l1x"
+RUN cd $HOME/catkin_ws/src && git clone https://github.com/duckietown/raspicam_node -b kinetic-dd24 && cd .. && source /opt/ros/kinetic/setup.bash && catkin_make
 
 
 
