@@ -9,42 +9,41 @@
 FROM ros:kinetic
 
 # Install software
-RUN apt-get update
-RUN apt-get install -y --no-install-recommends apt-utils
-RUN apt-get install -y emacs
-RUN apt-get install -y sudo
-RUN apt-get install -y python-pip
-RUN apt-get install -y net-tools
-RUN apt-get install -y iproute2
-RUN apt-get install -y iputils-ping
-RUN apt-get install -y openssh-client openssh-server
-RUN apt-get install -y ros-kinetic-desktop-full
-RUN apt-get install -y ros-kinetic-navigation
-RUN apt-get install -y ros-kinetic-ros-control ros-kinetic-ros-controllers
-RUN apt-get install -y ros-kinetic-joy
-RUN apt-get install -y ros-kinetic-gmapping ros-kinetic-navigation
-RUN apt-get install -y ros-kinetic-rviz-imu-plugin
-RUN apt-get install -y ros-kinetic-ar-track-alvar
-RUN apt-get install -y ros-kinetic-moveit
-RUN apt-get install -y ros-kinetic-moveit-commander
-RUN apt-get install -y ros-kinetic-moveit-visual-tools
-RUN apt-get install -y ros-kinetic-moveit-ros-visualization
-RUN apt-get install -y ros-kinetic-moveit-planners-ompl
-RUN apt-get install -y ros-kinetic-moveit-simple-controller-manager
-RUN apt-get install -y ros-kinetic-trac-ik-kinematics-plugin
-RUN apt-get install -y gdb
-RUN apt-get install -y mlocate
-RUN apt-get install -y screen
-RUN apt-get install -y emacs
-RUN apt-get install -y git
-RUN apt-get install -y netcat nmap wget iputils-ping openssh-client vim less
-RUN apt-get install -y python-numpy
-RUN apt-get install -y python-smbus
-RUN apt-get install -y python-scipy
-RUN apt-get install -y locate
-RUN apt-get install -y ros-kinetic-rosbridge-suite
-RUN apt-get install -y ros-kinetic-web-video-server
-RUN apt-get install -y nano
+RUN apt-get update && apt-get install -y --no-install-recommends apt-utils \
+    emacs \
+    sudo \
+    python-pip \
+    net-tools \
+    iproute2 \
+    iputils-ping \
+    openssh-client openssh-server \
+    ros-kinetic-desktop-full \
+    ros-kinetic-navigation \
+    ros-kinetic-ros-control ros-kinetic-ros-controllers \
+    ros-kinetic-joy \
+    ros-kinetic-gmapping ros-kinetic-navigation \
+    ros-kinetic-rviz-imu-plugin \
+    ros-kinetic-ar-track-alvar \
+    ros-kinetic-moveit \
+    ros-kinetic-moveit-commander \
+    ros-kinetic-moveit-visual-tools \
+    ros-kinetic-moveit-ros-visualization \
+    ros-kinetic-moveit-planners-ompl \
+    ros-kinetic-moveit-simple-controller-manager \
+    ros-kinetic-trac-ik-kinematics-plugin \
+    gdb \
+    mlocate \
+    screen \
+    emacs \
+    git \
+    netcat nmap wget iputils-ping openssh-client vim less \
+    python-numpy \
+    python-smbus \
+    python-scipy \
+    locate \
+    ros-kinetic-rosbridge-suite \
+    ros-kinetic-web-video-server \
+    nano
 
 # check out the version that has the buggy port of libmmal to 64 bit.
 # this didn't actually work sadly, got a weird mmal error when trying
