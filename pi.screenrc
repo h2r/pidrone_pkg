@@ -67,7 +67,7 @@ stuff "cd $(rospack find pidrone_pkg)/scripts\n"
 stuff "python rigid_transform_node.py"
 
 screen -t "TOF"
-stuff "rosrun topic_tools relay /$ROS_HOSTNAME/bottom_tof_driver_node/range /pidrone/range\n"
+stuff "source ~/catkin_ws/install/setup.bash \n && roslaunch pidrone_pkg tof.launch\n"
 
 screen -t "rosbridge"
 stuff "roslaunch --wait rosbridge_server rosbridge_websocket.launch\n"
