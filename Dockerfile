@@ -86,12 +86,6 @@ RUN mkdir $HOME/repo
 RUN mkdir -p $HOME/catkin_ws/src
 RUN rosdep update
 
-RUN cd $HOME/catkin_ws/src && git clone https://github.com/okalachev/vl53l1x_ros.git && cd .. && source /opt/ros/kinetic/setup.bash && catkin_make -DCATKIN_WHITELIST_PACKAGES="vl53l1x"
-RUN cd $HOME/catkin_ws/src && git clone https://github.com/duckietown/raspicam_node -b kinetic-dd24 && cd .. && source /opt/ros/kinetic/setup.bash && catkin_make
-
-
-
-
 # print some info on start
 RUN echo "echo -e 'Welcome! You are now in a docker container ().'" >> $HOME/.bashrc
 RUN echo "echo -e \"Docker ID: $(basename $(cat /proc/1/cpuset))\"" >> $HOME/.bashrc
