@@ -9,7 +9,7 @@
 FROM ros:kinetic
 
 # Install software
-RUN apt-get update && apt-get install -y --no-install-recommends apt-utils \
+RUN apt-get update && apt-get install -y --allow-unauthenticated --no-install-recommends apt-utils \
     emacs \
     sudo \
     python-pip \
