@@ -43,6 +43,8 @@ var velocityChartPaused = false;
 var showingUkfAnalysis = false;
 var spanningFullWindow = false;
 
+var vchartScale = 100;
+
 function closeSession(){
   console.log("Closing connections.");
   ros.close();
@@ -356,6 +358,11 @@ function connect() {
       //printProperties(message);
 	//console.log("Range: " + message.twist.linear.x);
 	//console.log("Range: " + message.twist.linear.y);
+
+    const vcanvas = document.getElementById("vChart");
+    const vctx = vcanvas.getContext("2d");
+    updateVChart(vctx, [0, 0], [message.twist.linear.x, message.twist.linear.y]);
+
 	vel = Math.sqrt(message.twist.linear.x**2 + message.twist.linear.y**2)
       currTime = message.header.stamp.secs + message.header.stamp.nsecs/1.0e9;
       if (!gotFirstVelocity) {
@@ -507,6 +514,7 @@ function connect() {
     });
 
     function updateGroundTruthXYChart(msg) {
+        console.log("update ground truth position");
         xPos = msg.pose.position.x;
         yPos = msg.pose.position.y;
         qx = msg.pose.orientation.x;
@@ -565,6 +573,7 @@ function connect() {
     }
 
     function updateCameraPoseXYChart(msg) {
+        console.log("update camera pose(position)")
         xPos = msg.pose.position.x;
         yPos = msg.pose.position.y;
         qx = msg.pose.orientation.x;
@@ -623,6 +632,7 @@ function connect() {
     }
 
     function updateUkfXYChart(msg) {
+        console.log("update ukf pose (position)")
         xPos = msg.pose_with_covariance.pose.position.x;
         yPos = msg.pose_with_covariance.pose.position.y;
         qx = msg.pose_with_covariance.pose.orientation.x;
@@ -1279,9 +1289,7 @@ function loadVelocityChartStandardView() {
 }
 
 
-$(document).ready(function() {
-    loadHeightChartStandardView();
-    loadVelocityChartStandardView();    
+function loadXYChartStandardView(){
     xyctx = document.getElementById("xyChart").getContext('2d');
     xyChart = new Chart(xyctx, {
         type: 'line',
@@ -1407,9 +1415,53 @@ $(document).ready(function() {
             },
         }
     });
+    return xyChart;
+}
 
-    init();
+
+function updateVChart(ctx, origin, vec, scale = 7000) {
+    const [ox, oy] = [origin[0]+200, origin[1]+200];
+    const [vx, vy] = vec;
+
+    const x2 = ox + vx * scale;
+    const y2 = oy - vy * scale; // invert y (canvas y goes down)
+    ctx.clearRect(0, 0, 400, 400);
+
+    // line
+    ctx.beginPath();
+    ctx.moveTo(ox, oy);
+    ctx.lineTo(x2, y2);
+    ctx.stroke();
+
+    // arrowhead
+    const angle = Math.atan2(oy - y2, x2 - ox);
+    const headlen = 10;
+
+    ctx.beginPath();
+    ctx.moveTo(x2, y2);
+    ctx.lineTo(
+        x2 - headlen * Math.cos(angle - Math.PI / 6),
+        y2 + headlen * Math.sin(angle - Math.PI / 6)
+    );
+    ctx.lineTo(
+        x2 - headlen * Math.cos(angle + Math.PI / 6),
+        y2 + headlen * Math.sin(angle + Math.PI / 6)
+    );
+    ctx.lineTo(x2, y2);
+    ctx.fill();
+}
+
+$(document).ready(function() {
+    loadHeightChartStandardView();
+    loadVelocityChartStandardView();    
+    xyChart = loadXYChartStandardView();
+
+    // const vcanvas = document.getElementById("vChart");
+    // const vctx = vcanvas.getContext("2d");
+    // updateVChart(vctx, [0, 0], [2, 1]);
+    // init();
 });
+
 
 $(window).on("beforeunload", function(e) {
     closeSession();
