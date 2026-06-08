@@ -17,168 +17,165 @@
 <script type="text/javascript" src="js/bootstrap.js"></script>
 
 <script type="text/javascript" src="js/main.js"></script>
-
-
 </head>
 
 <body>
     <div class="container-fluid">
-        <nav class="navbar navbar-expand-lg navbar-light bg-light">
-          <div class="navbar-brand" href="#">PiDrone Web Interface</div>
-          <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
-            <span class="navbar-toggler-icon"></span>
-          </button>
+        <nav class="navbar navbar-expand navbar-light bg-light">
+            <div class="navbar-brand">PiDrone Web Interface</div>
+            <!-- <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button> -->
 
-          <div class="collapse navbar-collapse" id="navbarSupportedContent">
-              <ul class="navbar-nav mr-auto">
-                  <li class="nav-item">
-                      <p class="nav-link">
-                          Connection Status
-                      </p>
-                      <div class="alert alert-danger text-center" id="statusMessage">
-                          Disconnected
-                      </div>
-                  </li>
-                  <li class="nav-item">
-                      <p class="nav-link">
-                          Battery Voltage
-                      </p>
-                      <div class="alert alert-danger text-center" id="vbat">
-                          ???
-                      </div>
-                  </li>
-		  <li class="nav-item">
-                  <label for="hostname">Hostname:</label>
-                  <input type="text" class="form-control mr-sm-2 mx-2" id="hostname" value="cosmo">
-		  <input class="btn btn-primary my-2 my-sm-0" type="submit" value="Connect" name="submit" onclick="connect()"/>
-		  <input class="btn btn-primary my-2 my-sm-0" type="submit" value="Disconnect" name="submit" onclick="closeSession()"/>	      
-		  </li>
+            <div class="collapse navbar-collapse" id="navbarSupportedContent">
+              <ul class="navbar-nav mr-auto flex-row flex-wrap align-items-center my-2 my-lg-0">
+                <li class="nav-item mr-3 my-1">
+                </li>
+                <li class="nav-item mr-3 my-1">
+                  <span class="navbar-text d-inline-block mr-2">BAT</span>
+                  <div class="alert alert-danger text-center d-inline-block py-1 px-3 m-0" id="vbat">unavailable</div>
+                </li>
               </ul>
-          </div>
+                <div class="form-inline my-2 my-lg-0">
+                    <label for="hostname" class="mr-2 text-nowrap">Hostname:</label>
+                    <input type="text" class="form-control mr-2" id="hostname" value="iotdrone01">
+                    <input class="alert alert-danger btn btn-primary mr-1 py-1 px-3 mb-0" type="submit" value="Connect" name="submit" id="connectBtn" onclick="handleConnection()"/>          
+                </div>
+            </div>
         </nav>
 
-        <div class="row mt-2">
-            <div class="col-sm text-center">
-
-	      <table><tr><td>
-                <div id="heightchart">
-                    <h4>Height</h4>
-                    <input class="btn btn-primary my-2 my-sm-0" type="submit" value="Pause" name="heightPauseBtn" onclick="togglePauseHeightChart(this)"/>
-                    <input class="btn btn-primary my-2 my-sm-0" type="submit" value="UKF Analysis" name="ukfAnalysisBtn" onclick="toggleUkfAnalysis(this)"/>
-                    <canvas id="heightChart" width="300" height="250"></canvas>
-                </div></td><td>
-                <div id="velocitychart">
-                    <h4>Speed</h4>
-                    <input class="btn btn-primary my-2 my-sm-0" type="submit" value="Pause (TODO)" name="heightPauseBtn" onclick="togglePauseVelocityChart(this)"/>
-                    <input class="btn btn-primary my-2 my-sm-0" type="submit" value="UKF Analysis (TODO)" name="velukfAnalysisBtn" onclick="toggleVelUkfAnalysis(this)"/>
-                    <canvas id="velocityChart" width="300" height="250"></canvas>
-                </div>	</td></tr></table>	
-
-                <div class="form-inline">
-                    <div class="form-group">
-                        <label for="heightMin">Minimum height:</label>
-                        <input type="number" step="0.05" class="form-control mx-2" id="heightMin" value="0" onchange="changeHeightChartYScaleMin()"/>
-                        <label for="heightMax">Maximum height:</label>
-                        <input type="number" step="0.05" class="form-control mx-2" id="heightMax" value="0.6" onchange="changeHeightChartYScaleMax()"/>
+        <div class="row mt-4 m-2">
+            <div class="col-lg-6 text-center">
+                <div class="row m-0 gap-3">
+                    <div id="heightchart" class="col-md-6 p-3 border rounded bg-light">
+                        <div class="mb-2 d-flex justify-content-between align-items-center">
+                            <h4>Height</h4>
+                            <div>
+                                <input class="btn btn-primary btn-sm" type="submit" value="Pause" name="heightPauseBtn" onclick="togglePauseHeightChart(this)"/>
+                                <input class="btn btn-primary btn-sm" type="submit" value="UKF Analysis" name="ukfAnalysisBtn" onclick="toggleUkfAnalysis(this)"/>
+                            </div>
+                        </div>
+                        <canvas id="heightChart" class="w-100 mb-2" style="max-width: 300px; height: 250px;"></canvas>
+                        <div class="form-inline">
+                            <label for="heightMin" class="mx-2">Min:</label>
+                            <input type="number" step="0.05" class="form-control form-control-sm mx-2 w-25" id="heightMin" value="0" onchange="changeHeightChartYScaleMin()"/>
+                            <label for="heightMax" class="mx-2">Max:</label>
+                            <input type="number" step="0.05" class="form-control form-control-sm mx-2 w-25" id="heightMax" value="0.6" onchange="changeHeightChartYScaleMax()"/>
+                        </div>
+                    </div>
+                    <div id="velocitychart" class="col-md ml-md-3 p-3 border rounded bg-light">
+                        <div class="mb-2 d-flex justify-content-between align-items-center">
+                            <h4>Speed</h4>
+                            <div>
+                                <input class="btn btn-primary btn-sm" type="submit" value="Pause?" name="heightPauseBtn" onclick="togglePauseVelocityChart(this)"/>
+                                <input class="btn btn-primary btn-sm" type="submit" value="UKF Analysis?" name="velukfAnalysisBtn" onclick="toggleVelUkfAnalysis(this)"/>
+                            </div>
+                        </div>
+                        <canvas id="velocityChart" class="w-100" style="max-width: 300px; height: 250px;"></canvas>
                     </div>
                 </div>
 
-
-                <div class="col-sm text-center" style="margin-top:20px;">
+                <div class="my-4 p-3 border rounded bg-light">
                     <h4>Camera Image</h4>
-                    <img id="cameraImage" alt="Camera image" src="nocamera.jpg" width=320/>
+                    <img id="cameraImage" alt="Camera image" src="nocamera.jpg" class="img-fluid rounded my-2" style="max-width: 320px;"/>
                     <div class="form-group">
                         <small id="imagetopicHelp" class="form-text text-muted">Make sure you run <code>rosrun web_video_server web_video_server</code> and the image stream.</small>
                     </div>
                 </div>
             </div>
 
-            <div class="col-sm text-center">
+            <div class="col-lg-6 text-center">
+                <div class="p-3 border rounded bg-light mb-4">
+                    <div class="mb-2 d-flex justify-content-between align-items-center">
+                        <h4>Controls</h4>
+                        <div class="btn-group btn-group-toggle my-2" data-toggle="buttons">
+                            <label id="velocityBtn" class="btn btn-secondary active">
+                                <input type="radio" checked> Velocity
+                            </label>
+                            <label id="positionBtn" class="btn btn-secondary">
+                                <input type="radio"> Position
+                            </label>
+                        </div>
+                    </div>
+                    <!-- <div id="position_state" class="my-1"></div> -->
 
-                <h4>Controls</h4>
-                <div class="btn-group btn-group-toggle" data-toggle="buttons">
-                    <label id="velocityBtn" class="btn btn-secondary active">
-                        <input type="radio" checked>
-                        Velocity
-                    </label>
-                    <br>
-                    <label id="positionBtn" class="btn btn-secondary">
-                        <input type="radio">Position
-                    </label>
-                    <div id="position_state"></div>
-                </div>
-
-                <div class="form-inline" style="margin-top: 20px; margin-bottom:20px;">
-                    <div class="form-group">
-                        <label for="controlX">x:</label>
-                        <input type="number" step="0.1" class="form-control mx-2" id="controlX" value="0" onchange="changeHeightChartYScaleMin()"/>
-                        <label for="controlY">y:</label>
-                        <input type="number" step="0.1" class="form-control mx-2" id="controlY" value="0" onchange="changeHeightChartYScaleMax()"/>
-                        <label for="controlZ">z:</label>
-                        <input type="number" step="0.1" class="form-control mx-2" id="controlZ" value="0" onchange="changeHeightChartYScaleMax()"/>
+                    <div class="d-flex justify-content-center my-3">
+                        <div class="form-inline flex-grow-1">
+                            <label for="controlX" class="mx-1">x:</label>
+                            <input type="number" step="0.1" class="form-control form-control-sm mx-2 w-25" id="controlX" value="0" onchange="changeHeightChartYScaleMin()"/>
+                            <label for="controlY" class="mx-1">y:</label>
+                            <input type="number" step="0.1" class="form-control form-control-sm mx-2 w-25" id="controlY" value="0" onchange="changeHeightChartYScaleMax()"/>
+                            <label for="controlZ" class="mx-1">z:</label>
+                            <input type="number" step="0.1" class="form-control form-control-sm mx-2 w-25" id="controlZ" value="0" onchange="changeHeightChartYScaleMax()"/>
+                        </div>
+                        <input class="btn btn-primary px-4" type="submit" value="Set" name="controlSetBtn" onclick="setControls()"/>
                     </div>
                 </div>
-                <input class="btn btn-primary my-2 my-sm-0" type="submit" value="Set" name="controlSetBtn" onclick="setControls()"/>
 
-            <div id="xychart" style="margin-top:20px;">
-                <h4>Top View</h4>
-                <input class="btn btn-primary my-2 my-sm-0" type="submit" value="Pause" name="xyPauseBtn" onclick="togglePauseXYChart(this)"/>
-                <div class="form-inline">
-                    <canvas id="xyChart" width="400" height="400"></canvas>
-                    <canvas id="vChart" width="400" height="400"></canvas>
+                <div id="xychart" class="p-3 border rounded bg-light">
+                    <div class="mb-2 d-flex justify-content-between align-items-center">
+                        <h4>Top View</h4>
+                        <input class="btn btn-primary mb-3" type="submit" value="Pause" name="xyPauseBtn" onclick="togglePauseXYChart(this)"/>
+                    </div> 
+                    <div class="row justify-content-center">
+                        <div class="col-md-6 mb-2">
+                            <canvas id="xyChart" class="w-100 " style="max-width: 400px; height: 400px;"></canvas>
+                        </div>
+                        <div class="col-md-6 mb-2">
+                            <canvas id="vChart" class="w-100 " style="max-width: 400px; height: 400px;"></canvas>
+                        </div>
+                    </div>
                 </div>
-                <h5>scale of vChart</h5>
-                <!-- <input type="range" min="10" max="2000" value="100" id="vChartScale"> -->
-            </div>
-
             </div>
         </div>
-        <hr>
+        
+        <hr class="my-4">
 
-
-        <div class="row">
-            <div class="col-sm">
-                <table class="table table-bordered">
+        <div class="row mb-5">
+        <div class="col-12">
+            <div class="table-responsive">
+                <table class="table table-bordered table-striped text-center">
                     <tbody>
-                      <tr>
-                        <th scope="col">Action</th>
-                        <td>;</td>
-                        <td>Space Bar</td>
-                        <td>T</td>
-                        <td>A</td>
-                        <td>D</td>
-                        <td>W</td>
-                        <td>S</td>
-                        <td>J</td>
-                        <td>L</td>
-                        <td>I</td>
-                        <td>K</td>
-                        <td>R</td>
-                        <td>P</td>
-                        <td>V</td>
-                        <td>M</td>
-                      </tr>
-                      <tr>
-                        <th scope="col">Key</th>
-                        <td>Arm</td>
-                        <td>Disarm</td>
-                        <td>Takeoff</td>
-                        <td>Yaw Left</td>
-                        <td>Yaw Right</tD>
-                        <td>Up</td>
-                        <td>Down</td>
-                        <td>Left</td>
-                        <td>Right</td>
-                        <td>Forward</td>
-                        <td>Backward</td>
-                        <td>Reset position hold</td>
-                        <td>Position Hold</td>
-                        <td>Velocity Control</td>
-                        <td>Toggle Mapping</td>
-                      </tr>
+                        <tr>
+                            <th scope="row" class="bg-light">Action</th>
+                            <td>Arm</td>
+                            <td>Disarm</td>
+                            <td>Takeoff</td>
+                            <td>Yaw Left</td>
+                            <td>Yaw Right</td>
+                            <td>Up</td>
+                            <td>Down</td>
+                            <td>Left</td>
+                            <td>Right</td>
+                            <td>Forward</td>
+                            <td>Backward</td>
+                            <td>Reset position hold</td>
+                            <td>Position Hold</td>
+                            <td>Velocity Control</td>
+                            <td>Toggle Mapping</td>
+                        </tr>
+                        <tr>
+                            <th scope="row" class="bg-light">Key</th>
+                            <td>;</td>
+                            <td>Space Bar</td>
+                            <td>T</td>
+                            <td>A</td>
+                            <td>D</td>
+                            <td>W</td>
+                            <td>S</td>
+                            <td>J</td>
+                            <td>L</td>
+                            <td>I</td>
+                            <td>K</td>
+                            <td>R</td>
+                            <td>P</td>
+                            <td>V</td>
+                            <td>M</td>
+                        </tr>
                     </tbody>
                 </table>
             </div>
         </div>
+    </div>
 </body>
 </html>

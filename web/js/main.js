@@ -72,22 +72,22 @@ function connect() {
     ros.on('error', function(error) {
       console.log('ROS Master:  Error, check console.');
       //printProperties(error);
-      document.getElementById('statusMessage').innerHTML='Error detected; check console.';
-      $('#statusMessage').addClass('alert-danger').removeClass('alert-success');
+      document.getElementById('connectBtn').innerHTML='Error detected; check console.';
+      $('#connectBtn').addClass('alert-danger').removeClass('alert-success');
     });
 
     ros.on('connection', function() {
       console.log('ROS Master:  Connected.');
       //printProperties(error);
-      document.getElementById('statusMessage').innerHTML="Connected";
-      $('#statusMessage').addClass('alert-success').removeClass('alert-danger');
+      document.getElementById('connectBtn').value="Disconnect";
+      $('#connectBtn').addClass('alert-success').removeClass('alert-danger');
     });
 
     ros.on('close', function() {
       console.log('ROS Master:  Connection closed.');
       //printProperties(error);
-      document.getElementById('statusMessage').innerHTML="Disconnected";
-      $('#statusMessage').addClass('alert-danger').removeClass('alert-success');
+      document.getElementById('connectBtn').value="Connect";
+      $('#connectBtn').addClass('alert-danger').removeClass('alert-success');
     });
 
     /*
@@ -281,17 +281,17 @@ function connect() {
      * ROS Subscriber Callbacks
      */
 
-     positionSub.subscribe(function(message) {
-        var position = message.data;
-        var text = "";
-        if (position) {
-            text = "Position Mode";
-        } else {
-            text = "Velocity Mode";
-        }
-        element = document.getElementById("position_state");
-        element.textContent = text;
-     });
+    //  positionSub.subscribe(function(message) {
+        // var position = message.data;
+        // var text = "";
+        // if (position) {
+        //     text = "Position Mode";
+        // } else {
+        //     text = "Velocity Mode";
+        // }
+        // element = document.getElementById("position_state");
+        // element.textContent = text;
+    //  });
 
     batterysub.subscribe(function(message) {
       //printProperties(message);
@@ -772,7 +772,15 @@ function connect() {
     });
 
     imageStream();
-  }
+}
+  function handleConnection() {
+    const btn = document.getElementById('connectBtn');
+    if (btn.value === 'Connect') {
+        connect(); // 呼叫你原本的連線功能
+    } else {
+        closeSession(); // 呼叫你原本的斷線功能
+    }
+}
 
   function imageStream() {
     var image = document.getElementById('cameraImage');
